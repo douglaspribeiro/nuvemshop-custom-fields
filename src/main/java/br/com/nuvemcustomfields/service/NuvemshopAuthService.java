@@ -18,6 +18,7 @@ public class NuvemshopAuthService {
     private final NuvemshopProperties properties;
     private final StoreRepository storeRepository;
     private final WebhookRegistrationService webhookRegistrationService;
+    private final ScriptInstallService scriptInstallService;
     private final IntegrationLogService integrationLogService;
     private final RestClient restClient;
 
@@ -25,12 +26,14 @@ public class NuvemshopAuthService {
             NuvemshopProperties properties,
             StoreRepository storeRepository,
             WebhookRegistrationService webhookRegistrationService,
+            ScriptInstallService scriptInstallService,
             IntegrationLogService integrationLogService,
             RestClient.Builder builder
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
         this.webhookRegistrationService = webhookRegistrationService;
+        this.scriptInstallService = scriptInstallService;
         this.integrationLogService = integrationLogService;
         this.restClient = builder.defaultHeader("User-Agent", properties.userAgent()).build();
     }
@@ -70,6 +73,7 @@ public class NuvemshopAuthService {
         store.setUninstalledAt(null);
         Store saved = storeRepository.save(store);
         webhookRegistrationService.registerRequiredWebhooks(saved);
+        scriptInstallService.installPersonalizerScript(saved);
         integrationLogService.info(saved.getStoreId(), "oauth.installed", "Loja instalada ou reconectada via OAuth.");
         return saved;
     }

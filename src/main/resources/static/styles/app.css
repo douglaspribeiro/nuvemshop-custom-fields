@@ -277,6 +277,21 @@ input[type="checkbox"] {
     margin-top: 6px;
 }
 
+.ncf-personalization {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.ncf-field {
+    display: grid;
+    gap: 6px;
+}
+
+.ncf-label {
+    font-weight: 700;
+}
+
 .plan-strip {
     display: flex;
     align-items: center;

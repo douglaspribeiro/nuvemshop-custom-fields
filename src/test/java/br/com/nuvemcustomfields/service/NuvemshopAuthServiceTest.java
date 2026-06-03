@@ -28,6 +28,7 @@ class NuvemshopAuthServiceTest {
                 properties,
                 mock(StoreRepository.class),
                 mock(WebhookRegistrationService.class),
+                mock(ScriptInstallService.class),
                 mock(IntegrationLogService.class),
                 RestClient.builder()
         );

@@ -73,6 +73,15 @@ public class NuvemshopApiClient {
                 .toBodilessEntity();
     }
 
+    public void createScript(Store store, String src) {
+        restClient.post()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/scripts", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .body(Map.of("src", src, "event", "onload"))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     private String localizedName(JsonNode nameNode) {
         if (nameNode == null || nameNode.isMissingNode() || nameNode.isNull()) {
             return "Produto sem nome";
