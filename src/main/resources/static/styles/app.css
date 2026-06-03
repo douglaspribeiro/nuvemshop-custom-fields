@@ -221,7 +221,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
     min-height: 38px;
     box-sizing: border-box;
     border: 1px solid #c8d3d8;
@@ -229,6 +230,10 @@ select {
     padding: 8px 10px;
     font: inherit;
     font-weight: 500;
+}
+
+textarea {
+    resize: vertical;
 }
 
 input[type="checkbox"] {

@@ -12,6 +12,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.util.Arrays;
+import java.util.List;
+
 @Entity
 @Table(name = "personalization_fields")
 public class PersonalizationField {
@@ -42,6 +45,9 @@ public class PersonalizationField {
 
     @Column(name = "validation_pattern", length = 255)
     private String validationPattern;
+
+    @Column(name = "options_text", columnDefinition = "TEXT")
+    private String optionsText;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
@@ -104,6 +110,24 @@ public class PersonalizationField {
 
     public void setValidationPattern(String validationPattern) {
         this.validationPattern = validationPattern;
+    }
+
+    public String getOptionsText() {
+        return optionsText;
+    }
+
+    public void setOptionsText(String optionsText) {
+        this.optionsText = optionsText;
+    }
+
+    public List<String> options() {
+        if (optionsText == null || optionsText.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(optionsText.split("\\R"))
+                .map(String::strip)
+                .filter(option -> !option.isBlank())
+                .toList();
     }
 
     public Integer getSortOrder() {

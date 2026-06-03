@@ -81,7 +81,7 @@
         }
         const style = document.createElement("style");
         style.id = "ncf-personalization-style";
-        style.textContent = ".ncf-personalization{display:grid;gap:10px;margin:14px 0}.ncf-field{display:grid;gap:6px}.ncf-label{font-weight:700}.ncf-field input,.ncf-field textarea{box-sizing:border-box;width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}";
+        style.textContent = ".ncf-personalization{display:grid;gap:10px;margin:14px 0}.ncf-field{display:grid;gap:6px}.ncf-label{font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}";
         document.head.appendChild(style);
     }
 
@@ -115,6 +115,21 @@
     function createInput(field) {
         if (field.fieldType === "TEXTAREA") {
             return document.createElement("textarea");
+        }
+
+        if (field.fieldType === "SELECT") {
+            const select = document.createElement("select");
+            const empty = document.createElement("option");
+            empty.value = "";
+            empty.textContent = "";
+            select.appendChild(empty);
+            (field.options || []).forEach((optionValue) => {
+                const option = document.createElement("option");
+                option.value = optionValue;
+                option.textContent = optionValue;
+                select.appendChild(option);
+            });
+            return select;
         }
 
         const input = document.createElement("input");

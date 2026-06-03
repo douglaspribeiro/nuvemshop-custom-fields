@@ -8,7 +8,8 @@ public record FieldTemplate(
         boolean required,
         Integer maxLength,
         String placeholder,
-        String validationPattern
+        String validationPattern,
+        String optionsText
 ) {
 
     public FieldForm toForm(int sortOrder) {
@@ -19,6 +20,7 @@ public record FieldTemplate(
         form.setMaxLength(maxLength);
         form.setPlaceholder(placeholder);
         form.setValidationPattern(validationPattern);
+        form.setOptionsText(optionsText);
         form.setSortOrder(sortOrder);
         return form;
     }

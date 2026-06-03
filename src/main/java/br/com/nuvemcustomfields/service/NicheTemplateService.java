@@ -16,8 +16,8 @@ public class NicheTemplateService {
                     "Camiseta",
                     "Nome e numero para uniformes, times e presentes.",
                     List.of(
-                            new FieldTemplate("Nome na camisa", FieldType.TEXT, true, 20, "Ex: Douglas", null),
-                            new FieldTemplate("Numero", FieldType.NUMBER, true, 2, "Ex: 10", "^[0-9]{1,2}$")
+                            new FieldTemplate("Nome na camisa", FieldType.TEXT, true, 20, "Ex: Douglas", null, null),
+                            new FieldTemplate("Numero", FieldType.NUMBER, true, 2, "Ex: 10", "^[0-9]{1,2}$", null)
                     )
             ),
             new NicheTemplate(
@@ -25,8 +25,8 @@ public class NicheTemplateService {
                     "Caneca",
                     "Texto curto para gravacao ou presente personalizado.",
                     List.of(
-                            new FieldTemplate("Nome para gravar", FieldType.TEXT, true, 30, "Ex: Mariana", null),
-                            new FieldTemplate("Mensagem curta", FieldType.TEXT, false, 60, "Ex: Feliz aniversario", null)
+                            new FieldTemplate("Nome para gravar", FieldType.TEXT, true, 30, "Ex: Mariana", null, null),
+                            new FieldTemplate("Mensagem curta", FieldType.TEXT, false, 60, "Ex: Feliz aniversario", null, null)
                     )
             ),
             new NicheTemplate(
@@ -34,9 +34,9 @@ public class NicheTemplateService {
                     "Convite",
                     "Dados essenciais para convites e papelaria personalizada.",
                     List.of(
-                            new FieldTemplate("Nome do evento", FieldType.TEXT, true, 40, "Ex: Aniversario da Ana", null),
-                            new FieldTemplate("Data do evento", FieldType.TEXT, true, 20, "Ex: 12/10/2026", "^[0-9]{2}/[0-9]{2}/[0-9]{4}$"),
-                            new FieldTemplate("Mensagem", FieldType.TEXTAREA, false, 200, "Texto adicional", null)
+                            new FieldTemplate("Nome do evento", FieldType.TEXT, true, 40, "Ex: Aniversario da Ana", null, null),
+                            new FieldTemplate("Data do evento", FieldType.TEXT, true, 20, "Ex: 12/10/2026", "^[0-9]{2}/[0-9]{2}/[0-9]{4}$", null),
+                            new FieldTemplate("Mensagem", FieldType.TEXTAREA, false, 200, "Texto adicional", null, null)
                     )
             )
     );

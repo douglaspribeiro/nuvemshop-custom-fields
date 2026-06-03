@@ -118,6 +118,9 @@ public class PersonalizationAdminService {
         field.setValidationPattern(form.getValidationPattern() == null || form.getValidationPattern().isBlank()
                 ? null
                 : form.getValidationPattern().strip());
+        field.setOptionsText(form.getOptionsText() == null || form.getOptionsText().isBlank()
+                ? null
+                : form.getOptionsText().strip());
         field.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
     }
 }

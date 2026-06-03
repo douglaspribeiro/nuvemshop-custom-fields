@@ -28,6 +28,8 @@ public class FieldForm {
 
     private String validationPattern;
 
+    private String optionsText;
+
     @Min(0)
     private Integer sortOrder = 0;
 
@@ -90,6 +92,19 @@ public class FieldForm {
         } catch (PatternSyntaxException exception) {
             return false;
         }
+    }
+
+    public String getOptionsText() {
+        return optionsText;
+    }
+
+    public void setOptionsText(String optionsText) {
+        this.optionsText = optionsText;
+    }
+
+    @AssertTrue(message = "Informe ao menos uma opcao para SELECT")
+    public boolean isSelectOptionsValid() {
+        return fieldType != FieldType.SELECT || (optionsText != null && !optionsText.isBlank());
     }
 
     public Integer getSortOrder() {
