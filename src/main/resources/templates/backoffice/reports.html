@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Relatorios</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Relatorios gerenciais</h1>
+        </div>
+        <a class="button" th:href="@{/backoffice}">Voltar</a>
+    </section>
+    <section class="details metrics">
+        <div>
+            <dt>MRR estimado</dt>
+            <dd th:text="'R$ ' + ${report.estimatedMrr}">R$ 0</dd>
+        </div>
+        <div>
+            <dt>Free</dt>
+            <dd th:text="${report.freeStores}">0</dd>
+        </div>
+        <div>
+            <dt>Premium</dt>
+            <dd th:text="${report.premiumStores}">0</dd>
+        </div>
+        <div>
+            <dt>Premium Plus</dt>
+            <dd th:text="${report.premiumPlusStores}">0</dd>
+        </div>
+    </section>
+    <section class="details metrics">
+        <div>
+            <dt>Eventos de plano</dt>
+            <dd th:text="${report.planEvents}">0</dd>
+        </div>
+        <div>
+            <dt>Produtos com campos</dt>
+            <dd th:text="${report.configuredProducts}">0</dd>
+        </div>
+        <div>
+            <dt>Campos configurados</dt>
+            <dd th:text="${report.configuredFields}">0</dd>
+        </div>
+    </section>
+</main>
+</body>
+</html>

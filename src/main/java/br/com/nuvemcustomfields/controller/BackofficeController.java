@@ -8,6 +8,7 @@ import br.com.nuvemcustomfields.repository.IntegrationLogRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
+import br.com.nuvemcustomfields.service.ManagementReportService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,6 +27,7 @@ public class BackofficeController {
     private final FeatureFlagRepository featureFlagRepository;
     private final IntegrationLogRepository integrationLogRepository;
     private final BackofficeService backofficeService;
+    private final ManagementReportService managementReportService;
 
     public BackofficeController(
             BackofficeProperties properties,
@@ -33,7 +35,8 @@ public class BackofficeController {
             PlanEventRepository planEventRepository,
             FeatureFlagRepository featureFlagRepository,
             IntegrationLogRepository integrationLogRepository,
-            BackofficeService backofficeService
+            BackofficeService backofficeService,
+            ManagementReportService managementReportService
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -41,6 +44,7 @@ public class BackofficeController {
         this.featureFlagRepository = featureFlagRepository;
         this.integrationLogRepository = integrationLogRepository;
         this.backofficeService = backofficeService;
+        this.managementReportService = managementReportService;
     }
 
     @GetMapping("/backoffice/login")
@@ -93,6 +97,12 @@ public class BackofficeController {
     public String flags(Model model) {
         model.addAttribute("flags", featureFlagRepository.findAll());
         return "backoffice/flags";
+    }
+
+    @GetMapping("/backoffice/reports")
+    public String reports(Model model) {
+        model.addAttribute("report", managementReportService.report());
+        return "backoffice/reports";
     }
 
     @PostMapping("/backoffice/flags")
