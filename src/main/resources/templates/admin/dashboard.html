@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard - Nuvem Custom Fields</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Dashboard</p>
+            <h1>Uso e pedidos</h1>
+        </div>
+        <a class="button" th:href="@{/admin}">Voltar</a>
+    </section>
+
+    <section class="details metrics">
+        <div>
+            <dt>Produtos configurados</dt>
+            <dd th:text="${summary.configuredProducts}">0</dd>
+        </div>
+        <div>
+            <dt>Campos ativos</dt>
+            <dd th:text="${summary.configuredFields}">0</dd>
+        </div>
+        <div>
+            <dt>Pedidos recentes com personalizacao</dt>
+            <dd th:text="${#lists.size(summary.personalizedOrders)}">0</dd>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Pedidos com personalizacao</h2>
+            <span class="muted">Ultimos 50 pedidos</span>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(summary.personalizedOrders)}">
+            Nenhum pedido recente com propriedades de personalizacao.
+        </div>
+        <table class="table" th:if="${!#lists.isEmpty(summary.personalizedOrders)}">
+            <thead>
+            <tr>
+                <th>Pedido</th>
+                <th>Data</th>
+                <th>Campos</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="order : ${summary.personalizedOrders}">
+                <td th:text="${order.number}">123</td>
+                <td th:text="${order.createdAt}">2026-06-02</td>
+                <td>
+                    <span th:each="property : ${order.properties}" class="chip" th:text="${property}">Nome: Ana</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

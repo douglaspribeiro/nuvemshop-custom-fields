@@ -11,6 +11,7 @@ import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
+import br.com.nuvemcustomfields.service.ReportService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
@@ -32,6 +33,7 @@ public class AdminController {
     private final NicheTemplateService nicheTemplateService;
     private final PlanLimitService planLimitService;
     private final PersonalizationAdminService personalizationAdminService;
+    private final ReportService reportService;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -39,7 +41,8 @@ public class AdminController {
             NuvemshopApiClient apiClient,
             NicheTemplateService nicheTemplateService,
             PlanLimitService planLimitService,
-            PersonalizationAdminService personalizationAdminService
+            PersonalizationAdminService personalizationAdminService,
+            ReportService reportService
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -47,6 +50,7 @@ public class AdminController {
         this.nicheTemplateService = nicheTemplateService;
         this.planLimitService = planLimitService;
         this.personalizationAdminService = personalizationAdminService;
+        this.reportService = reportService;
     }
 
     @GetMapping("/admin")
@@ -64,6 +68,14 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("logs", integrationLogService.recent(store.getStoreId()));
         return "admin/help";
+    }
+
+    @GetMapping("/admin/dashboard")
+    public String dashboard(HttpSession session, Model model) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        model.addAttribute("store", store);
+        model.addAttribute("summary", reportService.dashboard(store));
+        return "admin/dashboard";
     }
 
     @GetMapping("/admin/products")

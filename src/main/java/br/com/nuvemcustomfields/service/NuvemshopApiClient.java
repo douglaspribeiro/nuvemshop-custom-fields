@@ -82,6 +82,14 @@ public class NuvemshopApiClient {
                 .toBodilessEntity();
     }
 
+    public JsonNode listRecentOrders(Store store) {
+        return restClient.get()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/orders?per_page=50", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
     private String localizedName(JsonNode nameNode) {
         if (nameNode == null || nameNode.isMissingNode() || nameNode.isNull()) {
             return "Produto sem nome";

@@ -97,6 +97,10 @@ h2 {
     padding-top: 12px;
 }
 
+.metrics {
+    margin-bottom: 20px;
+}
+
 dt {
     color: #536471;
     font-size: 0.82rem;
@@ -172,6 +176,18 @@ dd {
 .muted {
     color: #536471;
     font-size: 0.9rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    border: 1px solid #d9e2e7;
+    border-radius: 999px;
+    background: #f8fafb;
+    padding: 0 10px;
+    margin: 2px 4px 2px 0;
+    font-size: 0.85rem;
 }
 
 .notice,
