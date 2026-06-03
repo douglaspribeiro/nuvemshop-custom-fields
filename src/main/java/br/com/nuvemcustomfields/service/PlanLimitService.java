@@ -1,0 +1,72 @@
+package br.com.nuvemcustomfields.service;
+
+import br.com.nuvemcustomfields.dto.PlanUsage;
+import br.com.nuvemcustomfields.entity.PersonalizationField;
+import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
+import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+
+@Service
+public class PlanLimitService {
+
+    private static final long UNLIMITED = -1L;
+
+    private final PersonalizationRuleRepository ruleRepository;
+    private final PersonalizationFieldRepository fieldRepository;
+
+    public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository) {
+        this.ruleRepository = ruleRepository;
+        this.fieldRepository = fieldRepository;
+    }
+
+    public boolean canAddProduct(Store store) {
+        long limit = productLimit(store.getPlan());
+        return limit == UNLIMITED || ruleRepository.countByStoreId(store.getStoreId()) < limit;
+    }
+
+    public boolean canAddField(Store store, Long ruleId) {
+        long limit = fieldLimit(store.getPlan());
+        return limit == UNLIMITED || fieldRepository.countByRuleId(ruleId) < limit;
+    }
+
+    public PlanUsage usage(Store store, long fieldsUsed) {
+        return new PlanUsage(
+                store.getPlan(),
+                ruleRepository.countByStoreId(store.getStoreId()),
+                productLimit(store.getPlan()),
+                fieldsUsed,
+                fieldLimit(store.getPlan())
+        );
+    }
+
+    public List<PersonalizationField> storefrontFields(Store store, List<PersonalizationField> fields) {
+        long limit = fieldLimit(store.getPlan());
+        var ordered = fields.stream()
+                .sorted(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
+        if (limit == UNLIMITED) {
+            return ordered.toList();
+        }
+        return ordered.limit(limit).toList();
+    }
+
+    public long productLimit(PlanType plan) {
+        return switch (plan) {
+            case FREE -> 1L;
+            case PREMIUM -> 10L;
+            case PREMIUM_PLUS -> UNLIMITED;
+        };
+    }
+
+    public long fieldLimit(PlanType plan) {
+        return switch (plan) {
+            case FREE -> 1L;
+            case PREMIUM -> 3L;
+            case PREMIUM_PLUS -> UNLIMITED;
+        };
+    }
+}

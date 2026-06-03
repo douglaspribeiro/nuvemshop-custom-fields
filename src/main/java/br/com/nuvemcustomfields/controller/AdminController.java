@@ -7,6 +7,7 @@ import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
+import br.com.nuvemcustomfields.service.PlanLimitService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -25,15 +26,18 @@ public class AdminController {
 
     private final AdminStoreService adminStoreService;
     private final NuvemshopApiClient apiClient;
+    private final PlanLimitService planLimitService;
     private final PersonalizationAdminService personalizationAdminService;
 
     public AdminController(
             AdminStoreService adminStoreService,
             NuvemshopApiClient apiClient,
+            PlanLimitService planLimitService,
             PersonalizationAdminService personalizationAdminService
     ) {
         this.adminStoreService = adminStoreService;
         this.apiClient = apiClient;
+        this.planLimitService = planLimitService;
         this.personalizationAdminService = personalizationAdminService;
     }
 
@@ -42,6 +46,7 @@ public class AdminController {
         Store store = adminStoreService.requireCurrentStore(session);
         model.addAttribute("store", store);
         model.addAttribute("rules", personalizationAdminService.listRules(store.getStoreId()));
+        model.addAttribute("usage", planLimitService.usage(store, 0));
         return "admin/index";
     }
 
@@ -51,6 +56,7 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("products", apiClient.listProducts(store));
         model.addAttribute("rules", personalizationAdminService.listRules(store.getStoreId()));
+        model.addAttribute("usage", planLimitService.usage(store, 0));
         return "admin/products";
     }
 
@@ -62,7 +68,16 @@ public class AdminController {
             Model model
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
-        personalizationAdminService.ensureRule(store.getStoreId(), productId, productName);
+        if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
+            model.addAttribute("store", store);
+            model.addAttribute("products", apiClient.listProducts(store));
+            model.addAttribute("rules", personalizationAdminService.listRules(store.getStoreId()));
+            model.addAttribute("usage", planLimitService.usage(store, 0));
+            model.addAttribute("error", "Seu plano atual atingiu o limite de produtos personalizados.");
+            return "admin/products";
+        }
+        PersonalizationRule rule = personalizationAdminService.ensureRule(store.getStoreId(), productId, productName);
+        model.addAttribute("usage", planLimitService.usage(store, rule.getFields().size()));
         populateFieldsModel(store, productId, model, new FieldForm());
         return "admin/fields";
     }
@@ -78,6 +93,12 @@ public class AdminController {
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
         if (bindingResult.hasErrors()) {
+            populateFieldsModel(store, productId, model, fieldForm);
+            return "admin/fields";
+        }
+        PersonalizationRule rule = personalizationAdminService.requireRuleWithFields(store.getStoreId(), productId);
+        if (!planLimitService.canAddField(store, rule.getId())) {
+            model.addAttribute("error", "Seu plano atual atingiu o limite de campos por produto.");
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
@@ -132,5 +153,7 @@ public class AdminController {
         model.addAttribute("rule", rule);
         model.addAttribute("fieldTypes", FieldType.values());
         model.addAttribute("fieldForm", fieldForm);
+        model.addAttribute("usage", planLimitService.usage(store, rule.getFields().size()));
+        model.addAttribute("canAddField", planLimitService.canAddField(store, rule.getId()));
     }
 }

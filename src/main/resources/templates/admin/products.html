@@ -17,6 +17,20 @@
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="panel plan-strip">
+        <div>
+            <h2 th:text="'Plano ' + ${store.plan}">Plano FREE</h2>
+            <p class="muted">
+                <span th:text="${usage.productsUsed}">0</span>
+                <span th:text="${usage.unlimitedProducts() ? ' produtos personalizados de limite ilimitado' : ' de ' + usage.productLimit + ' produtos personalizados'}">
+                    de 1 produto personalizado
+                </span>
+            </p>
+        </div>
+        <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
+    </section>
 
     <section class="panel">
         <div class="panel-title">
@@ -49,6 +63,7 @@
                 </td>
                 <td class="row-actions">
                     <a class="button small"
+                       th:classappend="${rules.?[productId == product.id].isEmpty() and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
                        th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}">
                         Editar campos
                     </a>

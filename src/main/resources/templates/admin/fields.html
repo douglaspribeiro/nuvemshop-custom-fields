@@ -19,11 +19,25 @@
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
+    <section class="panel plan-strip">
+        <div>
+            <h2 th:text="'Plano ' + ${store.plan}">Plano FREE</h2>
+            <p class="muted">
+                <span th:text="${usage.fieldsUsed}">0</span>
+                <span th:text="${usage.unlimitedFields() ? ' campos neste produto de limite ilimitado' : ' de ' + usage.fieldLimit + ' campos neste produto'}">
+                    de 1 campo neste produto
+                </span>
+            </p>
+        </div>
+        <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
+    </section>
+
     <section class="grid two">
         <div class="panel">
             <h2>Novo campo</h2>
+            <p class="notice error" th:if="${!canAddField}">Limite de campos atingido para este produto.</p>
             <form class="form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
-                  th:object="${fieldForm}" method="post">
+                  th:object="${fieldForm}" method="post" th:classappend="${!canAddField} ? ' blocked' : ''">
                 <label>
                     Label
                     <input th:field="*{label}" maxlength="100" required>
@@ -50,7 +64,7 @@
                     Ordem
                     <input th:field="*{sortOrder}" type="number" min="0">
                 </label>
-                <button class="button primary" type="submit">Criar campo</button>
+                <button class="button primary" type="submit" th:disabled="${!canAddField}">Criar campo</button>
             </form>
         </div>
 

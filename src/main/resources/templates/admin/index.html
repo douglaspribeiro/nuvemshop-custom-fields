@@ -29,7 +29,10 @@
             </div>
             <div>
                 <dt>Produtos configurados</dt>
-                <dd th:text="${#lists.size(rules)}">0</dd>
+                <dd>
+                    <span th:text="${usage.productsUsed}">0</span>
+                    <span th:text="${usage.unlimitedProducts() ? '/ ilimitado' : '/ ' + usage.productLimit}">/ 1</span>
+                </dd>
             </div>
         </dl>
     </section>

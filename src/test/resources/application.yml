@@ -8,6 +8,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    open-in-view: false
 
 nuvemshop:
   client-id: test-client

@@ -29,6 +29,10 @@ public class PersonalizationAdminService {
         return ruleRepository.findByStoreIdOrderByProductNameAsc(storeId);
     }
 
+    public boolean hasRule(Long storeId, Long productId) {
+        return ruleRepository.findByStoreIdAndProductId(storeId, productId).isPresent();
+    }
+
     @Transactional
     public PersonalizationRule ensureRule(Long storeId, Long productId, String productName) {
         PersonalizationRule rule = ruleRepository.findByStoreIdAndProductId(storeId, productId)
