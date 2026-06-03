@@ -95,7 +95,7 @@
         wrapper.appendChild(text);
 
         const input = createInput(field);
-        input.name = "properties[" + field.label + "]";
+        input.name = "properties[" + (field.propertyName || field.label) + "]";
         input.required = Boolean(field.required);
 
         if (field.maxLength) {

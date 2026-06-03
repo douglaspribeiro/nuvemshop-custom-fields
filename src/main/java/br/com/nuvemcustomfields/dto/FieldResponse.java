@@ -12,6 +12,7 @@ public record FieldResponse(
         Integer maxLength,
         String placeholder,
         String validationPattern,
+        String propertyName,
         List<String> options
 ) {
 
@@ -23,7 +24,12 @@ public record FieldResponse(
                 field.getMaxLength(),
                 field.getPlaceholder(),
                 field.getValidationPattern(),
+                propertyName(field.getLabel()),
                 field.options()
         );
+    }
+
+    private static String propertyName(String label) {
+        return label.replace('[', '(').replace(']', ')').strip();
     }
 }
