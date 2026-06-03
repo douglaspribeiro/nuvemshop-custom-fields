@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nuvem Custom Fields</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Admin</p>
+            <h1>Nuvem Custom Fields</h1>
+        </div>
+        <span class="badge" th:text="${store.plan}">FREE</span>
+    </section>
+
+    <section class="panel">
+        <h2>Loja conectada</h2>
+        <dl class="details">
+            <div>
+                <dt>Store ID</dt>
+                <dd th:text="${store.storeId}">0</dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd th:text="${store.active ? 'Ativa' : 'Inativa'}">Ativa</dd>
+            </div>
+        </dl>
+    </section>
+</main>
+</body>
+</html>

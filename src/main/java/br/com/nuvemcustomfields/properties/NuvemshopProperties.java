@@ -1,0 +1,19 @@
+package br.com.nuvemcustomfields.properties;
+
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+@Validated
+@ConfigurationProperties(prefix = "nuvemshop")
+public record NuvemshopProperties(
+        @NotBlank String clientId,
+        @NotBlank String clientSecret,
+        @NotBlank String redirectUri,
+        @NotBlank String authUrl,
+        @NotBlank String tokenUrl,
+        @NotBlank String apiBaseUrl,
+        @NotBlank String scopes,
+        @NotBlank String userAgent
+) {
+}

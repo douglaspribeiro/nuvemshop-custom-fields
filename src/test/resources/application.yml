@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+nuvemshop:
+  client-id: test-client
+  client-secret: test-secret
+  redirect-uri: http://localhost/oauth/callback
+  auth-url: https://example.com/auth
+  token-url: https://example.com/token
+  api-base-url: https://api.example.com
+  scopes: read_products,write_scripts,read_scripts,billing,read_store
+  user-agent: NuvemCustomFields tests
