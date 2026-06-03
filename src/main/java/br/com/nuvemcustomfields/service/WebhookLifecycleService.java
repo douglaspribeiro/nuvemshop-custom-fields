@@ -16,15 +16,18 @@ public class WebhookLifecycleService {
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
     private final ScriptInstallService scriptInstallService;
+    private final IntegrationLogService integrationLogService;
 
     public WebhookLifecycleService(
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
-            ScriptInstallService scriptInstallService
+            ScriptInstallService scriptInstallService,
+            IntegrationLogService integrationLogService
     ) {
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.scriptInstallService = scriptInstallService;
+        this.integrationLogService = integrationLogService;
     }
 
     @Transactional
@@ -47,12 +50,14 @@ public class WebhookLifecycleService {
             store.setSubscriptionId(null);
             store.setPlan(PlanType.FREE);
             storeRepository.save(store);
+            integrationLogService.info(storeId, "webhook.app_uninstalled", "Loja desinstalada; assinatura e script foram limpos.");
         });
     }
 
     private void handleProductDeleted(Long storeId, Long productId) {
         if (storeId != null && productId != null) {
             ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
+            integrationLogService.info(storeId, "webhook.product_deleted", "Regras removidas para produto " + productId + ".");
         }
     }
 }

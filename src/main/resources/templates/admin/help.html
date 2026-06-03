@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ajuda - Nuvem Custom Fields</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Ajuda</p>
+            <h1>Suporte e operacao</h1>
+        </div>
+        <a class="button" th:href="@{/admin}">Voltar</a>
+    </section>
+
+    <section class="grid two">
+        <div class="panel">
+            <h2>Checklist</h2>
+            <ul class="template-fields">
+                <li>OAuth conectado para a loja atual.</li>
+                <li>Produto com regra ativa e pelo menos um campo.</li>
+                <li>Plano com limite disponivel para novos campos.</li>
+                <li>Script instalado na vitrine apos a instalacao.</li>
+            </ul>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h2>Eventos recentes</h2>
+                <span class="muted" th:text="${#lists.size(logs)} + ' eventos'">0 eventos</span>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(logs)}">Nenhum evento registrado para esta loja.</div>
+            <table class="table" th:if="${!#lists.isEmpty(logs)}">
+                <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Nivel</th>
+                    <th>Evento</th>
+                    <th>Mensagem</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="log : ${logs}">
+                    <td th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026 10:00</td>
+                    <td th:text="${log.level}">INFO</td>
+                    <td th:text="${log.eventType}">oauth.installed</td>
+                    <td th:text="${log.message}">Mensagem</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

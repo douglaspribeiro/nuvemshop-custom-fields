@@ -6,6 +6,7 @@ import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.service.AdminStoreService;
+import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
@@ -26,6 +27,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AdminController {
 
     private final AdminStoreService adminStoreService;
+    private final IntegrationLogService integrationLogService;
     private final NuvemshopApiClient apiClient;
     private final NicheTemplateService nicheTemplateService;
     private final PlanLimitService planLimitService;
@@ -33,12 +35,14 @@ public class AdminController {
 
     public AdminController(
             AdminStoreService adminStoreService,
+            IntegrationLogService integrationLogService,
             NuvemshopApiClient apiClient,
             NicheTemplateService nicheTemplateService,
             PlanLimitService planLimitService,
             PersonalizationAdminService personalizationAdminService
     ) {
         this.adminStoreService = adminStoreService;
+        this.integrationLogService = integrationLogService;
         this.apiClient = apiClient;
         this.nicheTemplateService = nicheTemplateService;
         this.planLimitService = planLimitService;
@@ -52,6 +56,14 @@ public class AdminController {
         model.addAttribute("rules", personalizationAdminService.listRules(store.getStoreId()));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         return "admin/index";
+    }
+
+    @GetMapping("/admin/help")
+    public String help(HttpSession session, Model model) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        model.addAttribute("store", store);
+        model.addAttribute("logs", integrationLogService.recent(store.getStoreId()));
+        return "admin/help";
     }
 
     @GetMapping("/admin/products")
