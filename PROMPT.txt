@@ -1,0 +1,30 @@
+Siga rigorosamente /home/dribeiro/meudev/work-p/roadmap/WORKER_PROMPT_BASE.md
+Roadmap: /home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/roadmap.md
+
+
+Execute, em ordem de maior prioridade, todas as tarefas elegiveis do roadmap que nao estejam ignoradas e que nao tenham dependencia pendente. Se uma tarefa depender de outra, aceite apenas se a dependencia ja estiver concluida.
+
+Nao faca discovery global. Nao saia do repositorio atual. Nao atue em outros produtos.
+
+Fluxo obrigatorio por tarefa:
+1. Identifique a tarefa elegivel de maior prioridade.
+2. Implemente a tarefa no codigo e nos arquivos relacionados.
+3. Marque a tarefa como concluida no `roadmap.md` e nas specs correspondentes.
+4. Valide o resultado com o minimo necessario de verificacao tecnica.
+5. Faça `git add` e `git commit` imediatamente, com mensagem contendo o numero e o nome da task.
+6. So entao procure a proxima tarefa elegivel.
+7. Entre as tarefas, limpe o contexto (`/clear`).
+
+Se a conclusao de uma tarefa destravar outra de maior prioridade, reavalie o roadmap antes de escolher a proxima.
+
+Se houver bloqueio real que a propria IA nao conseguiu resolver, responda apenas com `HUMAN_PROMPT: <pergunta objetiva>`, altere a task para indicar necessidade de acao humana e siga para a proxima tarefa elegivel.
+
+Ao final, entregue um resumo curto das tarefas concluídas, das alteracoes feitas e dos bloqueios encontrados.
+
+Autorizacoes por padrao:
+- Ao realizar commit via git, considere isso autorizado por padrao: faca `git add` e `git commit` diretamente, sem pedir permissao adicional.
+- Ao marcar tarefas concluidas, editar `roadmap.md` e editar os arquivos de spec definidos pelo roadmap, considere isso autorizado por padrao e faca as alteracoes sem pedir permissao adicional.
+- A edicao de arquivos `*.md` dentro de `/home/dribeiro/meudev/work-p/roadmap/` esta autorizada por padrao, mesmo estando fora do repositorio do produto.
+- Se o ambiente bloquear escrita fora do repositorio do produto, solicite apenas a permissao tecnica necessaria para continuar, sem pedir confirmacao sobre a tarefa.
+
+Entre as tarefas, limpe o contexto (`/clear`).
