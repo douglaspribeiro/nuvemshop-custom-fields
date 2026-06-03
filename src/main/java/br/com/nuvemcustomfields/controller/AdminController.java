@@ -6,6 +6,7 @@ import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.service.AdminStoreService;
+import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
@@ -26,17 +27,20 @@ public class AdminController {
 
     private final AdminStoreService adminStoreService;
     private final NuvemshopApiClient apiClient;
+    private final NicheTemplateService nicheTemplateService;
     private final PlanLimitService planLimitService;
     private final PersonalizationAdminService personalizationAdminService;
 
     public AdminController(
             AdminStoreService adminStoreService,
             NuvemshopApiClient apiClient,
+            NicheTemplateService nicheTemplateService,
             PlanLimitService planLimitService,
             PersonalizationAdminService personalizationAdminService
     ) {
         this.adminStoreService = adminStoreService;
         this.apiClient = apiClient;
+        this.nicheTemplateService = nicheTemplateService;
         this.planLimitService = planLimitService;
         this.personalizationAdminService = personalizationAdminService;
     }
@@ -58,6 +62,40 @@ public class AdminController {
         model.addAttribute("rules", personalizationAdminService.listRules(store.getStoreId()));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         return "admin/products";
+    }
+
+    @GetMapping("/admin/onboarding")
+    public String onboarding(HttpSession session, Model model) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        model.addAttribute("store", store);
+        model.addAttribute("products", apiClient.listProducts(store));
+        model.addAttribute("templates", nicheTemplateService.listTemplates());
+        model.addAttribute("usage", planLimitService.usage(store, 0));
+        return "admin/onboarding";
+    }
+
+    @PostMapping("/admin/onboarding/apply")
+    public String applyTemplate(
+            @RequestParam Long productId,
+            @RequestParam String productName,
+            @RequestParam String templateId,
+            HttpSession session,
+            RedirectAttributes redirectAttributes
+    ) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
+            redirectAttributes.addFlashAttribute("error", "Seu plano atual atingiu o limite de produtos personalizados.");
+            return "redirect:/admin/onboarding";
+        }
+        int created = personalizationAdminService.applyTemplate(
+                store,
+                productId,
+                productName,
+                nicheTemplateService.requireTemplate(templateId),
+                planLimitService
+        );
+        redirectAttributes.addFlashAttribute("message", created + " campos do template foram aplicados.");
+        return "redirect:/admin/products/{productId}/fields";
     }
 
     @GetMapping("/admin/products/{productId}/fields")

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Onboarding - Nuvem Custom Fields</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Onboarding</p>
+            <h1>Templates por nicho</h1>
+        </div>
+        <a class="button" th:href="@{/admin}">Voltar</a>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="panel plan-strip">
+        <div>
+            <h2 th:text="'Plano ' + ${store.plan}">Plano FREE</h2>
+            <p class="muted">
+                <span th:text="${usage.productsUsed}">0</span>
+                <span th:text="${usage.unlimitedProducts() ? ' produtos personalizados de limite ilimitado' : ' de ' + usage.productLimit + ' produtos personalizados'}">
+                    de 1 produto personalizado
+                </span>
+            </p>
+        </div>
+        <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
+    </section>
+
+    <section class="template-grid">
+        <article class="panel template-card" th:each="template : ${templates}">
+            <div>
+                <h2 th:text="${template.name}">Camiseta</h2>
+                <p class="muted" th:text="${template.description}">Descricao</p>
+            </div>
+            <ul class="template-fields">
+                <li th:each="field : ${template.fields}" th:text="${field.label + ' - ' + field.fieldType}">Campo</li>
+            </ul>
+            <form class="form template-form" th:action="@{/admin/onboarding/apply}" method="post">
+                <input type="hidden" name="templateId" th:value="${template.id}">
+                <input type="hidden" name="productName">
+                <label>
+                    Produto
+                    <select name="productId" required>
+                        <option value="" disabled selected>Selecione um produto</option>
+                        <option th:each="product : ${products}"
+                                th:value="${product.id}"
+                                th:text="${product.name}"
+                                th:attr="data-name=${product.name}">Produto</option>
+                    </select>
+                </label>
+                <button class="button primary" type="submit">Aplicar template</button>
+            </form>
+        </article>
+    </section>
+</main>
+<script>
+    document.querySelectorAll(".template-form select[name='productId']").forEach((select) => {
+        select.addEventListener("change", () => {
+            const input = select.closest("form").querySelector("input[name='productName']");
+            input.value = select.options[select.selectedIndex].dataset.name || "";
+        });
+    });
+</script>
+</body>
+</html>

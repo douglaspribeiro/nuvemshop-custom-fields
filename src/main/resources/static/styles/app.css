@@ -251,6 +251,32 @@ input[type="checkbox"] {
     margin-top: 10px;
 }
 
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.template-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.template-card p {
+    margin: 6px 0 0;
+}
+
+.template-fields {
+    margin: 16px 0 0;
+    padding-left: 18px;
+    color: #344450;
+}
+
+.template-fields li + li {
+    margin-top: 6px;
+}
+
 .plan-strip {
     display: flex;
     align-items: center;

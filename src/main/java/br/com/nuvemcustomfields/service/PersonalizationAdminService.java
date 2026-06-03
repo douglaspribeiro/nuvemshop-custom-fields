@@ -1,8 +1,10 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.FieldForm;
+import br.com.nuvemcustomfields.dto.NicheTemplate;
 import br.com.nuvemcustomfields.entity.PersonalizationField;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
+import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import org.springframework.stereotype.Service;
@@ -87,6 +89,24 @@ public class PersonalizationAdminService {
     @Transactional
     public void deleteRule(Long storeId, Long productId) {
         ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
+    }
+
+    @Transactional
+    public int applyTemplate(Store store, Long productId, String productName, NicheTemplate template, PlanLimitService planLimitService) {
+        PersonalizationRule rule = ensureRule(store.getStoreId(), productId, productName);
+        int created = 0;
+        int sortOrder = 0;
+        for (var fieldTemplate : template.fields()) {
+            if (!planLimitService.canAddField(store, rule.getId())) {
+                break;
+            }
+            PersonalizationField field = new PersonalizationField();
+            applyForm(field, fieldTemplate.toForm(sortOrder++));
+            field.setRule(rule);
+            fieldRepository.save(field);
+            created++;
+        }
+        return created;
     }
 
     private void applyForm(PersonalizationField field, FieldForm form) {
