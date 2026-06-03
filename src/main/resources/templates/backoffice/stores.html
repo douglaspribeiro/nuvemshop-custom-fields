@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Lojas</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Lojas</h1>
+        </div>
+        <a class="button" th:href="@{/backoffice}">Voltar</a>
+    </section>
+    <section class="panel">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Store ID</th>
+                <th>Plano</th>
+                <th>Status</th>
+                <th>Instalada em</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="store : ${stores}">
+                <td th:text="${store.storeId}">0</td>
+                <td th:text="${store.plan}">FREE</td>
+                <td th:text="${store.active ? 'Ativa' : 'Desinstalada'}">Ativa</td>
+                <td th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
+                <td><a class="button small" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Detalhe</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Flags</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Feature flags</h1>
+        </div>
+        <a class="button" th:href="@{/backoffice}">Voltar</a>
+    </section>
+    <section class="grid two">
+        <div class="panel">
+            <h2>Nova flag</h2>
+            <form class="form" th:action="@{/backoffice/flags}" method="post">
+                <label>
+                    Chave
+                    <input name="key" required>
+                </label>
+                <label class="checkbox">
+                    <input name="enabled" type="checkbox" value="true">
+                    Ativa
+                </label>
+                <label>
+                    Descricao
+                    <input name="description" maxlength="500">
+                </label>
+                <button class="button primary" type="submit">Salvar</button>
+            </form>
+        </div>
+        <div class="panel">
+            <h2>Flags</h2>
+            <table class="table">
+                <tbody>
+                <tr th:each="flag : ${flags}">
+                    <td th:text="${flag.key}">flag</td>
+                    <td th:text="${flag.enabled ? 'Ativa' : 'Inativa'}">Ativa</td>
+                    <td th:text="${flag.description}">Descricao</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Loja</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Loja</p>
+            <h1 th:text="${store.storeId}">0</h1>
+        </div>
+        <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
+    </section>
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <section class="grid two">
+        <div class="panel">
+            <h2>Plano</h2>
+            <form class="form" th:action="@{/backoffice/stores/{storeId}/plan(storeId=${store.storeId})}" method="post">
+                <label>
+                    Plano atual
+                    <select name="plan">
+                        <option th:each="type : ${planTypes}" th:value="${type}" th:selected="${type == store.plan}" th:text="${type}">FREE</option>
+                    </select>
+                </label>
+                <button class="button primary" type="submit">Salvar override</button>
+            </form>
+        </div>
+        <div class="panel">
+            <h2>Auditoria de plano</h2>
+            <div class="empty" th:if="${#lists.isEmpty(events)}">Sem eventos de plano.</div>
+            <table class="table" th:if="${!#lists.isEmpty(events)}">
+                <tbody>
+                <tr th:each="event : ${events}">
+                    <td th:text="${event.fromPlan + ' -> ' + event.toPlan}">FREE -> PREMIUM</td>
+                    <td th:text="${event.source}">OVERRIDE</td>
+                    <td th:text="${#temporals.format(event.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="panel">
+        <h2>Logs recentes</h2>
+        <div class="empty" th:if="${#lists.isEmpty(logs)}">Sem logs.</div>
+        <table class="table" th:if="${!#lists.isEmpty(logs)}">
+            <tbody>
+            <tr th:each="log : ${logs}">
+                <td th:text="${log.eventType}">event</td>
+                <td th:text="${log.message}">message</td>
+                <td th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

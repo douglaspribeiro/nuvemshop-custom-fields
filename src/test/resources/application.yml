@@ -20,3 +20,7 @@ nuvemshop:
   app-base-url: http://localhost:8080
   scopes: read_products,read_orders,write_scripts,read_scripts,billing,read_store
   user-agent: NuvemCustomFields tests
+
+backoffice:
+  username: admin
+  password: admin

@@ -8,14 +8,19 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AdminSessionInterceptor adminSessionInterceptor;
+    private final BackofficeSessionInterceptor backofficeSessionInterceptor;
 
-    public WebConfig(AdminSessionInterceptor adminSessionInterceptor) {
+    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor) {
         this.adminSessionInterceptor = adminSessionInterceptor;
+        this.backofficeSessionInterceptor = backofficeSessionInterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(adminSessionInterceptor)
                 .addPathPatterns("/admin/**");
+        registry.addInterceptor(backofficeSessionInterceptor)
+                .addPathPatterns("/backoffice/**")
+                .excludePathPatterns("/backoffice/login");
     }
 }

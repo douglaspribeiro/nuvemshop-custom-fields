@@ -25,3 +25,7 @@ nuvemshop:
   app-base-url: ${APP_BASE_URL:http://localhost:8080}
   scopes: ${NUVEMSHOP_SCOPES:read_products,read_orders,write_scripts,read_scripts,billing,read_store}
   user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields suporte@example.com}
+
+backoffice:
+  username: ${BACKOFFICE_USERNAME:admin}
+  password: ${BACKOFFICE_PASSWORD:admin}

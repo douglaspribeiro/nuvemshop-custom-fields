@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Login</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell narrow">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Login</h1>
+        </div>
+    </section>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel">
+        <form class="form" th:action="@{/backoffice/login}" method="post">
+            <label>
+                Usuario
+                <input name="username" required autofocus>
+            </label>
+            <label>
+                Senha
+                <input name="password" type="password" required>
+            </label>
+            <button class="button primary" type="submit">Entrar</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

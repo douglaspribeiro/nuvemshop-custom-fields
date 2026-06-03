@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Operacao</h1>
+        </div>
+        <nav class="row-actions">
+            <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
+            <a class="button" th:href="@{/backoffice/flags}">Flags</a>
+        </nav>
+    </section>
+    <section class="details metrics">
+        <div>
+            <dt>Lojas</dt>
+            <dd th:text="${stores}">0</dd>
+        </div>
+        <div>
+            <dt>Lojas ativas</dt>
+            <dd th:text="${activeStores}">0</dd>
+        </div>
+        <div>
+            <dt>Campos configurados</dt>
+            <dd th:text="${rules}">0</dd>
+        </div>
+        <div>
+            <dt>Feature flags</dt>
+            <dd th:text="${flags}">0</dd>
+        </div>
+    </section>
+</main>
+</body>
+</html>
