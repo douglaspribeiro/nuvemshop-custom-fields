@@ -17,5 +17,6 @@ nuvemshop:
   auth-url: https://example.com/auth
   token-url: https://example.com/token
   api-base-url: https://api.example.com
+  app-base-url: http://localhost:8080
   scopes: read_products,write_scripts,read_scripts,billing,read_store
   user-agent: NuvemCustomFields tests

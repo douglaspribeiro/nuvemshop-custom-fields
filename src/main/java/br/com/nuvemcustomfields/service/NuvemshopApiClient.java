@@ -40,6 +40,39 @@ public class NuvemshopApiClient {
         return products;
     }
 
+    public JsonNode listWebhooks(Store store) {
+        return restClient.get()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/webhooks", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
+    public void createWebhook(Store store, String event, String url) {
+        restClient.post()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/webhooks", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .body(Map.of("event", event, "url", url))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public JsonNode listScripts(Store store) {
+        return restClient.get()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/scripts", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
+    public void deleteScript(Store store, Long scriptId) {
+        restClient.delete()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/scripts/{scriptId}", store.getStoreId(), scriptId)
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     private String localizedName(JsonNode nameNode) {
         if (nameNode == null || nameNode.isMissingNode() || nameNode.isNull()) {
             return "Produto sem nome";

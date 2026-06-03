@@ -17,11 +17,18 @@ public class NuvemshopAuthService {
 
     private final NuvemshopProperties properties;
     private final StoreRepository storeRepository;
+    private final WebhookRegistrationService webhookRegistrationService;
     private final RestClient restClient;
 
-    public NuvemshopAuthService(NuvemshopProperties properties, StoreRepository storeRepository, RestClient.Builder builder) {
+    public NuvemshopAuthService(
+            NuvemshopProperties properties,
+            StoreRepository storeRepository,
+            WebhookRegistrationService webhookRegistrationService,
+            RestClient.Builder builder
+    ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
+        this.webhookRegistrationService = webhookRegistrationService;
         this.restClient = builder.defaultHeader("User-Agent", properties.userAgent()).build();
     }
 
@@ -58,6 +65,8 @@ public class NuvemshopAuthService {
         store.setAccessToken(token.accessToken());
         store.setScope(token.scope());
         store.setUninstalledAt(null);
-        return storeRepository.save(store);
+        Store saved = storeRepository.save(store);
+        webhookRegistrationService.registerRequiredWebhooks(saved);
+        return saved;
     }
 }

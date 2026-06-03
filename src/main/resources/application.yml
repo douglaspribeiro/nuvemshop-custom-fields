@@ -22,5 +22,6 @@ nuvemshop:
   auth-url: ${NUVEMSHOP_AUTH_URL:https://www.tiendanube.com/apps/{clientId}/authorize}
   token-url: ${NUVEMSHOP_TOKEN_URL:https://www.tiendanube.com/apps/authorize/token}
   api-base-url: ${NUVEMSHOP_API_BASE_URL:https://api.tiendanube.com}
+  app-base-url: ${APP_BASE_URL:http://localhost:8080}
   scopes: ${NUVEMSHOP_SCOPES:read_products,write_scripts,read_scripts,billing,read_store}
   user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields suporte@example.com}

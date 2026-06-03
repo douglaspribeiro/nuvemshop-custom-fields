@@ -13,6 +13,7 @@ public record NuvemshopProperties(
         @NotBlank String authUrl,
         @NotBlank String tokenUrl,
         @NotBlank String apiBaseUrl,
+        @NotBlank String appBaseUrl,
         @NotBlank String scopes,
         @NotBlank String userAgent
 ) {
