@@ -61,6 +61,10 @@
                     <input th:field="*{placeholder}" maxlength="150">
                 </label>
                 <label>
+                    Regex ou mascara
+                    <input th:field="*{validationPattern}" maxlength="255" placeholder="Ex: ^[0-9]{1,2}$">
+                </label>
+                <label>
                     Ordem
                     <input th:field="*{sortOrder}" type="number" min="0">
                 </label>
@@ -107,6 +111,10 @@
                         <label>
                             Placeholder
                             <input name="placeholder" th:value="${field.placeholder}" maxlength="150">
+                        </label>
+                        <label>
+                            Regex ou mascara
+                            <input name="validationPattern" th:value="${field.validationPattern}" maxlength="255">
                         </label>
                         <label>
                             Ordem

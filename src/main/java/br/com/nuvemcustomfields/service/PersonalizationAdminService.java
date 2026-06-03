@@ -95,6 +95,9 @@ public class PersonalizationAdminService {
         field.setRequired(form.isRequired());
         field.setMaxLength(form.getMaxLength());
         field.setPlaceholder(form.getPlaceholder() == null || form.getPlaceholder().isBlank() ? null : form.getPlaceholder().strip());
+        field.setValidationPattern(form.getValidationPattern() == null || form.getValidationPattern().isBlank()
+                ? null
+                : form.getValidationPattern().strip());
         field.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
     }
 }

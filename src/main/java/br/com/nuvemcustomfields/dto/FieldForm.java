@@ -1,10 +1,14 @@
 package br.com.nuvemcustomfields.dto;
 
 import br.com.nuvemcustomfields.entity.FieldType;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class FieldForm {
 
@@ -21,6 +25,8 @@ public class FieldForm {
     private Integer maxLength = 100;
 
     private String placeholder;
+
+    private String validationPattern;
 
     @Min(0)
     private Integer sortOrder = 0;
@@ -63,6 +69,27 @@ public class FieldForm {
 
     public void setPlaceholder(String placeholder) {
         this.placeholder = placeholder;
+    }
+
+    public String getValidationPattern() {
+        return validationPattern;
+    }
+
+    public void setValidationPattern(String validationPattern) {
+        this.validationPattern = validationPattern;
+    }
+
+    @AssertTrue(message = "Regex invalida")
+    public boolean isValidationPatternValid() {
+        if (validationPattern == null || validationPattern.isBlank()) {
+            return true;
+        }
+        try {
+            Pattern.compile(validationPattern);
+            return true;
+        } catch (PatternSyntaxException exception) {
+            return false;
+        }
     }
 
     public Integer getSortOrder() {

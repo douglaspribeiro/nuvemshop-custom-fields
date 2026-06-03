@@ -8,7 +8,8 @@ public record FieldResponse(
         FieldType fieldType,
         boolean required,
         Integer maxLength,
-        String placeholder
+        String placeholder,
+        String validationPattern
 ) {
 
     public static FieldResponse from(PersonalizationField field) {
@@ -17,7 +18,8 @@ public record FieldResponse(
                 field.getFieldType(),
                 field.isRequired(),
                 field.getMaxLength(),
-                field.getPlaceholder()
+                field.getPlaceholder(),
+                field.getValidationPattern()
         );
     }
 }

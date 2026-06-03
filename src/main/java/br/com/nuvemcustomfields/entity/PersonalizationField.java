@@ -40,6 +40,9 @@ public class PersonalizationField {
     @Column(length = 150)
     private String placeholder;
 
+    @Column(name = "validation_pattern", length = 255)
+    private String validationPattern;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
@@ -93,6 +96,14 @@ public class PersonalizationField {
 
     public void setPlaceholder(String placeholder) {
         this.placeholder = placeholder;
+    }
+
+    public String getValidationPattern() {
+        return validationPattern;
+    }
+
+    public void setValidationPattern(String validationPattern) {
+        this.validationPattern = validationPattern;
     }
 
     public Integer getSortOrder() {
