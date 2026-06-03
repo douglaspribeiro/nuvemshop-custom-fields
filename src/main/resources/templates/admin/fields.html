@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Campos - Nuvem Custom Fields</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Editor</p>
+            <h1 th:text="${rule.productName ?: 'Produto ' + rule.productId}">Produto</h1>
+        </div>
+        <a class="button" th:href="@{/admin/products}">Produtos</a>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="grid two">
+        <div class="panel">
+            <h2>Novo campo</h2>
+            <form class="form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
+                  th:object="${fieldForm}" method="post">
+                <label>
+                    Label
+                    <input th:field="*{label}" maxlength="100" required>
+                </label>
+                <label>
+                    Tipo
+                    <select th:field="*{fieldType}" required>
+                        <option th:each="type : ${fieldTypes}" th:value="${type}" th:text="${type}">TEXT</option>
+                    </select>
+                </label>
+                <label class="checkbox">
+                    <input th:field="*{required}" type="checkbox">
+                    Obrigatorio
+                </label>
+                <label>
+                    Maximo de caracteres
+                    <input th:field="*{maxLength}" type="number" min="1" max="500" required>
+                </label>
+                <label>
+                    Placeholder
+                    <input th:field="*{placeholder}" maxlength="150">
+                </label>
+                <label>
+                    Ordem
+                    <input th:field="*{sortOrder}" type="number" min="0">
+                </label>
+                <button class="button primary" type="submit">Criar campo</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h2>Campos configurados</h2>
+                <span class="muted" th:text="${#lists.size(rule.fields)} + ' campos'">0 campos</span>
+            </div>
+
+            <div class="empty" th:if="${#lists.isEmpty(rule.fields)}">
+                Este produto ainda nao tem campos.
+            </div>
+
+            <div class="field-list">
+                <article class="field-item" th:each="field : ${rule.fields}">
+                    <form class="form compact"
+                          th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
+                          method="post">
+                        <label>
+                            Label
+                            <input name="label" th:value="${field.label}" maxlength="100" required>
+                        </label>
+                        <label>
+                            Tipo
+                            <select name="fieldType" required>
+                                <option th:each="type : ${fieldTypes}"
+                                        th:value="${type}"
+                                        th:selected="${type == field.fieldType}"
+                                        th:text="${type}">TEXT</option>
+                            </select>
+                        </label>
+                        <label class="checkbox">
+                            <input name="required" type="checkbox" value="true" th:checked="${field.required}">
+                            Obrigatorio
+                        </label>
+                        <label>
+                            Maximo
+                            <input name="maxLength" th:value="${field.maxLength}" type="number" min="1" max="500" required>
+                        </label>
+                        <label>
+                            Placeholder
+                            <input name="placeholder" th:value="${field.placeholder}" maxlength="150">
+                        </label>
+                        <label>
+                            Ordem
+                            <input name="sortOrder" th:value="${field.sortOrder}" type="number" min="0">
+                        </label>
+                        <div class="row-actions">
+                            <button class="button primary small" type="submit">Salvar</button>
+                        </div>
+                    </form>
+                    <form th:action="@{/admin/products/{productId}/fields/{fieldId}/delete(productId=${rule.productId},fieldId=${field.id})}"
+                          method="post">
+                        <button class="button danger small" type="submit">Excluir campo</button>
+                    </form>
+                </article>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Produtos - Nuvem Custom Fields</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Produtos</p>
+            <h1>Campos por produto</h1>
+        </div>
+        <a class="button" th:href="@{/admin}">Voltar</a>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Produtos da loja</h2>
+            <span class="muted" th:text="${#lists.size(products)} + ' encontrados'">0 encontrados</span>
+        </div>
+
+        <div class="empty" th:if="${#lists.isEmpty(products)}">
+            Nenhum produto retornado pela API da Nuvemshop.
+        </div>
+
+        <table class="table" th:if="${!#lists.isEmpty(products)}">
+            <thead>
+            <tr>
+                <th>Produto</th>
+                <th>ID</th>
+                <th>Personalizacao</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="product : ${products}">
+                <td th:text="${product.name}">Produto</td>
+                <td th:text="${product.id}">0</td>
+                <td>
+                    <span class="status"
+                          th:text="${rules.?[productId == product.id].isEmpty() ? 'Nao configurado' : 'Configurado'}">
+                        Nao configurado
+                    </span>
+                </td>
+                <td class="row-actions">
+                    <a class="button small"
+                       th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}">
+                        Editar campos
+                    </a>
+                    <form th:if="${!rules.?[productId == product.id].isEmpty()}"
+                          th:action="@{/admin/products/{productId}/delete(productId=${product.id})}"
+                          method="post">
+                        <button class="button danger small" type="submit">Remover</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

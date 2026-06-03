@@ -27,8 +27,16 @@
                 <dt>Status</dt>
                 <dd th:text="${store.active ? 'Ativa' : 'Inativa'}">Ativa</dd>
             </div>
+            <div>
+                <dt>Produtos configurados</dt>
+                <dd th:text="${#lists.size(rules)}">0</dd>
+            </div>
         </dl>
     </section>
+
+    <nav class="actions">
+        <a class="button primary" th:href="@{/admin/products}">Configurar produtos</a>
+    </nav>
 </main>
 </body>
 </html>
