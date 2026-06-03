@@ -36,7 +36,7 @@
         <div class="panel">
             <h2>Novo campo</h2>
             <p class="notice error" th:if="${!canAddField}">Limite de campos atingido para este produto.</p>
-            <form class="form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
+            <form class="form preview-source" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
                   th:object="${fieldForm}" method="post" th:classappend="${!canAddField} ? ' blocked' : ''">
                 <label>
                     Label
@@ -74,6 +74,10 @@
                 </label>
                 <button class="button primary" type="submit" th:disabled="${!canAddField}">Criar campo</button>
             </form>
+            <div class="preview-box">
+                <h2>Preview</h2>
+                <div id="field-preview"></div>
+            </div>
         </div>
 
         <div class="panel">
@@ -141,5 +145,56 @@
         </div>
     </section>
 </main>
+<script>
+    const source = document.querySelector(".preview-source");
+    const preview = document.getElementById("field-preview");
+
+    function updatePreview() {
+        if (!source || !preview) {
+            return;
+        }
+        const label = source.querySelector("[name='label']").value || "Campo";
+        const type = source.querySelector("[name='fieldType']").value;
+        const placeholder = source.querySelector("[name='placeholder']").value || "";
+        const required = source.querySelector("[name='required']").checked;
+        const maxLength = source.querySelector("[name='maxLength']").value;
+        const optionsText = source.querySelector("[name='optionsText']").value || "";
+
+        preview.innerHTML = "";
+        const wrapper = document.createElement("label");
+        wrapper.className = "ncf-field";
+        const text = document.createElement("span");
+        text.className = "ncf-label";
+        text.textContent = label + (required ? " *" : "");
+        wrapper.appendChild(text);
+
+        let input;
+        if (type === "TEXTAREA") {
+            input = document.createElement("textarea");
+        } else if (type === "SELECT") {
+            input = document.createElement("select");
+            optionsText.split(/\r?\n/).filter(Boolean).forEach((value) => {
+                const option = document.createElement("option");
+                option.textContent = value;
+                input.appendChild(option);
+            });
+        } else {
+            input = document.createElement("input");
+            input.type = type === "NUMBER" ? "number" : "text";
+        }
+        input.placeholder = placeholder;
+        if (maxLength) {
+            input.maxLength = Number(maxLength);
+        }
+        wrapper.appendChild(input);
+        preview.appendChild(wrapper);
+    }
+
+    if (source) {
+        source.addEventListener("input", updatePreview);
+        source.addEventListener("change", updatePreview);
+        updatePreview();
+    }
+</script>
 </body>
 </html>

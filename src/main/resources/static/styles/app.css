@@ -272,6 +272,16 @@ input[type="checkbox"] {
     margin-top: 10px;
 }
 
+.preview-box {
+    border-top: 1px solid #e7edf0;
+    margin-top: 18px;
+    padding-top: 18px;
+}
+
+#field-preview {
+    margin-top: 12px;
+}
+
 .template-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
