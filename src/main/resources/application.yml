@@ -2,9 +2,9 @@ spring:
   application:
     name: nuvemshop-custom-fields
   datasource:
-    url: ${DB_URL:jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&serverTimezone=America/Sao_Paulo}
-    username: ${DATABASE_USER:${DB_USER:user123}}
-    password: ${DATABASE_PASS:${DB_PASSWORD:}}
+    url: ${MYSQL_URL:jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME:app-custom-fields}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&serverTimezone=America/Sao_Paulo}
+    username: ${DB_USER:${MYSQL_USER:}}
+    password: ${DB_PASSWORD:${MYSQL_PASS:}}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -14,6 +14,16 @@ spring:
 
 server:
   forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 nuvemshop:
   client-id: ${NUVEMSHOP_CLIENT_ID:33395}
