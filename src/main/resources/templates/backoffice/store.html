@@ -11,7 +11,8 @@
     <section class="page-header">
         <div>
             <p class="eyebrow">Loja</p>
-            <h1 th:text="${store.storeId}">0</h1>
+            <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
+            <p class="muted" th:text="'Store ID ' + ${store.storeId}">Store ID 0</p>
         </div>
         <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
     </section>

@@ -10,6 +10,8 @@ import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +22,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class BackofficeController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BackofficeController.class);
 
     private final BackofficeProperties properties;
     private final StoreRepository storeRepository;
@@ -49,45 +53,61 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/login")
     public String login() {
+        LOGGER.info("backoffice.login.open");
         return "backoffice/login";
     }
 
     @PostMapping("/backoffice/login")
     public String login(@RequestParam String username, @RequestParam String password, HttpSession session, RedirectAttributes redirectAttributes) {
+        LOGGER.info("backoffice.login.submit session_id={} username={}", session.getId(), username);
         if (properties.username().equals(username) && properties.password().equals(password)) {
             session.setAttribute(BackofficeSessionInterceptor.SESSION_KEY, true);
+            LOGGER.info("backoffice.login.success session_id={} username={}", session.getId(), username);
             return "redirect:/backoffice";
         }
+        LOGGER.warn("backoffice.login.failed session_id={} username={}", session.getId(), username);
         redirectAttributes.addFlashAttribute("error", "Credenciais invalidas.");
         return "redirect:/backoffice/login";
     }
 
     @GetMapping("/backoffice")
     public String index(Model model) {
-        model.addAttribute("stores", storeRepository.count());
-        model.addAttribute("activeStores", backofficeService.activeStores());
-        model.addAttribute("rules", backofficeService.fields());
-        model.addAttribute("flags", featureFlagRepository.count());
+        LOGGER.info("backoffice.index.open");
+        long stores = storeRepository.count();
+        long activeStores = backofficeService.activeStores();
+        long rules = backofficeService.fields();
+        long flags = featureFlagRepository.count();
+        model.addAttribute("stores", stores);
+        model.addAttribute("activeStores", activeStores);
+        model.addAttribute("rules", rules);
+        model.addAttribute("flags", flags);
+        LOGGER.info("backoffice.index.loaded stores={} active_stores={} rules={} flags={}", stores, activeStores, rules, flags);
         return "backoffice/index";
     }
 
     @GetMapping("/backoffice/stores")
     public String stores(Model model) {
-        model.addAttribute("stores", storeRepository.findAll());
+        LOGGER.info("backoffice.stores.open");
+        var stores = storeRepository.findAll();
+        model.addAttribute("stores", stores);
+        LOGGER.info("backoffice.stores.loaded stores_count={}", stores.size());
         return "backoffice/stores";
     }
 
     @GetMapping("/backoffice/stores/{storeId}")
     public String store(@PathVariable Long storeId, Model model) {
+        LOGGER.info("backoffice.store.open store_id={}", storeId);
         model.addAttribute("store", storeRepository.findByStoreId(storeId).orElseThrow());
         model.addAttribute("planTypes", PlanType.values());
         model.addAttribute("events", planEventRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
+        LOGGER.info("backoffice.store.loaded store_id={}", storeId);
         return "backoffice/store";
     }
 
     @PostMapping("/backoffice/stores/{storeId}/plan")
     public String plan(@PathVariable Long storeId, @RequestParam PlanType plan, RedirectAttributes redirectAttributes) {
+        LOGGER.info("backoffice.plan.override store_id={} plan={}", storeId, plan);
         backofficeService.overridePlan(storeId, plan);
         redirectAttributes.addFlashAttribute("message", "Plano atualizado.");
         return "redirect:/backoffice/stores/{storeId}";
@@ -95,18 +115,23 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/flags")
     public String flags(Model model) {
-        model.addAttribute("flags", featureFlagRepository.findAll());
+        LOGGER.info("backoffice.flags.open");
+        var flags = featureFlagRepository.findAll();
+        model.addAttribute("flags", flags);
+        LOGGER.info("backoffice.flags.loaded flags_count={}", flags.size());
         return "backoffice/flags";
     }
 
     @GetMapping("/backoffice/reports")
     public String reports(Model model) {
+        LOGGER.info("backoffice.reports.open");
         model.addAttribute("report", managementReportService.report());
         return "backoffice/reports";
     }
 
     @PostMapping("/backoffice/flags")
     public String saveFlag(@RequestParam String key, @RequestParam(defaultValue = "false") boolean enabled, @RequestParam(required = false) String description) {
+        LOGGER.info("backoffice.flags.save key={} enabled={}", key, enabled);
         backofficeService.saveFlag(key, enabled, description);
         return "redirect:/backoffice/flags";
     }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard - Nuvem Custom Fields</title>
+    <title>Dashboard - Aplicativo: Campos Personalizados</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
@@ -27,7 +27,7 @@
         </div>
         <div>
             <dt>Pedidos recentes com personalizacao</dt>
-            <dd th:text="${#lists.size(summary.personalizedOrders)}">0</dd>
+            <dd th:text="${summary.ordersAvailable ? #lists.size(summary.personalizedOrders) : '-'}">0</dd>
         </div>
     </section>
 
@@ -36,10 +36,13 @@
             <h2>Pedidos com personalizacao</h2>
             <span class="muted">Ultimos 50 pedidos</span>
         </div>
-        <div class="empty" th:if="${#lists.isEmpty(summary.personalizedOrders)}">
+        <p class="notice error" th:if="${!summary.ordersAvailable}" th:text="${summary.ordersUnavailableReason}">
+            Reinstale o app para liberar a leitura de pedidos.
+        </p>
+        <div class="empty" th:if="${summary.ordersAvailable and #lists.isEmpty(summary.personalizedOrders)}">
             Nenhum pedido recente com propriedades de personalizacao.
         </div>
-        <table class="table" th:if="${!#lists.isEmpty(summary.personalizedOrders)}">
+        <table class="table" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}">
             <thead>
             <tr>
                 <th>Pedido</th>

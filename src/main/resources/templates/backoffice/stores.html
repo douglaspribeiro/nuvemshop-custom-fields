@@ -19,6 +19,7 @@
         <table class="table">
             <thead>
             <tr>
+                <th>Loja</th>
                 <th>Store ID</th>
                 <th>Plano</th>
                 <th>Status</th>
@@ -28,6 +29,7 @@
             </thead>
             <tbody>
             <tr th:each="store : ${stores}">
+                <td th:text="${store.storeName ?: 'Loja sem nome'}">Loja</td>
                 <td th:text="${store.storeId}">0</td>
                 <td th:text="${store.plan}">FREE</td>
                 <td th:text="${store.active ? 'Ativa' : 'Desinstalada'}">Ativa</td>

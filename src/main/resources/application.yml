@@ -2,9 +2,9 @@ spring:
   application:
     name: nuvemshop-custom-fields
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/nuvem_custom_fields?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&serverTimezone=America/Sao_Paulo}
+    username: ${DATABASE_USER:${DB_USER:user123}}
+    password: ${DATABASE_PASS:${DB_PASSWORD:}}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -16,8 +16,8 @@ server:
   forward-headers-strategy: framework
 
 nuvemshop:
-  client-id: ${NUVEMSHOP_CLIENT_ID:change-me}
-  client-secret: ${NUVEMSHOP_CLIENT_SECRET:change-me}
+  client-id: ${NUVEMSHOP_CLIENT_ID:33395}
+  client-secret: ${NUVEMSHOP_CLIENT_SECRET:a74c8dd0b32f24b71ba90663e5f095e5da325917cafecff5}
   redirect-uri: ${NUVEMSHOP_REDIRECT_URI:http://localhost:8080/oauth/callback}
   auth-url: ${NUVEMSHOP_AUTH_URL:https://www.tiendanube.com/apps/{clientId}/authorize}
   token-url: ${NUVEMSHOP_TOKEN_URL:https://www.tiendanube.com/apps/authorize/token}
@@ -25,7 +25,17 @@ nuvemshop:
   app-base-url: ${APP_BASE_URL:http://localhost:8080}
   scopes: ${NUVEMSHOP_SCOPES:read_products,read_orders,write_scripts,read_scripts,billing,read_store}
   user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields suporte@example.com}
+  script-id: ${NUVEMSHOP_SCRIPT_ID:}
 
 backoffice:
   username: ${BACKOFFICE_USERNAME:admin}
   password: ${BACKOFFICE_PASSWORD:admin}
+
+logging:
+  file:
+    name: logs/application.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
+  level:
+    br.com.nuvemcustomfields: DEBUG

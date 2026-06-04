@@ -1,62 +1,184 @@
 (function () {
     "use strict";
 
+    if (typeof window === "undefined" || typeof document === "undefined") {
+        return;
+    }
+
+    const appOrigin = "https://chlorine-mutate-preface.ngrok-free.dev";
+    const maxAttempts = 30;
+    let attempts = 0;
+    let lastRetryReason = "not_started";
+
     const script = document.currentScript || Array.from(document.scripts).find((candidate) => {
-        return candidate.src && candidate.src.indexOf("nuvemshop-personalizer.js") !== -1;
+        return candidate.src
+            && (
+                candidate.src.indexOf("nuvemshop-personalizer.js") !== -1
+                || candidate.src.indexOf("apps-scripts.tiendanube.com") !== -1
+                || candidate.src.indexOf("apps-scripts.nuvemshop.com.br") !== -1
+            );
     });
 
     if (!script) {
+        track("missing_script_tag", { reason: "script_not_found" });
         return;
     }
 
     const scriptUrl = new URL(script.src);
-    const storeId = scriptUrl.searchParams.get("store");
+    const storeId = scriptUrl.searchParams.get("store") || getStoreId();
+    const apiOrigin = isAppOrigin(scriptUrl.origin) ? scriptUrl.origin : appOrigin;
+
+    track("loaded", { storeId: storeId, scriptSrc: script.src });
 
     if (!storeId) {
+        track("disabled", { reason: "missing_store_id", scriptSrc: script.src });
         return;
     }
 
-    const form = findProductForm();
-    const productId = findProductId(form);
+    ready(initialize);
 
-    if (!form || !productId || form.dataset.ncfInjected === "true") {
-        return;
-    }
+    function initialize() {
+        const form = findProductForm();
+        const productId = findProductId(form);
 
-    fetch(scriptUrl.origin + "/public/stores/" + encodeURIComponent(storeId) + "/personalization?productId=" + encodeURIComponent(productId) + "&path=" + encodeURIComponent(window.location.pathname), {
-        credentials: "omit",
-        headers: {
-            "Accept": "application/json"
+        if (!form || !productId) {
+            lastRetryReason = !form ? "missing_product_form" : "missing_product_id";
+            retry();
+            return;
         }
-    })
-        .then((response) => response.ok ? response.json() : null)
-        .then((config) => {
+
+        if (form.dataset.ncfInjected === "true") {
+            return;
+        }
+
+        track("load_config", { storeId: storeId, productId: productId });
+        loadConfig(productId, function (config) {
             if (!config || !config.enabled || !Array.isArray(config.fields) || config.fields.length === 0) {
+                track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
                 return;
             }
             injectStyles();
             renderFields(form, config.fields);
             form.dataset.ncfInjected = "true";
+            track("injected", { storeId: storeId, productId: productId });
+        });
+    }
+
+    function ready(callback) {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", callback, { once: true });
+            return;
+        }
+        callback();
+    }
+
+    function retry() {
+        attempts += 1;
+        if (attempts <= maxAttempts) {
+            window.setTimeout(initialize, 250);
+            return;
+        }
+        track("disabled", { storeId: storeId, reason: lastRetryReason });
+    }
+
+    function loadConfig(productId, callback) {
+        const url = apiOrigin
+            + "/public/stores/" + encodeURIComponent(storeId) + "/personalization"
+            + "?productId=" + encodeURIComponent(productId)
+            + "&path=" + encodeURIComponent(window.location.pathname);
+
+        fetch(url, {
+            credentials: "omit",
+            headers: {
+                "Accept": "application/json",
+                "ngrok-skip-browser-warning": "true"
+            }
         })
-        .catch(() => {});
+            .then((response) => response.ok ? response.json() : null)
+            .then(callback)
+            .catch((error) => {
+                track("error", {
+                    storeId: storeId,
+                    productId: productId,
+                    reason: error && error.message ? error.message : "config_fetch_failed"
+                });
+            });
+    }
+
+    function isAppOrigin(origin) {
+        return origin === appOrigin || origin.indexOf("localhost") !== -1 || origin.indexOf("ngrok-free.dev") !== -1;
+    }
+
+    function getStoreId() {
+        const candidates = [
+            window.LS && window.LS.store && window.LS.store.id,
+            window.LS && window.LS.store_id,
+            window.LS && window.LS.storeId,
+            window.TiendaNube && window.TiendaNube.store && window.TiendaNube.store.id,
+            window.Nuvemshop && window.Nuvemshop.store && window.Nuvemshop.store.id
+        ];
+        for (const candidate of candidates) {
+            if (candidate) {
+                return String(candidate);
+            }
+        }
+        const meta = document.querySelector("meta[name='nuvemshop:store_id'], meta[property='nuvemshop:store_id']");
+        return meta && meta.content ? meta.content : null;
+    }
 
     function findProductForm() {
         return document.querySelector("#product_form")
             || document.querySelector("form[action*='/cart/add']")
+            || document.querySelector("form[action*='/comprar']")
+            || document.querySelector("form[action*='/carrinho']")
             || document.querySelector("form.js-product-form")
-            || document.querySelector("form[data-product-id]");
+            || document.querySelector("form[data-product-id]")
+            || document.querySelector("[data-product-id] form")
+            || document.querySelector("form");
     }
 
     function findProductId(targetForm) {
+        const globalProductId = findGlobalProductId();
+        if (globalProductId) {
+            return globalProductId;
+        }
         if (!targetForm) {
             return null;
         }
-        const addToCartInput = targetForm.querySelector("input[name='add_to_cart']");
-        if (addToCartInput && addToCartInput.value) {
-            return addToCartInput.value;
+        if (targetForm.dataset.productId) {
+            return targetForm.dataset.productId;
         }
-        const productNode = targetForm.querySelector("[data-product-id]") || targetForm;
+        const ownerWithProductId = targetForm.closest("[data-product-id]");
+        if (ownerWithProductId && ownerWithProductId.dataset.productId) {
+            return ownerWithProductId.dataset.productId;
+        }
+        const productIdInput = targetForm.querySelector("input[name='product_id'], input[name='product'], input[name='product[id]'], input[name='add_to_cart']");
+        if (productIdInput && productIdInput.value) {
+            return productIdInput.value;
+        }
+        const productNode = targetForm.querySelector("[data-product-id]")
+            || document.querySelector("[data-product-id]")
+            || targetForm;
         return productNode.dataset.productId || null;
+    }
+
+    function findGlobalProductId() {
+        const candidates = [
+            window.LS && window.LS.product && window.LS.product.id,
+            window.LS && window.LS.product_id,
+            window.LS && window.LS.productId,
+            window.TiendaNube && window.TiendaNube.product && window.TiendaNube.product.id,
+            window.Nuvemshop && window.Nuvemshop.product && window.Nuvemshop.product.id,
+            window.product && window.product.id,
+            window.product && window.product.product_id
+        ];
+        for (const candidate of candidates) {
+            if (candidate) {
+                return String(candidate);
+            }
+        }
+        const meta = document.querySelector("meta[name='nuvemshop:product_id'], meta[property='nuvemshop:product_id']");
+        return meta && meta.content ? meta.content : null;
     }
 
     function renderFields(targetForm, fields) {
@@ -68,11 +190,38 @@
         });
 
         const submit = targetForm.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
-        if (submit && submit.parentNode) {
+        const actionContainer = findActionContainer(targetForm, submit);
+        if (actionContainer && actionContainer.parentNode) {
+            actionContainer.parentNode.insertBefore(container, actionContainer);
+        } else if (submit && submit.parentNode) {
             submit.parentNode.insertBefore(container, submit);
         } else {
             targetForm.appendChild(container);
         }
+    }
+
+    function findActionContainer(targetForm, submit) {
+        if (!submit) {
+            return null;
+        }
+        const quantitySelector = ".js-quantity, .js-product-quantity, [class*='quantity'], input[name='quantity'], input[name='cantidad']";
+        let candidate = submit.parentElement;
+
+        while (candidate && candidate !== targetForm) {
+            const parent = candidate.parentElement;
+            if (candidate.querySelector(quantitySelector)) {
+                return candidate;
+            }
+            if (parent && parent !== targetForm && parent.querySelector(quantitySelector) && parent.contains(submit)) {
+                return parent;
+            }
+            if (candidate.classList && candidate.classList.contains("row") && candidate.contains(submit)) {
+                return candidate;
+            }
+            candidate = candidate.parentElement;
+        }
+
+        return submit.parentElement && submit.parentElement !== targetForm ? submit.parentElement : null;
     }
 
     function injectStyles() {
@@ -81,7 +230,7 @@
         }
         const style = document.createElement("style");
         style.id = "ncf-personalization-style";
-        style.textContent = ".ncf-personalization{display:grid;gap:10px;margin:14px 0}.ncf-field{display:grid;gap:6px}.ncf-label{font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}";
+        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}";
         document.head.appendChild(style);
     }
 
@@ -135,5 +284,36 @@
         const input = document.createElement("input");
         input.type = field.fieldType === "NUMBER" ? "number" : "text";
         return input;
+    }
+
+    function track(eventName, details) {
+        const params = new URLSearchParams();
+        params.set("event", eventName);
+        params.set("path", window.location.pathname);
+        Object.keys(details || {}).forEach((key) => {
+            const value = details[key];
+            if (value !== null && value !== undefined && String(value).length > 0) {
+                params.set(key, String(value).slice(0, 300));
+            }
+        });
+        const url = apiOriginForTracking() + "/public/script-events?" + params.toString();
+        fetch(url, {
+            credentials: "omit",
+            keepalive: true,
+            headers: {
+                "ngrok-skip-browser-warning": "true"
+            }
+        }).catch(() => {});
+    }
+
+    function apiOriginForTracking() {
+        if (script && script.src) {
+            try {
+                const currentScriptUrl = new URL(script.src);
+                return isAppOrigin(currentScriptUrl.origin) ? currentScriptUrl.origin : appOrigin;
+            } catch (ignored) {
+            }
+        }
+        return appOrigin;
     }
 })();

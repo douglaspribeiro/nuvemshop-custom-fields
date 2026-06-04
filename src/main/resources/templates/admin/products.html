@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Produtos - Nuvem Custom Fields</title>
+    <title>Produtos - Aplicativo: Campos Personalizados</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
@@ -57,17 +57,17 @@
                 <td th:text="${product.id}">0</td>
                 <td>
                     <span class="status"
-                          th:text="${rules.?[productId == product.id].isEmpty() ? 'Nao configurado' : 'Configurado'}">
+                          th:text="${configuredProductIds.contains(product.id) ? 'Configurado' : 'Nao configurado'}">
                         Nao configurado
                     </span>
                 </td>
                 <td class="row-actions">
                     <a class="button small"
-                       th:classappend="${rules.?[productId == product.id].isEmpty() and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
+                       th:classappend="${!configuredProductIds.contains(product.id) and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
                        th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}">
                         Editar campos
                     </a>
-                    <form th:if="${!rules.?[productId == product.id].isEmpty()}"
+                    <form th:if="${configuredProductIds.contains(product.id)}"
                           th:action="@{/admin/products/{productId}/delete(productId=${product.id})}"
                           method="post">
                         <button class="button danger small" type="submit">Remover</button>

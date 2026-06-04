@@ -1,0 +1,11 @@
+# Build multi-stage: a imagem só precisa de target/*.jar (ver Dockerfile).
+# Enxuga o contexto enviado ao buildx — não precisa de fonte, git, zips, etc.
+.git
+.idea
+src
+*.zip
+eb-bundle
+docs
+doc
+backups
+*.md

@@ -7,6 +7,7 @@ import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -34,15 +35,33 @@ public class ReportService {
         long fields = ruleRepository.findByStoreIdOrderByProductNameAsc(store.getStoreId()).stream()
                 .mapToLong(rule -> fieldRepository.countByRuleId(rule.getId()))
                 .sum();
+        if (!hasScope(store, "read_orders")) {
+            return new DashboardSummary(
+                    ruleRepository.countByStoreId(store.getStoreId()),
+                    fields,
+                    false,
+                    "A loja foi instalada sem o escopo read_orders. Reinstale o app para liberar a leitura de pedidos.",
+                    List.of()
+            );
+        }
         return new DashboardSummary(
                 ruleRepository.countByStoreId(store.getStoreId()),
                 fields,
+                true,
+                null,
                 personalizedOrders(store)
         );
     }
 
     private List<PersonalizedOrderSummary> personalizedOrders(Store store) {
-        JsonNode orders = apiClient.listRecentOrders(store);
+        JsonNode orders;
+        try {
+            orders = apiClient.listRecentOrders(store);
+        } catch (HttpClientErrorException.Forbidden ex) {
+            return List.of();
+        } catch (HttpClientErrorException.NotFound ex) {
+            return List.of();
+        }
         List<PersonalizedOrderSummary> result = new ArrayList<>();
         if (orders == null || !orders.isArray()) {
             return result;
@@ -86,5 +105,17 @@ public class ReportService {
             }
         }
         return properties;
+    }
+
+    private boolean hasScope(Store store, String requiredScope) {
+        if (store.getScope() == null || store.getScope().isBlank()) {
+            return false;
+        }
+        for (String scope : store.getScope().split(",")) {
+            if (requiredScope.equals(scope.strip())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

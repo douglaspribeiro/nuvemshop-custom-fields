@@ -22,6 +22,9 @@ public class Store {
     @Column(name = "store_id", nullable = false, unique = true)
     private Long storeId;
 
+    @Column(name = "store_name")
+    private String storeName;
+
     @Column(name = "access_token", nullable = false, columnDefinition = "TEXT")
     private String accessToken;
 
@@ -51,6 +54,14 @@ public class Store {
 
     public void setStoreId(Long storeId) {
         this.storeId = storeId;
+    }
+
+    public String getStoreName() {
+        return storeName;
+    }
+
+    public void setStoreName(String storeName) {
+        this.storeName = storeName;
     }
 
     public String getAccessToken() {

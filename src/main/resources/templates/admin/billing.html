@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planos - Aplicativo: Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Planos</p>
+            <h1>Upgrade</h1>
+        </div>
+        <a class="button" th:href="@{/admin}">Voltar</a>
+    </section>
+
+    <section class="panel plan-strip">
+        <div>
+            <h2 th:text="'Plano atual: ' + ${store.plan}">Plano atual: FREE</h2>
+            <p class="muted">
+                <span th:text="${usage.productsUsed}">0</span>
+                <span th:text="${usage.unlimitedProducts() ? ' produtos personalizados de limite ilimitado' : ' de ' + usage.productLimit + ' produtos personalizados'}">
+                    de 1 produto personalizado
+                </span>
+            </p>
+        </div>
+    </section>
+
+    <section class="grid three billing-grid">
+        <article class="panel plan-card">
+            <h2>FREE</h2>
+            <p class="price">R$ 0</p>
+            <ul class="feature-list">
+                <li>1 produto personalizado</li>
+                <li>1 campo por produto</li>
+                <li>Editor de campos no admin</li>
+            </ul>
+            <span class="badge" th:if="${store.plan.name() == 'FREE'}">Plano atual</span>
+        </article>
+
+        <article class="panel plan-card">
+            <h2>PREMIUM</h2>
+            <p class="price">R$ 9,99/mês</p>
+            <ul class="feature-list">
+                <li>10 produtos personalizados</li>
+                <li>3 campos por produto</li>
+                <li>Templates de onboarding</li>
+            </ul>
+            <span class="badge" th:if="${store.plan.name() == 'PREMIUM'}">Plano atual</span>
+        </article>
+
+        <article class="panel plan-card">
+            <h2>PREMIUM_PLUS</h2>
+            <p class="price">R$ 19,99/mês</p>
+            <ul class="feature-list">
+                <li>Produtos ilimitados</li>
+                <li>Campos ilimitados</li>
+                <li>Relatórios operacionais</li>
+            </ul>
+            <span class="badge" th:if="${store.plan.name() == 'PREMIUM_PLUS'}">Plano atual</span>
+        </article>
+    </section>
+
+    <p class="notice">
+        A cobrança automática ainda não está ativa neste ambiente. Para alterar o plano agora, use o backoffice interno.
+    </p>
+</main>
+</body>
+</html>

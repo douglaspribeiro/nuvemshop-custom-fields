@@ -78,12 +78,10 @@ public class PersonalizationAdminService {
 
     @Transactional
     public void deleteField(Long storeId, Long productId, Long fieldId) {
-        PersonalizationRule rule = requireRuleWithFields(storeId, productId);
-        PersonalizationField field = rule.getFields().stream()
-                .filter(candidate -> candidate.getId().equals(fieldId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Campo nao encontrado para esta loja/produto."));
-        fieldRepository.delete(field);
+        int deleted = fieldRepository.deleteByIdAndStoreIdAndProductId(fieldId, storeId, productId);
+        if (deleted == 0) {
+            throw new IllegalArgumentException("Campo nao encontrado para esta loja/produto.");
+        }
     }
 
     @Transactional

@@ -15,6 +15,7 @@ public record NuvemshopProperties(
         @NotBlank String apiBaseUrl,
         @NotBlank String appBaseUrl,
         @NotBlank String scopes,
-        @NotBlank String userAgent
+        @NotBlank String userAgent,
+        String scriptId
 ) {
 }

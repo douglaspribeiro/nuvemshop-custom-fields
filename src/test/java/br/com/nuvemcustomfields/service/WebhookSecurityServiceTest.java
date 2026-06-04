@@ -21,7 +21,8 @@ class WebhookSecurityServiceTest {
             "https://api.example.com",
             "http://localhost:8080",
             "read_products",
-            "tests"
+            "tests",
+            ""
     );
 
     @Test
