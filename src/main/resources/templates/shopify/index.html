@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Shopify - Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Shopify</p>
+            <h1 th:text="${shop.shopName ?: shop.shopDomain}">Loja Shopify</h1>
+        </div>
+        <a class="button primary" th:href="@{/shopify/admin/products}">Produtos</a>
+    </section>
+
+    <section class="details metrics">
+        <div>
+            <dt>Plano</dt>
+            <dd th:text="${shop.plan}">FREE</dd>
+        </div>
+        <div>
+            <dt>Produtos configurados</dt>
+            <dd th:text="${usage.productsUsed}">0</dd>
+        </div>
+        <div>
+            <dt>Limite</dt>
+            <dd th:text="${usage.unlimitedProducts() ? 'Ilimitado' : usage.productLimit}">1</dd>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Personalizacoes</h2>
+            <span class="muted" th:text="${#lists.size(rules)} + ' produtos'">0 produtos</span>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(rules)}">Nenhum produto configurado.</div>
+        <table class="table" th:if="${!#lists.isEmpty(rules)}">
+            <tbody>
+            <tr th:each="rule : ${rules}">
+                <td th:text="${rule.productName ?: 'Produto ' + rule.productId}">Produto</td>
+                <td th:text="${rule.productId}">0</td>
+                <td><a class="button small" th:href="@{/shopify/admin/products/{productId}/fields(productId=${rule.productId})}">Editar</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

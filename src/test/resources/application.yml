@@ -25,6 +25,13 @@ nuvemshop:
     api-base-url: https://api.example.com/2025-03
     concept-code:
 
+shopify:
+  client-id: shopify-client
+  client-secret: shopify-secret
+  scopes: read_products
+  app-base-url: http://localhost:8080
+  api-version: 2026-04
+
 backoffice:
   username: admin
   password: admin

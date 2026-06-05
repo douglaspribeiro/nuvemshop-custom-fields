@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Shopify - Produtos</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Shopify</p>
+            <h1>Campos por produto</h1>
+        </div>
+        <a class="button" th:href="@{/shopify/admin}">Voltar</a>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="panel plan-strip">
+        <div>
+            <h2 th:text="'Plano ' + ${shop.plan}">Plano FREE</h2>
+            <p class="muted">
+                <span th:text="${usage.productsUsed}">0</span>
+                <span th:text="${usage.unlimitedProducts() ? ' produtos personalizados de limite ilimitado' : ' de ' + usage.productLimit + ' produtos personalizados'}">
+                    de 1 produto personalizado
+                </span>
+            </p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Produtos da loja</h2>
+            <span class="muted" th:text="${#lists.size(products)} + ' encontrados'">0 encontrados</span>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(products)}">
+            Nenhum produto retornado pela API Shopify.
+        </div>
+        <table class="table" th:if="${!#lists.isEmpty(products)}">
+            <thead>
+            <tr>
+                <th>Produto</th>
+                <th>ID</th>
+                <th>Personalizacao</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="product : ${products}">
+                <td th:text="${product.name}">Produto</td>
+                <td th:text="${product.id}">0</td>
+                <td>
+                    <span class="status"
+                          th:text="${configuredProductIds.contains(product.id) ? 'Configurado' : 'Nao configurado'}">
+                        Nao configurado
+                    </span>
+                </td>
+                <td class="row-actions">
+                    <a class="button small"
+                       th:classappend="${!configuredProductIds.contains(product.id) and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
+                       th:href="@{/shopify/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}">
+                        Editar campos
+                    </a>
+                    <form th:if="${configuredProductIds.contains(product.id)}"
+                          th:action="@{/shopify/admin/products/{productId}/delete(productId=${product.id})}"
+                          method="post">
+                        <button class="button danger small" type="submit">Remover</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

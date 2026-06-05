@@ -3,6 +3,8 @@ package br.com.nuvemcustomfields.entity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -17,13 +19,17 @@ import java.util.List;
 @Entity
 @Table(
         name = "personalization_rules",
-        uniqueConstraints = @UniqueConstraint(name = "uq_store_product", columnNames = {"store_id", "product_id"})
+        uniqueConstraints = @UniqueConstraint(name = "uq_platform_store_product", columnNames = {"platform", "store_id", "product_id"})
 )
 public class PersonalizationRule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private CommercePlatform platform = CommercePlatform.NUVEMSHOP;
 
     @Column(name = "store_id", nullable = false)
     private Long storeId;
@@ -45,6 +51,14 @@ public class PersonalizationRule {
 
     public Long getId() {
         return id;
+    }
+
+    public CommercePlatform getPlatform() {
+        return platform;
+    }
+
+    public void setPlatform(CommercePlatform platform) {
+        this.platform = platform;
     }
 
     public Long getStoreId() {

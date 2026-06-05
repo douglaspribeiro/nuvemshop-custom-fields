@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.repository;
 
 import br.com.nuvemcustomfields.entity.PersonalizationField;
+import br.com.nuvemcustomfields.entity.CommercePlatform;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,12 +22,32 @@ public interface PersonalizationFieldRepository extends JpaRepository<Personaliz
               and field.rule.id in (
                   select rule.id
                   from PersonalizationRule rule
-                  where rule.storeId = :storeId
+                  where rule.platform = br.com.nuvemcustomfields.entity.CommercePlatform.NUVEMSHOP
+                    and rule.storeId = :storeId
                     and rule.productId = :productId
               )
             """)
     int deleteByIdAndStoreIdAndProductId(
             @Param("fieldId") Long fieldId,
+            @Param("storeId") Long storeId,
+            @Param("productId") Long productId
+    );
+
+    @Modifying
+    @Query("""
+            delete from PersonalizationField field
+            where field.id = :fieldId
+              and field.rule.id in (
+                  select rule.id
+                  from PersonalizationRule rule
+                  where rule.platform = :platform
+                    and rule.storeId = :storeId
+                    and rule.productId = :productId
+              )
+            """)
+    int deleteByIdAndPlatformAndStoreIdAndProductId(
+            @Param("fieldId") Long fieldId,
+            @Param("platform") CommercePlatform platform,
             @Param("storeId") Long storeId,
             @Param("productId") Long productId
     );

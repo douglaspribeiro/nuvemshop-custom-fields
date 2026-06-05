@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.PlanUsage;
+import br.com.nuvemcustomfields.entity.CommercePlatform;
 import br.com.nuvemcustomfields.entity.PersonalizationField;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
@@ -31,27 +32,43 @@ public class PlanLimitService {
     }
 
     public boolean canAddProduct(Store store) {
-        long limit = productLimit(store.getEffectivePlan());
-        return limit == UNLIMITED || ruleRepository.countByStoreId(store.getStoreId()) < limit;
+        return canAddProduct(CommercePlatform.NUVEMSHOP, store.getStoreId(), store.getEffectivePlan());
+    }
+
+    public boolean canAddProduct(CommercePlatform platform, Long storeId, PlanType plan) {
+        long limit = productLimit(plan);
+        return limit == UNLIMITED || ruleRepository.countByPlatformAndStoreId(platform, storeId) < limit;
     }
 
     public boolean canAddField(Store store, Long ruleId) {
-        long limit = fieldLimit(store.getEffectivePlan());
+        return canAddField(store.getEffectivePlan(), ruleId);
+    }
+
+    public boolean canAddField(PlanType plan, Long ruleId) {
+        long limit = fieldLimit(plan);
         return limit == UNLIMITED || fieldRepository.countByRuleId(ruleId) < limit;
     }
 
     public PlanUsage usage(Store store, long fieldsUsed) {
+        return usage(CommercePlatform.NUVEMSHOP, store.getStoreId(), store.getEffectivePlan(), fieldsUsed);
+    }
+
+    public PlanUsage usage(CommercePlatform platform, Long storeId, PlanType plan, long fieldsUsed) {
         return new PlanUsage(
-                store.getEffectivePlan(),
-                ruleRepository.countByStoreId(store.getStoreId()),
-                productLimit(store.getEffectivePlan()),
+                plan,
+                ruleRepository.countByPlatformAndStoreId(platform, storeId),
+                productLimit(plan),
                 fieldsUsed,
-                fieldLimit(store.getEffectivePlan())
+                fieldLimit(plan)
         );
     }
 
     public List<PersonalizationField> storefrontFields(Store store, List<PersonalizationField> fields) {
-        long limit = fieldLimit(store.getEffectivePlan());
+        return storefrontFields(store.getEffectivePlan(), fields);
+    }
+
+    public List<PersonalizationField> storefrontFields(PlanType plan, List<PersonalizationField> fields) {
+        long limit = fieldLimit(plan);
         var ordered = fields.stream()
                 .sorted(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
         if (limit == UNLIMITED) {

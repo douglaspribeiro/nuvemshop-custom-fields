@@ -1,6 +1,6 @@
-# Nuvemshop Custom Fields
+# Custom Fields Multi-plataforma
 
-Aplicacao Spring Boot para lojistas Nuvemshop/Tiendanube criarem campos personalizados por produto e coletarem esses dados diretamente no carrinho/pedido. O caso principal e atender lojas de produtos personalizados, como camisetas com nome e numero, canecas com mensagem, convites com data, brindes corporativos e itens gravados.
+Aplicacao Spring Boot para lojistas Nuvemshop/Tiendanube e Shopify criarem campos personalizados por produto e coletarem esses dados diretamente no carrinho/pedido. O caso principal e atender lojas de produtos personalizados, como camisetas com nome e numero, canecas com mensagem, convites com data, brindes corporativos e itens gravados.
 
 O produto resolve uma lacuna da plataforma: a Nuvemshop nao oferece um fluxo nativo robusto de campos personalizados por produto. O app instala via OAuth, registra um script na vitrine, injeta os campos na pagina do produto e envia os valores usando `properties[...]`, para que a informacao acompanhe o item no carrinho e no pedido.
 
@@ -41,6 +41,7 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - Logs operacionais e pagina de ajuda em `/admin/help`.
 - Webhook `/webhooks/nuvemshop` com validacao HMAC para `app/uninstalled` e `product/deleted`.
 - Backoffice interno em `/backoffice`, com login proprio, lojas, flags, override de plano e relatorios.
+- Contexto Shopify em `/shopify/**`, com OAuth proprio, admin separado, endpoint publico e asset de vitrine `shopify-personalizer.js`.
 
 Ainda dependem de definicao externa ou homologacao: Billing recorrente via Billing API, preco adicional por campo/opcao e publicacao na App Store da Nuvemshop.
 
@@ -57,6 +58,14 @@ Nuvemshop
   -> JS injeta campos na pagina de produto
   -> Cliente envia item com properties[label]
   -> Pedido recebe os dados de personalizacao
+
+Shopify
+  -> OAuth de instalacao em /shopify/install
+  -> App Spring Boot
+  -> MySQL 8
+  -> Theme App Extension/app embed carrega JS na vitrine
+  -> JS injeta campos no formulario de produto
+  -> Cliente envia item com line item properties
 ```
 
 Principais camadas do codigo:
@@ -76,6 +85,11 @@ Principais camadas do codigo:
 | --- | --- |
 | `GET /install` | Inicia instalacao OAuth na Nuvemshop. |
 | `GET /oauth/callback` | Troca `code` por token, salva a loja e registra scripts/webhooks. |
+| `GET /shopify/install` | Inicia instalacao OAuth na Shopify. |
+| `GET /shopify/oauth/callback` | Callback OAuth Shopify. |
+| `GET /shopify/admin` | Home do admin Shopify. |
+| `GET /shopify/admin/products` | Lista produtos Shopify e regras configuradas. |
+| `GET /shopify/admin/products/{productId}/fields` | Editor de campos Shopify. |
 | `GET /admin` | Home do painel do lojista. |
 | `GET /admin/products` | Lista produtos e regras configuradas. |
 | `GET /admin/products/{productId}/fields` | Editor de campos do produto. |
@@ -84,6 +98,8 @@ Principais camadas do codigo:
 | `GET /admin/help` | Logs recentes e apoio operacional. |
 | `GET /public/stores/{storeId}/personalization` | Configuracao consumida pelo script da vitrine. |
 | `POST /webhooks/nuvemshop` | Webhooks oficiais da Nuvemshop. |
+| `GET /shopify/public/shops/{shopDomain}/personalization` | Configuracao consumida pelo script Shopify. |
+| `POST /shopify/webhooks` | Webhooks Shopify, incluindo `app/uninstalled`. |
 | `GET /backoffice` | Painel interno do operador. |
 
 ## Planos e Limites
@@ -119,6 +135,10 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `NUVEMSHOP_BILLING_ENABLED` | `false` | Ativa a cobranca automatica pela Nuvemshop. |
 | `NUVEMSHOP_BILLING_API_BASE_URL` | `https://api.tiendanube.com/2025-03` | Base URL da Billing API. |
 | `NUVEMSHOP_BILLING_CONCEPT_CODE` | vazio | Codigo do conceito de billing cadastrado na Nuvemshop. |
+| `SHOPIFY_CLIENT_ID` | `change-me` | Client ID do app Shopify. |
+| `SHOPIFY_CLIENT_SECRET` | `change-me` | Client secret do app Shopify. |
+| `SHOPIFY_SCOPES` | `read_products` | Scopes OAuth solicitados na Shopify. |
+| `SHOPIFY_API_VERSION` | `2026-04` | Versao estavel da Admin API Shopify. |
 | `BACKOFFICE_USERNAME` | `admin` | Usuario do backoffice. |
 | `BACKOFFICE_PASSWORD` | `admin` | Senha do backoffice. |
 
@@ -155,6 +175,7 @@ mvn spring-boot:run
 Depois de subir a aplicacao:
 
 - `http://localhost:8080/install` inicia o fluxo de instalacao.
+- `http://localhost:8080/shopify/install` inicia o fluxo Shopify.
 - `http://localhost:8080/backoffice/login` abre o backoffice interno.
 
 ## Testes
@@ -177,6 +198,8 @@ As migrations Flyway ficam em `src/main/resources/db/migration` e criam as tabel
 - `integration_logs`
 - `plan_events`
 - `feature_flags`
+- `plan_assets`
+- `shopify_shops`
 
 O Hibernate roda com `ddl-auto: validate`, entao o schema deve ser criado/atualizado pelas migrations.
 
@@ -193,6 +216,8 @@ O script publico `nuvemshop-personalizer.js`:
 
 O script e registrado automaticamente na loja apos a instalacao OAuth, usando a Scripts API.
 
+O script Shopify `shopify-personalizer.js` e carregado por Theme App Extension/app embed em `extensions/shopify-custom-fields`. Ele usa o dominio `myshopify.com`, detecta o produto atual e envia campos como `properties[...]` no formulario de produto.
+
 ## Operacao
 
 O backoffice interno permite acompanhar lojas instaladas, status, eventos de plano, logs recentes, feature flags, versoes de planos e relatorios gerenciais. As credenciais sao configuradas por `BACKOFFICE_USERNAME` e `BACKOFFICE_PASSWORD`.
@@ -201,6 +226,7 @@ Webhooks registrados:
 
 - `app/uninstalled`: marca a loja como desinstalada, limpa assinatura local, volta o plano para `FREE` e remove o script da vitrine.
 - `product/deleted`: remove as regras de personalizacao do produto removido.
+- Shopify `app/uninstalled`: marca a loja Shopify como desinstalada.
 
 ## Status do Produto
 

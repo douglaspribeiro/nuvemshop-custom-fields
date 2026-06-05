@@ -1,0 +1,16 @@
+<script src="{{ block.settings.app_url }}/assets/shopify-personalizer.js?shop={{ shop.permanent_domain | escape }}" defer></script>
+
+{% schema %}
+{
+  "name": "Campos Personalizados",
+  "target": "body",
+  "settings": [
+    {
+      "type": "url",
+      "id": "app_url",
+      "label": "URL do app",
+      "default": "https://campos-personalizados.wzhub.pro"
+    }
+  ]
+}
+{% endschema %}

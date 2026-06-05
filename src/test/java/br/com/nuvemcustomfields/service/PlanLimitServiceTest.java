@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.PlanAsset;
+import br.com.nuvemcustomfields.entity.CommercePlatform;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
@@ -48,10 +49,29 @@ class PlanLimitServiceTest {
         store.setStoreId(123L);
         store.setPlan(PlanType.PREMIUM_PLUS);
         store.setBillingSuspended(true);
-        when(ruleRepository.countByStoreId(123L)).thenReturn(1L);
+        when(ruleRepository.countByPlatformAndStoreId(CommercePlatform.NUVEMSHOP, 123L)).thenReturn(1L);
 
         assertThat(suspendedService.usage(store, 0).plan()).isEqualTo(PlanType.FREE);
         assertThat(suspendedService.canAddProduct(store)).isFalse();
+    }
+
+    @Test
+    void canEvaluateShopifyUsageWithSeparatePlatformKey() {
+        PersonalizationRuleRepository ruleRepository = mock(PersonalizationRuleRepository.class);
+        PlanCatalogService catalogService = mock(PlanCatalogService.class);
+        when(catalogService.activePlan(PlanType.PREMIUM)).thenReturn(plan(PlanType.PREMIUM, 10, 3));
+        when(ruleRepository.countByPlatformAndStoreId(CommercePlatform.SHOPIFY, 55L)).thenReturn(2L);
+        PlanLimitService shopifyService = new PlanLimitService(
+                ruleRepository,
+                mock(PersonalizationFieldRepository.class),
+                catalogService
+        );
+
+        var usage = shopifyService.usage(CommercePlatform.SHOPIFY, 55L, PlanType.PREMIUM, 1);
+
+        assertThat(usage.productsUsed()).isEqualTo(2);
+        assertThat(usage.productLimit()).isEqualTo(10);
+        assertThat(shopifyService.canAddProduct(CommercePlatform.SHOPIFY, 55L, PlanType.PREMIUM)).isTrue();
     }
 
     private PlanAsset plan(PlanType type, long productLimit, long fieldLimit) {

@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.dto.NicheTemplate;
+import br.com.nuvemcustomfields.entity.CommercePlatform;
 import br.com.nuvemcustomfields.entity.PersonalizationField;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
@@ -31,14 +32,28 @@ public class PersonalizationAdminService {
         return ruleRepository.findByStoreIdOrderByProductNameAsc(storeId);
     }
 
+    public List<PersonalizationRule> listRules(CommercePlatform platform, Long storeId) {
+        return ruleRepository.findByPlatformAndStoreIdOrderByProductNameAsc(platform, storeId);
+    }
+
     public boolean hasRule(Long storeId, Long productId) {
         return ruleRepository.findByStoreIdAndProductId(storeId, productId).isPresent();
     }
 
+    public boolean hasRule(CommercePlatform platform, Long storeId, Long productId) {
+        return ruleRepository.findByPlatformAndStoreIdAndProductId(platform, storeId, productId).isPresent();
+    }
+
     @Transactional
     public PersonalizationRule ensureRule(Long storeId, Long productId, String productName) {
-        PersonalizationRule rule = ruleRepository.findByStoreIdAndProductId(storeId, productId)
+        return ensureRule(CommercePlatform.NUVEMSHOP, storeId, productId, productName);
+    }
+
+    @Transactional
+    public PersonalizationRule ensureRule(CommercePlatform platform, Long storeId, Long productId, String productName) {
+        PersonalizationRule rule = ruleRepository.findByPlatformAndStoreIdAndProductId(platform, storeId, productId)
                 .orElseGet(PersonalizationRule::new);
+        rule.setPlatform(platform);
         rule.setStoreId(storeId);
         rule.setProductId(productId);
         if (productName != null && !productName.isBlank()) {
@@ -49,7 +64,12 @@ public class PersonalizationAdminService {
 
     @Transactional(readOnly = true)
     public PersonalizationRule requireRuleWithFields(Long storeId, Long productId) {
-        PersonalizationRule rule = ruleRepository.findWithFieldsByStoreIdAndProductId(storeId, productId)
+        return requireRuleWithFields(CommercePlatform.NUVEMSHOP, storeId, productId);
+    }
+
+    @Transactional(readOnly = true)
+    public PersonalizationRule requireRuleWithFields(CommercePlatform platform, Long storeId, Long productId) {
+        PersonalizationRule rule = ruleRepository.findWithFieldsByPlatformAndStoreIdAndProductId(platform, storeId, productId)
                 .orElseThrow(() -> new IllegalArgumentException("Regra de personalizacao nao encontrada."));
         rule.getFields().sort(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
         return rule;
@@ -57,7 +77,12 @@ public class PersonalizationAdminService {
 
     @Transactional
     public void addField(Long storeId, Long productId, FieldForm form) {
-        PersonalizationRule rule = ruleRepository.findByStoreIdAndProductId(storeId, productId)
+        addField(CommercePlatform.NUVEMSHOP, storeId, productId, form);
+    }
+
+    @Transactional
+    public void addField(CommercePlatform platform, Long storeId, Long productId, FieldForm form) {
+        PersonalizationRule rule = ruleRepository.findByPlatformAndStoreIdAndProductId(platform, storeId, productId)
                 .orElseThrow(() -> new IllegalArgumentException("Regra de personalizacao nao encontrada."));
         PersonalizationField field = new PersonalizationField();
         applyForm(field, form);
@@ -67,7 +92,12 @@ public class PersonalizationAdminService {
 
     @Transactional
     public void updateField(Long storeId, Long productId, Long fieldId, FieldForm form) {
-        PersonalizationRule rule = requireRuleWithFields(storeId, productId);
+        updateField(CommercePlatform.NUVEMSHOP, storeId, productId, fieldId, form);
+    }
+
+    @Transactional
+    public void updateField(CommercePlatform platform, Long storeId, Long productId, Long fieldId, FieldForm form) {
+        PersonalizationRule rule = requireRuleWithFields(platform, storeId, productId);
         PersonalizationField field = rule.getFields().stream()
                 .filter(candidate -> candidate.getId().equals(fieldId))
                 .findFirst()
@@ -85,8 +115,21 @@ public class PersonalizationAdminService {
     }
 
     @Transactional
+    public void deleteField(CommercePlatform platform, Long storeId, Long productId, Long fieldId) {
+        int deleted = fieldRepository.deleteByIdAndPlatformAndStoreIdAndProductId(fieldId, platform, storeId, productId);
+        if (deleted == 0) {
+            throw new IllegalArgumentException("Campo nao encontrado para esta loja/produto.");
+        }
+    }
+
+    @Transactional
     public void deleteRule(Long storeId, Long productId) {
         ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
+    }
+
+    @Transactional
+    public void deleteRule(CommercePlatform platform, Long storeId, Long productId) {
+        ruleRepository.deleteByPlatformAndStoreIdAndProductId(platform, storeId, productId);
     }
 
     @Transactional

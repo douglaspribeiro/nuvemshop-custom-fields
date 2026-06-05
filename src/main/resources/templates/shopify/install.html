@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Instalar Shopify - Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell narrow">
+    <section class="panel">
+        <p class="eyebrow">Shopify</p>
+        <h1>Instalar app</h1>
+        <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+        <form class="form" th:action="@{/shopify/install}" method="get">
+            <label>
+                Dominio da loja
+                <input name="shop" placeholder="minha-loja.myshopify.com" required>
+            </label>
+            <button class="button primary" type="submit">Instalar</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>
