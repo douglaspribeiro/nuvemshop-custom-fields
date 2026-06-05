@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cores dos campos - Aplicativo: Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Configuracoes</p>
+            <h1>Cores dos campos personalizados</h1>
+        </div>
+        <a class="button" th:href="@{/admin}">Admin</a>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="panel">
+        <form class="form color-settings-form" method="post" th:action="@{/admin/settings/style}">
+            <label class="color-field">
+                Texto no produto
+                <span class="color-input-row">
+                    <input type="color" name="productTextColor" th:value="${store.productTextColor ?: '#344450'}">
+                    <span class="muted" th:text="${store.productTextColor ?: 'Automatico'}">Automatico</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearProductTextColor" value="true" th:checked="${store.productTextColor == null}">
+                Usar cor automatica no produto
+            </label>
+            <label class="color-field">
+                Texto no checkout
+                <span class="color-input-row">
+                    <input type="color" name="checkoutTextColor" th:value="${store.checkoutTextColor ?: '#344450'}">
+                    <span class="muted" th:text="${store.checkoutTextColor ?: 'Automatico'}">Automatico</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearCheckoutTextColor" value="true" th:checked="${store.checkoutTextColor == null}">
+                Usar cor automatica no checkout
+            </label>
+            <div class="row-actions">
+                <button class="button primary" type="submit">Salvar cores</button>
+                <a class="button" th:href="@{/admin}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</main>
+<script>
+    document.querySelectorAll(".color-settings-form input[type='color']").forEach((input) => {
+        input.addEventListener("input", () => {
+            const clearInput = input.name === "productTextColor"
+                ? document.querySelector("[name='clearProductTextColor']")
+                : document.querySelector("[name='clearCheckoutTextColor']");
+            if (clearInput) {
+                clearInput.checked = false;
+            }
+        });
+    });
+</script>
+</body>
+</html>

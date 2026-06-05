@@ -71,6 +71,14 @@ public class AdminController {
         return "admin/index";
     }
 
+    @GetMapping("/admin/settings/style")
+    public String styleSettings(HttpSession session, Model model) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        LOGGER.info("admin.settings.style.open store_id={}", store.getStoreId());
+        model.addAttribute("store", store);
+        return "admin/style-settings";
+    }
+
     @PostMapping("/admin/settings/style")
     public String updateStyleSettings(
             @RequestParam(required = false) String productTextColor,
@@ -94,7 +102,7 @@ public class AdminController {
         } catch (IllegalArgumentException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
-        return "redirect:/admin";
+        return "redirect:/admin/settings/style";
     }
 
     @GetMapping("/admin/help")
