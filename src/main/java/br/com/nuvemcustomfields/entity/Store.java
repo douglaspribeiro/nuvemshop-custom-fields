@@ -44,6 +44,9 @@ public class Store {
     @Column(name = "checkout_text_color", length = 7)
     private String checkoutTextColor;
 
+    @Column(name = "cart_text_color", length = 7)
+    private String cartTextColor;
+
     @Column(name = "installed_at", nullable = false, updatable = false)
     private Instant installedAt = Instant.now();
 
@@ -116,6 +119,14 @@ public class Store {
 
     public void setCheckoutTextColor(String checkoutTextColor) {
         this.checkoutTextColor = checkoutTextColor;
+    }
+
+    public String getCartTextColor() {
+        return cartTextColor;
+    }
+
+    public void setCartTextColor(String cartTextColor) {
+        this.cartTextColor = cartTextColor;
     }
 
     public Instant getInstalledAt() {

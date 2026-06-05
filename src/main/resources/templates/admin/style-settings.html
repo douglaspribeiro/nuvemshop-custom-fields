@@ -44,6 +44,17 @@
                 <input type="checkbox" name="clearCheckoutTextColor" value="true" th:checked="${store.checkoutTextColor == null}">
                 Usar cor automatica no checkout
             </label>
+            <label class="color-field">
+                Campos extras no carrinho
+                <span class="color-input-row">
+                    <input type="color" name="cartTextColor" th:value="${store.cartTextColor ?: '#344450'}">
+                    <span class="muted" th:text="${store.cartTextColor ?: 'Automatico'}">Automatico</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearCartTextColor" value="true" th:checked="${store.cartTextColor == null}">
+                Usar cor automatica nos campos extras do carrinho
+            </label>
             <div class="row-actions">
                 <button class="button primary" type="submit">Salvar cores</button>
                 <a class="button" th:href="@{/admin}">Cancelar</a>
@@ -54,9 +65,12 @@
 <script>
     document.querySelectorAll(".color-settings-form input[type='color']").forEach((input) => {
         input.addEventListener("input", () => {
-            const clearInput = input.name === "productTextColor"
-                ? document.querySelector("[name='clearProductTextColor']")
-                : document.querySelector("[name='clearCheckoutTextColor']");
+            const clearInputByName = {
+                productTextColor: "clearProductTextColor",
+                checkoutTextColor: "clearCheckoutTextColor",
+                cartTextColor: "clearCartTextColor"
+            };
+            const clearInput = document.querySelector("[name='" + clearInputByName[input.name] + "']");
             if (clearInput) {
                 clearInput.checked = false;
             }

@@ -85,6 +85,8 @@ public class AdminController {
             @RequestParam(defaultValue = "false") boolean clearProductTextColor,
             @RequestParam(required = false) String checkoutTextColor,
             @RequestParam(defaultValue = "false") boolean clearCheckoutTextColor,
+            @RequestParam(required = false) String cartTextColor,
+            @RequestParam(defaultValue = "false") boolean clearCartTextColor,
             HttpSession session,
             RedirectAttributes redirectAttributes
     ) {
@@ -96,7 +98,9 @@ public class AdminController {
                     productTextColor,
                     clearProductTextColor,
                     checkoutTextColor,
-                    clearCheckoutTextColor
+                    clearCheckoutTextColor,
+                    cartTextColor,
+                    clearCartTextColor
             );
             redirectAttributes.addFlashAttribute("message", "Cores salvas.");
         } catch (IllegalArgumentException ex) {

@@ -32,17 +32,27 @@ public class AdminStoreService {
     }
 
     @Transactional
-    public void updateStyleSettings(Store store, String productTextColor, boolean clearProductTextColor, String checkoutTextColor, boolean clearCheckoutTextColor) {
+    public void updateStyleSettings(
+            Store store,
+            String productTextColor,
+            boolean clearProductTextColor,
+            String checkoutTextColor,
+            boolean clearCheckoutTextColor,
+            String cartTextColor,
+            boolean clearCartTextColor
+    ) {
         Store managedStore = storeRepository.findActiveByStoreId(store.getStoreId())
                 .orElseThrow(() -> new IllegalStateException("Loja ativa nao encontrada."));
         managedStore.setProductTextColor(normalizeColor(productTextColor, clearProductTextColor));
         managedStore.setCheckoutTextColor(normalizeColor(checkoutTextColor, clearCheckoutTextColor));
+        managedStore.setCartTextColor(normalizeColor(cartTextColor, clearCartTextColor));
         storeRepository.save(managedStore);
         LOGGER.info(
-                "admin.store.style.update store_id={} product_text_color={} checkout_text_color={}",
+                "admin.store.style.update store_id={} product_text_color={} checkout_text_color={} cart_text_color={}",
                 managedStore.getStoreId(),
                 managedStore.getProductTextColor(),
-                managedStore.getCheckoutTextColor()
+                managedStore.getCheckoutTextColor(),
+                managedStore.getCartTextColor()
         );
     }
 

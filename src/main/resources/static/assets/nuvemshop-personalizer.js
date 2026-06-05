@@ -559,7 +559,7 @@
     }
 
     function configuredCartTextColor() {
-        return normalizedHexColor(styleConfig && styleConfig.checkoutTextColor);
+        return normalizedHexColor(styleConfig && styleConfig.cartTextColor);
     }
 
     function normalizedHexColor(value) {
