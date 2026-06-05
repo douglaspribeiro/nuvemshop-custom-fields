@@ -9,6 +9,7 @@
     const maxAttempts = 30;
     let attempts = 0;
     let lastRetryReason = "not_started";
+    let cartColorObserverStarted = false;
 
     const script = document.currentScript || Array.from(document.scripts).find((candidate) => {
         return candidate.src
@@ -35,6 +36,8 @@
         return;
     }
 
+    injectStyles();
+    watchCartPropertyColors();
     ready(initialize);
 
     function initialize() {
@@ -57,7 +60,8 @@
                 track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
                 return;
             }
-            injectStyles();
+            rememberFieldLabels(config.fields);
+            syncCartPropertyColors();
             renderFields(form, config.fields);
             form.dataset.ncfInjected = "true";
             track("injected", { storeId: storeId, productId: productId });
@@ -229,8 +233,209 @@
         }
         const style = document.createElement("style");
         style.id = "ncf-personalization-style";
-        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}";
+        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}";
         document.head.appendChild(style);
+    }
+
+    function rememberFieldLabels(fields) {
+        if (!Array.isArray(fields)) {
+            return;
+        }
+        const labels = fields
+            .map((field) => field && (field.label || field.propertyName))
+            .filter(Boolean);
+        if (labels.length === 0) {
+            return;
+        }
+        try {
+            const storage = window.localStorage;
+            if (storage) {
+                storage.setItem("ncf:field-labels:" + storeId, JSON.stringify(labels));
+            }
+        } catch (ignored) {
+        }
+    }
+
+    function watchCartPropertyColors() {
+        if (cartColorObserverStarted) {
+            return;
+        }
+        cartColorObserverStarted = true;
+        ready(syncCartPropertyColors);
+        if (!window.MutationObserver || !document.documentElement) {
+            return;
+        }
+        let pending = false;
+        const observer = new MutationObserver(() => {
+            if (pending) {
+                return;
+            }
+            pending = true;
+            window.setTimeout(() => {
+                pending = false;
+                syncCartPropertyColors();
+            }, 100);
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    function syncCartPropertyColors() {
+        const candidates = cartPropertyElements();
+        candidates.forEach((element) => {
+            if (!element || element.closest(".ncf-personalization")) {
+                return;
+            }
+            const color = cartItemTitleColor(element);
+            const dark = hasDarkCartBackground(element);
+            element.classList.add("ncf-cart-property");
+            element.classList.toggle("ncf-cart-property--dark", dark);
+            if (color && (!dark || isLightColor(color))) {
+                element.style.setProperty("--ncf-cart-property-color", color);
+            } else if (dark) {
+                element.style.setProperty("--ncf-cart-property-color", "rgba(255,255,255,.88)");
+            } else {
+                element.style.removeProperty("--ncf-cart-property-color");
+            }
+        });
+    }
+
+    function cartPropertyElements() {
+        const selectors = [
+            ".js-cart-item-property",
+            ".js-cart-item-variation",
+            ".cart-item-property",
+            ".cart-item-properties",
+            ".cart-item-variation",
+            ".cart-item__property",
+            ".cart-item__properties",
+            ".cart-item__variation",
+            "[class*='cart' i] [class*='propert' i]",
+            "[class*='cart' i] [class*='custom' i]",
+            "[class*='cart' i] [class*='attribute' i]",
+            "[class*='cart' i] [class*='variation' i]",
+            "[class*='cart' i] [class*='variant' i]",
+            "[class*='drawer' i] [class*='propert' i]",
+            "[class*='drawer' i] [class*='custom' i]",
+            "[class*='drawer' i] [class*='attribute' i]",
+            "[class*='drawer' i] [class*='variation' i]",
+            "[class*='drawer' i] [class*='variant' i]"
+        ];
+        const elements = new Set();
+        document.querySelectorAll(selectors.join(",")).forEach((element) => elements.add(element));
+        findStoredFieldLabels().forEach((label) => {
+            findCartTextElements(label).forEach((element) => elements.add(element));
+        });
+        return Array.from(elements);
+    }
+
+    function findStoredFieldLabels() {
+        if (!storeId) {
+            return [];
+        }
+        try {
+            const storage = window.localStorage;
+            if (!storage) {
+                return [];
+            }
+            const raw = storage.getItem("ncf:field-labels:" + storeId);
+            const labels = JSON.parse(raw || "[]");
+            return Array.isArray(labels) ? labels.filter(Boolean) : [];
+        } catch (ignored) {
+            return [];
+        }
+    }
+
+    function findCartTextElements(label) {
+        const containers = document.querySelectorAll([
+            ".js-cart-item",
+            ".cart-item",
+            "[class*='cart-item' i]",
+            "[class*='line-item' i]",
+            "[class*='mini-cart' i]",
+            "[class*='cart' i]",
+            "[id*='cart' i]",
+            "[class*='carrinho' i]",
+            "[id*='carrinho' i]",
+            "[class*='drawer' i]",
+            "[class*='modal' i]"
+        ].join(","));
+        const matches = [];
+        containers.forEach((container) => {
+            const walker = document.createTreeWalker(container, window.NodeFilter.SHOW_TEXT);
+            let node = walker.nextNode();
+            while (node) {
+                const text = node.nodeValue || "";
+                if (text.indexOf(label) !== -1 && node.parentElement) {
+                    matches.push(node.parentElement);
+                }
+                node = walker.nextNode();
+            }
+        });
+        return matches;
+    }
+
+    function cartItemTitleColor(element) {
+        const item = element.closest(".js-cart-item,.cart-item,[class*='cart-item' i],[class*='line-item' i],[class*='cart' i],[class*='drawer' i]");
+        if (!item) {
+            return null;
+        }
+        const title = item.querySelector([
+            ".js-cart-item-name",
+            ".cart-item-name",
+            ".cart-item__name",
+            ".line-item-name",
+            ".line-item__name",
+            "[class*='product-name' i]",
+            "[class*='item-name' i]",
+            "[class*='name' i] a",
+            "a[href*='/produtos/']",
+            "a[href*='/productos/']"
+        ].join(","));
+        return title ? window.getComputedStyle(title).color : null;
+    }
+
+    function hasDarkCartBackground(element) {
+        let node = element;
+        let depth = 0;
+        while (node && node !== document.body && depth < 8) {
+            const style = window.getComputedStyle(node);
+            if (isDarkColor(style.backgroundColor)) {
+                return true;
+            }
+            node = node.parentElement;
+            depth += 1;
+        }
+        return isDarkColor(window.getComputedStyle(document.body).backgroundColor);
+    }
+
+    function isDarkColor(value) {
+        const rgba = parseColor(value);
+        if (!rgba || rgba.alpha < 0.2) {
+            return false;
+        }
+        return luminance(rgba) < 0.45;
+    }
+
+    function isLightColor(value) {
+        const rgba = parseColor(value);
+        return rgba ? luminance(rgba) > 0.55 : false;
+    }
+
+    function parseColor(value) {
+        const match = String(value || "").match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
+        if (!match) {
+            return null;
+        }
+        return {
+            red: Number(match[1]),
+            green: Number(match[2]),
+            blue: Number(match[3]),
+            alpha: match[4] === undefined ? 1 : Number(match[4])
+        };
+    }
+
+    function luminance(color) {
+        return ((0.2126 * color.red) + (0.7152 * color.green) + (0.0722 * color.blue)) / 255;
     }
 
     function renderField(field) {
