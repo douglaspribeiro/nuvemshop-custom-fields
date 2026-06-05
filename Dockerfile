@@ -33,6 +33,10 @@ ENV JAVA_OPTS=""
 
 WORKDIR /app
 
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+
 # Camadas estaveis primeiro para maximizar deduplicacao no registry.
 COPY --from=extractor /layers/dependencies/ ./
 COPY --from=extractor /layers/spring-boot-loader/ ./
