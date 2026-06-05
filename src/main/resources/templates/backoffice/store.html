@@ -15,9 +15,15 @@
             <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
             <p class="muted" th:text="'Store ID ' + ${store.storeId}">Store ID 0</p>
         </div>
-        <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
+        <nav class="row-actions">
+            <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
+                <button class="button primary" type="submit">Entrar no modo loja</button>
+            </form>
+            <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
+        </nav>
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
     <section class="grid two">
         <div class="panel">
             <h2>Plano</h2>

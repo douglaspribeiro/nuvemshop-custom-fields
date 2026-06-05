@@ -19,6 +19,13 @@
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel" th:if="${backofficeStoreMode}">
+        <h2>Modo loja pelo backoffice</h2>
+        <p class="muted">As alteracoes feitas aqui serao aplicadas nesta loja.</p>
+        <form th:action="@{/backoffice/store-mode/exit}" method="post">
+            <button class="button" type="submit">Voltar ao backoffice</button>
+        </form>
+    </section>
 
     <section class="panel">
         <h2>Loja conectada</h2>

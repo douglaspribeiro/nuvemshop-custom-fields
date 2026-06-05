@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.controller;
 
+import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.properties.BackofficeProperties;
@@ -116,6 +117,35 @@ public class BackofficeController {
         backofficeService.overridePlan(storeId, plan);
         redirectAttributes.addFlashAttribute("message", "Plano atualizado.");
         return "redirect:/backoffice/stores/{storeId}";
+    }
+
+    @PostMapping("/backoffice/stores/{storeId}/enter")
+    public String enterStoreMode(@PathVariable Long storeId, HttpSession session, RedirectAttributes redirectAttributes) {
+        LOGGER.info("backoffice.store_mode.enter store_id={} session_id={}", storeId, session.getId());
+        var store = storeRepository.findActiveByStoreId(storeId);
+        if (store.isEmpty()) {
+            LOGGER.warn("backoffice.store_mode.enter.inactive_or_missing store_id={}", storeId);
+            redirectAttributes.addFlashAttribute("error", "Loja ativa nao encontrada para entrar no modo loja.");
+            return "redirect:/backoffice/stores/{storeId}";
+        }
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, storeId);
+        session.setAttribute(BackofficeSessionInterceptor.STORE_MODE_SESSION_KEY, true);
+        session.setAttribute(BackofficeSessionInterceptor.STORE_MODE_STORE_ID_SESSION_KEY, storeId);
+        redirectAttributes.addFlashAttribute("message", "Voce esta editando a loja pelo backoffice.");
+        return "redirect:/admin";
+    }
+
+    @PostMapping("/backoffice/store-mode/exit")
+    public String exitStoreMode(HttpSession session) {
+        Object storeId = session.getAttribute(BackofficeSessionInterceptor.STORE_MODE_STORE_ID_SESSION_KEY);
+        LOGGER.info("backoffice.store_mode.exit store_id={} session_id={}", storeId, session.getId());
+        session.removeAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
+        session.removeAttribute(BackofficeSessionInterceptor.STORE_MODE_SESSION_KEY);
+        session.removeAttribute(BackofficeSessionInterceptor.STORE_MODE_STORE_ID_SESSION_KEY);
+        if (storeId instanceof Long id) {
+            return "redirect:/backoffice/stores/" + id;
+        }
+        return "redirect:/backoffice/stores";
     }
 
     @GetMapping("/backoffice/flags")

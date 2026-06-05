@@ -13,6 +13,8 @@ public class BackofficeSessionInterceptor implements HandlerInterceptor {
     private static final Logger LOGGER = LoggerFactory.getLogger(BackofficeSessionInterceptor.class);
 
     public static final String SESSION_KEY = "backofficeAuthenticated";
+    public static final String STORE_MODE_SESSION_KEY = "backofficeStoreMode";
+    public static final String STORE_MODE_STORE_ID_SESSION_KEY = "backofficeStoreModeStoreId";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {

@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.dto.FieldForm;
+import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
@@ -67,6 +68,7 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("rules", rules);
         model.addAttribute("usage", planLimitService.usage(store, 0));
+        model.addAttribute("backofficeStoreMode", Boolean.TRUE.equals(session.getAttribute(BackofficeSessionInterceptor.STORE_MODE_SESSION_KEY)));
         LOGGER.info("admin.index.loaded store_id={} rules_count={}", store.getStoreId(), rules.size());
         return "admin/index";
     }

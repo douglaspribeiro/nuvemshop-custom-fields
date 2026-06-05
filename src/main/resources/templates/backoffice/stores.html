@@ -16,6 +16,8 @@
         </div>
         <a class="button" th:href="@{/backoffice}">Voltar</a>
     </section>
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
     <section class="panel">
         <table class="table">
             <thead>
@@ -35,7 +37,14 @@
                 <td th:text="${store.plan}">FREE</td>
                 <td th:text="${store.active ? 'Ativa' : 'Desinstalada'}">Ativa</td>
                 <td th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
-                <td><a class="button small" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Detalhe</a></td>
+                <td>
+                    <div class="row-actions">
+                        <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
+                            <button class="button small primary" type="submit">Modo loja</button>
+                        </form>
+                        <a class="button small" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Detalhe</a>
+                    </div>
+                </td>
             </tr>
             </tbody>
         </table>
