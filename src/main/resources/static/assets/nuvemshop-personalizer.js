@@ -5,7 +5,7 @@
         return;
     }
 
-    const appOrigin = "https://chlorine-mutate-preface.ngrok-free.dev";
+    const appOrigin = "https://campos-personalizados.wzhub.pro";
     const maxAttempts = 30;
     let attempts = 0;
     let lastRetryReason = "not_started";
@@ -90,8 +90,7 @@
         fetch(url, {
             credentials: "omit",
             headers: {
-                "Accept": "application/json",
-                "ngrok-skip-browser-warning": "true"
+                "Accept": "application/json"
             }
         })
             .then((response) => response.ok ? response.json() : null)
@@ -106,7 +105,7 @@
     }
 
     function isAppOrigin(origin) {
-        return origin === appOrigin || origin.indexOf("localhost") !== -1 || origin.indexOf("ngrok-free.dev") !== -1;
+        return origin === appOrigin || origin.indexOf("localhost") !== -1;
     }
 
     function getStoreId() {
@@ -299,10 +298,7 @@
         const url = apiOriginForTracking() + "/public/script-events?" + params.toString();
         fetch(url, {
             credentials: "omit",
-            keepalive: true,
-            headers: {
-                "ngrok-skip-browser-warning": "true"
-            }
+            keepalive: true
         }).catch(() => {});
     }
 
