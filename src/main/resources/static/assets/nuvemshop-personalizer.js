@@ -32,6 +32,7 @@
 
     injectStyles();
     watchCartPropertyColors();
+    ready(forceForegroundMediumWhite);
     track("loaded", { storeId: storeId, scriptSrc: script.src });
 
     if (!storeId) {
@@ -238,6 +239,13 @@
         style.id = "ncf-personalization-style";
         style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}.ncf-cart-property-list{display:block;margin-top:4px;font-size:.875em;line-height:1.35}.ncf-cart-property-line{display:block}.ncf-cart-property-line b{font-weight:700}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium,.summary-details [data-testid='product-name-qty'] .text-foreground-medium{color:rgba(255,255,255,.88)!important}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm,.summary-details [data-testid='product-name-qty'] .text-sm{color:inherit!important}";
         document.head.appendChild(style);
+    }
+
+    function forceForegroundMediumWhite() {
+        document.querySelectorAll(".text-foreground-medium").forEach((element) => {
+            element.style.setProperty("color", "#f00", "important");
+            element.style.setProperty("font-weight", "700", "important");
+        });
     }
 
     function bindCartSnapshot(targetForm, fields) {
@@ -474,6 +482,7 @@
         const refreshCart = () => {
             renderStoredCartProperties();
             syncCartPropertyColors();
+            forceForegroundMediumWhite();
         };
         const observer = new MutationObserver(() => {
             if (pending) {
