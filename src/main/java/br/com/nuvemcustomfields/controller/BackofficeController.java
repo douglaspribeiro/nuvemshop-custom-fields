@@ -12,6 +12,7 @@ import br.com.nuvemcustomfields.service.ManagementReportService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,7 @@ public class BackofficeController {
     private final IntegrationLogRepository integrationLogRepository;
     private final BackofficeService backofficeService;
     private final ManagementReportService managementReportService;
+    private final String appVersion;
 
     public BackofficeController(
             BackofficeProperties properties,
@@ -40,7 +42,8 @@ public class BackofficeController {
             FeatureFlagRepository featureFlagRepository,
             IntegrationLogRepository integrationLogRepository,
             BackofficeService backofficeService,
-            ManagementReportService managementReportService
+            ManagementReportService managementReportService,
+            @Value("${APP_VERSION:dev}") String appVersion
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -49,11 +52,13 @@ public class BackofficeController {
         this.integrationLogRepository = integrationLogRepository;
         this.backofficeService = backofficeService;
         this.managementReportService = managementReportService;
+        this.appVersion = appVersion;
     }
 
     @GetMapping("/backoffice/login")
-    public String login() {
+    public String login(Model model) {
         LOGGER.info("backoffice.login.open");
+        model.addAttribute("appVersion", appVersion);
         return "backoffice/login";
     }
 

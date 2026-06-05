@@ -7,6 +7,7 @@
 
     const appOrigin = "https://campos-personalizados.wzhub.pro";
     const maxAttempts = 30;
+    const cartSnapshotTtlMs = 24 * 60 * 60 * 1000;
     let attempts = 0;
     let lastRetryReason = "not_started";
     let cartColorObserverStarted = false;
@@ -29,6 +30,8 @@
     const storeId = scriptUrl.searchParams.get("store") || getStoreId();
     const apiOrigin = isAppOrigin(scriptUrl.origin) ? scriptUrl.origin : appOrigin;
 
+    injectStyles();
+    watchCartPropertyColors();
     track("loaded", { storeId: storeId, scriptSrc: script.src });
 
     if (!storeId) {
@@ -36,8 +39,6 @@
         return;
     }
 
-    injectStyles();
-    watchCartPropertyColors();
     ready(initialize);
 
     function initialize() {
@@ -61,8 +62,10 @@
                 return;
             }
             rememberFieldLabels(config.fields);
-            syncCartPropertyColors();
             renderFields(form, config.fields);
+            bindCartSnapshot(form, config.fields);
+            renderStoredCartProperties();
+            syncCartPropertyColors();
             form.dataset.ncfInjected = "true";
             track("injected", { storeId: storeId, productId: productId });
         });
@@ -233,8 +236,210 @@
         }
         const style = document.createElement("style");
         style.id = "ncf-personalization-style";
-        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}";
+        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}.ncf-cart-property-list{display:block;margin-top:4px;font-size:.875em;line-height:1.35}.ncf-cart-property-line{display:block}.ncf-cart-property-line b{font-weight:700}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium,.summary-details [data-testid='product-name-qty'] .text-foreground-medium,[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm,.summary-details [data-testid='product-name-qty'] .text-sm{color:inherit!important}";
         document.head.appendChild(style);
+    }
+
+    function bindCartSnapshot(targetForm, fields) {
+        if (!targetForm || targetForm.dataset.ncfSnapshotBound === "true") {
+            return;
+        }
+        targetForm.dataset.ncfSnapshotBound = "true";
+        targetForm.addEventListener("submit", () => rememberCartSnapshot(targetForm, fields), true);
+        const submit = targetForm.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
+        if (submit) {
+            submit.addEventListener("click", () => rememberCartSnapshot(targetForm, fields), true);
+        }
+    }
+
+    function rememberCartSnapshot(targetForm, fields) {
+        const values = cartFieldValues(targetForm, fields);
+        if (values.length === 0) {
+            return;
+        }
+        const snapshots = cartSnapshots();
+        snapshots.push({
+            productId: findProductId(targetForm),
+            variantId: findVariantId(targetForm),
+            productName: findProductName(),
+            productPath: window.location.pathname,
+            fields: values,
+            createdAt: Date.now()
+        });
+        writeCartSnapshots(snapshots.slice(-30));
+    }
+
+    function cartFieldValues(targetForm, fields) {
+        return (fields || [])
+            .map((field) => {
+                const key = field.propertyName || field.label;
+                const input = Array.from(targetForm.elements || [])
+                    .find((element) => element.name === "properties[" + key + "]");
+                const value = input && input.value ? String(input.value).trim() : "";
+                return value ? { label: field.label || key, value: value } : null;
+            })
+            .filter(Boolean);
+    }
+
+    function findVariantId(targetForm) {
+        const input = Array.from(targetForm.elements || [])
+            .find((element) => [
+                "variant_id",
+                "variation_id",
+                "variant",
+                "variation",
+                "id"
+            ].includes(element.name) && element.value);
+        return input ? String(input.value) : null;
+    }
+
+    function findProductName() {
+        const title = document.querySelector([
+            "h1",
+            ".js-product-name",
+            ".product-name",
+            ".product-title",
+            "[class*='product-name' i]",
+            "[class*='product-title' i]"
+        ].join(","));
+        return title && title.textContent ? title.textContent.trim() : null;
+    }
+
+    function cartSnapshots() {
+        try {
+            const storage = window.localStorage;
+            if (!storage) {
+                return [];
+            }
+            const raw = storage.getItem(cartSnapshotKey());
+            const snapshots = JSON.parse(raw || "[]");
+            const fresh = Array.isArray(snapshots)
+                ? snapshots.filter((snapshot) => snapshot && Date.now() - Number(snapshot.createdAt || 0) < cartSnapshotTtlMs)
+                : [];
+            if (fresh.length !== snapshots.length) {
+                writeCartSnapshots(fresh);
+            }
+            return fresh;
+        } catch (ignored) {
+            return [];
+        }
+    }
+
+    function writeCartSnapshots(snapshots) {
+        try {
+            const storage = window.localStorage;
+            if (storage) {
+                storage.setItem(cartSnapshotKey(), JSON.stringify(snapshots));
+            }
+        } catch (ignored) {
+        }
+    }
+
+    function cartSnapshotKey() {
+        return "ncf:cart-properties:" + (storeId || "unknown");
+    }
+
+    function renderStoredCartProperties() {
+        const snapshots = cartSnapshots();
+        if (snapshots.length === 0) {
+            return;
+        }
+        const used = new Set();
+        cartLineTargets().forEach((target) => {
+            if (!target || target.querySelector(".ncf-cart-property-list")) {
+                return;
+            }
+            const snapshot = matchingCartSnapshot(target, snapshots, used);
+            if (!snapshot || visibleCartProperties(target, snapshot.fields)) {
+                return;
+            }
+            const list = document.createElement("div");
+            list.className = "ncf-cart-property ncf-cart-property-list";
+            snapshot.fields.forEach((field) => {
+                const line = document.createElement("div");
+                line.className = "ncf-cart-property-line";
+                const label = document.createElement("b");
+                label.textContent = field.label + ":";
+                line.appendChild(label);
+                line.appendChild(document.createTextNode(" " + field.value));
+                list.appendChild(line);
+            });
+            target.appendChild(list);
+        });
+    }
+
+    function cartLineTargets() {
+        const selectors = [
+            "[data-testid='product-name-qty']",
+            ".js-cart-item-name",
+            ".cart-item-name",
+            ".cart-item__name",
+            ".line-item-name",
+            ".line-item__name",
+            "[class*='cart-item' i] [class*='name' i]",
+            "[class*='line-item' i] [class*='name' i]"
+        ];
+        return Array.from(new Set(document.querySelectorAll(selectors.join(","))));
+    }
+
+    function matchingCartSnapshot(target, snapshots, used) {
+        const targetText = normalizedText(cartLineMatchText(target));
+        let fallback = null;
+        for (let index = snapshots.length - 1; index >= 0; index -= 1) {
+            if (used.has(index)) {
+                continue;
+            }
+            const snapshot = snapshots[index];
+            if (!fallback) {
+                fallback = { snapshot: snapshot, index: index };
+            }
+            if (snapshotMatches(targetText, snapshot)) {
+                used.add(index);
+                return snapshot;
+            }
+        }
+        if (snapshots.length === 1 && fallback) {
+            used.add(fallback.index);
+            return fallback.snapshot;
+        }
+        return null;
+    }
+
+    function snapshotMatches(targetText, snapshot) {
+        const candidates = [
+            snapshot.productName,
+            snapshot.productPath,
+            snapshot.productId,
+            snapshot.variantId
+        ].map(normalizedText).filter(Boolean);
+        return candidates.some((candidate) => targetText.indexOf(candidate) !== -1 || candidate.indexOf(targetText) !== -1);
+    }
+
+    function cartLineMatchText(target) {
+        const row = target.closest("tr,.js-cart-item,.cart-item,[class*='cart-item' i],[class*='line-item' i]") || target;
+        const pieces = [row.textContent || ""];
+        row.querySelectorAll("img[alt],img[title],a[href],[data-product-id],[data-variant-id]").forEach((node) => {
+            pieces.push(node.getAttribute("alt") || "");
+            pieces.push(node.getAttribute("title") || "");
+            pieces.push(node.getAttribute("href") || "");
+            pieces.push(node.getAttribute("data-product-id") || "");
+            pieces.push(node.getAttribute("data-variant-id") || "");
+        });
+        return pieces.join(" ");
+    }
+
+    function visibleCartProperties(target, fields) {
+        const text = target.textContent || "";
+        return fields.some((field) => text.indexOf(field.label + ":") !== -1);
+    }
+
+    function normalizedText(value) {
+        return String(value || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
     }
 
     function rememberFieldLabels(fields) {
@@ -266,6 +471,10 @@
             return;
         }
         let pending = false;
+        const refreshCart = () => {
+            renderStoredCartProperties();
+            syncCartPropertyColors();
+        };
         const observer = new MutationObserver(() => {
             if (pending) {
                 return;
@@ -273,10 +482,11 @@
             pending = true;
             window.setTimeout(() => {
                 pending = false;
-                syncCartPropertyColors();
+                refreshCart();
             }, 100);
         });
         observer.observe(document.documentElement, { childList: true, subtree: true });
+        refreshCart();
     }
 
     function syncCartPropertyColors() {
@@ -309,6 +519,11 @@
             ".cart-item__property",
             ".cart-item__properties",
             ".cart-item__variation",
+            ".ncf-cart-property-list",
+            "[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium",
+            "[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm",
+            ".summary-details [data-testid='product-name-qty'] .text-foreground-medium",
+            ".summary-details [data-testid='product-name-qty'] .text-sm",
             "[class*='cart' i] [class*='propert' i]",
             "[class*='cart' i] [class*='custom' i]",
             "[class*='cart' i] [class*='attribute' i]",
@@ -351,6 +566,9 @@
             ".cart-item",
             "[class*='cart-item' i]",
             "[class*='line-item' i]",
+            "[data-testid*='cart' i]",
+            "[data-testid='product-name-qty']",
+            ".summary-details",
             "[class*='mini-cart' i]",
             "[class*='cart' i]",
             "[id*='cart' i]",
@@ -375,11 +593,12 @@
     }
 
     function cartItemTitleColor(element) {
-        const item = element.closest(".js-cart-item,.cart-item,[class*='cart-item' i],[class*='line-item' i],[class*='cart' i],[class*='drawer' i]");
+        const item = element.closest(".js-cart-item,.cart-item,[class*='cart-item' i],[class*='line-item' i],[data-testid*='cart' i],.summary-details,[class*='cart' i],[class*='drawer' i]");
         if (!item) {
             return null;
         }
         const title = item.querySelector([
+            "[data-testid='product-name-qty']",
             ".js-cart-item-name",
             ".cart-item-name",
             ".cart-item__name",
@@ -397,7 +616,7 @@
     function hasDarkCartBackground(element) {
         let node = element;
         let depth = 0;
-        while (node && node !== document.body && depth < 8) {
+        while (node && node !== document.body && depth < 20) {
             const style = window.getComputedStyle(node);
             if (isDarkColor(style.backgroundColor)) {
                 return true;
