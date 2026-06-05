@@ -36,6 +36,21 @@
                 </label>
                 <button class="button primary" type="submit">Salvar override</button>
             </form>
+            <form class="form settings-panel" th:action="@{/backoffice/stores/{storeId}/courtesy-premium(storeId=${store.storeId})}" method="post">
+                <label class="checkbox">
+                    <input type="checkbox" name="courtesyPremium" value="true" th:checked="${store.courtesyPremium}">
+                    Premium Cortesia
+                </label>
+                <label>
+                    Motivo
+                    <input type="text" name="courtesyPremiumReason" maxlength="255"
+                           th:value="${store.courtesyPremiumReason}" placeholder="Ex: loja interna, teste, parceria">
+                </label>
+                <button class="button" type="submit">Salvar cortesia</button>
+            </form>
+            <p class="notice" th:if="${store.courtesyPremium}">
+                Esta loja usa recursos premium sem entrar na cobrança.
+            </p>
         </div>
         <div class="panel">
             <h2>Auditoria de plano</h2>

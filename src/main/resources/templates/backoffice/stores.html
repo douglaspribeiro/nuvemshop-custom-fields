@@ -34,7 +34,10 @@
             <tr th:each="store : ${stores}">
                 <td th:text="${store.storeName ?: 'Loja sem nome'}">Loja</td>
                 <td th:text="${store.storeId}">0</td>
-                <td th:text="${store.plan}">FREE</td>
+                <td>
+                    <span th:text="${store.plan}">FREE</span>
+                    <span class="badge" th:if="${store.courtesyPremium}">Cortesia</span>
+                </td>
                 <td th:text="${store.active ? 'Ativa' : 'Desinstalada'}">Ativa</td>
                 <td th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
                 <td>

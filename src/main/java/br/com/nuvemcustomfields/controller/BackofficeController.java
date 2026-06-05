@@ -119,6 +119,19 @@ public class BackofficeController {
         return "redirect:/backoffice/stores/{storeId}";
     }
 
+    @PostMapping("/backoffice/stores/{storeId}/courtesy-premium")
+    public String courtesyPremium(
+            @PathVariable Long storeId,
+            @RequestParam(defaultValue = "false") boolean courtesyPremium,
+            @RequestParam(required = false) String courtesyPremiumReason,
+            RedirectAttributes redirectAttributes
+    ) {
+        LOGGER.info("backoffice.courtesy_premium.update store_id={} courtesy_premium={}", storeId, courtesyPremium);
+        backofficeService.updateCourtesyPremium(storeId, courtesyPremium, courtesyPremiumReason);
+        redirectAttributes.addFlashAttribute("message", courtesyPremium ? "Premium Cortesia ativado." : "Premium Cortesia removido.");
+        return "redirect:/backoffice/stores/{storeId}";
+    }
+
     @PostMapping("/backoffice/stores/{storeId}/enter")
     public String enterStoreMode(@PathVariable Long storeId, HttpSession session, RedirectAttributes redirectAttributes) {
         LOGGER.info("backoffice.store_mode.enter store_id={} session_id={}", storeId, session.getId());

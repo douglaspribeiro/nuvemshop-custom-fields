@@ -60,6 +60,22 @@ public class BackofficeService {
     }
 
     @Transactional
+    public void updateCourtesyPremium(Long storeId, boolean courtesyPremium, String reason) {
+        Store store = storeRepository.findByStoreId(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("Loja nao encontrada."));
+        store.setCourtesyPremium(courtesyPremium);
+        store.setCourtesyPremiumReason(normalizeReason(courtesyPremium, reason));
+        storeRepository.save(store);
+    }
+
+    private String normalizeReason(boolean courtesyPremium, String reason) {
+        if (!courtesyPremium || reason == null || reason.isBlank()) {
+            return null;
+        }
+        return reason.strip();
+    }
+
+    @Transactional
     public void saveFlag(String key, boolean enabled, String description) {
         FeatureFlag flag = featureFlagRepository.findById(key).orElseGet(FeatureFlag::new);
         flag.setKey(key.strip());

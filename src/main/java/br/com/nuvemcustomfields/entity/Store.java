@@ -38,6 +38,12 @@ public class Store {
     @Column(name = "subscription_id")
     private String subscriptionId;
 
+    @Column(name = "courtesy_premium", nullable = false)
+    private boolean courtesyPremium;
+
+    @Column(name = "courtesy_premium_reason")
+    private String courtesyPremiumReason;
+
     @Column(name = "product_text_color", length = 7)
     private String productTextColor;
 
@@ -103,6 +109,22 @@ public class Store {
 
     public void setSubscriptionId(String subscriptionId) {
         this.subscriptionId = subscriptionId;
+    }
+
+    public boolean isCourtesyPremium() {
+        return courtesyPremium;
+    }
+
+    public void setCourtesyPremium(boolean courtesyPremium) {
+        this.courtesyPremium = courtesyPremium;
+    }
+
+    public String getCourtesyPremiumReason() {
+        return courtesyPremiumReason;
+    }
+
+    public void setCourtesyPremiumReason(String courtesyPremiumReason) {
+        this.courtesyPremiumReason = courtesyPremiumReason;
     }
 
     public String getProductTextColor() {

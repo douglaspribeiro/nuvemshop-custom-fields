@@ -31,7 +31,7 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - Editor de campos por produto em `/admin/products` e `/admin/products/{productId}/fields`.
 - Tipos de campo: `TEXT`, `NUMBER`, `SELECT` e `TEXTAREA`.
 - Validacoes por campo: obrigatorio, tamanho maximo, placeholder, regex/mascara e opcoes para select.
-- Templates de onboarding por nicho em `/admin/onboarding`.
+- Templates por nicho em `/admin/onboarding`.
 - Registro do script de vitrine via Scripts API.
 - Asset publico `/assets/nuvemshop-personalizer.js` para injecao dos campos no storefront.
 - Endpoint publico `/public/stores/{storeId}/personalization`.

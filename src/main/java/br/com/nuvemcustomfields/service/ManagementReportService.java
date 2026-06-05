@@ -38,12 +38,14 @@ public class ManagementReportService {
         long free = stores.stream().filter(store -> store.getPlan() == PlanType.FREE).count();
         long premium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM).count();
         long premiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS).count();
+        long billablePremium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM && !store.isCourtesyPremium()).count();
+        long billablePremiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS && !store.isCourtesyPremium()).count();
         long fields = ruleRepository.findAll().stream().mapToLong(rule -> fieldRepository.countByRuleId(rule.getId())).sum();
         return new ManagementReport(
                 free,
                 premium,
                 premiumPlus,
-                PREMIUM_PRICE.multiply(BigDecimal.valueOf(premium)).add(PREMIUM_PLUS_PRICE.multiply(BigDecimal.valueOf(premiumPlus))),
+                PREMIUM_PRICE.multiply(BigDecimal.valueOf(billablePremium)).add(PREMIUM_PLUS_PRICE.multiply(BigDecimal.valueOf(billablePremiumPlus))),
                 planEventRepository.count(),
                 ruleRepository.count(),
                 fields
