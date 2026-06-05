@@ -30,6 +30,12 @@ public class ScriptInstallService {
         return src;
     }
 
+    public String checkoutScriptSrc() {
+        String src = properties.appBaseUrl() + "/assets/nuvemshop-checkout.js";
+        LOGGER.info("script.checkout.src src={}", src);
+        return src;
+    }
+
     public void installPersonalizerScript(Store store) {
         LOGGER.info("script.install.start store_id={}", store.getStoreId());
         if (!isPublicHttps(properties.appBaseUrl())) {
@@ -40,13 +46,13 @@ public class ScriptInstallService {
             );
             return;
         }
-        String expectedSrc = personalizerScriptSrc(store);
+        Set<String> expectedSrcs = expectedScriptSrcs(store);
         Set<Long> scriptIds = configuredScriptIds();
         if (scriptIds.isEmpty()) {
             LOGGER.warn(
-                    "script.install.skip store_id={} reason=script_id_not_configured expected_src={}",
+                    "script.install.skip store_id={} reason=script_id_not_configured expected_srcs={}",
                     store.getStoreId(),
-                    expectedSrc
+                    expectedSrcs
             );
             return;
         }
@@ -100,10 +106,10 @@ public class ScriptInstallService {
             LOGGER.warn("script.remove.unexpected_response store_id={} response_present={}", store.getStoreId(), scripts != null);
             return;
         }
-        String expectedSrc = personalizerScriptSrc(store);
+        Set<String> expectedSrcs = expectedScriptSrcs(store);
         Set<Long> expectedScriptIds = configuredScriptIds();
         for (JsonNode script : iterableScripts(scripts)) {
-            if (matchesScript(script, expectedSrc, expectedScriptIds)) {
+            if (matchesScript(script, expectedSrcs, expectedScriptIds)) {
                 LOGGER.info("script.remove.delete store_id={} script_id={}", store.getStoreId(), script.path("id").asLong());
                 apiClient.deleteScript(store, script.path("id").asLong());
             }
@@ -134,7 +140,14 @@ public class ScriptInstallService {
         return java.util.List.of();
     }
 
-    private boolean matchesScript(JsonNode script, String expectedSrc, Set<Long> expectedScriptIds) {
+    private Set<String> expectedScriptSrcs(Store store) {
+        Set<String> expectedSrcs = new LinkedHashSet<>();
+        expectedSrcs.add(personalizerScriptSrc(store));
+        expectedSrcs.add(checkoutScriptSrc());
+        return expectedSrcs;
+    }
+
+    private boolean matchesScript(JsonNode script, Set<String> expectedSrcs, Set<Long> expectedScriptIds) {
         if (expectedScriptIds.contains(script.path("id").asLong(-1))) {
             return true;
         }
@@ -142,6 +155,6 @@ public class ScriptInstallService {
         if (src.isBlank()) {
             src = script.path("current_version").path("src").asText();
         }
-        return expectedSrc.equals(src);
+        return expectedSrcs.contains(src);
     }
 }

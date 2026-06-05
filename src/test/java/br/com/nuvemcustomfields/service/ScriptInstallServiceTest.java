@@ -32,7 +32,7 @@ class ScriptInstallServiceTest {
     }
 
     @Test
-    void doesNotTreatSameSourceAsInstalledWhenCheckoutScriptIdIsMissing() {
+    void doesNotTreatStorefrontSourceAsInstalledCheckoutScript() {
         Store store = store();
         ArrayNode scripts = new ObjectMapper().createArrayNode();
         scripts.addObject()
@@ -60,6 +60,9 @@ class ScriptInstallServiceTest {
         scripts.addObject()
                 .put("id", 7300L)
                 .put("src", "https://app.example.com/assets/nuvemshop-personalizer.js?store=123");
+        scripts.addObject()
+                .put("id", 7400L)
+                .put("src", "https://app.example.com/assets/nuvemshop-checkout.js");
         when(apiClient.listScripts(store)).thenReturn(scripts);
 
         ScriptInstallService service = new ScriptInstallService(
@@ -72,6 +75,7 @@ class ScriptInstallServiceTest {
         verify(apiClient).deleteScript(store, 7100L);
         verify(apiClient).deleteScript(store, 7200L);
         verify(apiClient).deleteScript(store, 7300L);
+        verify(apiClient).deleteScript(store, 7400L);
     }
 
     private Store store() {
