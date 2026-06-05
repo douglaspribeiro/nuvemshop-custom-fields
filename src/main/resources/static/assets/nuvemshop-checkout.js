@@ -134,7 +134,7 @@ function customFieldsBlock(groups) {
     const color = normalizedColor(styleConfig.checkoutTextColor);
     return {
         type: "col",
-        gap: 8,
+        gap: 0,
         padding: "16px 14px",
         margin: "10px 0 0",
         borderRadius: "6px",
@@ -146,7 +146,7 @@ function customFieldsBlock(groups) {
             textNode("Itens Personalizados", color, ["bold"], {
                 fontSize: "17px",
                 textAlign: "center",
-                marginBottom: "6px"
+                marginBottom: "14px"
             }),
             ...groups.map((group) => customFieldGroup(group, color))
         ]
@@ -156,23 +156,24 @@ function customFieldsBlock(groups) {
 function customFieldGroup(group, color) {
     return {
         type: "col",
-        gap: 4,
-        padding: "10px 0 0",
+        gap: 0,
+        padding: "14px 0 12px",
         style: {
             borderTop: "1px solid rgba(0,0,0,.08)"
         },
         children: [
             textNode(group.productName, color, ["bold"], {
                 fontSize: "16px",
-                marginBottom: "4px"
+                marginBottom: "8px"
             }),
             {
                 type: "col",
-                gap: 1,
+                gap: 0,
                 children: group.fields.map((field) => {
                     return textNode(field.name + ": " + field.value, color, ["bold"], {
                         fontSize: "14px",
-                        lineHeight: "18px"
+                        lineHeight: "18px",
+                        margin: "0 0 2px"
                     });
                 })
             }
