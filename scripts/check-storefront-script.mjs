@@ -97,7 +97,7 @@ const requestUrls = new Map();
 
 function isInterestingUrl(url) {
   return url.includes("apps-scripts")
-    || url.includes("chlorine")
+    || url.includes("campos-personalizados")
     || url.includes("script-events")
     || url.includes("personalization")
     || url.includes("personalizer");
@@ -129,7 +129,7 @@ ws.on("message", (data) => {
   }
   if (msg.method === "Runtime.consoleAPICalled") {
     const args = (msg.params.args || []).map((arg) => arg.value || arg.description || "").join(" ");
-    if (args.includes("ncf") || args.includes("personalization") || args.includes("chlorine")) {
+    if (args.includes("ncf") || args.includes("personalization") || args.includes("campos-personalizados")) {
       consoleLog.push(`${msg.params.type} ${args}`);
     }
   }
@@ -191,7 +191,7 @@ const result = await command(ws, "Runtime.evaluate", {
     scriptCount: document.scripts.length,
     scripts: Array.from(document.scripts)
       .map((s) => s.src)
-      .filter((src) => src.includes("apps-scripts") || src.includes("chlorine") || src.includes("personalizer") || src.includes("scriptv")),
+      .filter((src) => src.includes("apps-scripts") || src.includes("campos-personalizados") || src.includes("personalizer") || src.includes("scriptv")),
     lsStore: window.LS && window.LS.store && window.LS.store.id,
     lsProduct: window.LS && window.LS.product && window.LS.product.id,
     form: !!document.querySelector("#product_form"),
