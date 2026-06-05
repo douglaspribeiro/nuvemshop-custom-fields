@@ -134,8 +134,8 @@ function customFieldsBlock(groups) {
     const color = normalizedColor(styleConfig.checkoutTextColor);
     return {
         type: "col",
-        gap: 10,
-        padding: "14px",
+        gap: 8,
+        padding: "16px 14px",
         margin: "10px 0 0",
         borderRadius: "6px",
         style: {
@@ -143,7 +143,11 @@ function customFieldsBlock(groups) {
             backgroundColor: "rgba(0,0,0,.025)"
         },
         children: [
-            textNode("Itens Personalizados", color, ["bold"]),
+            textNode("Itens Personalizados", color, ["bold"], {
+                fontSize: "17px",
+                textAlign: "center",
+                marginBottom: "6px"
+            }),
             ...groups.map((group) => customFieldGroup(group, color))
         ]
     };
@@ -152,25 +156,31 @@ function customFieldsBlock(groups) {
 function customFieldGroup(group, color) {
     return {
         type: "col",
-        gap: 5,
-        padding: "8px 0 0",
+        gap: 4,
+        padding: "10px 0 0",
         style: {
             borderTop: "1px solid rgba(0,0,0,.08)"
         },
         children: [
-            textNode(group.productName, color, ["bold"]),
+            textNode(group.productName, color, ["bold"], {
+                fontSize: "16px",
+                marginBottom: "4px"
+            }),
             {
                 type: "col",
-                gap: 3,
+                gap: 1,
                 children: group.fields.map((field) => {
-                    return textNode(field.name + ": " + field.value, color, ["bold"]);
+                    return textNode(field.name + ": " + field.value, color, ["bold"], {
+                        fontSize: "14px",
+                        lineHeight: "18px"
+                    });
                 })
             }
         ]
     };
 }
 
-function textNode(children, color, modifiers) {
+function textNode(children, color, modifiers, style) {
     const node = {
         type: "txt",
         children: children
@@ -180,6 +190,9 @@ function textNode(children, color, modifiers) {
     }
     if (Array.isArray(modifiers) && modifiers.length > 0) {
         node.modifiers = modifiers;
+    }
+    if (style) {
+        node.style = style;
     }
     return node;
 }
