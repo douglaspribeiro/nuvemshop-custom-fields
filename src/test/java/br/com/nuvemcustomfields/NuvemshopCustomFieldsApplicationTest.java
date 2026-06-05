@@ -39,11 +39,11 @@ class NuvemshopCustomFieldsApplicationTest {
     }
 
     @Test
-    void adminRedirectWithoutSessionUsesRelativeInstallLocation() throws Exception {
+    void adminRedirectWithoutSessionUsesEmbeddedBootstrapLocation() throws Exception {
         mockMvc.perform(get("/admin")
                         .header("Host", "campos-personalizados.wzhub.pro"))
                 .andExpect(status().isFound())
-                .andExpect(header().string("Location", "/install"));
+                .andExpect(header().string("Location", "/admin/embedded"));
     }
 
     @Test

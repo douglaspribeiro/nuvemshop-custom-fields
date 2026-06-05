@@ -43,8 +43,8 @@ public class AdminSessionInterceptor implements HandlerInterceptor {
                     storeId
             );
         }
-        LOGGER.warn("admin.session.redirect_install uri={}", request.getRequestURI());
-        response.sendRedirect("/install");
+        LOGGER.warn("admin.session.redirect_embedded uri={}", request.getRequestURI());
+        response.sendRedirect("/admin/embedded");
         return false;
     }
 }
