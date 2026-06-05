@@ -19,7 +19,8 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(adminSessionInterceptor)
-                .addPathPatterns("/admin/**");
+                .addPathPatterns("/admin/**")
+                .excludePathPatterns("/admin/embedded", "/admin/nexo/session");
         registry.addInterceptor(backofficeSessionInterceptor)
                 .addPathPatterns("/backoffice/**")
                 .excludePathPatterns("/backoffice/login");

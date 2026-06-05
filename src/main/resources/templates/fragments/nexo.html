@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="adminBridge">
+    <script defer th:src="@{/assets/nuvemshop-admin-nexo.js}"
+            th:attr="data-client-id=${nuvemshopClientId},data-mode='page'"></script>
+</th:block>
+</body>
+</html>

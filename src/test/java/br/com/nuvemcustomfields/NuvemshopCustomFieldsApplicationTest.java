@@ -35,7 +35,7 @@ class NuvemshopCustomFieldsApplicationTest {
         mockMvc.perform(get("/")
                         .header("Host", "campos-personalizados.wzhub.pro"))
                 .andExpect(status().isFound())
-                .andExpect(header().string("Location", "/admin"));
+                .andExpect(header().string("Location", "/admin/embedded"));
     }
 
     @Test
@@ -44,5 +44,12 @@ class NuvemshopCustomFieldsApplicationTest {
                         .header("Host", "campos-personalizados.wzhub.pro"))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", "/install"));
+    }
+
+    @Test
+    void embeddedAdminBootstrapIsAvailableWithoutSession() throws Exception {
+        mockMvc.perform(get("/admin/embedded"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-mode=\"bootstrap\"")));
     }
 }

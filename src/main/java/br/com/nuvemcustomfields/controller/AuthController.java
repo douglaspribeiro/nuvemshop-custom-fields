@@ -30,8 +30,8 @@ public class AuthController {
 
     @GetMapping("/")
     public RedirectView root() {
-        LOGGER.info("auth.root.redirect_admin");
-        return new RedirectView("/admin");
+        LOGGER.info("auth.root.redirect_admin_embedded");
+        return new RedirectView("/admin/embedded");
     }
 
     @GetMapping("/install")

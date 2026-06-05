@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Aplicativo: Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell narrow">
+    <section class="panel embedded-loading">
+        <p class="eyebrow">Admin</p>
+        <h1>Aplicativo: Campos Personalizados</h1>
+        <p class="muted">Conectando com o painel da loja...</p>
+    </section>
+</main>
+<script defer th:src="@{/assets/nuvemshop-admin-nexo.js}"
+        th:attr="data-client-id=${nuvemshopClientId},data-mode='bootstrap'"></script>
+</body>
+</html>

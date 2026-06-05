@@ -5,6 +5,7 @@ import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
@@ -41,6 +42,7 @@ public class AdminController {
     private final PlanLimitService planLimitService;
     private final PersonalizationAdminService personalizationAdminService;
     private final ReportService reportService;
+    private final NuvemshopProperties nuvemshopProperties;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -49,7 +51,8 @@ public class AdminController {
             NicheTemplateService nicheTemplateService,
             PlanLimitService planLimitService,
             PersonalizationAdminService personalizationAdminService,
-            ReportService reportService
+            ReportService reportService,
+            NuvemshopProperties nuvemshopProperties
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -58,6 +61,12 @@ public class AdminController {
         this.planLimitService = planLimitService;
         this.personalizationAdminService = personalizationAdminService;
         this.reportService = reportService;
+        this.nuvemshopProperties = nuvemshopProperties;
+    }
+
+    @ModelAttribute("nuvemshopClientId")
+    public String nuvemshopClientId() {
+        return nuvemshopProperties.clientId();
     }
 
     @GetMapping("/admin")

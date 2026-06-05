@@ -19,6 +19,10 @@ body {
     max-width: 460px;
 }
 
+.embedded-loading {
+    margin-top: 18vh;
+}
+
 .page-header {
     display: flex;
     align-items: center;
