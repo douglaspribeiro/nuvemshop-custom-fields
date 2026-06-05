@@ -20,6 +20,9 @@ server:
   servlet:
     session:
       tracking-modes: cookie
+      cookie:
+        same-site: none
+        secure: true
   tomcat:
     use-relative-redirects: true
 

@@ -98,8 +98,15 @@
         bindRouteSync();
     }
 
-    function fallbackToInstall() {
-        window.location.replace("/install");
+    function showBootstrapError(message) {
+        const status = document.querySelector("[data-nexo-status]");
+        const installLink = document.querySelector("[data-nexo-install-link]");
+        if (status) {
+            status.textContent = message;
+        }
+        if (installLink) {
+            installLink.hidden = false;
+        }
     }
 
     function bootstrapSession() {
@@ -128,7 +135,7 @@
             })
             .catch(function (error) {
                 log("bootstrap failed", error.message);
-                fallbackToInstall();
+                showBootstrapError("Nao foi possivel identificar a loja no painel. Reinstale ou reconecte o aplicativo.");
             });
     }
 
@@ -158,7 +165,7 @@
         .catch(function (error) {
             log("connection failed", error.message);
             if (mode === "bootstrap") {
-                fallbackToInstall();
+                showBootstrapError("Nao foi possivel conectar com o painel da loja. Verifique a URL do app no Partner Portal.");
             }
         });
 })();
