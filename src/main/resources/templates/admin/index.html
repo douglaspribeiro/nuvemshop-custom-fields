@@ -16,6 +16,9 @@
         <span class="badge" th:text="${store.plan}">FREE</span>
     </section>
 
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
     <section class="panel">
         <h2>Loja conectada</h2>
         <dl class="details">
@@ -37,6 +40,39 @@
         </dl>
     </section>
 
+    <section class="panel settings-panel">
+        <div class="panel-title">
+            <h2>Cores dos campos personalizados</h2>
+        </div>
+        <form class="form color-settings-form" method="post" th:action="@{/admin/settings/style}">
+            <label class="color-field">
+                Texto no produto
+                <span class="color-input-row">
+                    <input type="color" name="productTextColor" th:value="${store.productTextColor ?: '#344450'}">
+                    <span class="muted" th:text="${store.productTextColor ?: 'Automatico'}">Automatico</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearProductTextColor" value="true" th:checked="${store.productTextColor == null}">
+                Usar cor automatica no produto
+            </label>
+            <label class="color-field">
+                Texto no checkout
+                <span class="color-input-row">
+                    <input type="color" name="checkoutTextColor" th:value="${store.checkoutTextColor ?: '#344450'}">
+                    <span class="muted" th:text="${store.checkoutTextColor ?: 'Automatico'}">Automatico</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearCheckoutTextColor" value="true" th:checked="${store.checkoutTextColor == null}">
+                Usar cor automatica no checkout
+            </label>
+            <div class="row-actions">
+                <button class="button primary" type="submit">Salvar cores</button>
+            </div>
+        </form>
+    </section>
+
     <nav class="actions">
         <a class="button primary" th:href="@{/admin/products}">Configurar produtos</a>
         <a class="button" th:href="@{/admin/dashboard}">Dashboard</a>
@@ -44,5 +80,17 @@
         <a class="button" th:href="@{/admin/help}">Ajuda</a>
     </nav>
 </main>
+<script>
+    document.querySelectorAll(".color-settings-form input[type='color']").forEach((input) => {
+        input.addEventListener("input", () => {
+            const clearInput = input.name === "productTextColor"
+                ? document.querySelector("[name='clearProductTextColor']")
+                : document.querySelector("[name='clearCheckoutTextColor']");
+            if (clearInput) {
+                clearInput.checked = false;
+            }
+        });
+    });
+</script>
 </body>
 </html>

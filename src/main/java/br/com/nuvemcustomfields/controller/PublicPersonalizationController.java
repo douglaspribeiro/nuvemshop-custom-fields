@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.dto.FieldResponse;
 import br.com.nuvemcustomfields.dto.PersonalizationResponse;
+import br.com.nuvemcustomfields.dto.PersonalizationStyleResponse;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
@@ -78,8 +79,20 @@ public class PublicPersonalizationController {
         );
         return new PersonalizationResponse(
                 true,
-                fields
+                fields,
+                PersonalizationStyleResponse.from(store)
         );
+    }
+
+    @GetMapping("/public/stores/{storeId}/style")
+    public PersonalizationStyleResponse getStyle(@PathVariable Long storeId) {
+        Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
+        if (store == null) {
+            LOGGER.warn("public.style.disabled store_id={} reason=store_not_active", storeId);
+            return PersonalizationStyleResponse.empty();
+        }
+        LOGGER.info("public.style.enabled store_id={}", storeId);
+        return PersonalizationStyleResponse.from(store);
     }
 
     @GetMapping(value = "/public/stores/{storeId}/personalization.js", produces = "application/javascript")

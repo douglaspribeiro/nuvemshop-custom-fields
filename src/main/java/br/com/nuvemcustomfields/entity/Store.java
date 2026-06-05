@@ -38,6 +38,12 @@ public class Store {
     @Column(name = "subscription_id")
     private String subscriptionId;
 
+    @Column(name = "product_text_color", length = 7)
+    private String productTextColor;
+
+    @Column(name = "checkout_text_color", length = 7)
+    private String checkoutTextColor;
+
     @Column(name = "installed_at", nullable = false, updatable = false)
     private Instant installedAt = Instant.now();
 
@@ -94,6 +100,22 @@ public class Store {
 
     public void setSubscriptionId(String subscriptionId) {
         this.subscriptionId = subscriptionId;
+    }
+
+    public String getProductTextColor() {
+        return productTextColor;
+    }
+
+    public void setProductTextColor(String productTextColor) {
+        this.productTextColor = productTextColor;
+    }
+
+    public String getCheckoutTextColor() {
+        return checkoutTextColor;
+    }
+
+    public void setCheckoutTextColor(String checkoutTextColor) {
+        this.checkoutTextColor = checkoutTextColor;
     }
 
     public Instant getInstalledAt() {

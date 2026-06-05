@@ -71,6 +71,32 @@ public class AdminController {
         return "admin/index";
     }
 
+    @PostMapping("/admin/settings/style")
+    public String updateStyleSettings(
+            @RequestParam(required = false) String productTextColor,
+            @RequestParam(defaultValue = "false") boolean clearProductTextColor,
+            @RequestParam(required = false) String checkoutTextColor,
+            @RequestParam(defaultValue = "false") boolean clearCheckoutTextColor,
+            HttpSession session,
+            RedirectAttributes redirectAttributes
+    ) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        LOGGER.info("admin.settings.style.update store_id={}", store.getStoreId());
+        try {
+            adminStoreService.updateStyleSettings(
+                    store,
+                    productTextColor,
+                    clearProductTextColor,
+                    checkoutTextColor,
+                    clearCheckoutTextColor
+            );
+            redirectAttributes.addFlashAttribute("message", "Cores salvas.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
     @GetMapping("/admin/help")
     public String help(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);

@@ -140,7 +140,7 @@ public class NuvemshopApiClient {
             restClient.post()
                     .uri(properties.apiBaseUrl() + "/v1/{storeId}/scripts", store.getStoreId())
                     .header("Authentication", "bearer " + store.getAccessToken())
-                    .body(Map.of("script_id", scriptId, "query_params", "{}"))
+                    .body(Map.of("script_id", scriptId, "query_params", "{\"store\":\"" + store.getStoreId() + "\"}"))
                     .retrieve()
                     .toBodilessEntity();
             LOGGER.info("nuvemshop.api.create_script.done store_id={}", store.getStoreId());

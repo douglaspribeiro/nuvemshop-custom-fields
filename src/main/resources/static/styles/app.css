@@ -66,6 +66,10 @@ h2 {
     padding: 20px;
 }
 
+.settings-panel {
+    margin-top: 20px;
+}
+
 .panel-title,
 .actions,
 .row-actions {
@@ -284,6 +288,22 @@ textarea {
 
 input[type="checkbox"] {
     min-height: 0;
+}
+
+input[type="color"] {
+    width: 48px;
+    min-height: 38px;
+    padding: 3px;
+}
+
+.color-settings-form {
+    max-width: 540px;
+}
+
+.color-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .field-list {

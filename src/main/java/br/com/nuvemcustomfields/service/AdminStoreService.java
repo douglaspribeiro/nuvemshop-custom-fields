@@ -7,11 +7,13 @@ import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdminStoreService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminStoreService.class);
+    private static final String HEX_COLOR_PATTERN = "^#[0-9A-Fa-f]{6}$";
 
     private final StoreRepository storeRepository;
 
@@ -27,5 +29,31 @@ public class AdminStoreService {
                     LOGGER.error("admin.store.not_found session_id={} store_id={}", session.getId(), storeId);
                     return new IllegalStateException("Loja ativa nao encontrada na sessao.");
                 });
+    }
+
+    @Transactional
+    public void updateStyleSettings(Store store, String productTextColor, boolean clearProductTextColor, String checkoutTextColor, boolean clearCheckoutTextColor) {
+        Store managedStore = storeRepository.findActiveByStoreId(store.getStoreId())
+                .orElseThrow(() -> new IllegalStateException("Loja ativa nao encontrada."));
+        managedStore.setProductTextColor(normalizeColor(productTextColor, clearProductTextColor));
+        managedStore.setCheckoutTextColor(normalizeColor(checkoutTextColor, clearCheckoutTextColor));
+        storeRepository.save(managedStore);
+        LOGGER.info(
+                "admin.store.style.update store_id={} product_text_color={} checkout_text_color={}",
+                managedStore.getStoreId(),
+                managedStore.getProductTextColor(),
+                managedStore.getCheckoutTextColor()
+        );
+    }
+
+    private String normalizeColor(String value, boolean clear) {
+        if (clear || value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (!normalized.matches(HEX_COLOR_PATTERN)) {
+            throw new IllegalArgumentException("Cor invalida. Use o seletor de cor ou informe um hexadecimal no formato #RRGGBB.");
+        }
+        return normalized.toUpperCase();
     }
 }

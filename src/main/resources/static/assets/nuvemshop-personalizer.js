@@ -11,6 +11,7 @@
     let attempts = 0;
     let lastRetryReason = "not_started";
     let cartColorObserverStarted = false;
+    let styleConfig = {};
 
     const script = document.currentScript || Array.from(document.scripts).find((candidate) => {
         return candidate.src
@@ -40,6 +41,12 @@
         return;
     }
 
+    loadStoreStyle(function (style) {
+        styleConfig = style || {};
+        renderStoredCartProperties();
+        syncCartPropertyColors();
+        forceForegroundMediumWhite();
+    });
     ready(initialize);
 
     function initialize() {
@@ -62,8 +69,9 @@
                 track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
                 return;
             }
+            styleConfig = config.style || styleConfig || {};
             rememberFieldLabels(config.fields);
-            renderFields(form, config.fields);
+            renderFields(form, config.fields, styleConfig);
             bindCartSnapshot(form, config.fields);
             renderStoredCartProperties();
             syncCartPropertyColors();
@@ -110,6 +118,21 @@
                     reason: error && error.message ? error.message : "config_fetch_failed"
                 });
             });
+    }
+
+    function loadStoreStyle(callback) {
+        const url = apiOrigin
+            + "/public/stores/" + encodeURIComponent(storeId) + "/style";
+
+        fetch(url, {
+            credentials: "omit",
+            headers: {
+                "Accept": "application/json"
+            }
+        })
+            .then((response) => response.ok ? response.json() : {})
+            .then(callback)
+            .catch(() => callback({}));
     }
 
     function isAppOrigin(origin) {
@@ -188,9 +211,10 @@
         return meta && meta.content ? meta.content : null;
     }
 
-    function renderFields(targetForm, fields) {
+    function renderFields(targetForm, fields, style) {
         const container = document.createElement("div");
         container.className = "ncf-personalization";
+        applyProductTextColor(container, style);
 
         fields.forEach((field) => {
             container.appendChild(renderField(field));
@@ -237,13 +261,26 @@
         }
         const style = document.createElement("style");
         style.id = "ncf-personalization-style";
-        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}.ncf-cart-property-list{display:block;margin-top:4px;font-size:.875em;line-height:1.35}.ncf-cart-property-line{display:block}.ncf-cart-property-line b{font-weight:700}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium,.summary-details [data-testid='product-name-qty'] .text-foreground-medium{color:rgba(255,255,255,.88)!important}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm,.summary-details [data-testid='product-name-qty'] .text-sm{color:inherit!important}";
+        style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px;color:var(--ncf-product-text-color,inherit)}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}.ncf-cart-property-list{display:block;margin-top:4px;font-size:.875em;line-height:1.35}.ncf-cart-property-line{display:block}.ncf-cart-property-line b{font-weight:700}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium,.summary-details [data-testid='product-name-qty'] .text-foreground-medium{color:var(--ncf-cart-property-color,inherit)!important}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm,.summary-details [data-testid='product-name-qty'] .text-sm{color:var(--ncf-cart-property-color,inherit)!important}";
         document.head.appendChild(style);
+    }
+
+    function applyProductTextColor(container, style) {
+        const color = normalizedHexColor(style && style.productTextColor);
+        if (color) {
+            container.style.setProperty("--ncf-product-text-color", color);
+            container.style.setProperty("color", color);
+        }
     }
 
     function forceForegroundMediumWhite() {
         document.querySelectorAll(".text-foreground-medium").forEach((element) => {
-            element.style.setProperty("color", "#f00", "important");
+            const color = configuredCartTextColor() || cartItemTitleColor(element);
+            if (color) {
+                element.style.setProperty("color", color, "important");
+            } else {
+                element.style.removeProperty("color");
+            }
             element.style.setProperty("font-weight", "700", "important");
         });
     }
@@ -504,11 +541,14 @@
             if (!element || element.closest(".ncf-personalization")) {
                 return;
             }
-            const color = cartItemTitleColor(element);
+            const configuredColor = configuredCartTextColor();
+            const color = configuredColor || cartItemTitleColor(element);
             const dark = hasDarkCartBackground(element);
             element.classList.add("ncf-cart-property");
             element.classList.toggle("ncf-cart-property--dark", dark);
-            if (color && (!dark || isLightColor(color))) {
+            if (configuredColor) {
+                element.style.setProperty("--ncf-cart-property-color", configuredColor);
+            } else if (color && (!dark || isLightColor(color))) {
                 element.style.setProperty("--ncf-cart-property-color", color);
             } else if (dark) {
                 element.style.setProperty("--ncf-cart-property-color", "rgba(255,255,255,.88)");
@@ -516,6 +556,14 @@
                 element.style.removeProperty("--ncf-cart-property-color");
             }
         });
+    }
+
+    function configuredCartTextColor() {
+        return normalizedHexColor(styleConfig && styleConfig.checkoutTextColor);
+    }
+
+    function normalizedHexColor(value) {
+        return /^#[0-9A-Fa-f]{6}$/.test(String(value || "")) ? value : null;
     }
 
     function cartPropertyElements() {
