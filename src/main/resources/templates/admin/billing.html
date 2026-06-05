@@ -45,25 +45,25 @@
 
     <section class="grid three billing-grid">
         <article class="panel plan-card">
-            <h2>FREE</h2>
-            <p class="price">R$ 0</p>
+            <h2 th:text="${freePlan.displayName}">FREE</h2>
+            <p class="price"><span th:text="${freePlan.currency}">BRL</span> <span th:text="${freePlan.amount}">0.00</span></p>
             <ul class="feature-list">
-                <li>1 produto personalizado</li>
-                <li>1 campo por produto</li>
+                <li th:text="${freePlan.productLimit == -1 ? 'Produtos ilimitados' : freePlan.productLimit + ' produto(s) personalizado(s)'}">1 produto personalizado</li>
+                <li th:text="${freePlan.fieldLimit == -1 ? 'Campos ilimitados' : freePlan.fieldLimit + ' campo(s) por produto'}">1 campo por produto</li>
                 <li>Editor de campos no admin</li>
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'FREE'}">Plano efetivo</span>
         </article>
 
         <article class="panel plan-card">
-            <h2>PREMIUM</h2>
+            <h2 th:text="${premiumPlan.displayName}">PREMIUM</h2>
             <p class="price">
-                <span th:text="${billingCurrency}">BRL</span>
-                <span th:text="${premiumAmount}">9.99</span>/mês
+                <span th:text="${premiumPlan.currency}">BRL</span>
+                <span th:text="${premiumPlan.amount}">9.99</span>/mês
             </p>
             <ul class="feature-list">
-                <li>10 produtos personalizados</li>
-                <li>3 campos por produto</li>
+                <li th:text="${premiumPlan.productLimit == -1 ? 'Produtos ilimitados' : premiumPlan.productLimit + ' produto(s) personalizado(s)'}">10 produtos personalizados</li>
+                <li th:text="${premiumPlan.fieldLimit == -1 ? 'Campos ilimitados' : premiumPlan.fieldLimit + ' campo(s) por produto'}">3 campos por produto</li>
                 <li>Templates por nicho</li>
             </ul>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and !store.courtesyPremium}">Plano atual</span>
@@ -71,27 +71,27 @@
             <form th:if="${billingEnabled and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
                 <input type="hidden" name="plan" value="PREMIUM">
                 <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM'}">
-                    Assinar Premium
+                    Assinar <span th:text="${premiumPlan.displayName}">Premium</span>
                 </button>
             </form>
         </article>
 
         <article class="panel plan-card">
-            <h2>PREMIUM_PLUS</h2>
+            <h2 th:text="${premiumPlusPlan.displayName}">PREMIUM_PLUS</h2>
             <p class="price">
-                <span th:text="${billingCurrency}">BRL</span>
-                <span th:text="${premiumPlusAmount}">19.99</span>/mês
+                <span th:text="${premiumPlusPlan.currency}">BRL</span>
+                <span th:text="${premiumPlusPlan.amount}">19.99</span>/mês
             </p>
             <ul class="feature-list">
-                <li>Produtos ilimitados</li>
-                <li>Campos ilimitados</li>
+                <li th:text="${premiumPlusPlan.productLimit == -1 ? 'Produtos ilimitados' : premiumPlusPlan.productLimit + ' produto(s) personalizado(s)'}">Produtos ilimitados</li>
+                <li th:text="${premiumPlusPlan.fieldLimit == -1 ? 'Campos ilimitados' : premiumPlusPlan.fieldLimit + ' campo(s) por produto'}">Campos ilimitados</li>
                 <li>Relatórios operacionais</li>
             </ul>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM_PLUS'}">Plano atual</span>
             <form th:if="${billingEnabled and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
                 <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM_PLUS'}">
-                    Assinar Premium Plus
+                    Assinar <span th:text="${premiumPlusPlan.displayName}">Premium Plus</span>
                 </button>
             </form>
         </article>

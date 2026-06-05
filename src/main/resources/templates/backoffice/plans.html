@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Backoffice - Planos</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Planos</h1>
+        </div>
+        <a class="button" th:href="@{/backoffice}">Voltar</a>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Versao criada.</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="grid two">
+        <div class="panel">
+            <h2>Nova versao</h2>
+            <form class="form" th:action="@{/backoffice/plans}" method="post">
+                <label>
+                    Tipo
+                    <select name="planType" required>
+                        <option th:each="type : ${planTypes}" th:value="${type}" th:text="${type}">PREMIUM</option>
+                    </select>
+                </label>
+                <label>
+                    Nome
+                    <input name="displayName" maxlength="120" required>
+                </label>
+                <label>
+                    Descricao
+                    <input name="description" maxlength="500">
+                </label>
+                <label>
+                    ID externo billing
+                    <input name="billingExternalId" maxlength="80">
+                </label>
+                <label>
+                    Moeda
+                    <input name="currency" maxlength="3" value="BRL" required>
+                </label>
+                <label>
+                    Valor
+                    <input name="amount" type="number" min="0" step="0.01" required>
+                </label>
+                <label>
+                    Limite de produtos
+                    <input name="productLimit" type="number" step="1" required>
+                </label>
+                <label>
+                    Limite de campos
+                    <input name="fieldLimit" type="number" step="1" required>
+                </label>
+                <label>
+                    Inicio da vigencia
+                    <input name="effectiveFrom" type="date" th:value="${today}" required>
+                </label>
+                <label>
+                    Fim da vigencia
+                    <input name="effectiveUntil" type="date">
+                </label>
+                <button class="button primary" type="submit">Criar versao</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Versoes</h2>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Plano</th>
+                    <th>Preco</th>
+                    <th>Limites</th>
+                    <th>Vigencia</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="plan : ${plans}">
+                    <td>
+                        <strong th:text="${plan.displayName}">Premium</strong>
+                        <span class="muted" th:text="${plan.planType}">PREMIUM</span>
+                    </td>
+                    <td>
+                        <span th:text="${plan.currency}">BRL</span>
+                        <span th:text="${plan.amount}">9.99</span>
+                    </td>
+                    <td>
+                        <span th:text="${plan.productLimit == -1 ? 'Produtos ilimitados' : plan.productLimit + ' produtos'}">10 produtos</span>
+                        <br>
+                        <span th:text="${plan.fieldLimit == -1 ? 'Campos ilimitados' : plan.fieldLimit + ' campos'}">3 campos</span>
+                    </td>
+                    <td>
+                        <span th:text="${plan.effectiveFrom}">2026-06-05</span>
+                        <span> - </span>
+                        <span th:text="${plan.effectiveUntil ?: 'sem fim'}">sem fim</span>
+                    </td>
+                    <td>
+                        <span class="badge" th:if="${currentPlanIds.contains(plan.id)}">Vigente</span>
+                        <span class="muted" th:unless="${currentPlanIds.contains(plan.id)}">Historico/agendado</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

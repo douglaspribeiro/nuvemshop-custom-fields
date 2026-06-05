@@ -1,5 +1,7 @@
 # Billing Nuvemshop + Paginas Publicas
 
+> Nota: a parte de preco, moeda e external ID dos planos foi substituida por `PLANO_PLANOS_NO_BANCO_BACKOFFICE.md`. Esses dados agora ficam em `plan_assets` e sao ajustados pelo backoffice.
+
 ## Summary
 
 Implementar a primeira versao do billing recorrente da Nuvemshop para `PREMIUM` e `PREMIUM_PLUS`, mantendo `FREE` e `Premium Cortesia` fora da cobranca. Tambem adicionar paginas publicas obrigatorias para cadastro/homologacao do app:

@@ -6,10 +6,12 @@ import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.properties.BackofficeProperties;
 import br.com.nuvemcustomfields.repository.FeatureFlagRepository;
 import br.com.nuvemcustomfields.repository.IntegrationLogRepository;
+import br.com.nuvemcustomfields.repository.PlanAssetRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
+import br.com.nuvemcustomfields.service.PlanCatalogService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Objects;
+
 @Controller
 public class BackofficeController {
 
@@ -32,8 +39,10 @@ public class BackofficeController {
     private final PlanEventRepository planEventRepository;
     private final FeatureFlagRepository featureFlagRepository;
     private final IntegrationLogRepository integrationLogRepository;
+    private final PlanAssetRepository planAssetRepository;
     private final BackofficeService backofficeService;
     private final ManagementReportService managementReportService;
+    private final PlanCatalogService planCatalogService;
     private final String appVersion;
 
     public BackofficeController(
@@ -42,8 +51,10 @@ public class BackofficeController {
             PlanEventRepository planEventRepository,
             FeatureFlagRepository featureFlagRepository,
             IntegrationLogRepository integrationLogRepository,
+            PlanAssetRepository planAssetRepository,
             BackofficeService backofficeService,
             ManagementReportService managementReportService,
+            PlanCatalogService planCatalogService,
             @Value("${APP_VERSION:dev}") String appVersion
     ) {
         this.properties = properties;
@@ -51,8 +62,10 @@ public class BackofficeController {
         this.planEventRepository = planEventRepository;
         this.featureFlagRepository = featureFlagRepository;
         this.integrationLogRepository = integrationLogRepository;
+        this.planAssetRepository = planAssetRepository;
         this.backofficeService = backofficeService;
         this.managementReportService = managementReportService;
+        this.planCatalogService = planCatalogService;
         this.appVersion = appVersion;
     }
 
@@ -83,10 +96,12 @@ public class BackofficeController {
         long activeStores = backofficeService.activeStores();
         long rules = backofficeService.fields();
         long flags = featureFlagRepository.count();
+        long planVersions = planAssetRepository.count();
         model.addAttribute("stores", stores);
         model.addAttribute("activeStores", activeStores);
         model.addAttribute("rules", rules);
         model.addAttribute("flags", flags);
+        model.addAttribute("planVersions", planVersions);
         LOGGER.info("backoffice.index.loaded stores={} active_stores={} rules={} flags={}", stores, activeStores, rules, flags);
         return "backoffice/index";
     }
@@ -175,6 +190,57 @@ public class BackofficeController {
         LOGGER.info("backoffice.reports.open");
         model.addAttribute("report", managementReportService.report());
         return "backoffice/reports";
+    }
+
+    @GetMapping("/backoffice/plans")
+    public String plans(Model model) {
+        LOGGER.info("backoffice.plans.open");
+        LocalDate today = LocalDate.now();
+        var currentPlanIds = Arrays.stream(PlanType.values())
+                .map(type -> planCatalogService.activePlan(type).getId())
+                .filter(Objects::nonNull)
+                .toList();
+        model.addAttribute("plans", planCatalogService.allVersions());
+        model.addAttribute("planTypes", PlanType.values());
+        model.addAttribute("currentPlanIds", currentPlanIds);
+        model.addAttribute("today", today);
+        LOGGER.info("backoffice.plans.loaded plans_count={}", planCatalogService.allVersions().size());
+        return "backoffice/plans";
+    }
+
+    @PostMapping("/backoffice/plans")
+    public String savePlan(
+            @RequestParam PlanType planType,
+            @RequestParam String displayName,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String billingExternalId,
+            @RequestParam String currency,
+            @RequestParam BigDecimal amount,
+            @RequestParam long productLimit,
+            @RequestParam long fieldLimit,
+            @RequestParam LocalDate effectiveFrom,
+            @RequestParam(required = false) LocalDate effectiveUntil,
+            RedirectAttributes redirectAttributes
+    ) {
+        LOGGER.info("backoffice.plans.save plan_type={} effective_from={}", planType, effectiveFrom);
+        try {
+            planCatalogService.createVersion(
+                    planType,
+                    displayName,
+                    description,
+                    billingExternalId,
+                    currency,
+                    amount,
+                    productLimit,
+                    fieldLimit,
+                    effectiveFrom,
+                    effectiveUntil
+            );
+            redirectAttributes.addFlashAttribute("message", "Versao de plano criada.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/backoffice/plans";
     }
 
     @PostMapping("/backoffice/flags")

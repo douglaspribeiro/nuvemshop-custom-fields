@@ -12,6 +12,7 @@ import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.NuvemshopBillingService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
+import br.com.nuvemcustomfields.service.PlanCatalogService;
 import br.com.nuvemcustomfields.service.PlanLimitService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
 import br.com.nuvemcustomfields.service.ReportService;
@@ -46,6 +47,7 @@ public class AdminController {
     private final ReportService reportService;
     private final NuvemshopProperties nuvemshopProperties;
     private final NuvemshopBillingService billingService;
+    private final PlanCatalogService planCatalogService;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -56,7 +58,8 @@ public class AdminController {
             PersonalizationAdminService personalizationAdminService,
             ReportService reportService,
             NuvemshopProperties nuvemshopProperties,
-            NuvemshopBillingService billingService
+            NuvemshopBillingService billingService,
+            PlanCatalogService planCatalogService
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -67,6 +70,7 @@ public class AdminController {
         this.reportService = reportService;
         this.nuvemshopProperties = nuvemshopProperties;
         this.billingService = billingService;
+        this.planCatalogService = planCatalogService;
     }
 
     @ModelAttribute("nuvemshopClientId")
@@ -150,9 +154,9 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("billingEnabled", billingService.isEnabled());
-        model.addAttribute("billingCurrency", billingService.currency());
-        model.addAttribute("premiumAmount", billingService.amountFor(PlanType.PREMIUM));
-        model.addAttribute("premiumPlusAmount", billingService.amountFor(PlanType.PREMIUM_PLUS));
+        model.addAttribute("freePlan", planCatalogService.activePlan(PlanType.FREE));
+        model.addAttribute("premiumPlan", planCatalogService.activePlan(PlanType.PREMIUM));
+        model.addAttribute("premiumPlusPlan", planCatalogService.activePlan(PlanType.PREMIUM_PLUS));
         return "admin/billing";
     }
 

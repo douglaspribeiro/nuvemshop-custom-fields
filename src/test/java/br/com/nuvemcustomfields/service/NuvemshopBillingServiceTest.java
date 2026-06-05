@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.entity.PlanAsset;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopBillingProperties;
@@ -34,6 +35,7 @@ class NuvemshopBillingServiceTest {
 
     private final StoreRepository storeRepository = mock(StoreRepository.class);
     private final PlanEventRepository planEventRepository = mock(PlanEventRepository.class);
+    private final PlanCatalogService planCatalogService = mock(PlanCatalogService.class);
 
     @Test
     void ensuresRemotePlanAndUpdatesSubscriptionBeforeChangingLocalPlan() {
@@ -115,16 +117,13 @@ class NuvemshopBillingServiceTest {
     }
 
     private NuvemshopBillingService service(RestClient.Builder builder) {
+        when(planCatalogService.activePlan(PlanType.PREMIUM)).thenReturn(plan(PlanType.PREMIUM, "PREMIUM", "9.99"));
+        when(planCatalogService.activePlan(PlanType.PREMIUM_PLUS)).thenReturn(plan(PlanType.PREMIUM_PLUS, "PREMIUM_PLUS", "19.99"));
         return new NuvemshopBillingService(
                 new NuvemshopBillingProperties(
                         true,
                         "https://api.example.com/2025-03",
-                        "APP",
-                        "BRL",
-                        "PREMIUM",
-                        "PREMIUM_PLUS",
-                        new BigDecimal("9.99"),
-                        new BigDecimal("19.99")
+                        "APP"
                 ),
                 new NuvemshopProperties(
                         "client-123",
@@ -141,8 +140,20 @@ class NuvemshopBillingServiceTest {
                 ),
                 storeRepository,
                 planEventRepository,
+                planCatalogService,
                 builder
         );
+    }
+
+    private PlanAsset plan(PlanType type, String externalId, String amount) {
+        PlanAsset plan = new PlanAsset();
+        plan.setPlanType(type);
+        plan.setDisplayName(type.name());
+        plan.setDescription("Campos Personalizados " + type.name());
+        plan.setBillingExternalId(externalId);
+        plan.setCurrency("BRL");
+        plan.setAmount(new BigDecimal(amount));
+        return plan;
     }
 
     private Store store(boolean courtesyPremium) {

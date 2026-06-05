@@ -16,6 +16,7 @@
         </div>
         <nav class="row-actions">
             <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
+            <a class="button" th:href="@{/backoffice/plans}">Planos</a>
             <a class="button" th:href="@{/backoffice/flags}">Flags</a>
             <a class="button" th:href="@{/backoffice/reports}">Relatorios</a>
         </nav>
@@ -36,6 +37,10 @@
         <div>
             <dt>Feature flags</dt>
             <dd th:text="${flags}">0</dd>
+        </div>
+        <div>
+            <dt>Versoes de planos</dt>
+            <dd th:text="${planVersions}">0</dd>
         </div>
     </section>
 </main>

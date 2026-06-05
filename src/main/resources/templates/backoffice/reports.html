@@ -22,6 +22,17 @@
             <dd th:text="'R$ ' + ${report.estimatedMrr}">R$ 0</dd>
         </div>
         <div>
+            <dt>Projecao do mes</dt>
+            <dd th:text="'R$ ' + ${report.projectedMonthPayments}">R$ 0</dd>
+        </div>
+        <div>
+            <dt>Cobrancas previstas</dt>
+            <dd>
+                <span th:text="${report.projectedMonthPaymentCount}">0</span>
+                <span th:text="'em ' + ${report.projectedMonth}">em 2026-06</span>
+            </dd>
+        </div>
+        <div>
             <dt>Free</dt>
             <dd th:text="${report.freeStores}">0</dd>
         </div>

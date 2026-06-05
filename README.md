@@ -88,13 +88,15 @@ Principais camadas do codigo:
 
 ## Planos e Limites
 
+Os planos comerciais ficam em `plan_assets`, com versoes por vigencia para permitir reajustes e migracoes futuras. A configuracao pode ser ajustada pelo backoffice em `/backoffice/plans`.
+
 | Plano | Produtos personalizados | Campos por produto |
 | --- | ---: | ---: |
 | `FREE` | 1 | 1 |
 | `PREMIUM` | 10 | 3 |
 | `PREMIUM_PLUS` | ilimitado | ilimitado |
 
-O enforcement fica em `PlanLimitService` e e aplicado no editor do admin e no endpoint publico do storefront.
+O enforcement fica em `PlanLimitService`, usando o plano vigente no catalogo, e e aplicado no editor do admin e no endpoint publico do storefront.
 
 ## Configuracao
 
@@ -114,6 +116,9 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `APP_BASE_URL` | `http://localhost:8080` | URL publica usada em scripts e webhooks. |
 | `NUVEMSHOP_SCOPES` | `read_products,read_orders,write_scripts,read_scripts,billing,read_store` | Scopes OAuth solicitados. |
 | `NUVEMSHOP_USER_AGENT` | `NuvemCustomFields suporte@example.com` | User-Agent exigido pela API. |
+| `NUVEMSHOP_BILLING_ENABLED` | `false` | Ativa a cobranca automatica pela Nuvemshop. |
+| `NUVEMSHOP_BILLING_API_BASE_URL` | `https://api.tiendanube.com/2025-03` | Base URL da Billing API. |
+| `NUVEMSHOP_BILLING_CONCEPT_CODE` | vazio | Codigo do conceito de billing cadastrado na Nuvemshop. |
 | `BACKOFFICE_USERNAME` | `admin` | Usuario do backoffice. |
 | `BACKOFFICE_PASSWORD` | `admin` | Senha do backoffice. |
 
@@ -190,7 +195,7 @@ O script e registrado automaticamente na loja apos a instalacao OAuth, usando a 
 
 ## Operacao
 
-O backoffice interno permite acompanhar lojas instaladas, status, eventos de plano, logs recentes, feature flags e relatorios gerenciais. As credenciais sao configuradas por `BACKOFFICE_USERNAME` e `BACKOFFICE_PASSWORD`.
+O backoffice interno permite acompanhar lojas instaladas, status, eventos de plano, logs recentes, feature flags, versoes de planos e relatorios gerenciais. As credenciais sao configuradas por `BACKOFFICE_USERNAME` e `BACKOFFICE_PASSWORD`.
 
 Webhooks registrados:
 

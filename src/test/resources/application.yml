@@ -24,11 +24,6 @@ nuvemshop:
     enabled: false
     api-base-url: https://api.example.com/2025-03
     concept-code:
-    currency: BRL
-    premium-external-id: PREMIUM
-    premium-plus-external-id: PREMIUM_PLUS
-    premium-amount: 9.99
-    premium-plus-amount: 19.99
 
 backoffice:
   username: admin

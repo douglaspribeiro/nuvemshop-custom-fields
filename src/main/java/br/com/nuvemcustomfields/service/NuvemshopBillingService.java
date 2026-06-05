@@ -30,6 +30,7 @@ public class NuvemshopBillingService {
     private final NuvemshopProperties nuvemshopProperties;
     private final StoreRepository storeRepository;
     private final PlanEventRepository planEventRepository;
+    private final PlanCatalogService planCatalogService;
     private final RestClient restClient;
 
     public NuvemshopBillingService(
@@ -37,12 +38,14 @@ public class NuvemshopBillingService {
             NuvemshopProperties nuvemshopProperties,
             StoreRepository storeRepository,
             PlanEventRepository planEventRepository,
+            PlanCatalogService planCatalogService,
             RestClient.Builder builder
     ) {
         this.billingProperties = billingProperties;
         this.nuvemshopProperties = nuvemshopProperties;
         this.storeRepository = storeRepository;
         this.planEventRepository = planEventRepository;
+        this.planCatalogService = planCatalogService;
         this.restClient = builder.defaultHeader("User-Agent", nuvemshopProperties.userAgent()).build();
     }
 
@@ -51,15 +54,11 @@ public class NuvemshopBillingService {
     }
 
     public BigDecimal amountFor(PlanType plan) {
-        return switch (plan) {
-            case PREMIUM -> billingProperties.premiumAmount();
-            case PREMIUM_PLUS -> billingProperties.premiumPlusAmount();
-            case FREE -> BigDecimal.ZERO;
-        };
+        return planCatalogService.activePlan(plan).getAmount();
     }
 
     public String currency() {
-        return billingProperties.currency();
+        return planCatalogService.activePlan(PlanType.PREMIUM).getCurrency();
     }
 
     public Store subscribe(Store store, PlanType targetPlan) {
@@ -247,32 +246,25 @@ public class NuvemshopBillingService {
             LOGGER.warn("nuvemshop.billing.sync.plan_missing fallback_plan={}", fallbackPlan);
             return fallbackPlan;
         }
-        if (billingProperties.premiumExternalId().equals(externalId)) {
-            return PlanType.PREMIUM;
-        }
-        if (billingProperties.premiumPlusExternalId().equals(externalId)) {
-            return PlanType.PREMIUM_PLUS;
+        var planType = planCatalogService.planTypeForBillingExternalId(externalId);
+        if (planType.isPresent()) {
+            return planType.get();
         }
         LOGGER.warn("nuvemshop.billing.sync.plan_unknown external_id={} fallback_plan={}", externalId, fallbackPlan);
         return fallbackPlan;
     }
 
     private PlanDefinition planDefinition(PlanType planType) {
-        return switch (planType) {
-            case PREMIUM -> new PlanDefinition(
-                    billingProperties.premiumExternalId(),
-                    billingProperties.currency(),
-                    billingProperties.premiumAmount(),
-                    "Campos Personalizados Premium"
-            );
-            case PREMIUM_PLUS -> new PlanDefinition(
-                    billingProperties.premiumPlusExternalId(),
-                    billingProperties.currency(),
-                    billingProperties.premiumPlusAmount(),
-                    "Campos Personalizados Premium Plus"
-            );
-            case FREE -> throw new IllegalArgumentException("FREE nao usa billing automatico.");
-        };
+        if (planType == PlanType.FREE) {
+            throw new IllegalArgumentException("FREE nao usa billing automatico.");
+        }
+        var asset = planCatalogService.activePlan(planType);
+        return new PlanDefinition(
+                asset.getBillingExternalId(),
+                asset.getCurrency(),
+                asset.getAmount(),
+                asset.getDescription() == null ? asset.getDisplayName() : asset.getDescription()
+        );
     }
 
     private boolean isDuplicatePlan(RestClientResponseException ex) {

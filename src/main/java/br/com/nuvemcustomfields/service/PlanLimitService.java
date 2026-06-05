@@ -18,10 +18,16 @@ public class PlanLimitService {
 
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
+    private final PlanCatalogService planCatalogService;
 
-    public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository) {
+    public PlanLimitService(
+            PersonalizationRuleRepository ruleRepository,
+            PersonalizationFieldRepository fieldRepository,
+            PlanCatalogService planCatalogService
+    ) {
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
+        this.planCatalogService = planCatalogService;
     }
 
     public boolean canAddProduct(Store store) {
@@ -55,18 +61,10 @@ public class PlanLimitService {
     }
 
     public long productLimit(PlanType plan) {
-        return switch (plan) {
-            case FREE -> 1L;
-            case PREMIUM -> 10L;
-            case PREMIUM_PLUS -> UNLIMITED;
-        };
+        return planCatalogService.activePlan(plan).getProductLimit();
     }
 
     public long fieldLimit(PlanType plan) {
-        return switch (plan) {
-            case FREE -> 1L;
-            case PREMIUM -> 3L;
-            case PREMIUM_PLUS -> UNLIMITED;
-        };
+        return planCatalogService.activePlan(plan).getFieldLimit();
     }
 }
