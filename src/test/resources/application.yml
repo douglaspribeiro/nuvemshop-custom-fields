@@ -20,6 +20,15 @@ nuvemshop:
   app-base-url: http://localhost:8080
   scopes: read_products,read_orders,write_scripts,read_scripts,billing,read_store
   user-agent: NuvemCustomFields tests
+  billing:
+    enabled: false
+    api-base-url: https://api.example.com/2025-03
+    concept-code:
+    currency: BRL
+    premium-external-id: PREMIUM
+    premium-plus-external-id: PREMIUM_PLUS
+    premium-amount: 9.99
+    premium-plus-amount: 19.99
 
 backoffice:
   username: admin

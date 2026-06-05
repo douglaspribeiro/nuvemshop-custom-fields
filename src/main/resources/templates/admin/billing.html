@@ -31,6 +31,15 @@
             <p class="notice" th:if="${store.courtesyPremium}">
                 Sua loja está usando Premium Cortesia. Os recursos premium estão liberados sem cobrança ativa.
             </p>
+            <p class="notice warning" th:if="${store.billingSuspended}">
+                A cobrança do app está suspensa na Nuvemshop. Enquanto isso, o acesso premium fica bloqueado.
+            </p>
+            <p class="notice warning" th:if="${store.billingLastError}">
+                Ultima tentativa de billing falhou: <span th:text="${store.billingLastError}">erro</span>
+            </p>
+            <p class="muted" th:if="${store.billingNextExecution}">
+                Proxima cobranca: <span th:text="${store.billingNextExecution}">2026-06-16</span>
+            </p>
         </div>
     </section>
 
@@ -43,12 +52,15 @@
                 <li>1 campo por produto</li>
                 <li>Editor de campos no admin</li>
             </ul>
-            <span class="badge" th:if="${store.plan.name() == 'FREE'}">Plano atual</span>
+            <span class="badge" th:if="${store.effectivePlan.name() == 'FREE'}">Plano efetivo</span>
         </article>
 
         <article class="panel plan-card">
             <h2>PREMIUM</h2>
-            <p class="price">R$ 9,99/mês</p>
+            <p class="price">
+                <span th:text="${billingCurrency}">BRL</span>
+                <span th:text="${premiumAmount}">9.99</span>/mês
+            </p>
             <ul class="feature-list">
                 <li>10 produtos personalizados</li>
                 <li>3 campos por produto</li>
@@ -56,22 +68,40 @@
             </ul>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and !store.courtesyPremium}">Plano atual</span>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and store.courtesyPremium}">Premium Cortesia</span>
+            <form th:if="${billingEnabled and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
+                <input type="hidden" name="plan" value="PREMIUM">
+                <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM'}">
+                    Assinar Premium
+                </button>
+            </form>
         </article>
 
         <article class="panel plan-card">
             <h2>PREMIUM_PLUS</h2>
-            <p class="price">R$ 19,99/mês</p>
+            <p class="price">
+                <span th:text="${billingCurrency}">BRL</span>
+                <span th:text="${premiumPlusAmount}">19.99</span>/mês
+            </p>
             <ul class="feature-list">
                 <li>Produtos ilimitados</li>
                 <li>Campos ilimitados</li>
                 <li>Relatórios operacionais</li>
             </ul>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM_PLUS'}">Plano atual</span>
+            <form th:if="${billingEnabled and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
+                <input type="hidden" name="plan" value="PREMIUM_PLUS">
+                <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM_PLUS'}">
+                    Assinar Premium Plus
+                </button>
+            </form>
         </article>
     </section>
 
-    <p class="notice">
+    <p class="notice" th:if="${!billingEnabled}">
         A cobrança automática ainda não está ativa neste ambiente. Para alterar o plano agora, use o backoffice interno.
+    </p>
+    <p class="notice" th:if="${billingEnabled and store.courtesyPremium}">
+        Premium Cortesia nao gera cobranca automatica. Remova a cortesia no backoffice antes de assinar um plano pago.
     </p>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

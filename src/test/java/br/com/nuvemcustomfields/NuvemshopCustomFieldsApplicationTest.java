@@ -52,4 +52,28 @@ class NuvemshopCustomFieldsApplicationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-mode=\"bootstrap\"")));
     }
+
+    @Test
+    void publicPrivacyPageIsAvailableWithoutSession() throws Exception {
+        mockMvc.perform(get("/privacy/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Politica de Privacidade")));
+    }
+
+    @Test
+    void publicSupportPageIsAvailableWithoutSession() throws Exception {
+        mockMvc.perform(get("/support/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Suporte")));
+    }
+
+    @Test
+    void publicPageAliasesRedirectWithTrailingSlash() throws Exception {
+        mockMvc.perform(get("/privacy"))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "/privacy/"));
+        mockMvc.perform(get("/support"))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "/support/"));
+    }
 }

@@ -243,6 +243,12 @@ dd {
     color: #9a2f2f;
 }
 
+.notice.warning {
+    border-color: #e6d09b;
+    background: #fff9e8;
+    color: #7a4f00;
+}
+
 .empty {
     margin-top: 16px;
     color: #536471;

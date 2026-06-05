@@ -15,7 +15,13 @@ public class WebhookRegistrationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebhookRegistrationService.class);
 
-    private static final Set<String> REQUIRED_EVENTS = Set.of("app/uninstalled", "product/deleted");
+    private static final Set<String> REQUIRED_EVENTS = Set.of(
+            "app/uninstalled",
+            "product/deleted",
+            "subscription/updated",
+            "app/suspended",
+            "app/resumed"
+    );
 
     private final NuvemshopApiClient apiClient;
     private final NuvemshopProperties properties;

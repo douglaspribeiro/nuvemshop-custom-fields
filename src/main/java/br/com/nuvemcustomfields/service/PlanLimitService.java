@@ -25,27 +25,27 @@ public class PlanLimitService {
     }
 
     public boolean canAddProduct(Store store) {
-        long limit = productLimit(store.getPlan());
+        long limit = productLimit(store.getEffectivePlan());
         return limit == UNLIMITED || ruleRepository.countByStoreId(store.getStoreId()) < limit;
     }
 
     public boolean canAddField(Store store, Long ruleId) {
-        long limit = fieldLimit(store.getPlan());
+        long limit = fieldLimit(store.getEffectivePlan());
         return limit == UNLIMITED || fieldRepository.countByRuleId(ruleId) < limit;
     }
 
     public PlanUsage usage(Store store, long fieldsUsed) {
         return new PlanUsage(
-                store.getPlan(),
+                store.getEffectivePlan(),
                 ruleRepository.countByStoreId(store.getStoreId()),
-                productLimit(store.getPlan()),
+                productLimit(store.getEffectivePlan()),
                 fieldsUsed,
-                fieldLimit(store.getPlan())
+                fieldLimit(store.getEffectivePlan())
         );
     }
 
     public List<PersonalizationField> storefrontFields(Store store, List<PersonalizationField> fields) {
-        long limit = fieldLimit(store.getPlan());
+        long limit = fieldLimit(store.getEffectivePlan());
         var ordered = fields.stream()
                 .sorted(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
         if (limit == UNLIMITED) {

@@ -4,10 +4,12 @@ import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
+import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
+import br.com.nuvemcustomfields.service.NuvemshopBillingService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
@@ -43,6 +45,7 @@ public class AdminController {
     private final PersonalizationAdminService personalizationAdminService;
     private final ReportService reportService;
     private final NuvemshopProperties nuvemshopProperties;
+    private final NuvemshopBillingService billingService;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -52,7 +55,8 @@ public class AdminController {
             PlanLimitService planLimitService,
             PersonalizationAdminService personalizationAdminService,
             ReportService reportService,
-            NuvemshopProperties nuvemshopProperties
+            NuvemshopProperties nuvemshopProperties,
+            NuvemshopBillingService billingService
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -62,6 +66,7 @@ public class AdminController {
         this.personalizationAdminService = personalizationAdminService;
         this.reportService = reportService;
         this.nuvemshopProperties = nuvemshopProperties;
+        this.billingService = billingService;
     }
 
     @ModelAttribute("nuvemshopClientId")
@@ -144,7 +149,30 @@ public class AdminController {
         LOGGER.info("admin.billing.open store_id={}", store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
+        model.addAttribute("billingEnabled", billingService.isEnabled());
+        model.addAttribute("billingCurrency", billingService.currency());
+        model.addAttribute("premiumAmount", billingService.amountFor(PlanType.PREMIUM));
+        model.addAttribute("premiumPlusAmount", billingService.amountFor(PlanType.PREMIUM_PLUS));
         return "admin/billing";
+    }
+
+    @PostMapping("/admin/billing/subscribe")
+    public String subscribe(
+            @RequestParam PlanType plan,
+            HttpSession session,
+            RedirectAttributes redirectAttributes
+    ) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        LOGGER.info("admin.billing.subscribe store_id={} plan={}", store.getStoreId(), plan);
+        try {
+            billingService.subscribe(store, plan);
+            redirectAttributes.addFlashAttribute("message", "Assinatura atualizada para " + plan + ".");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("error", "Nao foi possivel atualizar a assinatura agora. Tente novamente em alguns minutos.");
+        }
+        return "redirect:/admin/billing";
     }
 
     @GetMapping("/admin/products")

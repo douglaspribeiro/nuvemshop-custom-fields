@@ -48,6 +48,15 @@ nuvemshop:
   user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields suporte@example.com}
   script-id: ${NUVEMSHOP_SCRIPT_ID:}
   checkout-script-id: ${NUVEMSHOP_CHECKOUT_SCRIPT_ID:}
+  billing:
+    enabled: ${NUVEMSHOP_BILLING_ENABLED:false}
+    api-base-url: ${NUVEMSHOP_BILLING_API_BASE_URL:https://api.tiendanube.com/2025-03}
+    concept-code: ${NUVEMSHOP_BILLING_CONCEPT_CODE:}
+    currency: ${NUVEMSHOP_BILLING_CURRENCY:BRL}
+    premium-external-id: ${NUVEMSHOP_BILLING_PREMIUM_EXTERNAL_ID:PREMIUM}
+    premium-plus-external-id: ${NUVEMSHOP_BILLING_PREMIUM_PLUS_EXTERNAL_ID:PREMIUM_PLUS}
+    premium-amount: ${NUVEMSHOP_BILLING_PREMIUM_AMOUNT:9.99}
+    premium-plus-amount: ${NUVEMSHOP_BILLING_PREMIUM_PLUS_AMOUNT:19.99}
 
 backoffice:
   username: ${BACKOFFICE_USERNAME:admin}

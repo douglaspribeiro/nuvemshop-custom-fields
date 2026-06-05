@@ -9,7 +9,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "stores")
@@ -43,6 +45,30 @@ public class Store {
 
     @Column(name = "courtesy_premium_reason")
     private String courtesyPremiumReason;
+
+    @Column(name = "billing_plan_external_id", length = 80)
+    private String billingPlanExternalId;
+
+    @Column(name = "billing_amount_currency", length = 3)
+    private String billingAmountCurrency;
+
+    @Column(name = "billing_amount_value", precision = 10, scale = 2)
+    private BigDecimal billingAmountValue;
+
+    @Column(name = "billing_next_execution")
+    private LocalDate billingNextExecution;
+
+    @Column(name = "billing_last_execution")
+    private LocalDate billingLastExecution;
+
+    @Column(name = "billing_suspended", nullable = false)
+    private boolean billingSuspended;
+
+    @Column(name = "billing_last_synced_at")
+    private Instant billingLastSyncedAt;
+
+    @Column(name = "billing_last_error", length = 500)
+    private String billingLastError;
 
     @Column(name = "product_text_color", length = 7)
     private String productTextColor;
@@ -125,6 +151,74 @@ public class Store {
 
     public void setCourtesyPremiumReason(String courtesyPremiumReason) {
         this.courtesyPremiumReason = courtesyPremiumReason;
+    }
+
+    public String getBillingPlanExternalId() {
+        return billingPlanExternalId;
+    }
+
+    public void setBillingPlanExternalId(String billingPlanExternalId) {
+        this.billingPlanExternalId = billingPlanExternalId;
+    }
+
+    public String getBillingAmountCurrency() {
+        return billingAmountCurrency;
+    }
+
+    public void setBillingAmountCurrency(String billingAmountCurrency) {
+        this.billingAmountCurrency = billingAmountCurrency;
+    }
+
+    public BigDecimal getBillingAmountValue() {
+        return billingAmountValue;
+    }
+
+    public void setBillingAmountValue(BigDecimal billingAmountValue) {
+        this.billingAmountValue = billingAmountValue;
+    }
+
+    public LocalDate getBillingNextExecution() {
+        return billingNextExecution;
+    }
+
+    public void setBillingNextExecution(LocalDate billingNextExecution) {
+        this.billingNextExecution = billingNextExecution;
+    }
+
+    public LocalDate getBillingLastExecution() {
+        return billingLastExecution;
+    }
+
+    public void setBillingLastExecution(LocalDate billingLastExecution) {
+        this.billingLastExecution = billingLastExecution;
+    }
+
+    public boolean isBillingSuspended() {
+        return billingSuspended;
+    }
+
+    public void setBillingSuspended(boolean billingSuspended) {
+        this.billingSuspended = billingSuspended;
+    }
+
+    public Instant getBillingLastSyncedAt() {
+        return billingLastSyncedAt;
+    }
+
+    public void setBillingLastSyncedAt(Instant billingLastSyncedAt) {
+        this.billingLastSyncedAt = billingLastSyncedAt;
+    }
+
+    public String getBillingLastError() {
+        return billingLastError;
+    }
+
+    public void setBillingLastError(String billingLastError) {
+        this.billingLastError = billingLastError;
+    }
+
+    public PlanType getEffectivePlan() {
+        return billingSuspended ? PlanType.FREE : plan;
     }
 
     public String getProductTextColor() {
