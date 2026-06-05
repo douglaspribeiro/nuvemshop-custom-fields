@@ -39,6 +39,7 @@ class NuvemshopAuthServiceTest {
                 "https://app.example.com",
                 "read_products,read_orders,write_scripts,read_scripts,billing,read_store",
                 "NuvemCustomFields tests",
+                "",
                 ""
         );
 
@@ -68,6 +69,7 @@ class NuvemshopAuthServiceTest {
                 "https://app.example.com",
                 "read_products",
                 "NuvemCustomFields tests",
+                "",
                 ""
         );
         RestClient.Builder builder = RestClient.builder();

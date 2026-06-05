@@ -22,6 +22,7 @@ class WebhookSecurityServiceTest {
             "http://localhost:8080",
             "read_products",
             "tests",
+            "",
             ""
     );
 

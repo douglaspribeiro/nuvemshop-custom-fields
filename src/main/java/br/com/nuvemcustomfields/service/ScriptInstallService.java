@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Service
 public class ScriptInstallService {
@@ -39,8 +41,8 @@ public class ScriptInstallService {
             return;
         }
         String expectedSrc = personalizerScriptSrc(store);
-        Long scriptId = scriptId();
-        if (scriptId == null) {
+        Set<Long> scriptIds = configuredScriptIds();
+        if (scriptIds.isEmpty()) {
             LOGGER.warn(
                     "script.install.skip store_id={} reason=script_id_not_configured expected_src={}",
                     store.getStoreId(),
@@ -49,24 +51,31 @@ public class ScriptInstallService {
             return;
         }
         JsonNode scripts = apiClient.listScripts(store);
-        if (hasScript(scripts, expectedSrc, scriptId)) {
-            LOGGER.info("script.install.exists store_id={}", store.getStoreId());
-            return;
+        for (Long scriptId : scriptIds) {
+            if (hasScriptId(scripts, scriptId)) {
+                LOGGER.info("script.install.exists store_id={} script_id={}", store.getStoreId(), scriptId);
+                continue;
+            }
+            apiClient.createScript(store, scriptId);
+            LOGGER.info("script.install.done store_id={} script_id={}", store.getStoreId(), scriptId);
         }
-        apiClient.createScript(store, scriptId);
-        LOGGER.info("script.install.done store_id={}", store.getStoreId());
     }
 
-    private Long scriptId() {
-        String value = properties.scriptId();
+    private Set<Long> configuredScriptIds() {
+        Set<Long> scriptIds = new LinkedHashSet<>();
+        addScriptId(scriptIds, "script_id", properties.scriptId());
+        addScriptId(scriptIds, "checkout_script_id", properties.checkoutScriptId());
+        return scriptIds;
+    }
+
+    private void addScriptId(Set<Long> scriptIds, String name, String value) {
         if (value == null || value.isBlank()) {
-            return null;
+            return;
         }
         try {
-            return Long.valueOf(value);
+            scriptIds.add(Long.valueOf(value));
         } catch (NumberFormatException ex) {
-            LOGGER.warn("script.install.invalid_script_id script_id={}", value);
-            return null;
+            LOGGER.warn("script.install.invalid_script_id name={} value={}", name, value);
         }
     }
 
@@ -92,9 +101,9 @@ public class ScriptInstallService {
             return;
         }
         String expectedSrc = personalizerScriptSrc(store);
-        Long expectedScriptId = scriptId();
+        Set<Long> expectedScriptIds = configuredScriptIds();
         for (JsonNode script : iterableScripts(scripts)) {
-            if (matchesScript(script, expectedSrc, expectedScriptId)) {
+            if (matchesScript(script, expectedSrc, expectedScriptIds)) {
                 LOGGER.info("script.remove.delete store_id={} script_id={}", store.getStoreId(), script.path("id").asLong());
                 apiClient.deleteScript(store, script.path("id").asLong());
             }
@@ -102,9 +111,9 @@ public class ScriptInstallService {
         LOGGER.info("script.remove.done store_id={}", store.getStoreId());
     }
 
-    private boolean hasScript(JsonNode scripts, String expectedSrc, Long expectedScriptId) {
+    private boolean hasScriptId(JsonNode scripts, Long expectedScriptId) {
         for (JsonNode script : iterableScripts(scripts)) {
-            if (matchesScript(script, expectedSrc, expectedScriptId)) {
+            if (script.path("id").asLong(-1) == expectedScriptId) {
                 return true;
             }
         }
@@ -125,8 +134,8 @@ public class ScriptInstallService {
         return java.util.List.of();
     }
 
-    private boolean matchesScript(JsonNode script, String expectedSrc, Long expectedScriptId) {
-        if (expectedScriptId != null && script.path("id").asLong(-1) == expectedScriptId) {
+    private boolean matchesScript(JsonNode script, String expectedSrc, Set<Long> expectedScriptIds) {
+        if (expectedScriptIds.contains(script.path("id").asLong(-1))) {
             return true;
         }
         String src = script.path("src").asText();
