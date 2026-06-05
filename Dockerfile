@@ -18,6 +18,9 @@ ARG SOURCE_DATE_EPOCH=1577836800
 FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk AS extractor
 ARG SOURCE_DATE_EPOCH
 WORKDIR /layers
+COPY docker/Healthcheck.java /tmp/Healthcheck.java
+RUN javac -d /healthcheck /tmp/Healthcheck.java \
+ && find /healthcheck -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
 COPY target/*.jar /tmp/app.jar
 RUN java -Djarmode=tools -jar /tmp/app.jar extract --layers --launcher --destination /layers \
  && rm /tmp/app.jar \
@@ -33,11 +36,8 @@ ENV JAVA_OPTS=""
 
 WORKDIR /app
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
- && apt-get install -y --no-install-recommends curl \
- && rm -rf /var/lib/apt/lists/*
-
 # Camadas estaveis primeiro para maximizar deduplicacao no registry.
+COPY --from=extractor /healthcheck/ /app/healthcheck/
 COPY --from=extractor /layers/dependencies/ ./
 COPY --from=extractor /layers/spring-boot-loader/ ./
 COPY --from=extractor /layers/snapshot-dependencies/ ./
