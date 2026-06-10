@@ -1,22 +1,9 @@
 package br.com.nuvemcustomfields.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
-@Entity
-@Table(name = "feature_flags")
 public class FeatureFlag {
 
-    @Id
-    @Column(name = "flag_key", length = 120)
     private String key;
-
-    @Column(nullable = false)
     private boolean enabled;
-
-    @Column(length = 500)
     private String description;
 
     public String getKey() {

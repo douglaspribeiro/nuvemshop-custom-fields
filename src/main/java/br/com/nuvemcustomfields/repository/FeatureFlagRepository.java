@@ -1,7 +1,13 @@
 package br.com.nuvemcustomfields.repository;
 
 import br.com.nuvemcustomfields.entity.FeatureFlag;
-import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface FeatureFlagRepository extends JpaRepository<FeatureFlag, String> {
+import java.util.List;
+import java.util.Optional;
+
+public interface FeatureFlagRepository {
+    Optional<FeatureFlag> findById(String key);
+    List<FeatureFlag> findAll();
+    long count();
+    FeatureFlag save(FeatureFlag flag);
 }

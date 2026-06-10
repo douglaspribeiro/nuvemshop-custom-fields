@@ -1,54 +1,14 @@
 package br.com.nuvemcustomfields.repository;
 
-import br.com.nuvemcustomfields.entity.PersonalizationField;
 import br.com.nuvemcustomfields.entity.CommercePlatform;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import br.com.nuvemcustomfields.entity.PersonalizationField;
 
 import java.util.List;
 
-public interface PersonalizationFieldRepository extends JpaRepository<PersonalizationField, Long> {
-
+public interface PersonalizationFieldRepository {
     List<PersonalizationField> findByRuleIdOrderBySortOrderAscIdAsc(Long ruleId);
-
     long countByRuleId(Long ruleId);
-
-    @Modifying
-    @Query("""
-            delete from PersonalizationField field
-            where field.id = :fieldId
-              and field.rule.id in (
-                  select rule.id
-                  from PersonalizationRule rule
-                  where rule.platform = br.com.nuvemcustomfields.entity.CommercePlatform.NUVEMSHOP
-                    and rule.storeId = :storeId
-                    and rule.productId = :productId
-              )
-            """)
-    int deleteByIdAndStoreIdAndProductId(
-            @Param("fieldId") Long fieldId,
-            @Param("storeId") Long storeId,
-            @Param("productId") Long productId
-    );
-
-    @Modifying
-    @Query("""
-            delete from PersonalizationField field
-            where field.id = :fieldId
-              and field.rule.id in (
-                  select rule.id
-                  from PersonalizationRule rule
-                  where rule.platform = :platform
-                    and rule.storeId = :storeId
-                    and rule.productId = :productId
-              )
-            """)
-    int deleteByIdAndPlatformAndStoreIdAndProductId(
-            @Param("fieldId") Long fieldId,
-            @Param("platform") CommercePlatform platform,
-            @Param("storeId") Long storeId,
-            @Param("productId") Long productId
-    );
+    PersonalizationField save(PersonalizationField field);
+    int deleteByIdAndStoreIdAndProductId(Long fieldId, Long storeId, Long productId);
+    int deleteByIdAndPlatformAndStoreIdAndProductId(Long fieldId, CommercePlatform platform, Long storeId, Long productId);
 }

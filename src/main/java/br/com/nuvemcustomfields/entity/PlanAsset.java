@@ -1,65 +1,31 @@
 package br.com.nuvemcustomfields.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-@Entity
-@Table(name = "plan_assets")
 public class PlanAsset {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "plan_type", nullable = false, length = 30)
     private PlanType planType;
-
-    @Column(name = "display_name", nullable = false, length = 120)
     private String displayName;
-
-    @Column(length = 500)
     private String description;
-
-    @Column(name = "billing_external_id", length = 80)
     private String billingExternalId;
-
-    @Column(nullable = false, length = 3)
     private String currency;
-
-    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
-
-    @Column(name = "product_limit", nullable = false)
     private long productLimit;
-
-    @Column(name = "field_limit", nullable = false)
     private long fieldLimit;
-
-    @Column(name = "effective_from", nullable = false)
     private LocalDate effectiveFrom;
-
-    @Column(name = "effective_until")
     private LocalDate effectiveUntil;
-
-    @Column(nullable = false)
     private boolean active = true;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public PlanType getPlanType() {
@@ -152,6 +118,10 @@ public class PlanAsset {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
     }
 
     public boolean isEffectiveOn(LocalDate date) {

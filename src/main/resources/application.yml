@@ -8,10 +8,6 @@ spring:
     url: ${MYSQL_URL:jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME:app-custom-fields}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&serverTimezone=America/Sao_Paulo}
     username: ${DB_USER:${MYSQL_USER:}}
     password: ${DB_PASSWORD:${MYSQL_PASS:}}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
   flyway:
     enabled: true
 

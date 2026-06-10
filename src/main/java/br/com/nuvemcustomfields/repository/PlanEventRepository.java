@@ -1,11 +1,11 @@
 package br.com.nuvemcustomfields.repository;
 
 import br.com.nuvemcustomfields.entity.PlanEvent;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface PlanEventRepository extends JpaRepository<PlanEvent, Long> {
-
+public interface PlanEventRepository {
     List<PlanEvent> findTop20ByStoreIdOrderByCreatedAtDesc(Long storeId);
+    long count();
+    PlanEvent save(PlanEvent event);
 }
