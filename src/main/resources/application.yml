@@ -41,7 +41,7 @@ nuvemshop:
   api-base-url: ${NUVEMSHOP_API_BASE_URL:https://api.tiendanube.com}
   app-base-url: ${APP_BASE_URL:http://localhost:8080}
   scopes: ${NUVEMSHOP_SCOPES:read_products,read_orders,write_scripts,read_scripts,billing,read_store}
-  user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields suporte@example.com}
+  user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields douglas.real@gmail.com}
   script-id: ${NUVEMSHOP_SCRIPT_ID:}
   checkout-script-id: ${NUVEMSHOP_CHECKOUT_SCRIPT_ID:}
   billing:
