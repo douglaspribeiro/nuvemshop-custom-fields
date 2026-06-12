@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Suporte</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Chamados de suporte</h1>
+            <p class="muted"><span th:text="${openTickets}">0</span> chamados abertos</p>
+        </div>
+        <a class="button" th:href="@{/backoffice}">Voltar</a>
+    </section>
+    <section class="panel">
+        <div class="empty" th:if="${#lists.isEmpty(tickets)}">Nenhum chamado recebido.</div>
+        <table class="table" th:if="${!#lists.isEmpty(tickets)}">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Loja</th>
+                <th>Assunto</th>
+                <th>Status</th>
+                <th>Última mensagem</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="ticket : ${tickets}">
+                <td th:text="${ticket.id}">1</td>
+                <td th:text="${ticket.storeId}">0</td>
+                <td th:text="${ticket.subject}">Assunto</td>
+                <td th:text="${ticket.status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}">Aberto</td>
+                <td th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</td>
+                <td><a class="button small" th:href="@{/backoffice/support/{id}(id=${ticket.id})}">Abrir</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

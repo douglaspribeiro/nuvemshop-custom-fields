@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Chamado</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow" th:text="'Chamado #' + ${ticket.id}">Chamado</p>
+            <h1 th:text="${ticket.subject}">Assunto</h1>
+            <p class="muted">
+                <span th:text="${store.storeName ?: 'Loja sem nome'}">Loja</span>
+                · Store ID <span th:text="${store.storeId}">0</span>
+            </p>
+        </div>
+        <nav class="row-actions">
+            <a class="button" th:href="@{/backoffice/stores/{id}(id=${store.storeId})}">Ver loja</a>
+            <a class="button" th:href="@{/backoffice/support}">Chamados</a>
+        </nav>
+    </section>
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="conversation">
+        <article class="message-card" th:each="item : ${messages}"
+                 th:classappend="${item.authorType.name() == 'SUPPORT'} ? ' from-support' : ' from-store'">
+            <div class="message-meta">
+                <strong th:text="${item.authorType.name() == 'SUPPORT' ? 'Suporte' : (store.storeName ?: 'Loja')}">Autor</strong>
+                <span th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
+            </div>
+            <p th:text="${item.message}">Mensagem</p>
+        </article>
+    </section>
+
+    <div class="grid two settings-panel">
+        <section class="panel">
+            <h2>Responder</h2>
+            <form class="form" th:action="@{/backoffice/support/{id}/messages(id=${ticket.id})}" method="post">
+                <textarea name="message" rows="6" maxlength="5000" required placeholder="Escreva a resposta para a loja..."></textarea>
+                <button class="button primary" type="submit" th:disabled="${ticket.status.name() == 'CLOSED'}">Enviar resposta</button>
+            </form>
+        </section>
+        <section class="panel">
+            <h2>Status</h2>
+            <form class="form" th:action="@{/backoffice/support/{id}/status(id=${ticket.id})}" method="post">
+                <select name="status">
+                    <option th:each="status : ${statuses}" th:value="${status}"
+                            th:selected="${status == ticket.status}"
+                            th:text="${status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}">Aberto</option>
+                </select>
+                <button class="button" type="submit">Atualizar status</button>
+            </form>
+        </section>
+    </div>
+</main>
+</body>
+</html>

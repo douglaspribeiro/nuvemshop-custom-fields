@@ -12,12 +12,53 @@
         <div>
             <p class="eyebrow">Campos Personalizados</p>
             <h1>Suporte</h1>
+            <p class="muted">Envie dúvidas, problemas ou sugestões e acompanhe as respostas.</p>
         </div>
+        <a class="button" th:if="${store}" th:href="@{/admin}">Voltar ao aplicativo</a>
     </section>
 
-    <section class="panel">
-        <p>Canais oficiais de suporte em breve.</p>
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <section class="panel" th:if="${store == null}">
+        <h2>Acesse pela sua loja</h2>
+        <p>Para abrir e acompanhar chamados, entre no aplicativo pelo painel da Nuvemshop.</p>
+        <a class="button primary" th:href="@{/install}">Instalar ou reconectar</a>
     </section>
+
+    <div class="grid two" th:if="${store}">
+        <section class="panel">
+            <h2>Nova mensagem</h2>
+            <form class="form" th:action="@{/support/tickets}" method="post">
+                <label>
+                    Assunto
+                    <input type="text" name="subject" maxlength="160" required
+                           placeholder="Ex: Dúvida sobre campos no produto">
+                </label>
+                <label>
+                    Como podemos ajudar?
+                    <textarea name="message" rows="8" maxlength="5000" required
+                              placeholder="Descreva o que aconteceu, o resultado esperado e os passos para reproduzir."></textarea>
+                </label>
+                <button class="button primary" type="submit">Enviar ao suporte</button>
+            </form>
+        </section>
+
+        <section class="panel">
+            <h2>Meus chamados</h2>
+            <div class="empty" th:if="${#lists.isEmpty(tickets)}">Nenhum chamado enviado.</div>
+            <div class="ticket-list" th:if="${!#lists.isEmpty(tickets)}">
+                <a class="ticket-card" th:each="ticket : ${tickets}"
+                   th:href="@{/support/tickets/{id}(id=${ticket.id})}">
+                    <span>
+                        <strong th:text="${ticket.subject}">Assunto</strong>
+                        <small th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</small>
+                    </span>
+                    <span class="badge" th:text="${ticket.status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}">Aberto</span>
+                </a>
+            </div>
+        </section>
+    </div>
 </main>
 </body>
 </html>

@@ -399,6 +399,74 @@ input[type="color"] {
     opacity: 0.6;
 }
 
+.ticket-list,
+.conversation {
+    display: grid;
+    gap: 12px;
+}
+
+.ticket-card,
+.message-card {
+    border: 1px solid #d9e2e7;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 14px;
+}
+
+.ticket-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.ticket-card span:first-child {
+    display: grid;
+    gap: 5px;
+}
+
+.ticket-card small,
+.message-meta {
+    color: #536471;
+    font-size: 0.82rem;
+}
+
+.message-card.from-store {
+    border-left: 4px solid #5b8def;
+}
+
+.message-card.from-support {
+    border-left: 4px solid #177e61;
+    background: #f6fbf9;
+}
+
+.message-card p {
+    margin: 10px 0 0;
+    white-space: pre-wrap;
+}
+
+.message-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.legal-content {
+    display: grid;
+    gap: 12px;
+}
+
+.legal-content h2 {
+    margin-top: 12px;
+}
+
+.legal-content p {
+    margin: 0;
+    line-height: 1.65;
+}
+
 @media (max-width: 780px) {
     .grid.two,
     .form.compact {

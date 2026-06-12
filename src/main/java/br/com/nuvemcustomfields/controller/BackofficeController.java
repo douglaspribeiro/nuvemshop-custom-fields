@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.controller;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.entity.SupportTicketStatus;
 import br.com.nuvemcustomfields.properties.BackofficeProperties;
 import br.com.nuvemcustomfields.repository.FeatureFlagRepository;
 import br.com.nuvemcustomfields.repository.IntegrationLogRepository;
@@ -10,6 +11,7 @@ import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
+import br.com.nuvemcustomfields.service.SupportService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +36,7 @@ public class BackofficeController {
     private final IntegrationLogRepository integrationLogRepository;
     private final BackofficeService backofficeService;
     private final ManagementReportService managementReportService;
+    private final SupportService supportService;
     private final String appVersion;
 
     public BackofficeController(
@@ -44,6 +47,7 @@ public class BackofficeController {
             IntegrationLogRepository integrationLogRepository,
             BackofficeService backofficeService,
             ManagementReportService managementReportService,
+            SupportService supportService,
             @Value("${APP_VERSION:dev}") String appVersion
     ) {
         this.properties = properties;
@@ -53,6 +57,7 @@ public class BackofficeController {
         this.integrationLogRepository = integrationLogRepository;
         this.backofficeService = backofficeService;
         this.managementReportService = managementReportService;
+        this.supportService = supportService;
         this.appVersion = appVersion;
     }
 
@@ -87,7 +92,8 @@ public class BackofficeController {
         model.addAttribute("activeStores", activeStores);
         model.addAttribute("rules", rules);
         model.addAttribute("flags", flags);
-        LOGGER.info("backoffice.index.loaded stores={} active_stores={} rules={} flags={}", stores, activeStores, rules, flags);
+        model.addAttribute("openTickets", supportService.openTickets());
+        LOGGER.info("backoffice.index.loaded stores={} active_stores={} rules={} flags={} open_tickets={}", stores, activeStores, rules, flags, supportService.openTickets());
         return "backoffice/index";
     }
 
@@ -175,6 +181,49 @@ public class BackofficeController {
         LOGGER.info("backoffice.reports.open");
         model.addAttribute("report", managementReportService.report());
         return "backoffice/reports";
+    }
+
+    @GetMapping("/backoffice/support")
+    public String support(Model model) {
+        model.addAttribute("tickets", supportService.allTickets());
+        model.addAttribute("openTickets", supportService.openTickets());
+        return "backoffice/support";
+    }
+
+    @GetMapping("/backoffice/support/{ticketId}")
+    public String supportTicket(@PathVariable Long ticketId, Model model) {
+        var ticket = supportService.requireTicket(ticketId);
+        model.addAttribute("ticket", ticket);
+        model.addAttribute("store", supportService.requireTicketStore(ticket));
+        model.addAttribute("messages", supportService.messages(ticketId));
+        model.addAttribute("statuses", SupportTicketStatus.values());
+        return "backoffice/support-ticket";
+    }
+
+    @PostMapping("/backoffice/support/{ticketId}/messages")
+    public String replySupport(
+            @PathVariable Long ticketId,
+            @RequestParam String message,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            supportService.replyFromSupport(ticketId, message);
+            redirectAttributes.addFlashAttribute("message", "Resposta enviada.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/backoffice/support/" + ticketId;
+    }
+
+    @PostMapping("/backoffice/support/{ticketId}/status")
+    public String supportStatus(
+            @PathVariable Long ticketId,
+            @RequestParam SupportTicketStatus status,
+            RedirectAttributes redirectAttributes
+    ) {
+        supportService.updateStatus(ticketId, status);
+        redirectAttributes.addFlashAttribute("message", status == SupportTicketStatus.CLOSED ? "Chamado encerrado." : "Chamado reaberto.");
+        return "redirect:/backoffice/support/" + ticketId;
     }
 
     @PostMapping("/backoffice/flags")

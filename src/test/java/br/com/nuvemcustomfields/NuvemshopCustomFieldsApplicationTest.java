@@ -57,7 +57,8 @@ class NuvemshopCustomFieldsApplicationTest {
     void publicPrivacyPageIsAvailableWithoutSession() throws Exception {
         mockMvc.perform(get("/privacy/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Politica de Privacidade")));
+                .andExpect(content().string(containsString("Política de Privacidade")))
+                .andExpect(content().string(containsString("Dados tratados")));
     }
 
     @Test

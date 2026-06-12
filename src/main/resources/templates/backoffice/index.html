@@ -18,6 +18,7 @@
             <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
             <a class="button" th:href="@{/backoffice/flags}">Flags</a>
             <a class="button" th:href="@{/backoffice/reports}">Relatorios</a>
+            <a class="button" th:href="@{/backoffice/support}">Suporte</a>
         </nav>
     </section>
     <section class="details metrics">
@@ -36,6 +37,10 @@
         <div>
             <dt>Feature flags</dt>
             <dd th:text="${flags}">0</dd>
+        </div>
+        <div>
+            <dt>Chamados abertos</dt>
+            <dd th:text="${openTickets}">0</dd>
         </div>
     </section>
 </main>
