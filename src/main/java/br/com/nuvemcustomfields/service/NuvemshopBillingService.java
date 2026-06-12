@@ -63,17 +63,30 @@ public class NuvemshopBillingService {
     }
 
     public Store subscribe(Store store, PlanType targetPlan) {
+        LOGGER.info(
+                "nuvemshop.billing.subscribe.start store_id={} target_plan={} enabled={} concept_code_present={} api_base_url={}",
+                store.getStoreId(),
+                targetPlan,
+                billingProperties.enabled(),
+                billingProperties.conceptCode() != null && !billingProperties.conceptCode().isBlank(),
+                billingProperties.apiBaseUrl()
+        );
         validateTargetPlan(targetPlan);
         Store managedStore = storeRepository.findActiveByStoreId(store.getStoreId())
-                .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
+                .orElseThrow(() -> rejected(store.getStoreId(), targetPlan, "active_store_not_found", "Loja ativa nao encontrada."));
         if (!billingProperties.enabled()) {
-            throw new IllegalStateException("Billing automatico ainda nao esta ativo.");
+            throw rejected(store.getStoreId(), targetPlan, "billing_disabled", "Billing automatico ainda nao esta ativo.");
         }
         if (managedStore.isCourtesyPremium()) {
-            throw new IllegalStateException("Premium Cortesia nao pode gerar cobranca automatica.");
+            throw rejected(store.getStoreId(), targetPlan, "courtesy_premium", "Premium Cortesia nao pode gerar cobranca automatica.");
         }
         if (billingProperties.conceptCode() == null || billingProperties.conceptCode().isBlank()) {
-            throw new IllegalStateException("NUVEMSHOP_BILLING_CONCEPT_CODE nao configurado.");
+            throw rejected(
+                    store.getStoreId(),
+                    targetPlan,
+                    "concept_code_missing",
+                    "NUVEMSHOP_BILLING_CONCEPT_CODE nao configurado."
+            );
         }
 
         PlanType previousPlan = managedStore.getPlan();
@@ -145,15 +158,31 @@ public class NuvemshopBillingService {
     }
 
     private void ensureRemotePlan(PlanDefinition plan) {
+        JsonNode existingPlans = restClient.get()
+                .uri(billingProperties.apiBaseUrl() + "/apps/{appId}/plans", nuvemshopProperties.clientId())
+                .header("Authorization", "Bearer " + nuvemshopProperties.clientSecret())
+                .retrieve()
+                .body(JsonNode.class);
+        if (hasRemotePlan(existingPlans, plan.externalId())) {
+            LOGGER.info("nuvemshop.billing.plan.exists external_id={}", plan.externalId());
+            return;
+        }
+
         Map<String, Object> payload = Map.of(
                 "code", plan.currency(),
                 "external_reference", plan.externalId(),
                 "description", plan.description()
         );
+        LOGGER.info(
+                "nuvemshop.billing.plan.create.start app_id={} external_id={} currency={}",
+                nuvemshopProperties.clientId(),
+                plan.externalId(),
+                plan.currency()
+        );
         try {
             restClient.post()
                     .uri(billingProperties.apiBaseUrl() + "/apps/{appId}/plans", nuvemshopProperties.clientId())
-                    .header("Authentication", "bearer " + nuvemshopProperties.clientSecret())
+                    .header("Authorization", "Bearer " + nuvemshopProperties.clientSecret())
                     .body(payload)
                     .retrieve()
                     .toBodilessEntity();
@@ -168,9 +197,14 @@ public class NuvemshopBillingService {
     }
 
     private void patchRemotePlan(PlanDefinition plan, Map<String, Object> payload) {
+        LOGGER.info(
+                "nuvemshop.billing.plan.patch.start app_id={} external_id={}",
+                nuvemshopProperties.clientId(),
+                plan.externalId()
+        );
         restClient.patch()
                 .uri(billingProperties.apiBaseUrl() + "/apps/{appId}/plans/{planId}", nuvemshopProperties.clientId(), plan.externalId())
-                .header("Authentication", "bearer " + nuvemshopProperties.clientSecret())
+                .header("Authorization", "Bearer " + nuvemshopProperties.clientSecret())
                 .body(payload)
                 .retrieve()
                 .toBodilessEntity();
@@ -178,13 +212,22 @@ public class NuvemshopBillingService {
     }
 
     private JsonNode updateSubscription(Store store, PlanDefinition plan) {
-        return restClient.patch()
+        LOGGER.info(
+                "nuvemshop.billing.subscription.update.start store_id={} service_id={} plan_external_id={} amount={} currency={}",
+                store.getStoreId(),
+                nuvemshopProperties.clientId(),
+                plan.externalId(),
+                plan.amount(),
+                plan.currency()
+        );
+        JsonNode response = restClient.patch()
                 .uri(
-                        billingProperties.apiBaseUrl() + "/concepts/{conceptCode}/services/{serviceId}/subscriptions",
+                        billingProperties.apiBaseUrl() + "/{storeId}/concepts/{conceptCode}/services/{serviceId}/subscriptions",
+                        store.getStoreId(),
                         billingProperties.conceptCode(),
                         nuvemshopProperties.clientId()
                 )
-                .header("Authentication", "bearer " + store.getAccessToken())
+                .header("Authorization", "Bearer " + store.getAccessToken())
                 .body(Map.of(
                         "amount_currency", plan.currency(),
                         "amount_value", plan.amount(),
@@ -192,16 +235,23 @@ public class NuvemshopBillingService {
                 ))
                 .retrieve()
                 .body(JsonNode.class);
+        LOGGER.info(
+                "nuvemshop.billing.subscription.update.done store_id={} response_present={}",
+                store.getStoreId(),
+                response != null
+        );
+        return response;
     }
 
     private JsonNode getSubscription(Store store) {
         return restClient.get()
                 .uri(
-                        billingProperties.apiBaseUrl() + "/concepts/{conceptCode}/services/{serviceId}/subscriptions",
+                        billingProperties.apiBaseUrl() + "/{storeId}/concepts/{conceptCode}/services/{serviceId}/subscriptions",
+                        store.getStoreId(),
                         billingProperties.conceptCode(),
                         nuvemshopProperties.clientId()
                 )
-                .header("Authentication", "bearer " + store.getAccessToken())
+                .header("Authorization", "Bearer " + store.getAccessToken())
                 .retrieve()
                 .body(JsonNode.class);
     }
@@ -283,6 +333,29 @@ public class NuvemshopBillingService {
                 && body.toLowerCase().contains("duplicated");
     }
 
+    private boolean hasRemotePlan(JsonNode plans, String externalId) {
+        if (plans == null || !plans.isArray()) {
+            return false;
+        }
+        for (JsonNode plan : plans) {
+            if (externalId.equals(plan.path("external_reference").asText())
+                    || externalId.equals(plan.path("code").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private IllegalStateException rejected(Long storeId, PlanType targetPlan, String reason, String message) {
+        LOGGER.warn(
+                "nuvemshop.billing.subscribe.rejected store_id={} target_plan={} reason={}",
+                storeId,
+                targetPlan,
+                reason
+        );
+        return new IllegalStateException(message);
+    }
+
     private String subscriptionReference(JsonNode subscription, Store store) {
         String externalReference = text(subscription, "external_reference", null);
         if (externalReference != null && !externalReference.isBlank()) {
@@ -308,7 +381,10 @@ public class NuvemshopBillingService {
 
     private LocalDate date(JsonNode node, String field) {
         String value = text(node, field, null);
-        return value == null ? null : LocalDate.parse(value);
+        if (value == null) {
+            return null;
+        }
+        return LocalDate.parse(value.length() >= 10 ? value.substring(0, 10) : value);
     }
 
     private String errorMessage(RuntimeException ex) {

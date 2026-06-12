@@ -22,7 +22,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpMethod.PATCH;
-import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -44,13 +44,14 @@ class NuvemshopBillingServiceTest {
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         server.expect(requestTo("https://api.example.com/2025-03/apps/client-123/plans"))
-                .andExpect(method(POST))
-                .andExpect(header("Authentication", "bearer secret"))
-                .andExpect(jsonPath("$.external_reference").value("PREMIUM"))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-        server.expect(requestTo("https://api.example.com/2025-03/concepts/APP/services/client-123/subscriptions"))
+                .andExpect(method(GET))
+                .andExpect(header("Authorization", "Bearer secret"))
+                .andRespond(withSuccess("""
+                        [{"code":"PREMIUM","external_reference":"PREMIUM"}]
+                        """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://api.example.com/2025-03/123/concepts/APP/services/client-123/subscriptions"))
                 .andExpect(method(PATCH))
-                .andExpect(header("Authentication", "bearer store-token"))
+                .andExpect(header("Authorization", "Bearer store-token"))
                 .andExpect(jsonPath("$.amount_currency").value("BRL"))
                 .andExpect(jsonPath("$.amount_value").value(9.99))
                 .andExpect(jsonPath("$.plan_external_id").value("PREMIUM"))
@@ -59,8 +60,8 @@ class NuvemshopBillingServiceTest {
                           "external_reference": "sub-123",
                           "amount_currency": "BRL",
                           "amount_value": 9.99,
-                          "next_execution": "2026-06-16",
-                          "last_execution": "2026-05-16",
+                          "next_execution": "2026-06-16T00:00:00.000Z",
+                          "last_execution": "2026-05-16T00:00:00.000Z",
                           "plan": { "code": "PREMIUM" }
                         }
                         """, MediaType.APPLICATION_JSON));
@@ -84,9 +85,11 @@ class NuvemshopBillingServiceTest {
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         server.expect(requestTo("https://api.example.com/2025-03/apps/client-123/plans"))
-                .andExpect(method(POST))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-        server.expect(requestTo("https://api.example.com/2025-03/concepts/APP/services/client-123/subscriptions"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess("""
+                        [{"code":"PREMIUM","external_reference":"PREMIUM"}]
+                        """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://api.example.com/2025-03/123/concepts/APP/services/client-123/subscriptions"))
                 .andExpect(method(PATCH))
                 .andRespond(withBadRequest().body("Invalid currency").contentType(MediaType.TEXT_PLAIN));
 

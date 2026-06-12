@@ -9,6 +9,8 @@ LOCAL_APP_USER="nuvem_custom_fields"
 LOCAL_APP_PASS="nuvem_custom_fields"
 LOCAL_TZ="America/Sao_Paulo"
 SPRING_PROFILE="docker"
+LOCAL_APP_BASE_URL="${APP_BASE_URL:-https://chlorine-mutate-preface.ngrok-free.dev}"
+LOCAL_REDIRECT_URI="${NUVEMSHOP_REDIRECT_URI:-}"
 DOCKER_ONLY="false"
 RESET_DB="false"
 APP_DIR="."
@@ -27,6 +29,7 @@ Opcoes:
   --local-app-pass PASSWORD   Senha local da aplicacao
   --local-tz TZ               Timezone do container (padrao: America/Sao_Paulo)
   --spring-profile PROFILE    Profile Spring (padrao: docker)
+  --app-base-url URL          URL publica do app (padrao: tunnel ngrok local)
   --docker-only               Sobe/prepara apenas o MySQL
   --reset-db                  Recria o volume compartilhado mysql-local-data
   -h, --help                  Mostra esta ajuda
@@ -47,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     --local-app-pass) LOCAL_APP_PASS="$2"; shift 2 ;;
     --local-tz) LOCAL_TZ="$2"; shift 2 ;;
     --spring-profile) SPRING_PROFILE="$2"; shift 2 ;;
+    --app-base-url) LOCAL_APP_BASE_URL="$2"; LOCAL_REDIRECT_URI=""; shift 2 ;;
     --docker-only) DOCKER_ONLY="true"; shift ;;
     --reset-db) RESET_DB="true"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -79,6 +83,15 @@ sql_string() {
 
 validate_token "--local-db" "$LOCAL_DB"
 validate_token "--local-app-user" "$LOCAL_APP_USER"
+
+LOCAL_APP_BASE_URL="${LOCAL_APP_BASE_URL%/}"
+if [[ ! "$LOCAL_APP_BASE_URL" =~ ^https://[^/]+$ ]]; then
+  echo "--app-base-url deve ser uma origem HTTPS sem path: $LOCAL_APP_BASE_URL" >&2
+  exit 1
+fi
+if [[ -z "$LOCAL_REDIRECT_URI" ]]; then
+  LOCAL_REDIRECT_URI="${LOCAL_APP_BASE_URL}/oauth/callback"
+fi
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker nao encontrado" >&2
@@ -142,6 +155,8 @@ export CONECTME_DATASOURCE_URL="$MYSQL_DOCKER_URL"
 export CONECTME_DATASOURCE_USERNAME="$LOCAL_APP_USER"
 export CONECTME_DATASOURCE_PASSWORD="$LOCAL_APP_PASS"
 export SPRING_PROFILES_ACTIVE="$SPRING_PROFILE"
+export APP_BASE_URL="$LOCAL_APP_BASE_URL"
+export NUVEMSHOP_REDIRECT_URI="$LOCAL_REDIRECT_URI"
 
 if [[ "$DOCKER_ONLY" == "true" ]]; then
   echo "[ok] docker pronto"
@@ -169,5 +184,5 @@ if [[ -f "${PROJECT_ROOT}/scripts/maven-central-settings.xml" ]]; then
   MVN_SETTINGS_ARG=("-s" "${PROJECT_ROOT}/scripts/maven-central-settings.xml")
 fi
 
-echo "[spring] perfil=${SPRING_PROFILE} db=${LOCAL_DB}"
+echo "[spring] perfil=${SPRING_PROFILE} db=${LOCAL_DB} app_base_url=${APP_BASE_URL} redirect_uri=${NUVEMSHOP_REDIRECT_URI}"
 exec "${MVN_CMD[@]}" "${MVN_SETTINGS_ARG[@]}" -Dspring-boot.plugin.skip=false -Dspring-boot.run.profiles="$SPRING_PROFILE" spring-boot:run "${MVN_ARGS[@]}"

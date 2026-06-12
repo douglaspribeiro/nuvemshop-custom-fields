@@ -12,7 +12,7 @@ Implementar a primeira versao do billing recorrente da Nuvemshop para `PREMIUM` 
 - Adicionar configuracao:
   - `NUVEMSHOP_BILLING_ENABLED=false`
   - `NUVEMSHOP_BILLING_API_BASE_URL=https://api.tiendanube.com/2025-03`
-  - `NUVEMSHOP_BILLING_CONCEPT_CODE`
+  - `NUVEMSHOP_BILLING_CONCEPT_CODE=app-cost`
   - `NUVEMSHOP_BILLING_CURRENCY=BRL`
   - `NUVEMSHOP_BILLING_PREMIUM_EXTERNAL_ID=PREMIUM`
   - `NUVEMSHOP_BILLING_PREMIUM_PLUS_EXTERNAL_ID=PREMIUM_PLUS`
@@ -87,4 +87,4 @@ Implementar a primeira versao do billing recorrente da Nuvemshop para `PREMIUM` 
 - A v1 cobre apenas assinaturas recorrentes, nao cobrancas variaveis via Charges API.
 - Downgrade para `FREE` continua pelo backoffice.
 - Planos remotos sao garantidos no momento do upgrade, nao no startup.
-- `NUVEMSHOP_BILLING_CONCEPT_CODE` sera configurado no ambiente antes de ativar `NUVEMSHOP_BILLING_ENABLED=true`.
+- O billing recorrente de aplicativos usa `NUVEMSHOP_BILLING_CONCEPT_CODE=app-cost`.

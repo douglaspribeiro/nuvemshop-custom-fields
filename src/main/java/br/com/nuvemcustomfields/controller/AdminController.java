@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.dto.FieldForm;
+import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
@@ -20,6 +21,7 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.validation.BindingResult;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -72,6 +75,18 @@ public class AdminController {
     @ModelAttribute("nuvemshopClientId")
     public String nuvemshopClientId() {
         return nuvemshopProperties.clientId();
+    }
+
+    @ExceptionHandler(HttpClientErrorException.Unauthorized.class)
+    public String invalidAccessToken(HttpClientErrorException.Unauthorized ex, HttpSession session) {
+        Object storeId = session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
+        LOGGER.warn(
+                "admin.api.unauthorized store_id={} action=disconnect_and_reinstall message={}",
+                storeId,
+                ex.getMessage()
+        );
+        adminStoreService.markCurrentStoreDisconnected(session);
+        return "redirect:/admin/embedded";
     }
 
     @GetMapping("/admin")
@@ -167,10 +182,25 @@ public class AdminController {
         try {
             billingService.subscribe(store, plan);
             redirectAttributes.addFlashAttribute("message", "Assinatura atualizada para " + plan + ".");
+            LOGGER.info("admin.billing.subscribe.done store_id={} plan={}", store.getStoreId(), plan);
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            LOGGER.warn(
+                    "admin.billing.subscribe.rejected store_id={} plan={} reason={}",
+                    store.getStoreId(),
+                    plan,
+                    ex.getMessage()
+            );
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute("error", "Nao foi possivel atualizar a assinatura agora. Tente novamente em alguns minutos.");
+            LOGGER.error(
+                    "admin.billing.subscribe.error store_id={} plan={} exception={} message={}",
+                    store.getStoreId(),
+                    plan,
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage(),
+                    ex
+            );
         }
         return "redirect:/admin/billing";
     }

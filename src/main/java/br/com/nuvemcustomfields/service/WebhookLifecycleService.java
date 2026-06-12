@@ -5,6 +5,8 @@ import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +14,8 @@ import java.time.Instant;
 
 @Service
 public class WebhookLifecycleService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(WebhookLifecycleService.class);
 
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
@@ -51,7 +55,16 @@ public class WebhookLifecycleService {
 
     private void handleUninstalled(Long storeId) {
         storeRepository.findByStoreId(storeId).ifPresent(store -> {
-            scriptInstallService.removePersonalizerScripts(store);
+            try {
+                scriptInstallService.removePersonalizerScripts(store);
+            } catch (RuntimeException ex) {
+                LOGGER.warn(
+                        "webhook.app_uninstalled.script_cleanup_failed store_id={} exception={} message={}",
+                        storeId,
+                        ex.getClass().getSimpleName(),
+                        ex.getMessage()
+                );
+            }
             store.setUninstalledAt(Instant.now());
             store.setSubscriptionId(null);
             store.setPlan(PlanType.FREE);

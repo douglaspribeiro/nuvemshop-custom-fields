@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 public class AdminStoreService {
 
@@ -29,6 +31,19 @@ public class AdminStoreService {
                     LOGGER.error("admin.store.not_found session_id={} store_id={}", session.getId(), storeId);
                     return new IllegalStateException("Loja ativa nao encontrada na sessao.");
                 });
+    }
+
+    @Transactional
+    public void markCurrentStoreDisconnected(HttpSession session) {
+        Object storeId = session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
+        if (storeId instanceof Long id) {
+            storeRepository.findByStoreId(id).ifPresent(store -> {
+                store.setUninstalledAt(Instant.now());
+                storeRepository.save(store);
+                LOGGER.warn("admin.store.disconnected store_id={} reason=invalid_access_token", id);
+            });
+        }
+        session.removeAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
     }
 
     @Transactional

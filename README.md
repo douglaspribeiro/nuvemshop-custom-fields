@@ -114,6 +114,8 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `APP_BASE_URL` | `http://localhost:8080` | URL publica usada em scripts e webhooks. |
 | `NUVEMSHOP_SCOPES` | `read_products,read_orders,write_scripts,read_scripts,billing,read_store` | Scopes OAuth solicitados. |
 | `NUVEMSHOP_USER_AGENT` | `NuvemCustomFields suporte@example.com` | User-Agent exigido pela API. |
+| `NUVEMSHOP_BILLING_ENABLED` | `false` | Ativa a assinatura automatica quando toda a configuracao de billing estiver pronta. |
+| `NUVEMSHOP_BILLING_CONCEPT_CODE` | `app-cost` | Codigo do conceito usado pela assinatura recorrente de aplicativos. |
 | `BACKOFFICE_USERNAME` | `admin` | Usuario do backoffice. |
 | `BACKOFFICE_PASSWORD` | `admin` | Senha do backoffice. |
 
@@ -151,6 +153,26 @@ Depois de subir a aplicacao:
 
 - `http://localhost:8080/install` inicia o fluxo de instalacao.
 - `http://localhost:8080/backoffice/login` abre o backoffice interno.
+
+### Docker local com ngrok
+
+O launcher local configura automaticamente:
+
+- `APP_BASE_URL=https://chlorine-mutate-preface.ngrok-free.dev`
+- `NUVEMSHOP_REDIRECT_URI=https://chlorine-mutate-preface.ngrok-free.dev/oauth/callback`
+
+Assim, scripts, webhooks e o callback OAuth usam o DNS publico do tunnel:
+
+```bash
+./scripts/start-local-docker-and-spring.sh
+```
+
+Quando o dominio do ngrok mudar, informe a nova origem HTTPS:
+
+```bash
+./scripts/start-local-docker-and-spring.sh \
+  --app-base-url https://novo-dominio.ngrok-free.dev
+```
 
 ## Testes
 
