@@ -84,6 +84,9 @@ Principais camadas do codigo:
 | `GET /admin/help` | Logs recentes e apoio operacional. |
 | `GET /public/stores/{storeId}/personalization` | Configuracao consumida pelo script da vitrine. |
 | `POST /webhooks/nuvemshop` | Webhooks oficiais da Nuvemshop. |
+| `POST /hook/store/redact` | Encaminha pedido LGPD de exclusao da loja ao suporte. |
+| `POST /hook/customer/redact` | Encaminha pedido LGPD de exclusao de cliente ao suporte. |
+| `POST /hook/customer/data` | Encaminha pedido LGPD de acesso aos dados ao suporte. |
 | `GET /backoffice` | Painel interno do operador. |
 
 ## Planos e Limites

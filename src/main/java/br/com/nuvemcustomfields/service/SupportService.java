@@ -74,12 +74,24 @@ public class SupportService {
 
     @Transactional
     public SupportTicket openTicket(Store store, String subject, String message) {
+        return openTicket(store.getStoreId(), subject, message);
+    }
+
+    @Transactional
+    public SupportTicket openAutomatedTicket(Long storeId, String subject, String message) {
+        if (storeId == null) {
+            throw new IllegalArgumentException("Identificador da loja nao informado.");
+        }
+        return openTicket(storeId, subject, message);
+    }
+
+    private SupportTicket openTicket(Long storeId, String subject, String message) {
         String normalizedSubject = normalize(subject, "Informe o assunto.", SUBJECT_MAX_LENGTH);
         String normalizedMessage = normalize(message, "Escreva uma mensagem.", MESSAGE_MAX_LENGTH);
         Instant now = Instant.now();
 
         SupportTicket ticket = new SupportTicket();
-        ticket.setStoreId(store.getStoreId());
+        ticket.setStoreId(storeId);
         ticket.setSubject(normalizedSubject);
         ticket.setStatus(SupportTicketStatus.OPEN);
         ticket.setUpdatedAt(now);

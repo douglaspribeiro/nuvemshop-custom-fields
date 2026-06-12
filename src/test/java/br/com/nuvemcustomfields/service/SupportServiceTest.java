@@ -46,6 +46,16 @@ class SupportServiceTest {
     }
 
     @Test
+    void opensAutomatedTicketWithoutRequiringStoredStore() {
+        when(ticketRepository.save(any(SupportTicket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SupportTicket ticket = service.openAutomatedTicket(456L, "Solicitacao LGPD", "Pedido recebido");
+
+        assertThat(ticket.getStoreId()).isEqualTo(456L);
+        verify(messageRepository).save(any(SupportMessage.class));
+    }
+
+    @Test
     void preventsStoreFromAccessingAnotherStoresTicket() {
         when(ticketRepository.findByIdAndStoreId(10L, 123L)).thenReturn(Optional.empty());
 

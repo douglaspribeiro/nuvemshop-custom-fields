@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.dto.WebhookPayload;
+import br.com.nuvemcustomfields.service.LgpdWebhookService;
 import br.com.nuvemcustomfields.service.WebhookLifecycleService;
 import br.com.nuvemcustomfields.service.WebhookSecurityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,15 +22,18 @@ public class WebhookController {
     private final ObjectMapper objectMapper;
     private final WebhookSecurityService securityService;
     private final WebhookLifecycleService lifecycleService;
+    private final LgpdWebhookService lgpdWebhookService;
 
     public WebhookController(
             ObjectMapper objectMapper,
             WebhookSecurityService securityService,
-            WebhookLifecycleService lifecycleService
+            WebhookLifecycleService lifecycleService,
+            LgpdWebhookService lgpdWebhookService
     ) {
         this.objectMapper = objectMapper;
         this.securityService = securityService;
         this.lifecycleService = lifecycleService;
+        this.lgpdWebhookService = lgpdWebhookService;
     }
 
     @PostMapping("/webhooks/nuvemshop")
@@ -46,6 +50,46 @@ public class WebhookController {
         LOGGER.info("webhook.receive.valid event={} store_id={}", payload.event(), payload.storeId());
         lifecycleService.handle(payload);
         LOGGER.info("webhook.receive.done event={} store_id={}", payload.event(), payload.storeId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/hook/store/redact")
+    public ResponseEntity<Void> storeRedact(
+            @RequestHeader(name = "x-linkedstore-hmac-sha256", required = false) String hmac,
+            @RequestBody String body
+    ) throws Exception {
+        return receiveLgpdRequest(hmac, body, "Exclusao dos dados da loja");
+    }
+
+    @PostMapping("/hook/customer/redact")
+    public ResponseEntity<Void> customerRedact(
+            @RequestHeader(name = "x-linkedstore-hmac-sha256", required = false) String hmac,
+            @RequestBody String body
+    ) throws Exception {
+        return receiveLgpdRequest(hmac, body, "Exclusao dos dados do cliente");
+    }
+
+    @PostMapping("/hook/customer/data")
+    public ResponseEntity<Void> customerDataRequest(
+            @RequestHeader(name = "x-linkedstore-hmac-sha256", required = false) String hmac,
+            @RequestBody String body
+    ) throws Exception {
+        return receiveLgpdRequest(hmac, body, "Solicitacao dos dados do cliente");
+    }
+
+    private ResponseEntity<Void> receiveLgpdRequest(String hmac, String body, String requestType) throws Exception {
+        LOGGER.info(
+                "webhook.lgpd.receive.start request_type={} hmac_present={} body_size={}",
+                requestType,
+                hmac != null && !hmac.isBlank(),
+                body.length()
+        );
+        if (!securityService.isValid(body, hmac)) {
+            LOGGER.warn("webhook.lgpd.receive.invalid_signature request_type={}", requestType);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        lgpdWebhookService.forwardToSupport(requestType, body);
+        LOGGER.info("webhook.lgpd.receive.done request_type={}", requestType);
         return ResponseEntity.noContent().build();
     }
 }
