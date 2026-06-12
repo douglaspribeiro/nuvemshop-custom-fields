@@ -49,7 +49,7 @@ nuvemshop:
   script-id: ${NUVEMSHOP_SCRIPT_ID:}
   checkout-script-id: ${NUVEMSHOP_CHECKOUT_SCRIPT_ID:}
   billing:
-    enabled: ${NUVEMSHOP_BILLING_ENABLED:false}
+    enabled: ${NUVEMSHOP_BILLING_ENABLED:true}
     api-base-url: ${NUVEMSHOP_BILLING_API_BASE_URL:https://api.tiendanube.com/2025-03}
     concept-code: ${NUVEMSHOP_BILLING_CONCEPT_CODE:}
     currency: ${NUVEMSHOP_BILLING_CURRENCY:BRL}
