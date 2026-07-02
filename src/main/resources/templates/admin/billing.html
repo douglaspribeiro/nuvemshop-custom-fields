@@ -19,7 +19,7 @@
 
     <section class="panel plan-strip">
         <div>
-            <h2 th:text="${store.courtesyPremium ? 'Plano atual: Premium Cortesia' : 'Plano atual: ' + store.plan}">
+            <h2 th:text="${store.courtesyPremium ? 'Plano atual: Premium Cortesia' : 'Plano atual: ' + store.plan.displayName}">
                 Plano atual: FREE
             </h2>
             <p class="muted">
@@ -56,10 +56,10 @@
         </article>
 
         <article class="panel plan-card">
-            <h2>PREMIUM</h2>
+            <h2>Essencial</h2>
             <p class="price">
                 <span th:text="${billingCurrency}">BRL</span>
-                <span th:text="${premiumAmount}">9.99</span>/mês
+                <span th:text="${premiumAmount}">19.99</span>/mês
             </p>
             <ul class="feature-list">
                 <li>10 produtos personalizados</li>
@@ -68,30 +68,30 @@
             </ul>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and !store.courtesyPremium}">Plano atual</span>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and store.courtesyPremium}">Premium Cortesia</span>
-            <form th:if="${billingEnabled and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
+            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
                 <input type="hidden" name="plan" value="PREMIUM">
                 <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM'}">
-                    Assinar Premium
+                    Assinar Essencial
                 </button>
             </form>
         </article>
 
         <article class="panel plan-card">
-            <h2>PREMIUM_PLUS</h2>
+            <h2>Pro</h2>
             <p class="price">
                 <span th:text="${billingCurrency}">BRL</span>
-                <span th:text="${premiumPlusAmount}">19.99</span>/mês
+                <span th:text="${premiumPlusAmount}">29.99</span>/mês
             </p>
             <ul class="feature-list">
-                <li>Produtos ilimitados</li>
+                <li>50 produtos personalizados</li>
                 <li>Campos ilimitados</li>
                 <li>Relatórios operacionais</li>
             </ul>
             <span class="badge" th:if="${store.plan.name() == 'PREMIUM_PLUS'}">Plano atual</span>
-            <form th:if="${billingEnabled and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
+            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
                 <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM_PLUS'}">
-                    Assinar Premium Plus
+                    Assinar Pro
                 </button>
             </form>
         </article>
@@ -99,6 +99,9 @@
 
     <p class="notice" th:if="${!billingEnabled}">
         A cobrança automática ainda não está ativa neste ambiente. Para alterar o plano agora, use o backoffice interno.
+    </p>
+    <p class="notice error" th:if="${billingEnabled and !billingAvailable}" th:text="${billingMarketError}">
+        Billing indisponivel para o mercado desta loja.
     </p>
     <p class="notice" th:if="${billingEnabled and store.courtesyPremium}">
         Premium Cortesia nao gera cobranca automatica. Remova a cortesia no backoffice antes de assinar um plano pago.

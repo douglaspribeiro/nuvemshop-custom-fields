@@ -27,6 +27,12 @@ public class Store {
     @Column(name = "store_name")
     private String storeName;
 
+    @Column(name = "store_country_code", length = 2)
+    private String storeCountryCode;
+
+    @Column(name = "store_currency", length = 3)
+    private String storeCurrency;
+
     @Column(name = "access_token", nullable = false, columnDefinition = "TEXT")
     private String accessToken;
 
@@ -103,6 +109,22 @@ public class Store {
 
     public void setStoreName(String storeName) {
         this.storeName = storeName;
+    }
+
+    public String getStoreCountryCode() {
+        return storeCountryCode;
+    }
+
+    public void setStoreCountryCode(String storeCountryCode) {
+        this.storeCountryCode = normalizeUpper(storeCountryCode);
+    }
+
+    public String getStoreCurrency() {
+        return storeCurrency;
+    }
+
+    public void setStoreCurrency(String storeCurrency) {
+        this.storeCurrency = normalizeUpper(storeCurrency);
     }
 
     public String getAccessToken() {
@@ -218,7 +240,7 @@ public class Store {
     }
 
     public PlanType getEffectivePlan() {
-        return billingSuspended ? PlanType.FREE : plan;
+        return billingSuspended && plan.isBillable() ? PlanType.FREE : plan;
     }
 
     public String getProductTextColor() {
@@ -259,5 +281,9 @@ public class Store {
 
     public boolean isActive() {
         return uninstalledAt == null;
+    }
+
+    private String normalizeUpper(String value) {
+        return value == null || value.isBlank() ? null : value.strip().toUpperCase();
     }
 }

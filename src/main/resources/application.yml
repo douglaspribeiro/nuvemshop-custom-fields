@@ -55,8 +55,29 @@ nuvemshop:
     currency: ${NUVEMSHOP_BILLING_CURRENCY:BRL}
     premium-external-id: ${NUVEMSHOP_BILLING_PREMIUM_EXTERNAL_ID:premium-999}
     premium-plus-external-id: ${NUVEMSHOP_BILLING_PREMIUM_PLUS_EXTERNAL_ID:premium-plus-1999}
-    premium-amount: ${NUVEMSHOP_BILLING_PREMIUM_AMOUNT:9.99}
-    premium-plus-amount: ${NUVEMSHOP_BILLING_PREMIUM_PLUS_AMOUNT:19.99}
+    premium-amount: ${NUVEMSHOP_BILLING_PREMIUM_AMOUNT:19.99}
+    premium-plus-amount: ${NUVEMSHOP_BILLING_PREMIUM_PLUS_AMOUNT:29.99}
+    prices:
+      BR:
+        currency: BRL
+        premium-amount: ${NUVEMSHOP_BILLING_BR_PREMIUM_AMOUNT:${NUVEMSHOP_BILLING_PREMIUM_AMOUNT:19.99}}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_BR_PREMIUM_PLUS_AMOUNT:${NUVEMSHOP_BILLING_PREMIUM_PLUS_AMOUNT:29.99}}
+      AR:
+        currency: ARS
+        premium-amount: ${NUVEMSHOP_BILLING_AR_PREMIUM_AMOUNT:5747}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_AR_PREMIUM_PLUS_AMOUNT:8622}
+      CL:
+        currency: CLP
+        premium-amount: ${NUVEMSHOP_BILLING_CL_PREMIUM_AMOUNT:3566}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_CL_PREMIUM_PLUS_AMOUNT:5350}
+      MX:
+        currency: MXN
+        premium-amount: ${NUVEMSHOP_BILLING_MX_PREMIUM_AMOUNT:67.49}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_MX_PREMIUM_PLUS_AMOUNT:101.26}
+      CO:
+        currency: COP
+        premium-amount: ${NUVEMSHOP_BILLING_CO_PREMIUM_AMOUNT:13146}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_CO_PREMIUM_PLUS_AMOUNT:19723}
 
 backoffice:
   username: ${BACKOFFICE_USERNAME:admin}

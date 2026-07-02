@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.ProductSummary;
+import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -55,16 +56,31 @@ public class NuvemshopApiClient {
     }
 
     public String getStoreName(Store store) {
+        return getStoreProfile(store).name();
+    }
+
+    public StoreProfile getStoreProfile(Store store) {
         LOGGER.info("nuvemshop.api.get_store.start store_id={}", store.getStoreId());
         try {
             JsonNode response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=name", store.getStoreId())
+                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=name,country,country_code,main_currency,currency,locale", store.getStoreId())
                     .header("Authentication", "bearer " + store.getAccessToken())
                     .retrieve()
                     .body(JsonNode.class);
             String name = localizedName(response == null ? null : response.path("name"), "Loja sem nome");
-            LOGGER.info("nuvemshop.api.get_store.done store_id={} store_name_present={}", store.getStoreId(), !name.isBlank());
-            return name;
+            String countryCode = normalizeCountry(countryCode(response));
+            String currency = normalizeCurrency(firstText(response, "main_currency", "currency"));
+            if ((currency == null || currency.isBlank()) && countryCode != null) {
+                currency = currencyForCountry(countryCode);
+            }
+            LOGGER.info(
+                    "nuvemshop.api.get_store.done store_id={} store_name_present={} country={} currency={}",
+                    store.getStoreId(),
+                    !name.isBlank(),
+                    countryCode,
+                    currency
+            );
+            return new StoreProfile(name, countryCode, currency);
         } catch (RuntimeException ex) {
             logRestFailure("nuvemshop.api.get_store.error", store.getStoreId(), ex);
             throw ex;
@@ -207,5 +223,82 @@ public class NuvemshopApiClient {
             }
         }
         return fallback;
+    }
+
+    private String countryCode(JsonNode response) {
+        String country = firstText(response, "country_code", "country", "main_country");
+        if (country != null && !country.isBlank()) {
+            return country;
+        }
+        JsonNode countryNode = response == null ? null : response.path("country");
+        country = firstText(countryNode, "code", "iso_code", "country_code");
+        if (country != null && !country.isBlank()) {
+            return country;
+        }
+        String locale = firstText(response, "locale");
+        if (locale != null && locale.contains("_")) {
+            return locale.substring(locale.lastIndexOf('_') + 1);
+        }
+        if (locale != null && locale.contains("-")) {
+            return locale.substring(locale.lastIndexOf('-') + 1);
+        }
+        return null;
+    }
+
+    private String firstText(JsonNode node, String... fields) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        for (String field : fields) {
+            JsonNode value = node.path(field);
+            String text = textValue(value);
+            if (text != null && !text.isBlank()) {
+                return text;
+            }
+        }
+        return null;
+    }
+
+    private String textValue(JsonNode value) {
+        if (value == null || value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        if (value.isTextual()) {
+            return value.asText();
+        }
+        if (value.isObject()) {
+            String code = firstText(value, "code", "iso_code", "currency", "id");
+            if (code != null && !code.isBlank()) {
+                return code;
+            }
+        }
+        return value.asText(null);
+    }
+
+    private String normalizeCountry(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.strip().toUpperCase();
+        return normalized.length() > 2 ? normalized.substring(0, 2) : normalized;
+    }
+
+    private String normalizeCurrency(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.strip().toUpperCase();
+        return normalized.length() > 3 ? normalized.substring(0, 3) : normalized;
+    }
+
+    private String currencyForCountry(String countryCode) {
+        return switch (countryCode) {
+            case "BR" -> "BRL";
+            case "AR" -> "ARS";
+            case "CL" -> "CLP";
+            case "MX" -> "MXN";
+            case "CO" -> "COP";
+            default -> null;
+        };
     }
 }

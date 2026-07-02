@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 @Validated
 @ConfigurationProperties(prefix = "nuvemshop.billing")
@@ -16,6 +17,13 @@ public record NuvemshopBillingProperties(
         @NotBlank String premiumExternalId,
         @NotBlank String premiumPlusExternalId,
         BigDecimal premiumAmount,
-        BigDecimal premiumPlusAmount
+        BigDecimal premiumPlusAmount,
+        Map<String, CountryPrice> prices
 ) {
+    public record CountryPrice(
+            @NotBlank String currency,
+            BigDecimal premiumAmount,
+            BigDecimal premiumPlusAmount
+    ) {
+    }
 }

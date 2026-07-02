@@ -21,9 +21,11 @@ class PlanLimitServiceTest {
     void exposesCommercialLimitsByPlan() {
         assertThat(service.productLimit(PlanType.FREE)).isEqualTo(1);
         assertThat(service.fieldLimit(PlanType.FREE)).isEqualTo(1);
+        assertThat(service.productLimit(PlanType.FREE_GRATIS)).isEqualTo(1);
+        assertThat(service.fieldLimit(PlanType.FREE_GRATIS)).isEqualTo(3);
         assertThat(service.productLimit(PlanType.PREMIUM)).isEqualTo(10);
         assertThat(service.fieldLimit(PlanType.PREMIUM)).isEqualTo(3);
-        assertThat(service.productLimit(PlanType.PREMIUM_PLUS)).isEqualTo(-1);
+        assertThat(service.productLimit(PlanType.PREMIUM_PLUS)).isEqualTo(50);
         assertThat(service.fieldLimit(PlanType.PREMIUM_PLUS)).isEqualTo(-1);
     }
 
@@ -39,5 +41,16 @@ class PlanLimitServiceTest {
 
         assertThat(suspendedService.usage(store, 0).plan()).isEqualTo(PlanType.FREE);
         assertThat(suspendedService.canAddProduct(store)).isFalse();
+    }
+
+    @Test
+    void internalFreePlanKeepsItsLimitsEvenIfBillingIsSuspended() {
+        Store store = new Store();
+        store.setStoreId(123L);
+        store.setPlan(PlanType.FREE_GRATIS);
+        store.setBillingSuspended(true);
+
+        assertThat(service.usage(store, 0).plan()).isEqualTo(PlanType.FREE_GRATIS);
+        assertThat(service.fieldLimit(store.getEffectivePlan())).isEqualTo(3);
     }
 }

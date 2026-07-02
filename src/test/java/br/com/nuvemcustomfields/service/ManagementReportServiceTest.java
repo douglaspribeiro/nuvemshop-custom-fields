@@ -33,11 +33,13 @@ class ManagementReportServiceTest {
         Store billablePremium = store(PlanType.PREMIUM, false);
         Store courtesyPremium = store(PlanType.PREMIUM, true);
         Store billablePremiumPlus = store(PlanType.PREMIUM_PLUS, false);
-        when(storeRepository.findAll()).thenReturn(List.of(billablePremium, courtesyPremium, billablePremiumPlus));
+        Store internalFree = store(PlanType.FREE_GRATIS, false);
+        when(storeRepository.findAll()).thenReturn(List.of(billablePremium, courtesyPremium, billablePremiumPlus, internalFree));
         when(ruleRepository.findAll()).thenReturn(List.of());
 
         var report = service.report();
 
+        assertThat(report.freeStores()).isEqualTo(1);
         assertThat(report.premiumStores()).isEqualTo(2);
         assertThat(report.premiumPlusStores()).isEqualTo(1);
         assertThat(report.estimatedMrr()).isEqualByComparingTo(new BigDecimal("29.98"));

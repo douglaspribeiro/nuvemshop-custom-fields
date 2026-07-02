@@ -56,15 +56,16 @@ public class PlanLimitService {
 
     public long productLimit(PlanType plan) {
         return switch (plan) {
-            case FREE -> 1L;
+            case FREE, FREE_GRATIS -> 1L;
             case PREMIUM -> 10L;
-            case PREMIUM_PLUS -> UNLIMITED;
+            case PREMIUM_PLUS -> 50L;
         };
     }
 
     public long fieldLimit(PlanType plan) {
         return switch (plan) {
             case FREE -> 1L;
+            case FREE_GRATIS -> 3L;
             case PREMIUM -> 3L;
             case PREMIUM_PLUS -> UNLIMITED;
         };

@@ -14,7 +14,7 @@
             <p class="eyebrow">Admin</p>
             <h1>Aplicativo: Campos Personalizados</h1>
         </div>
-        <span class="badge" th:text="${store.plan}">FREE</span>
+        <span class="badge" th:text="${store.plan.displayName}">FREE</span>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>

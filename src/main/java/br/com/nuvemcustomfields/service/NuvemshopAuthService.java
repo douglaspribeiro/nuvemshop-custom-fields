@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.NuvemshopTokenResponse;
+import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
@@ -113,9 +114,12 @@ public class NuvemshopAuthService {
         store.setAccessToken(token.accessToken());
         store.setScope(token.scope());
         try {
-            store.setStoreName(apiClient.getStoreName(store));
+            StoreProfile profile = apiClient.getStoreProfile(store);
+            store.setStoreName(profile.name());
+            store.setStoreCountryCode(profile.countryCode());
+            store.setStoreCurrency(profile.currency());
         } catch (RuntimeException ex) {
-            LOGGER.warn("nuvemshop.oauth.store_name.unavailable store_id={} message={}", token.storeId(), ex.getMessage());
+            LOGGER.warn("nuvemshop.oauth.store_profile.unavailable store_id={} message={}", token.storeId(), ex.getMessage());
         }
         store.setUninstalledAt(null);
         Store saved = storeRepository.save(store);

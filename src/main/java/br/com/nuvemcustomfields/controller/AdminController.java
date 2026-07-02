@@ -165,9 +165,18 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("billingEnabled", billingService.isEnabled());
-        model.addAttribute("billingCurrency", billingService.currency());
-        model.addAttribute("premiumAmount", billingService.amountFor(PlanType.PREMIUM));
-        model.addAttribute("premiumPlusAmount", billingService.amountFor(PlanType.PREMIUM_PLUS));
+        try {
+            model.addAttribute("billingAvailable", true);
+            model.addAttribute("billingCurrency", billingService.currencyFor(store));
+            model.addAttribute("premiumAmount", billingService.amountFor(store, PlanType.PREMIUM));
+            model.addAttribute("premiumPlusAmount", billingService.amountFor(store, PlanType.PREMIUM_PLUS));
+        } catch (IllegalStateException ex) {
+            model.addAttribute("billingAvailable", false);
+            model.addAttribute("billingCurrency", store.getStoreCurrency() == null ? "-" : store.getStoreCurrency());
+            model.addAttribute("premiumAmount", null);
+            model.addAttribute("premiumPlusAmount", null);
+            model.addAttribute("billingMarketError", ex.getMessage());
+        }
         return "admin/billing";
     }
 

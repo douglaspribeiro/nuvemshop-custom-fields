@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
@@ -82,7 +83,7 @@ class NuvemshopAuthServiceTest {
 
         when(storeRepository.findByStoreId(987L)).thenReturn(Optional.empty());
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(apiClient.getStoreName(any(Store.class))).thenReturn("Loja Teste");
+        when(apiClient.getStoreProfile(any(Store.class))).thenReturn(new StoreProfile("Loja Teste", "MX", "MXN"));
 
         MultiValueMap<String, String> expectedForm = new LinkedMultiValueMap<>();
         expectedForm.add("client_id", "client-123");
@@ -114,6 +115,8 @@ class NuvemshopAuthServiceTest {
 
         assertThat(store.getStoreId()).isEqualTo(987L);
         assertThat(store.getStoreName()).isEqualTo("Loja Teste");
+        assertThat(store.getStoreCountryCode()).isEqualTo("MX");
+        assertThat(store.getStoreCurrency()).isEqualTo("MXN");
         assertThat(store.getAccessToken()).isEqualTo("token-123");
         verify(webhookRegistrationService).registerRequiredWebhooks(store);
         verify(scriptInstallService).installPersonalizerScript(store);

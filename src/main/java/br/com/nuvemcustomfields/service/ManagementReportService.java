@@ -35,7 +35,7 @@ public class ManagementReportService {
 
     public ManagementReport report() {
         var stores = storeRepository.findAll();
-        long free = stores.stream().filter(store -> store.getPlan() == PlanType.FREE).count();
+        long free = stores.stream().filter(store -> store.getPlan() == PlanType.FREE || store.getPlan() == PlanType.FREE_GRATIS).count();
         long premium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM).count();
         long premiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS).count();
         long billablePremium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM && !store.isCourtesyPremium()).count();

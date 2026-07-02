@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.PlanEvent;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
@@ -19,6 +20,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -30,6 +32,7 @@ public class NuvemshopBillingService {
     private final NuvemshopProperties nuvemshopProperties;
     private final StoreRepository storeRepository;
     private final PlanEventRepository planEventRepository;
+    private final NuvemshopApiClient apiClient;
     private final RestClient restClient;
 
     public NuvemshopBillingService(
@@ -37,12 +40,14 @@ public class NuvemshopBillingService {
             NuvemshopProperties nuvemshopProperties,
             StoreRepository storeRepository,
             PlanEventRepository planEventRepository,
+            NuvemshopApiClient apiClient,
             RestClient.Builder builder
     ) {
         this.billingProperties = billingProperties;
         this.nuvemshopProperties = nuvemshopProperties;
         this.storeRepository = storeRepository;
         this.planEventRepository = planEventRepository;
+        this.apiClient = apiClient;
         this.restClient = builder.defaultHeader("User-Agent", nuvemshopProperties.userAgent()).build();
     }
 
@@ -52,14 +57,28 @@ public class NuvemshopBillingService {
 
     public BigDecimal amountFor(PlanType plan) {
         return switch (plan) {
-            case PREMIUM -> billingProperties.premiumAmount();
-            case PREMIUM_PLUS -> billingProperties.premiumPlusAmount();
-            case FREE -> BigDecimal.ZERO;
+            case PREMIUM -> priceForCountry("BR").premiumAmount();
+            case PREMIUM_PLUS -> priceForCountry("BR").premiumPlusAmount();
+            case FREE, FREE_GRATIS -> BigDecimal.ZERO;
         };
     }
 
     public String currency() {
-        return billingProperties.currency();
+        return priceForCountry("BR").currency();
+    }
+
+    public BigDecimal amountFor(Store store, PlanType plan) {
+        refreshStoreMarketIfMissing(store);
+        return switch (plan) {
+            case PREMIUM -> billingPrice(store).premiumAmount();
+            case PREMIUM_PLUS -> billingPrice(store).premiumPlusAmount();
+            case FREE, FREE_GRATIS -> BigDecimal.ZERO;
+        };
+    }
+
+    public String currencyFor(Store store) {
+        refreshStoreMarketIfMissing(store);
+        return billingPrice(store).currency();
     }
 
     public Store subscribe(Store store, PlanType targetPlan) {
@@ -90,7 +109,8 @@ public class NuvemshopBillingService {
         }
 
         PlanType previousPlan = managedStore.getPlan();
-        PlanDefinition plan = planDefinition(targetPlan);
+        refreshStoreMarketIfMissing(managedStore);
+        PlanDefinition plan = planDefinition(targetPlan, managedStore);
         try {
             ensureRemotePlan(plan);
             JsonNode subscription = updateSubscription(managedStore, plan);
@@ -116,9 +136,17 @@ public class NuvemshopBillingService {
             return;
         }
         try {
+            refreshStoreMarketIfMissing(managedStore);
             JsonNode subscription = getSubscription(managedStore);
             PlanType remotePlan = planFromSubscription(subscription, managedStore.getPlan());
-            PlanDefinition plan = planDefinition(remotePlan);
+            if (!remotePlan.isBillable()) {
+                LOGGER.info("nuvemshop.billing.sync.skip store_id={} reason=non_billable_plan plan={}", managedStore.getStoreId(), remotePlan);
+                managedStore.setBillingLastError(null);
+                managedStore.setBillingLastSyncedAt(Instant.now());
+                storeRepository.save(managedStore);
+                return;
+            }
+            PlanDefinition plan = planDefinition(remotePlan, managedStore);
             applySubscription(managedStore, remotePlan, plan, subscription, managedStore.isBillingSuspended(), null);
             storeRepository.save(managedStore);
             LOGGER.info("nuvemshop.billing.sync.done store_id={} plan={}", managedStore.getStoreId(), remotePlan);
@@ -152,7 +180,7 @@ public class NuvemshopBillingService {
     }
 
     private void validateTargetPlan(PlanType targetPlan) {
-        if (targetPlan != PlanType.PREMIUM && targetPlan != PlanType.PREMIUM_PLUS) {
+        if (!targetPlan.isBillable()) {
             throw new IllegalArgumentException("Selecione um plano pago valido.");
         }
     }
@@ -307,22 +335,118 @@ public class NuvemshopBillingService {
         return fallbackPlan;
     }
 
-    private PlanDefinition planDefinition(PlanType planType) {
+    private PlanDefinition planDefinition(PlanType planType, Store store) {
+        BillingPrice price = billingPrice(store);
         return switch (planType) {
             case PREMIUM -> new PlanDefinition(
                     billingProperties.premiumExternalId(),
-                    billingProperties.currency(),
-                    billingProperties.premiumAmount(),
+                    price.currency(),
+                    price.premiumAmount(),
                     "Campos Personalizados Premium"
             );
             case PREMIUM_PLUS -> new PlanDefinition(
                     billingProperties.premiumPlusExternalId(),
-                    billingProperties.currency(),
-                    billingProperties.premiumPlusAmount(),
+                    price.currency(),
+                    price.premiumPlusAmount(),
                     "Campos Personalizados Premium Plus"
             );
-            case FREE -> throw new IllegalArgumentException("FREE nao usa billing automatico.");
+            case FREE, FREE_GRATIS -> throw new IllegalArgumentException(planType.getDisplayName() + " nao usa billing automatico.");
         };
+    }
+
+    private void refreshStoreMarketIfMissing(Store store) {
+        if (present(store.getStoreCountryCode()) && present(store.getStoreCurrency())) {
+            return;
+        }
+        try {
+            StoreProfile profile = apiClient.getStoreProfile(store);
+            if (present(profile.countryCode())) {
+                store.setStoreCountryCode(profile.countryCode());
+            }
+            if (present(profile.currency())) {
+                store.setStoreCurrency(profile.currency());
+            }
+            if (present(profile.name()) && !present(store.getStoreName())) {
+                store.setStoreName(profile.name());
+            }
+        } catch (RuntimeException ex) {
+            LOGGER.warn("nuvemshop.billing.store_market.refresh_failed store_id={} message={}", store.getStoreId(), ex.getMessage());
+        }
+    }
+
+    private BillingPrice billingPrice(Store store) {
+        String countryCode = normalize(store.getStoreCountryCode());
+        String currency = normalize(store.getStoreCurrency());
+        BillingPrice price = priceForCountryOrNull(countryCode);
+        if (price == null && present(currency)) {
+            price = priceForCurrency(currency);
+        }
+        if (price == null) {
+            throw rejected(
+                    store.getStoreId(),
+                    store.getPlan(),
+                    "billing_market_unsupported",
+                    "Pais/moeda da loja sem preco configurado para billing."
+            );
+        }
+        if (present(currency) && !price.currency().equals(currency)) {
+            throw rejected(
+                    store.getStoreId(),
+                    store.getPlan(),
+                    "billing_currency_mismatch",
+                    "Moeda da loja nao corresponde a tabela de preco configurada."
+            );
+        }
+        return price;
+    }
+
+    private BillingPrice priceForCountry(String countryCode) {
+        BillingPrice price = priceForCountryOrNull(countryCode);
+        if (price == null) {
+            throw new IllegalStateException("Preco de billing nao configurado para " + countryCode + ".");
+        }
+        return price;
+    }
+
+    private BillingPrice priceForCountryOrNull(String countryCode) {
+        if (!present(countryCode)) {
+            return null;
+        }
+        NuvemshopBillingProperties.CountryPrice configured = configuredPrices().get(countryCode);
+        if (configured == null) {
+            return null;
+        }
+        return new BillingPrice(normalize(configured.currency()), configured.premiumAmount(), configured.premiumPlusAmount());
+    }
+
+    private BillingPrice priceForCurrency(String currency) {
+        return configuredPrices().values().stream()
+                .filter(price -> currency.equals(normalize(price.currency())))
+                .findFirst()
+                .map(price -> new BillingPrice(normalize(price.currency()), price.premiumAmount(), price.premiumPlusAmount()))
+                .orElse(null);
+    }
+
+    private Map<String, NuvemshopBillingProperties.CountryPrice> configuredPrices() {
+        Map<String, NuvemshopBillingProperties.CountryPrice> prices = billingProperties.prices();
+        if (prices == null || prices.isEmpty()) {
+            return Map.of(
+                    "BR", new NuvemshopBillingProperties.CountryPrice(billingProperties.currency(), billingProperties.premiumAmount(), billingProperties.premiumPlusAmount())
+            );
+        }
+        return prices.entrySet().stream()
+                .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                        entry -> normalize(entry.getKey()),
+                        Map.Entry::getValue
+                ));
+    }
+
+    private boolean present(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String normalize(String value) {
+        return value == null ? null : value.strip().toUpperCase(Locale.ROOT);
     }
 
     private boolean isDuplicatePlan(RestClientResponseException ex) {
@@ -403,5 +527,8 @@ public class NuvemshopBillingService {
     }
 
     private record PlanDefinition(String externalId, String currency, BigDecimal amount, String description) {
+    }
+
+    private record BillingPrice(String currency, BigDecimal premiumAmount, BigDecimal premiumPlusAmount) {
     }
 }
