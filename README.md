@@ -11,6 +11,7 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/overview.md`
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/arquitetura.md`
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/roadmap.md`
+- `docs/nuvemshop-homologacao/` contem os artefatos separados para homologacao e publicacao Nuvemshop: diagrama/escopos, roteiro de video, assinatura de planos pagos, FAQs/guia de instalacao e checklist do perfil do app.
 
 ## Stack
 
