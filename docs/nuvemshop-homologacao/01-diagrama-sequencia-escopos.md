@@ -67,7 +67,7 @@ sequenceDiagram
 | `read_products` | `/admin/products`, `/admin/onboarding` | Listar produtos para o lojista escolher onde aplicar campos personalizados. | Nao alterar catalogo com esse escopo; apenas leitura. |
 | `read_orders` | `/admin/dashboard` | Ler pedidos para mostrar relatorios de personalizacoes ja recebidas via `properties[...]`. | A leitura deve ser limitada ao painel/logica de relatorios; evitar armazenar dados de comprador desnecessariamente. |
 | `read_scripts` | Instalacao/reinstalacao | Verificar se os scripts do app ja existem antes de criar duplicatas. | Idempotencia na instalacao e reconexao. |
-| `write_scripts` | Instalacao/reinstalacao e desinstalacao | Registrar/remover o JavaScript que injeta os campos na vitrine/checkout. | Criar apenas scripts do proprio app e remover apenas scripts reconhecidos pelo app. |
+| `write_scripts` | Instalacao/reinstalacao | Registrar o JavaScript que injeta os campos na vitrine/checkout. | Criar apenas scripts do proprio app; na desinstalacao, a Nuvemshop remove automaticamente os scripts registrados pelo app. |
 | `billing` | `/admin/billing/subscribe` e sincronizacao | Criar/atualizar assinatura recorrente dos planos pagos do app. | Usar apenas para planos pagos aceitos; manter plano local inalterado se a API de billing falhar. |
 
 ## Como representar os escopos no diagrama

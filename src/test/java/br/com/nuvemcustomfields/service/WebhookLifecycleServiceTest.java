@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,33 +19,34 @@ class WebhookLifecycleServiceTest {
     private final StoreRepository storeRepository = mock(StoreRepository.class);
     private final NuvemshopBillingService billingService = mock(NuvemshopBillingService.class);
     private final IntegrationLogService integrationLogService = mock(IntegrationLogService.class);
-    private final ScriptInstallService scriptInstallService = mock(ScriptInstallService.class);
     private final WebhookLifecycleService service = new WebhookLifecycleService(
             storeRepository,
             mock(PersonalizationRuleRepository.class),
-            scriptInstallService,
             integrationLogService,
             billingService
     );
 
     @Test
-    void marksStoreUninstalledEvenWhenRemoteScriptCleanupFails() {
+    void revokesLocalAccessWithoutCallingRemoteApis() {
         Store store = store();
+        store.setAccessToken("secret-token");
+        store.setScope("read_products,write_scripts");
         store.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM);
         when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
-        doThrow(new IllegalStateException("Invalid access token"))
-                .when(scriptInstallService)
-                .removePersonalizerScripts(store);
 
         service.handle(new WebhookPayload(123L, "app/uninstalled", null));
 
         assertThat(store.getUninstalledAt()).isNotNull();
+        assertThat(store.getAccessToken()).isNull();
+        assertThat(store.getScope()).isNull();
+        assertThat(store.getPlan()).isEqualTo(br.com.nuvemcustomfields.entity.PlanType.FREE);
         verify(storeRepository).save(store);
         verify(integrationLogService).info(
                 123L,
                 "webhook.app_uninstalled",
-                "Loja desinstalada; assinatura e script foram limpos."
+                "Loja desinstalada; acesso revogado e assinatura local limpa."
         );
+        verify(billingService, never()).syncSubscription(store);
     }
 
     @Test

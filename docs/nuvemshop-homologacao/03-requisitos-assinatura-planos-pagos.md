@@ -32,7 +32,7 @@ Este artefato atende ao requisito: "Requisitos tecnicos e cuidados com etapas de
 | `subscription/updated` | Sincronizar plano, valor, moeda e datas de execucao com a Nuvemshop. |
 | `app/suspended` | Marcar `billing_suspended=true` e bloquear acesso premium. |
 | `app/resumed` | Marcar `billing_suspended=false` e sincronizar a assinatura remota. |
-| `app/uninstalled` | Limpar assinatura local, voltar plano para `FREE`, remover scripts e marcar loja como desinstalada. |
+| `app/uninstalled` | Marcar a loja como desinstalada, apagar token/escopos, limpar assinatura local e voltar o plano para `FREE`. Nao chamar a API remota: o token deixa de ser valido e a Nuvemshop remove scripts/webhooks automaticamente. |
 
 Todos os webhooks devem validar `x-linkedstore-hmac-sha256` antes de alterar estado local.
 
@@ -55,4 +55,5 @@ Todos os webhooks devem validar `x-linkedstore-hmac-sha256` antes de alterar est
 - Falha ao consultar assinatura no webhook: registrar erro e nao liberar beneficio indevido.
 - Mercado sem preco configurado: bloquear assinatura e informar que o mercado ainda nao esta disponivel.
 - Loja suspensa: manter regras salvas, mas aplicar limites de acesso premium conforme `billing_suspended`.
-- Desinstalacao: remover acesso local e scripts do app mesmo que a limpeza remota falhe parcialmente.
+- Desinstalacao: encerrar o acesso local imediatamente, apagar token/escopos e responder rapidamente ao webhook, sem depender de limpeza remota.
+- Exclusao LGPD `store/redact`: excluir definitivamente todos os registros vinculados a loja de forma idempotente.

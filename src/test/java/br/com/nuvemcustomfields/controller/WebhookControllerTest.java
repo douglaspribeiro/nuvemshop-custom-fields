@@ -29,10 +29,16 @@ class WebhookControllerTest {
     )).build();
 
     @Test
-    void forwardsAllLgpdRoutesToSupport() throws Exception {
+    void erasesStoreAndForwardsCustomerLgpdRoutesWithoutRawPayloadPersistence() throws Exception {
         when(securityService.isValid(BODY, "valid")).thenReturn(true);
 
-        assertForwarded("/hook/store/redact", "Exclusao dos dados da loja");
+        mockMvc.perform(post("/hook/store/redact")
+                        .header("x-linkedstore-hmac-sha256", "valid")
+                        .contentType("application/json")
+                        .content(BODY))
+                .andExpect(status().isNoContent());
+
+        verify(lgpdWebhookService).eraseStore(BODY);
         assertForwarded("/hook/customer/redact", "Exclusao dos dados do cliente");
         assertForwarded("/hook/customer/data", "Solicitacao dos dados do cliente");
     }

@@ -36,7 +36,7 @@
         <p>Os dados podem ser processados pela Nuvemshop e por fornecedores de infraestrutura estritamente necessários à operação, hospedagem, banco de dados e monitoramento. Não vendemos dados pessoais nem os utilizamos para publicidade de terceiros.</p>
 
         <h2>6. Retenção e exclusão</h2>
-        <p>Os dados permanecem armazenados enquanto a integração estiver ativa e pelo período necessário para suporte, auditoria, segurança e obrigações legais. Após a desinstalação, o acesso à API é encerrado e os registros operacionais podem ser anonimizados ou excluídos conforme os prazos aplicáveis.</p>
+        <p>Os dados permanecem armazenados enquanto a integração estiver ativa e pelo período necessário para suporte, auditoria, segurança e obrigações legais. Após a desinstalação, o token e os escopos de acesso são apagados imediatamente. Ao receber da Nuvemshop uma solicitação <code>store/redact</code>, o app exclui definitivamente os registros vinculados à loja.</p>
 
         <h2>7. Segurança</h2>
         <p>Adotamos controles técnicos e organizacionais razoáveis, incluindo acesso restrito, comunicação HTTPS e validação de assinaturas de webhooks. Nenhum sistema é totalmente imune a incidentes, mas trabalhamos para reduzir riscos e responder adequadamente.</p>

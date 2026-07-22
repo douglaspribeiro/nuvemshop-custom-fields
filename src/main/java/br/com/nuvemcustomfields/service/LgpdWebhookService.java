@@ -11,21 +11,28 @@ public class LgpdWebhookService {
 
     private final ObjectMapper objectMapper;
     private final SupportService supportService;
+    private final StoreDataErasureService storeDataErasureService;
 
-    public LgpdWebhookService(ObjectMapper objectMapper, SupportService supportService) {
+    public LgpdWebhookService(
+            ObjectMapper objectMapper,
+            SupportService supportService,
+            StoreDataErasureService storeDataErasureService
+    ) {
         this.objectMapper = objectMapper;
         this.supportService = supportService;
+        this.storeDataErasureService = storeDataErasureService;
+    }
+
+    public void eraseStore(String rawBody) throws Exception {
+        JsonNode payload = objectMapper.readTree(rawBody);
+        storeDataErasureService.erase(requiredStoreId(payload));
     }
 
     public void forwardToSupport(String requestType, String rawBody) throws Exception {
         JsonNode payload = objectMapper.readTree(rawBody);
         Long storeId = requiredStoreId(payload);
-        String message = """
-                Pedido recebido: %s
-
-                Dados enviados pela Nuvemshop:
-                %s
-                """.formatted(requestType, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload));
+        String message = "Pedido recebido: %s%n%nO aplicativo nao persiste dados pessoais de compradores nem o conteudo dos pedidos."
+                .formatted(requestType);
         supportService.openAutomatedTicket(storeId, SUBJECT, message);
     }
 

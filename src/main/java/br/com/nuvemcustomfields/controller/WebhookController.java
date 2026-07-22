@@ -58,7 +58,14 @@ public class WebhookController {
             @RequestHeader(name = "x-linkedstore-hmac-sha256", required = false) String hmac,
             @RequestBody String body
     ) throws Exception {
-        return receiveLgpdRequest(hmac, body, "Exclusao dos dados da loja");
+        LOGGER.info("webhook.lgpd.receive.start request_type=store_redact hmac_present={} body_size={}", hmac != null && !hmac.isBlank(), body.length());
+        if (!securityService.isValid(body, hmac)) {
+            LOGGER.warn("webhook.lgpd.receive.invalid_signature request_type=store_redact");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        lgpdWebhookService.eraseStore(body);
+        LOGGER.info("webhook.lgpd.receive.done request_type=store_redact");
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/hook/customer/redact")

@@ -85,9 +85,9 @@ Principais camadas do codigo:
 | `GET /admin/help` | Logs recentes e apoio operacional. |
 | `GET /public/stores/{storeId}/personalization` | Configuracao consumida pelo script da vitrine. |
 | `POST /webhooks/nuvemshop` | Webhooks oficiais da Nuvemshop. |
-| `POST /hook/store/redact` | Encaminha pedido LGPD de exclusao da loja ao suporte. |
-| `POST /hook/customer/redact` | Encaminha pedido LGPD de exclusao de cliente ao suporte. |
-| `POST /hook/customer/data` | Encaminha pedido LGPD de acesso aos dados ao suporte. |
+| `POST /hook/store/redact` | Exclui definitivamente os dados da loja apos validar o HMAC. |
+| `POST /hook/customer/redact` | Registra a solicitacao sem copiar dados pessoais do payload; o app nao persiste dados de compradores. |
+| `POST /hook/customer/data` | Registra a solicitacao sem copiar dados pessoais do payload; o app nao persiste dados de compradores. |
 | `GET /backoffice` | Painel interno do operador. |
 
 ## Planos e Limites
@@ -220,7 +220,8 @@ O backoffice interno permite acompanhar lojas instaladas, status, eventos de pla
 
 Webhooks registrados:
 
-- `app/uninstalled`: marca a loja como desinstalada, limpa assinatura local, volta o plano para `FREE` e remove o script da vitrine.
+- `app/uninstalled`: marca a loja como desinstalada, apaga token e escopos, limpa a assinatura local e volta o plano para `FREE`. Scripts e webhooks do app sao removidos automaticamente pela Nuvemshop.
+- `store/redact`: exclui de forma idempotente loja, configuracoes, campos, logs, eventos de plano e chamados vinculados.
 - `product/deleted`: remove as regras de personalizacao do produto removido.
 
 ## Status do Produto

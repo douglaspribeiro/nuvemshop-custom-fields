@@ -33,7 +33,7 @@ public class Store {
     @Column(name = "store_currency", length = 3)
     private String storeCurrency;
 
-    @Column(name = "access_token", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "access_token", columnDefinition = "TEXT")
     private String accessToken;
 
     @Column(columnDefinition = "TEXT")

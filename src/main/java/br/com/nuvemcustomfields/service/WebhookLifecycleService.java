@@ -19,20 +19,17 @@ public class WebhookLifecycleService {
 
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
-    private final ScriptInstallService scriptInstallService;
     private final IntegrationLogService integrationLogService;
     private final NuvemshopBillingService billingService;
 
     public WebhookLifecycleService(
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
-            ScriptInstallService scriptInstallService,
             IntegrationLogService integrationLogService,
             NuvemshopBillingService billingService
     ) {
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
-        this.scriptInstallService = scriptInstallService;
         this.integrationLogService = integrationLogService;
         this.billingService = billingService;
     }
@@ -54,18 +51,14 @@ public class WebhookLifecycleService {
     }
 
     private void handleUninstalled(Long storeId) {
+        if (storeId == null) {
+            LOGGER.warn("webhook.app_uninstalled.ignored reason=missing_store_id");
+            return;
+        }
         storeRepository.findByStoreId(storeId).ifPresent(store -> {
-            try {
-                scriptInstallService.removePersonalizerScripts(store);
-            } catch (RuntimeException ex) {
-                LOGGER.warn(
-                        "webhook.app_uninstalled.script_cleanup_failed store_id={} exception={} message={}",
-                        storeId,
-                        ex.getClass().getSimpleName(),
-                        ex.getMessage()
-                );
-            }
             store.setUninstalledAt(Instant.now());
+            store.setAccessToken(null);
+            store.setScope(null);
             store.setSubscriptionId(null);
             store.setPlan(PlanType.FREE);
             store.setBillingPlanExternalId(null);
@@ -77,7 +70,11 @@ public class WebhookLifecycleService {
             store.setBillingLastSyncedAt(Instant.now());
             store.setBillingLastError(null);
             storeRepository.save(store);
-            integrationLogService.info(storeId, "webhook.app_uninstalled", "Loja desinstalada; assinatura e script foram limpos.");
+            integrationLogService.info(
+                    storeId,
+                    "webhook.app_uninstalled",
+                    "Loja desinstalada; acesso revogado e assinatura local limpa."
+            );
         });
     }
 

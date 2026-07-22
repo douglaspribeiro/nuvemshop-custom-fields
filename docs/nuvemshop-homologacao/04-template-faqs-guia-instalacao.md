@@ -77,7 +77,7 @@ Use o link de instalacao novamente. O app atualiza o token da loja, preserva as 
 
 ### Desinstalacao
 
-Ao desinstalar pela Nuvemshop, o app recebe `app/uninstalled`, marca a loja como desinstalada, limpa dados locais de assinatura e tenta remover os scripts da vitrine.
+Ao desinstalar pela Nuvemshop, o app recebe `app/uninstalled`, bloqueia o acesso, apaga o token e os escopos e limpa os dados locais da assinatura. A propria Nuvemshop remove automaticamente os scripts e webhooks registrados pelo app. Quando a plataforma envia `store/redact`, os registros vinculados a loja sao excluidos definitivamente.
 
 ### Problemas comuns
 

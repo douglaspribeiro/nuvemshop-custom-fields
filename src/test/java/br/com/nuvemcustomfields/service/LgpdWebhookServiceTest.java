@@ -12,10 +12,22 @@ import static org.mockito.Mockito.verify;
 class LgpdWebhookServiceTest {
 
     private final SupportService supportService = mock(SupportService.class);
-    private final LgpdWebhookService service = new LgpdWebhookService(new ObjectMapper(), supportService);
+    private final StoreDataErasureService storeDataErasureService = mock(StoreDataErasureService.class);
+    private final LgpdWebhookService service = new LgpdWebhookService(
+            new ObjectMapper(),
+            supportService,
+            storeDataErasureService
+    );
 
     @Test
-    void forwardsRequestAndPayloadToSupport() throws Exception {
+    void erasesAllStoreDataForStoreRedact() throws Exception {
+        service.eraseStore("{\"store_id\":123}");
+
+        verify(storeDataErasureService).erase(123L);
+    }
+
+    @Test
+    void forwardsCustomerRequestWithoutCopyingPersonalPayloadToSupport() throws Exception {
         String body = """
                 {"store_id":123,"customer":{"id":456,"email":"cliente@example.com"}}
                 """;
@@ -30,8 +42,9 @@ class LgpdWebhookServiceTest {
         );
         assertThat(message.getValue())
                 .contains("Pedido recebido: Exclusao dos dados do cliente")
-                .contains("\"id\" : 456")
-                .contains("cliente@example.com");
+                .contains("nao persiste dados pessoais")
+                .doesNotContain("456")
+                .doesNotContain("cliente@example.com");
     }
 
     @Test
