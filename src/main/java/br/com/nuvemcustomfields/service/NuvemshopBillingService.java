@@ -360,14 +360,21 @@ public class NuvemshopBillingService {
         }
         try {
             StoreProfile profile = apiClient.getStoreProfile(store);
+            boolean changed = false;
             if (present(profile.countryCode())) {
                 store.setStoreCountryCode(profile.countryCode());
+                changed = true;
             }
             if (present(profile.currency())) {
                 store.setStoreCurrency(profile.currency());
+                changed = true;
             }
             if (present(profile.name()) && !present(store.getStoreName())) {
                 store.setStoreName(profile.name());
+                changed = true;
+            }
+            if (changed) {
+                storeRepository.save(store);
             }
         } catch (RuntimeException ex) {
             LOGGER.warn("nuvemshop.billing.store_market.refresh_failed store_id={} message={}", store.getStoreId(), ex.getMessage());
@@ -380,6 +387,14 @@ public class NuvemshopBillingService {
         BillingPrice price = priceForCountryOrNull(countryCode);
         if (price == null && present(currency)) {
             price = priceForCurrency(currency);
+        }
+        if (price == null && !present(countryCode) && !present(currency)) {
+            throw rejected(
+                    store.getStoreId(),
+                    store.getPlan(),
+                    "billing_market_missing",
+                    "Nao foi possivel identificar o pais e a moeda da loja. Reinstale o app pela Nuvemshop e tente novamente."
+            );
         }
         if (price == null) {
             throw rejected(

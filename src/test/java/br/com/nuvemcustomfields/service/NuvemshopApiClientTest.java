@@ -25,13 +25,13 @@ class NuvemshopApiClientTest {
         store.setStoreId(123L);
         store.setAccessToken("store-token");
 
-        server.expect(requestTo("https://api.example.com/v1/123/store?fields=name,country,country_code,main_currency,currency,locale"))
+        server.expect(requestTo("https://api.example.com/v1/123/store?fields=name,country,main_currency"))
                 .andExpect(method(GET))
                 .andExpect(header("Authentication", "bearer store-token"))
                 .andRespond(withSuccess("""
                         {
                           "name": { "es": "Tienda Test" },
-                          "country": { "code": "AR" },
+                          "country": "AR",
                           "main_currency": "ARS"
                         }
                         """, MediaType.APPLICATION_JSON));

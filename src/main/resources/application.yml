@@ -37,8 +37,8 @@ management:
         enabled: true
 
 nuvemshop:
-  client-id: ${NUVEMSHOP_CLIENT_ID:33395}
-  client-secret: ${NUVEMSHOP_CLIENT_SECRET:a74c8dd0b32f24b71ba90663e5f095e5da325917cafecff5}
+  client-id: ${NUVEMSHOP_CLIENT_ID:change-me}
+  client-secret: ${NUVEMSHOP_CLIENT_SECRET:change-me}
   redirect-uri: ${NUVEMSHOP_REDIRECT_URI:http://localhost:8080/oauth/callback}
   auth-url: ${NUVEMSHOP_AUTH_URL:https://www.nuvemshop.com.br/apps/{clientId}/authorize}
   token-url: ${NUVEMSHOP_TOKEN_URL:https://www.nuvemshop.com.br/apps/authorize/token}

@@ -63,7 +63,7 @@ public class NuvemshopApiClient {
         LOGGER.info("nuvemshop.api.get_store.start store_id={}", store.getStoreId());
         try {
             JsonNode response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=name,country,country_code,main_currency,currency,locale", store.getStoreId())
+                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=name,country,main_currency", store.getStoreId())
                     .header("Authentication", "bearer " + store.getAccessToken())
                     .retrieve()
                     .body(JsonNode.class);

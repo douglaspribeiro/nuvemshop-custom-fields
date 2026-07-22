@@ -155,6 +155,39 @@ class NuvemshopBillingServiceTest {
     }
 
     @Test
+    void refreshesAndPersistsMissingStoreMarketBeforeShowingPrices() {
+        RestClient.Builder builder = RestClient.builder();
+        Store store = store(false);
+        store.setStoreCountryCode(null);
+        store.setStoreCurrency(null);
+        when(apiClient.getStoreProfile(store)).thenReturn(new br.com.nuvemcustomfields.dto.StoreProfile("Loja", "BR", "BRL"));
+        when(storeRepository.save(store)).thenReturn(store);
+
+        BigDecimal amount = service(builder).amountFor(store, PlanType.PREMIUM);
+
+        assertThat(amount).isEqualByComparingTo("19.99");
+        assertThat(store.getStoreCountryCode()).isEqualTo("BR");
+        assertThat(store.getStoreCurrency()).isEqualTo("BRL");
+        verify(storeRepository).save(store);
+    }
+
+    @Test
+    void asksForReinstallationWhenStoreMarketCannotBeRecovered() {
+        RestClient.Builder builder = RestClient.builder();
+        Store store = store(false);
+        store.setStoreCountryCode(null);
+        store.setStoreCurrency(null);
+        when(storeRepository.findActiveByStoreId(123L)).thenReturn(Optional.of(store));
+        when(apiClient.getStoreProfile(store)).thenThrow(new IllegalStateException("profile unavailable"));
+
+        assertThatThrownBy(() -> service(builder).subscribe(store, PlanType.PREMIUM))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Reinstale o app");
+
+        verify(planEventRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsUnsupportedStoreCurrencyBeforeCallingBillingApi() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
