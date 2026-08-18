@@ -45,7 +45,7 @@ public class AuthController {
     }
 
     @GetMapping("/oauth/callback")
-    public RedirectView callback(@RequestParam String code, @RequestParam String state, HttpSession session) {
+    public RedirectView callback(@RequestParam String code, @RequestParam(required = false) String state, HttpSession session) {
         Object expectedState = session.getAttribute(OAUTH_STATE_SESSION_KEY);
         LOGGER.info(
                 "auth.callback.received session_id={} state_present={} expected_state_present={} code_present={}",
