@@ -154,6 +154,49 @@ class ScriptInstallServiceTest {
     }
 
     @Test
+    void diagnoseDetectsUploadedButUnpublishedVersion() {
+        Store store = store();
+        ArrayNode scripts = new ObjectMapper().createArrayNode();
+        var script = scripts.addObject()
+                .put("id", 7500L)
+                .put("status", "active")
+                .put("location", "store");
+        script.putObject("current_version").put("version", "1").put("src", "https://cdn/1.js");
+        script.putObject("draft_version").put("version", "2").put("src", "https://cdn/2.js");
+        when(apiClient.listScripts(store)).thenReturn(scripts);
+
+        ScriptInstallService service = new ScriptInstallService(
+                apiClient,
+                properties("", "", "7500"),
+                integrationLogService
+        );
+
+        var installed = service.diagnose(store).scripts().getFirst();
+
+        assertThat(installed.currentVersion()).isEqualTo("1");
+        assertThat(installed.draftVersion()).isEqualTo("2");
+        assertThat(installed.hasUnpublishedDraft()).isTrue();
+    }
+
+    @Test
+    void diagnoseDoesNotFlagDraftWhenVersionsMatch() {
+        Store store = store();
+        ArrayNode scripts = new ObjectMapper().createArrayNode();
+        var script = scripts.addObject().put("id", 7500L).put("status", "active");
+        script.putObject("current_version").put("version", "2");
+        script.putObject("draft_version").put("version", "2");
+        when(apiClient.listScripts(store)).thenReturn(scripts);
+
+        ScriptInstallService service = new ScriptInstallService(
+                apiClient,
+                properties("", "", "7500"),
+                integrationLogService
+        );
+
+        assertThat(service.diagnose(store).scripts().getFirst().hasUnpublishedDraft()).isFalse();
+    }
+
+    @Test
     void diagnoseReportsApiFailureInsteadOfThrowing() {
         Store store = store();
         when(apiClient.listScripts(store)).thenThrow(new IllegalStateException("401 Unauthorized"));

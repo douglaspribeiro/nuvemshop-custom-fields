@@ -145,7 +145,9 @@ public class ScriptInstallService {
                     script.path("event").asText(""),
                     script.path("is_auto_install").asBoolean(false),
                     src,
-                    configured.contains(id)
+                    configured.contains(id),
+                    versionLabel(script.path("current_version")),
+                    versionLabel(script.path("draft_version"))
             ));
         }
 
@@ -158,6 +160,19 @@ public class ScriptInstallService {
                 missing
         );
         return new ScriptDiagnostics(configured, installed, missing, null);
+    }
+
+    /** `version` e o rotulo humano; cai para o `id` da versao quando ausente. */
+    private String versionLabel(JsonNode versionNode) {
+        if (versionNode == null || versionNode.isMissingNode() || versionNode.isNull()) {
+            return null;
+        }
+        String version = versionNode.path("version").asText("");
+        if (!version.isBlank()) {
+            return version;
+        }
+        String id = versionNode.path("id").asText("");
+        return id.isBlank() ? null : id;
     }
 
     private Set<Long> configuredScriptIds() {

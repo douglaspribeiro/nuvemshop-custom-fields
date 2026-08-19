@@ -31,12 +31,26 @@ public record ScriptDiagnostics(
             boolean autoInstall,
             String src,
             /** Se este id esta entre os configurados no app; falso indica script orfao. */
-            boolean configuredInApp
+            boolean configuredInApp,
+            /** Versao que a loja realmente carrega. */
+            String currentVersion,
+            /** Versao enviada e ainda nao publicada; se maior que a current, o upload nao entrou. */
+            String draftVersion
     ) {
 
         /** A API expoe active/testing/draft/legacy; so `active` carrega em loja normal. */
         public boolean loadsInProduction() {
             return "active".equalsIgnoreCase(status);
+        }
+
+        /**
+         * Upload feito sem publicar: a loja segue na versao antiga. Foi a causa de um
+         * ciclo inteiro de debug, por isso e destacado na tela.
+         */
+        public boolean hasUnpublishedDraft() {
+            return draftVersion != null
+                    && !draftVersion.isBlank()
+                    && !draftVersion.equals(currentVersion);
         }
     }
 }

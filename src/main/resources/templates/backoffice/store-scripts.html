@@ -66,6 +66,7 @@
                 <th>Evento</th>
                 <th>Auto install</th>
                 <th>No app</th>
+                <th>Versao</th>
                 <th>src</th>
             </tr>
             </thead>
@@ -82,6 +83,11 @@
                 <td th:text="${script.event} ?: '-'">onload</td>
                 <td th:text="${script.autoInstall} ? 'sim' : 'nao'">nao</td>
                 <td th:text="${script.configuredInApp} ? 'sim' : 'orfao'">sim</td>
+                <td>
+                    <span th:text="${script.currentVersion} ?: '-'">1</span>
+                    <span class="status error" th:if="${script.hasUnpublishedDraft()}"
+                          th:text="'draft ' + ${script.draftVersion} + ' nao publicada'">draft</span>
+                </td>
                 <td class="muted" th:text="${script.src} ?: '-'">src</td>
             </tr>
             </tbody>
@@ -90,7 +96,11 @@
         <p class="muted">
             Status diferente de <code>active</code> nao carrega em loja normal.
             <code>orfao</code> significa que o script esta na loja mas nenhum id configurado
-            no app aponta para ele.
+            no app aponta para ele. A coluna <strong>Versao</strong> mostra o que a loja
+            realmente carrega: enviar arquivo novo no Partner Portal cria uma versao, mas
+            <strong>publicar e uma acao separada</strong> — enquanto houver draft nao publicada,
+            a vitrine continua rodando o bundle antigo. Confira tambem o numero no fim do
+            <code>src</code>.
         </p>
     </section>
 
