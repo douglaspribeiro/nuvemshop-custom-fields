@@ -1,25 +1,39 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.dto.ProductPage;
 import br.com.nuvemcustomfields.dto.ProductSummary;
 import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class NuvemshopApiClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NuvemshopApiClient.class);
+
+    public static final int DEFAULT_PER_PAGE = 50;
+    private static final int MAX_PER_PAGE = 200;
+
+    /** Teto de paginas ao varrer colecoes pequenas (scripts/webhooks); evita loop infinito se a API repetir paginas. */
+    private static final int MAX_PAGES_SWEEP = 20;
 
     private final NuvemshopProperties properties;
     private final RestClient restClient;
@@ -29,30 +43,70 @@ public class NuvemshopApiClient {
         this.restClient = builder.defaultHeader("User-Agent", properties.userAgent()).build();
     }
 
-    public List<ProductSummary> listProducts(Store store) {
-        LOGGER.info("nuvemshop.api.list_products.start store_id={}", store.getStoreId());
-        JsonNode response;
+    public ProductPage listProducts(Store store, int page, int perPage, String query) {
+        int safePage = Math.max(page, 1);
+        int safePerPage = Math.clamp(perPage, 1, MAX_PER_PAGE);
+        String safeQuery = (query == null || query.isBlank()) ? null : query.strip();
+
+        LOGGER.info(
+                "nuvemshop.api.list_products.start store_id={} page={} per_page={} query_present={}",
+                store.getStoreId(),
+                safePage,
+                safePerPage,
+                safeQuery != null
+        );
+
+        // toUri() em vez de toUriString(): RestClient re-encoda Strings e o `q` sairia com %2520.
+        URI uri = UriComponentsBuilder.fromUriString(properties.apiBaseUrl())
+                .path("/v1/{storeId}/products")
+                .queryParam("page", safePage)
+                .queryParam("per_page", safePerPage)
+                .queryParam("fields", "id,name")
+                .queryParamIfPresent("q", Optional.ofNullable(safeQuery))
+                .encode()
+                .buildAndExpand(store.getStoreId())
+                .toUri();
+
+        ResponseEntity<JsonNode> response;
         try {
             response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/products", store.getStoreId())
+                    .uri(uri)
                     .header("Authentication", "bearer " + store.getAccessToken())
                     .retrieve()
-                    .body(JsonNode.class);
+                    .toEntity(JsonNode.class);
         } catch (RuntimeException ex) {
             logRestFailure("nuvemshop.api.list_products.error", store.getStoreId(), ex);
             throw ex;
         }
 
-        List<ProductSummary> products = new ArrayList<>();
-        if (response == null || !response.isArray()) {
-            LOGGER.warn("nuvemshop.api.list_products.unexpected_response store_id={} response_present={}", store.getStoreId(), response != null);
-            return products;
+        JsonNode body = arrayBody(response.getBody());
+        if (body == null) {
+            LOGGER.warn(
+                    "nuvemshop.api.list_products.unexpected_response store_id={} page={} response_present={}",
+                    store.getStoreId(),
+                    safePage,
+                    response.getBody() != null
+            );
+            return ProductPage.empty(safePage, safePerPage, safeQuery);
         }
-        for (JsonNode product : response) {
+
+        List<ProductSummary> products = new ArrayList<>();
+        for (JsonNode product : body) {
             products.add(new ProductSummary(product.path("id").asLong(), localizedName(product.path("name"), "Produto sem nome")));
         }
-        LOGGER.info("nuvemshop.api.list_products.done store_id={} products_count={}", store.getStoreId(), products.size());
-        return products;
+
+        long totalCount = totalCount(response.getHeaders());
+        boolean hasNext = hasNextPage(response.getHeaders(), safePage, safePerPage, products.size(), totalCount);
+
+        LOGGER.info(
+                "nuvemshop.api.list_products.done store_id={} page={} products_count={} total_count={} has_next={}",
+                store.getStoreId(),
+                safePage,
+                products.size(),
+                totalCount,
+                hasNext
+        );
+        return new ProductPage(products, safePage, safePerPage, totalCount, hasNext, safeQuery);
     }
 
     public String getStoreName(Store store) {
@@ -88,19 +142,7 @@ public class NuvemshopApiClient {
     }
 
     public JsonNode listWebhooks(Store store) {
-        LOGGER.info("nuvemshop.api.list_webhooks.start store_id={}", store.getStoreId());
-        try {
-            JsonNode response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/webhooks", store.getStoreId())
-                    .header("Authentication", "bearer " + store.getAccessToken())
-                    .retrieve()
-                    .body(JsonNode.class);
-            LOGGER.info("nuvemshop.api.list_webhooks.done store_id={} response_present={}", store.getStoreId(), response != null);
-            return response;
-        } catch (RuntimeException ex) {
-            logRestFailure("nuvemshop.api.list_webhooks.error", store.getStoreId(), ex);
-            throw ex;
-        }
+        return sweepAllPages("nuvemshop.api.list_webhooks", store, "/v1/{storeId}/webhooks");
     }
 
     public void createWebhook(Store store, String event, String url) {
@@ -120,19 +162,7 @@ public class NuvemshopApiClient {
     }
 
     public JsonNode listScripts(Store store) {
-        LOGGER.info("nuvemshop.api.list_scripts.start store_id={}", store.getStoreId());
-        try {
-            JsonNode response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/scripts", store.getStoreId())
-                    .header("Authentication", "bearer " + store.getAccessToken())
-                    .retrieve()
-                    .body(JsonNode.class);
-            LOGGER.info("nuvemshop.api.list_scripts.done store_id={} response_present={}", store.getStoreId(), response != null);
-            return response;
-        } catch (RuntimeException ex) {
-            logRestFailure("nuvemshop.api.list_scripts.error", store.getStoreId(), ex);
-            throw ex;
-        }
+        return sweepAllPages("nuvemshop.api.list_scripts", store, "/v1/{storeId}/scripts");
     }
 
     public void deleteScript(Store store, Long scriptId) {
@@ -169,8 +199,9 @@ public class NuvemshopApiClient {
     public JsonNode listRecentOrders(Store store) {
         LOGGER.info("nuvemshop.api.list_recent_orders.start store_id={}", store.getStoreId());
         try {
+            // Dashboard mostra apenas a primeira pagina de pedidos recentes; nao precisa varrer o historico.
             JsonNode response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/orders?per_page=50", store.getStoreId())
+                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/orders?page=1&per_page={perPage}", store.getStoreId(), DEFAULT_PER_PAGE)
                     .header("Authentication", "bearer " + store.getAccessToken())
                     .retrieve()
                     .body(JsonNode.class);
@@ -180,6 +211,102 @@ public class NuvemshopApiClient {
             logRestFailure("nuvemshop.api.list_recent_orders.error", store.getStoreId(), ex);
             throw ex;
         }
+    }
+
+    /**
+     * Varre todas as paginas de uma colecao pequena (scripts/webhooks) e concatena num unico array.
+     * Sem isso a chamada silenciosamente retornava so a primeira pagina (per_page default = 30).
+     */
+    private ArrayNode sweepAllPages(String event, Store store, String path) {
+        LOGGER.info("{}.start store_id={}", event, store.getStoreId());
+        ArrayNode all = JsonNodeFactory.instance.arrayNode();
+        int page = 1;
+        while (page <= MAX_PAGES_SWEEP) {
+            URI uri = UriComponentsBuilder.fromUriString(properties.apiBaseUrl())
+                    .path(path)
+                    .queryParam("page", page)
+                    .queryParam("per_page", MAX_PER_PAGE)
+                    .encode()
+                    .buildAndExpand(store.getStoreId())
+                    .toUri();
+
+            ResponseEntity<JsonNode> response;
+            try {
+                response = restClient.get()
+                        .uri(uri)
+                        .header("Authentication", "bearer " + store.getAccessToken())
+                        .retrieve()
+                        .toEntity(JsonNode.class);
+            } catch (RuntimeException ex) {
+                logRestFailure(event + ".error", store.getStoreId(), ex);
+                throw ex;
+            }
+
+            JsonNode items = arrayBody(response.getBody());
+            if (items == null) {
+                LOGGER.warn(
+                        "{}.unexpected_response store_id={} page={} response_present={}",
+                        event,
+                        store.getStoreId(),
+                        page,
+                        response.getBody() != null
+                );
+                break;
+            }
+            items.forEach(all::add);
+            if (!hasNextPage(response.getHeaders(), page, MAX_PER_PAGE, items.size(), totalCount(response.getHeaders()))) {
+                break;
+            }
+            page++;
+        }
+        if (page > MAX_PAGES_SWEEP) {
+            LOGGER.warn("{}.page_limit_reached store_id={} max_pages={}", event, store.getStoreId(), MAX_PAGES_SWEEP);
+        }
+        LOGGER.info("{}.done store_id={} items_count={} pages_read={}", event, store.getStoreId(), all.size(), Math.min(page, MAX_PAGES_SWEEP));
+        return all;
+    }
+
+    /**
+     * A API responde array puro na maioria dos recursos, mas alguns vem envelopados em
+     * `{"result": [...]}`. Desembrulhar aqui e obrigatorio: devolver vazio faria o
+     * chamador concluir que nada esta instalado e recriar scripts/webhooks duplicados.
+     */
+    private JsonNode arrayBody(JsonNode body) {
+        if (body == null) {
+            return null;
+        }
+        if (body.isArray()) {
+            return body;
+        }
+        JsonNode result = body.path("result");
+        return result.isArray() ? result : null;
+    }
+
+    private long totalCount(HttpHeaders headers) {
+        String raw = headers.getFirst("X-Total-Count");
+        if (raw == null || raw.isBlank()) {
+            return -1L;
+        }
+        try {
+            return Long.parseLong(raw.strip());
+        } catch (NumberFormatException ex) {
+            return -1L;
+        }
+    }
+
+    /**
+     * Prioriza o header Link (rel="next"), que e a fonte oficial da Nuvemshop.
+     * Sem ele, cai para X-Total-Count e, por ultimo, para a heuristica "pagina cheia".
+     */
+    private boolean hasNextPage(HttpHeaders headers, int page, int perPage, int itemsInPage, long totalCount) {
+        String link = headers.getFirst(HttpHeaders.LINK);
+        if (link != null && !link.isBlank()) {
+            return link.contains("rel=\"next\"") || link.contains("rel=next");
+        }
+        if (totalCount >= 0) {
+            return (long) page * perPage < totalCount;
+        }
+        return itemsInPage == perPage;
     }
 
     private void logRestFailure(String event, Long storeId, RuntimeException ex) {

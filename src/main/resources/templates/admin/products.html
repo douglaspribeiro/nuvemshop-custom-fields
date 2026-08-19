@@ -36,11 +36,21 @@
     <section class="panel">
         <div class="panel-title">
             <h2>Produtos da loja</h2>
-            <span class="muted" th:text="${#lists.size(products)} + ' encontrados'">0 encontrados</span>
+            <span class="muted"
+                  th:text="${productPage.totalKnown()}
+                            ? ${productPage.totalCount} + ' produtos - pagina ' + ${productPage.page} + ' de ' + ${productPage.totalPages()}
+                            : 'Pagina ' + ${productPage.page} + ' - ' + ${#lists.size(products)} + ' produtos'">0 encontrados</span>
         </div>
 
+        <form class="form inline-form" method="get" th:action="@{/admin/products}">
+            <input type="search" name="q" placeholder="Buscar produto por nome" th:value="${productPage.query}">
+            <button class="button" type="submit">Buscar</button>
+            <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/products}">Limpar</a>
+        </form>
+
         <div class="empty" th:if="${#lists.isEmpty(products)}">
-            Nenhum produto retornado pela API da Nuvemshop.
+            <span th:if="${productPage.query != null}">Nenhum produto encontrado para essa busca.</span>
+            <span th:unless="${productPage.query != null}">Nenhum produto retornado pela API da Nuvemshop.</span>
         </div>
 
         <table class="table" th:if="${!#lists.isEmpty(products)}">
@@ -77,6 +87,16 @@
             </tr>
             </tbody>
         </table>
+
+        <nav class="pager" th:if="${productPage.hasPrevious() or productPage.hasNext()}">
+            <a class="button small"
+               th:if="${productPage.hasPrevious()}"
+               th:href="@{/admin/products(page=${productPage.previousPage()},q=${productPage.query})}">Anterior</a>
+            <span class="muted" th:text="'Pagina ' + ${productPage.page}">Pagina 1</span>
+            <a class="button small"
+               th:if="${productPage.hasNext()}"
+               th:href="@{/admin/products(page=${productPage.nextPage()},q=${productPage.query})}">Proxima</a>
+        </nav>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

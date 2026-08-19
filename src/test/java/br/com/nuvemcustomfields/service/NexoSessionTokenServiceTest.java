@@ -26,7 +26,8 @@ class NexoSessionTokenServiceTest {
             "read_products",
             "Campos Personalizados suporte@example.com",
             "7100",
-            "7200"
+            "7200",
+            ""
     );
 
     private final NexoSessionTokenService service = new NexoSessionTokenService(properties, new ObjectMapper());

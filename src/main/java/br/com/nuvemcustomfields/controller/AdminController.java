@@ -215,39 +215,54 @@ public class AdminController {
     }
 
     @GetMapping("/admin/products")
-    public String products(HttpSession session, Model model) {
+    public String products(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(required = false) String q,
+            HttpSession session,
+            Model model
+    ) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.products.open store_id={}", store.getStoreId());
-        var products = apiClient.listProducts(store);
+        LOGGER.info("admin.products.open store_id={} page={}", store.getStoreId(), page);
+        var productPage = apiClient.listProducts(store, page, NuvemshopApiClient.DEFAULT_PER_PAGE, q);
         var rules = personalizationAdminService.listRules(store.getStoreId());
         model.addAttribute("store", store);
-        model.addAttribute("products", products);
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("products", productPage.items());
         model.addAttribute("rules", rules);
         model.addAttribute("configuredProductIds", configuredProductIds(rules));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         LOGGER.info(
-                "admin.products.loaded store_id={} products_count={} rules_count={}",
+                "admin.products.loaded store_id={} page={} products_count={} total_count={} rules_count={}",
                 store.getStoreId(),
-                products.size(),
+                productPage.page(),
+                productPage.items().size(),
+                productPage.totalCount(),
                 rules.size()
         );
         return "admin/products";
     }
 
     @GetMapping("/admin/onboarding")
-    public String onboarding(HttpSession session, Model model) {
+    public String onboarding(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(required = false) String q,
+            HttpSession session,
+            Model model
+    ) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.onboarding.open store_id={}", store.getStoreId());
-        var products = apiClient.listProducts(store);
+        LOGGER.info("admin.onboarding.open store_id={} page={}", store.getStoreId(), page);
+        var productPage = apiClient.listProducts(store, page, NuvemshopApiClient.DEFAULT_PER_PAGE, q);
         var templates = nicheTemplateService.listTemplates();
         model.addAttribute("store", store);
-        model.addAttribute("products", products);
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("products", productPage.items());
         model.addAttribute("templates", templates);
         model.addAttribute("usage", planLimitService.usage(store, 0));
         LOGGER.info(
-                "admin.onboarding.loaded store_id={} products_count={} templates_count={}",
+                "admin.onboarding.loaded store_id={} page={} products_count={} templates_count={}",
                 store.getStoreId(),
-                products.size(),
+                productPage.page(),
+                productPage.items().size(),
                 templates.size()
         );
         return "admin/onboarding";
@@ -302,8 +317,10 @@ public class AdminController {
         if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
             LOGGER.warn("admin.fields.open.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
             var rules = personalizationAdminService.listRules(store.getStoreId());
+            var productPage = apiClient.listProducts(store, 1, NuvemshopApiClient.DEFAULT_PER_PAGE, null);
             model.addAttribute("store", store);
-            model.addAttribute("products", apiClient.listProducts(store));
+            model.addAttribute("productPage", productPage);
+            model.addAttribute("products", productPage.items());
             model.addAttribute("rules", rules);
             model.addAttribute("configuredProductIds", configuredProductIds(rules));
             model.addAttribute("usage", planLimitService.usage(store, 0));

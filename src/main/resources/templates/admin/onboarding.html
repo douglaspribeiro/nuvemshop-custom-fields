@@ -33,6 +33,31 @@
         <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
     </section>
 
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Selecao de produto</h2>
+            <span class="muted"
+                  th:text="${productPage.totalKnown()}
+                            ? ${productPage.totalCount} + ' produtos - pagina ' + ${productPage.page} + ' de ' + ${productPage.totalPages()}
+                            : 'Pagina ' + ${productPage.page} + ' - ' + ${#lists.size(products)} + ' produtos'">0 produtos</span>
+        </div>
+        <p class="muted">Os selects abaixo mostram apenas os produtos desta pagina. Use a busca para encontrar um produto especifico.</p>
+        <form class="form inline-form" method="get" th:action="@{/admin/onboarding}">
+            <input type="search" name="q" placeholder="Buscar produto por nome" th:value="${productPage.query}">
+            <button class="button" type="submit">Buscar</button>
+            <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/onboarding}">Limpar</a>
+        </form>
+        <nav class="pager" th:if="${productPage.hasPrevious() or productPage.hasNext()}">
+            <a class="button small"
+               th:if="${productPage.hasPrevious()}"
+               th:href="@{/admin/onboarding(page=${productPage.previousPage()},q=${productPage.query})}">Anterior</a>
+            <span class="muted" th:text="'Pagina ' + ${productPage.page}">Pagina 1</span>
+            <a class="button small"
+               th:if="${productPage.hasNext()}"
+               th:href="@{/admin/onboarding(page=${productPage.nextPage()},q=${productPage.query})}">Proxima</a>
+        </nav>
+    </section>
+
     <section class="template-grid">
         <article class="panel template-card" th:each="template : ${templates}">
             <div>

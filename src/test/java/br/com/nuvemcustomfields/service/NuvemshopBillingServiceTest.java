@@ -270,6 +270,7 @@ class NuvemshopBillingServiceTest {
                         "billing",
                         "tests",
                         "",
+                        "",
                         ""
                 ),
                 storeRepository,

@@ -16,7 +16,11 @@ public record NuvemshopProperties(
         @NotBlank String appBaseUrl,
         @NotBlank String scopes,
         @NotBlank String userAgent,
+        /** Script legado de vitrine (DOM), mantido para temas ainda nao migrados ao NubeSDK. */
         String scriptId,
-        String checkoutScriptId
+        /** App NubeSDK de checkout. */
+        String checkoutScriptId,
+        /** App NubeSDK de vitrine; coexiste com o legado durante a migracao dos temas. */
+        String storefrontSdkScriptId
 ) {
 }

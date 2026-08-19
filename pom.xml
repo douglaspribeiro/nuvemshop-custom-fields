@@ -20,6 +20,16 @@
     <properties>
         <java.version>25</java.version>
         <flyway.version>11.20.3</flyway.version>
+        <frontend.dir>${project.basedir}/src/main/frontend</frontend.dir>
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <node.version>v22.14.0</node.version>
+        <npm.version>10.9.2</npm.version>
+        <!-- -Dskip.frontend=true para build so-Java (nao regenera os bundles NubeSDK). -->
+        <skip.frontend>false</skip.frontend>
+        <!-- Herda skip.frontend; sobrescreva para pular so os testes JS. -->
+        <skip.frontend.tests>${skip.frontend}</skip.frontend.tests>
+        <!-- Origem publica embutida nos bundles NubeSDK; sobrescreva com -Dapp.base.url em staging. -->
+        <app.base.url>https://campos-personalizados.wzhub.pro</app.base.url>
     </properties>
 
     <dependencies>
@@ -94,6 +104,102 @@
                 <configuration>
                     <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
+            </plugin>
+
+            <!-- Compila os scripts NubeSDK (TS/JSX) com o toolchain oficial tsup. -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <workingDirectory>${frontend.dir}</workingDirectory>
+                    <installDirectory>${frontend.dir}</installDirectory>
+                    <skip>${skip.frontend}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                            <npmVersion>${npm.version}</npmVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>install --no-audit --no-fund</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- esbuild (tsup) apaga tipos sem checar; sem este passo erro de tipo vaza pro bundle. -->
+                    <execution>
+                        <id>npm-typecheck</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run typecheck</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-test</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>test</arguments>
+                            <skip>${skip.frontend.tests}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                            <environmentVariables>
+                                <APP_BASE_URL>${app.base.url}</APP_BASE_URL>
+                            </environmentVariables>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Publica os bundles em /assets para servir como development url e fallback. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-nubesdk-bundles</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/static/assets</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${frontend.dir}/dist</directory>
+                                    <includes>
+                                        <include>*.js</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -48,6 +48,7 @@ nuvemshop:
   user-agent: ${NUVEMSHOP_USER_AGENT:NuvemCustomFields suporte@example.com}
   script-id: ${NUVEMSHOP_SCRIPT_ID:}
   checkout-script-id: ${NUVEMSHOP_CHECKOUT_SCRIPT_ID:}
+  storefront-sdk-script-id: ${NUVEMSHOP_STOREFRONT_SDK_SCRIPT_ID:}
   billing:
     enabled: ${NUVEMSHOP_BILLING_ENABLED:true}
     api-base-url: ${NUVEMSHOP_BILLING_API_BASE_URL:https://api.nuvemshop.com.br/2025-03}

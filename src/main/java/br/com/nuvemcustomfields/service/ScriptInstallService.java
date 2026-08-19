@@ -18,10 +18,16 @@ public class ScriptInstallService {
 
     private final NuvemshopApiClient apiClient;
     private final NuvemshopProperties properties;
+    private final IntegrationLogService integrationLogService;
 
-    public ScriptInstallService(NuvemshopApiClient apiClient, NuvemshopProperties properties) {
+    public ScriptInstallService(
+            NuvemshopApiClient apiClient,
+            NuvemshopProperties properties,
+            IntegrationLogService integrationLogService
+    ) {
         this.apiClient = apiClient;
         this.properties = properties;
+        this.integrationLogService = integrationLogService;
     }
 
     public String personalizerScriptSrc(Store store) {
@@ -33,6 +39,12 @@ public class ScriptInstallService {
     public String checkoutScriptSrc() {
         String src = properties.appBaseUrl() + "/assets/nuvemshop-checkout.js";
         LOGGER.info("script.checkout.src src={}", src);
+        return src;
+    }
+
+    public String storefrontSdkScriptSrc() {
+        String src = properties.appBaseUrl() + "/assets/nuvemshop-storefront-sdk.js";
+        LOGGER.info("script.storefront_sdk.src src={}", src);
         return src;
     }
 
@@ -56,21 +68,50 @@ public class ScriptInstallService {
             );
             return;
         }
+        LOGGER.info("script.install.configured store_id={} script_ids={}", store.getStoreId(), scriptIds);
         JsonNode scripts = apiClient.listScripts(store);
+        int installed = 0;
+        int failed = 0;
         for (Long scriptId : scriptIds) {
             if (hasScriptId(scripts, scriptId)) {
                 LOGGER.info("script.install.exists store_id={} script_id={}", store.getStoreId(), scriptId);
                 continue;
             }
-            apiClient.createScript(store, scriptId);
-            LOGGER.info("script.install.done store_id={} script_id={}", store.getStoreId(), scriptId);
+            // Isolado de proposito: um script_id obsoleto (removido no Partner Portal)
+            // nao pode impedir a instalacao dos outros.
+            try {
+                apiClient.createScript(store, scriptId);
+                installed++;
+                LOGGER.info("script.install.done store_id={} script_id={}", store.getStoreId(), scriptId);
+            } catch (RuntimeException ex) {
+                failed++;
+                LOGGER.error(
+                        "script.install.script_failed store_id={} script_id={} message={}",
+                        store.getStoreId(),
+                        scriptId,
+                        ex.getMessage()
+                );
+                integrationLogService.warn(
+                        store.getStoreId(),
+                        "script.install.script_failed",
+                        "Falha ao associar script " + scriptId + " a loja: " + ex.getMessage()
+                );
+            }
         }
+        LOGGER.info(
+                "script.install.summary store_id={} configured={} installed={} failed={}",
+                store.getStoreId(),
+                scriptIds.size(),
+                installed,
+                failed
+        );
     }
 
     private Set<Long> configuredScriptIds() {
         Set<Long> scriptIds = new LinkedHashSet<>();
         addScriptId(scriptIds, "script_id", properties.scriptId());
         addScriptId(scriptIds, "checkout_script_id", properties.checkoutScriptId());
+        addScriptId(scriptIds, "storefront_sdk_script_id", properties.storefrontSdkScriptId());
         return scriptIds;
     }
 
@@ -109,9 +150,20 @@ public class ScriptInstallService {
         Set<String> expectedSrcs = expectedScriptSrcs(store);
         Set<Long> expectedScriptIds = configuredScriptIds();
         for (JsonNode script : iterableScripts(scripts)) {
-            if (matchesScript(script, expectedSrcs, expectedScriptIds)) {
-                LOGGER.info("script.remove.delete store_id={} script_id={}", store.getStoreId(), script.path("id").asLong());
-                apiClient.deleteScript(store, script.path("id").asLong());
+            if (!matchesScript(script, expectedSrcs, expectedScriptIds)) {
+                continue;
+            }
+            long scriptId = script.path("id").asLong();
+            LOGGER.info("script.remove.delete store_id={} script_id={}", store.getStoreId(), scriptId);
+            try {
+                apiClient.deleteScript(store, scriptId);
+            } catch (RuntimeException ex) {
+                LOGGER.error(
+                        "script.remove.script_failed store_id={} script_id={} message={}",
+                        store.getStoreId(),
+                        scriptId,
+                        ex.getMessage()
+                );
             }
         }
         LOGGER.info("script.remove.done store_id={}", store.getStoreId());
@@ -144,6 +196,7 @@ public class ScriptInstallService {
         Set<String> expectedSrcs = new LinkedHashSet<>();
         expectedSrcs.add(personalizerScriptSrc(store));
         expectedSrcs.add(checkoutScriptSrc());
+        expectedSrcs.add(storefrontSdkScriptSrc());
         return expectedSrcs;
     }
 

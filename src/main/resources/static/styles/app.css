@@ -266,6 +266,25 @@ dd {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
 }
 
+.form.inline-form {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.form.inline-form input[type="search"] {
+    flex: 1 1 240px;
+}
+
+.pager {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
 label {
     display: grid;
     gap: 6px;

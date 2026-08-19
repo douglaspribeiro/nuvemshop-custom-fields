@@ -1,3 +1,11 @@
+// ATENCAO: arquivo em producao, mas NAO e mais a fonte de verdade.
+// A versao mantida e src/main/frontend/src/checkout/main.tsx, que gera
+// /assets/nuvemshop-checkout-sdk.js. Este arquivo existe apenas porque o script
+// cadastrado no Partner Portal ainda aponta para ele.
+//
+// Nao edite aqui: altere o .tsx e, quando for promover, reenvie o bundle novo no
+// Portal e apague este arquivo. Editar so este arquivo faz as duas versoes divergirem.
+
 const APP_ORIGIN = "https://campos-personalizados.wzhub.pro";
 
 let styleConfig = {};
