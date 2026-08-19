@@ -42,12 +42,23 @@ let textColor: string | undefined;
 /** Contador de `cart:add` disparados por nos, para nao reprocessar o proprio evento. */
 let pendingSelfAdds = 0;
 
+let inFlightProduct: number | null = null;
+
+/** Ultimo desfecho do syncProduct, enviado no beacon de diagnostico. */
+let outcome = "boot";
+
 export function App(nube: NubeSDK) {
 	// Sem este opt-in a plataforma nunca dispara cart:before_update.
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
 
-	void syncProduct(nube, safeState(nube));
+	startDiagnostics(nube);
 
+	// Tres gatilhos de proposito. O script roda com event=onfirstinteraction, entao sobe
+	// depois da pagina montada: `location:updated` pode nunca disparar (nada navegou) e o
+	// getState() imediato pode ainda nao estar hidratado. `page:loaded` e o sinal oficial
+	// de "SDK pronto". syncProduct e idempotente, then chamar de varios lugares e seguro.
+	void syncProduct(nube, safeState(nube));
+	nube.on("page:loaded", (state) => void syncProduct(nube, state));
 	nube.on("location:updated", (state) => void syncProduct(nube, state));
 	nube.on("product:variant_selected", (state) => {
 		variantId = readVariantId(state) ?? variantId;
@@ -66,6 +77,7 @@ export function App(nube: NubeSDK) {
 async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	const page = state?.location?.page;
 	if (!state || page?.type !== "product") {
+		outcome = state ? `page_type_${page?.type ?? "unknown"}` : "no_state";
 		clear(nube);
 		return;
 	}
@@ -73,6 +85,7 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	const nextStore = storeId(state);
 	const nextProduct = page.data?.product?.id ?? null;
 	if (!nextStore || !nextProduct) {
+		outcome = !nextStore ? "no_store_id" : "no_product_id";
 		clear(nube);
 		return;
 	}
@@ -85,6 +98,13 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 
 	if (nextProduct === productId && config.enabled) {
 		render(nube);
+		outcome = "rendered";
+		return;
+	}
+
+	// Tres gatilhos podem chamar isto quase juntos; sem o guard sao dois fetch e o
+	// segundo zera os valores que o cliente ja digitou.
+	if (inFlightProduct === nextProduct) {
 		return;
 	}
 
@@ -94,13 +114,20 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	values = {};
 	errors = [];
 
-	config = await fetchConfig(nextStore, nextProduct);
+	inFlightProduct = nextProduct;
+	try {
+		config = await fetchConfig(nextStore, nextProduct);
+	} finally {
+		inFlightProduct = null;
+	}
 	if (!config.enabled || config.fields.length === 0) {
+		outcome = config.enabled ? "config_without_fields" : "config_disabled";
 		clear(nube);
 		return;
 	}
 	textColor = normalizedColor(config.style?.productTextColor);
 	render(nube);
+	outcome = "rendered";
 }
 
 function render(nube: NubeSDK) {
@@ -234,17 +261,49 @@ function readVariantId(state: NubeSDKState | null): number | null {
 	return null;
 }
 
+/**
+ * Instrumento temporario de rollout. Escuta tudo, acumula os nomes dos eventos e manda
+ * UM beacon com o desfecho do syncProduct. Serve para responder, pelos logs do app, se o
+ * App subiu e quais eventos a plataforma entregou — sem isso o debug e cego.
+ * Remover quando o storefront estiver estavel.
+ */
+function startDiagnostics(nube: NubeSDK) {
+	const seen = new Set<string>();
+	// O nome do evento vem no SEGUNDO parametro do listener, nao no state.
+	nube.on("*", (_state, event) => {
+		seen.add(String(event));
+	});
+	if (typeof setTimeout !== "function") {
+		return;
+	}
+	setTimeout(() => {
+		report(store, productId, outcome, Array.from(seen).sort().join("|"));
+	}, 5000);
+}
+
 /** Telemetria best-effort no endpoint que o script legado ja usa. */
-function report(storeIdValue: number | null, product: number | null, reason: string) {
-	if (!storeIdValue || typeof fetch !== "function") {
+function report(
+	storeIdValue: number | null,
+	product: number | null,
+	reason: string,
+	detail?: string,
+) {
+	if (typeof fetch !== "function") {
 		return;
 	}
 	const url = new URL(`${appOrigin()}/public/script-events`);
 	url.searchParams.set("event", "storefront_sdk");
-	url.searchParams.set("storeId", String(storeIdValue));
 	url.searchParams.set("reason", reason);
+	// storeId ausente e informacao relevante (foi um dos desfechos possiveis), nao motivo
+	// para engolir o beacon.
+	if (storeIdValue) {
+		url.searchParams.set("storeId", String(storeIdValue));
+	}
 	if (product) {
 		url.searchParams.set("productId", String(product));
+	}
+	if (detail) {
+		url.searchParams.set("path", detail);
 	}
 	void fetch(url.toString(), { credentials: "omit" }).catch(() => undefined);
 }
