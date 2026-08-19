@@ -216,6 +216,11 @@ dd {
     font-size: 0.9rem;
 }
 
+.status.error {
+    color: #c9252d;
+    font-weight: 700;
+}
+
 .chip {
     display: inline-flex;
     align-items: center;

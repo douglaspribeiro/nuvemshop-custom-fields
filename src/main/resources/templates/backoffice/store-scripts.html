@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Backoffice - Scripts da loja</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+</head>
+<body>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Scripts</p>
+            <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
+            <p class="muted" th:text="'Store ID ' + ${store.storeId}">Store ID 0</p>
+        </div>
+        <nav class="row-actions">
+            <form th:action="@{/backoffice/stores/{storeId}/scripts/reinstall(storeId=${store.storeId})}" method="post">
+                <button class="button primary" type="submit">Reinstalar scripts</button>
+            </form>
+            <a class="button" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Voltar para a loja</a>
+        </nav>
+    </section>
+
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <p class="notice error" th:if="${diagnostics.error}" th:text="${diagnostics.error}">Erro da API</p>
+
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Situacao</h2>
+            <span class="status" th:text="${diagnostics.healthy()} ? 'Tudo associado' : 'Requer atencao'">Status</span>
+        </div>
+        <p class="muted" th:if="${#lists.isEmpty(diagnostics.configuredIds)}">
+            Nenhum script id configurado no app. Verifique NUVEMSHOP_SCRIPT_ID,
+            NUVEMSHOP_CHECKOUT_SCRIPT_ID e NUVEMSHOP_STOREFRONT_SDK_SCRIPT_ID.
+        </p>
+        <p class="muted" th:unless="${#lists.isEmpty(diagnostics.configuredIds)}"
+           th:text="'Configurados no app: ' + ${diagnostics.configuredIds}">
+            Configurados no app: -
+        </p>
+        <p class="notice error" th:unless="${#lists.isEmpty(diagnostics.missingIds)}"
+           th:text="'Configurados no app mas NAO associados a esta loja: ' + ${diagnostics.missingIds} + '. Enquanto faltarem, o script nao carrega na vitrine.'">
+            Faltando
+        </p>
+    </section>
+
+    <section class="panel">
+        <div class="panel-title">
+            <h2>Scripts associados na Nuvemshop</h2>
+            <span class="muted" th:text="${#lists.size(diagnostics.scripts)} + ' encontrados'">0</span>
+        </div>
+
+        <div class="empty" th:if="${#lists.isEmpty(diagnostics.scripts)}">
+            A API nao retornou nenhum script para esta loja.
+        </div>
+
+        <table class="table" th:unless="${#lists.isEmpty(diagnostics.scripts)}">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Status</th>
+                <th>Location</th>
+                <th>Evento</th>
+                <th>Auto install</th>
+                <th>No app</th>
+                <th>src</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="script : ${diagnostics.scripts}">
+                <td th:text="${script.id}">0</td>
+                <td th:text="${script.name}">nome</td>
+                <td>
+                    <span class="status"
+                          th:text="${script.status} ?: '-'"
+                          th:classappend="${script.loadsInProduction()} ? '' : ' error'">status</span>
+                </td>
+                <td th:text="${script.location} ?: '-'">store</td>
+                <td th:text="${script.event} ?: '-'">onload</td>
+                <td th:text="${script.autoInstall} ? 'sim' : 'nao'">nao</td>
+                <td th:text="${script.configuredInApp} ? 'sim' : 'orfao'">sim</td>
+                <td class="muted" th:text="${script.src} ?: '-'">src</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <p class="muted">
+            Status diferente de <code>active</code> nao carrega em loja normal.
+            <code>orfao</code> significa que o script esta na loja mas nenhum id configurado
+            no app aponta para ele.
+        </p>
+    </section>
+
+    <section class="panel">
+        <h2>Sources esperados</h2>
+        <p class="muted">
+            Usados apenas para limpar scripts legados na desinstalacao. Em producao o arquivo
+            e hospedado pela Nuvemshop, entao o <code>src</code> acima aponta para
+            <code>apps-scripts</code>, nao para estas URLs.
+        </p>
+        <ul class="template-fields">
+            <li th:each="src : ${expectedSrcs}" th:text="${src}">src</li>
+        </ul>
+    </section>
+</main>
+</body>
+</html>

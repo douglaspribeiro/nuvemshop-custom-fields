@@ -11,6 +11,7 @@ import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
+import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class BackofficeController {
     private final BackofficeService backofficeService;
     private final ManagementReportService managementReportService;
     private final SupportService supportService;
+    private final ScriptInstallService scriptInstallService;
     private final String appVersion;
 
     public BackofficeController(
@@ -48,6 +50,7 @@ public class BackofficeController {
             BackofficeService backofficeService,
             ManagementReportService managementReportService,
             SupportService supportService,
+            ScriptInstallService scriptInstallService,
             @Value("${APP_VERSION:dev}") String appVersion
     ) {
         this.properties = properties;
@@ -58,6 +61,7 @@ public class BackofficeController {
         this.backofficeService = backofficeService;
         this.managementReportService = managementReportService;
         this.supportService = supportService;
+        this.scriptInstallService = scriptInstallService;
         this.appVersion = appVersion;
     }
 
@@ -115,6 +119,38 @@ public class BackofficeController {
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         LOGGER.info("backoffice.store.loaded store_id={}", storeId);
         return "backoffice/store";
+    }
+
+    @GetMapping("/backoffice/stores/{storeId}/scripts")
+    public String scripts(@PathVariable Long storeId, Model model) {
+        LOGGER.info("backoffice.scripts.open store_id={}", storeId);
+        var store = storeRepository.findByStoreId(storeId).orElseThrow();
+        var diagnostics = scriptInstallService.diagnose(store);
+        model.addAttribute("store", store);
+        model.addAttribute("diagnostics", diagnostics);
+        model.addAttribute("expectedSrcs", scriptInstallService.expectedScriptSrcs(store));
+        LOGGER.info(
+                "backoffice.scripts.loaded store_id={} configured={} installed={} missing={}",
+                storeId,
+                diagnostics.configuredIds().size(),
+                diagnostics.scripts().size(),
+                diagnostics.missingIds()
+        );
+        return "backoffice/store-scripts";
+    }
+
+    @PostMapping("/backoffice/stores/{storeId}/scripts/reinstall")
+    public String reinstallScripts(@PathVariable Long storeId, RedirectAttributes redirectAttributes) {
+        LOGGER.info("backoffice.scripts.reinstall store_id={}", storeId);
+        var store = storeRepository.findByStoreId(storeId).orElseThrow();
+        try {
+            scriptInstallService.installPersonalizerScript(store);
+            redirectAttributes.addFlashAttribute("message", "Reinstalacao executada. Confira a tabela abaixo.");
+        } catch (RuntimeException ex) {
+            LOGGER.error("backoffice.scripts.reinstall.failed store_id={} message={}", storeId, ex.getMessage(), ex);
+            redirectAttributes.addFlashAttribute("error", "Falha na reinstalacao: " + ex.getMessage());
+        }
+        return "redirect:/backoffice/stores/{storeId}/scripts";
     }
 
     @PostMapping("/backoffice/stores/{storeId}/plan")

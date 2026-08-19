@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.dto.ScriptDiagnostics;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -8,7 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -107,6 +110,56 @@ public class ScriptInstallService {
         );
     }
 
+    /**
+     * Le a loja na API e cruza com os ids configurados. Nunca lanca: um erro de API tambem
+     * e diagnostico, e a tela do backoffice precisa renderizar de qualquer forma.
+     */
+    public ScriptDiagnostics diagnose(Store store) {
+        List<Long> configured = List.copyOf(configuredScriptIds());
+        if (store.getAccessToken() == null || store.getAccessToken().isBlank()) {
+            return ScriptDiagnostics.failed(configured, "Loja sem access token: desinstalada ou nunca conectada.");
+        }
+
+        JsonNode scripts;
+        try {
+            scripts = apiClient.listScripts(store);
+        } catch (RuntimeException ex) {
+            LOGGER.warn("script.diagnose.failed store_id={} message={}", store.getStoreId(), ex.getMessage());
+            return ScriptDiagnostics.failed(configured, "Falha ao consultar a API: " + ex.getMessage());
+        }
+
+        List<ScriptDiagnostics.InstalledScript> installed = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        for (JsonNode script : iterableScripts(scripts)) {
+            long id = script.path("id").asLong(-1);
+            seen.add(id);
+            String src = script.path("src").asText("");
+            if (src.isBlank()) {
+                src = script.path("current_version").path("src").asText("");
+            }
+            installed.add(new ScriptDiagnostics.InstalledScript(
+                    id,
+                    script.path("name").asText(""),
+                    script.path("status").asText(""),
+                    script.path("location").asText(""),
+                    script.path("event").asText(""),
+                    script.path("is_auto_install").asBoolean(false),
+                    src,
+                    configured.contains(id)
+            ));
+        }
+
+        List<Long> missing = configured.stream().filter(id -> !seen.contains(id)).toList();
+        LOGGER.info(
+                "script.diagnose.done store_id={} configured={} installed={} missing={}",
+                store.getStoreId(),
+                configured.size(),
+                installed.size(),
+                missing
+        );
+        return new ScriptDiagnostics(configured, installed, missing, null);
+    }
+
     private Set<Long> configuredScriptIds() {
         Set<Long> scriptIds = new LinkedHashSet<>();
         addScriptId(scriptIds, "script_id", properties.scriptId());
@@ -192,7 +245,7 @@ public class ScriptInstallService {
         return java.util.List.of();
     }
 
-    private Set<String> expectedScriptSrcs(Store store) {
+    public Set<String> expectedScriptSrcs(Store store) {
         Set<String> expectedSrcs = new LinkedHashSet<>();
         expectedSrcs.add(personalizerScriptSrc(store));
         expectedSrcs.add(checkoutScriptSrc());

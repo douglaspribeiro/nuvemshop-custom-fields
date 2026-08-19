@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -114,6 +115,77 @@ class ScriptInstallServiceTest {
         verify(apiClient).deleteScript(store, 7300L);
         verify(apiClient).deleteScript(store, 7400L);
         verify(apiClient).deleteScript(store, 7600L);
+    }
+
+    @Test
+    void diagnoseFlagsConfiguredIdsMissingFromTheStore() {
+        Store store = store();
+        ArrayNode scripts = new ObjectMapper().createArrayNode();
+        scripts.addObject()
+                .put("id", 7200L)
+                .put("name", "Checkout")
+                .put("status", "active")
+                .put("location", "checkout")
+                .put("is_auto_install", false);
+        scripts.addObject()
+                .put("id", 9999L)
+                .put("name", "Orfao")
+                .put("status", "draft")
+                .put("location", "store");
+        when(apiClient.listScripts(store)).thenReturn(scripts);
+
+        ScriptInstallService service = new ScriptInstallService(
+                apiClient,
+                properties("7100", "7200", "7500"),
+                integrationLogService
+        );
+
+        var diagnostics = service.diagnose(store);
+
+        assertThat(diagnostics.error()).isNull();
+        assertThat(diagnostics.configuredIds()).containsExactly(7100L, 7200L, 7500L);
+        assertThat(diagnostics.missingIds()).containsExactly(7100L, 7500L);
+        assertThat(diagnostics.healthy()).isFalse();
+        assertThat(diagnostics.scripts()).hasSize(2);
+        assertThat(diagnostics.scripts().getFirst().configuredInApp()).isTrue();
+        assertThat(diagnostics.scripts().getFirst().loadsInProduction()).isTrue();
+        assertThat(diagnostics.scripts().get(1).configuredInApp()).isFalse();
+        assertThat(diagnostics.scripts().get(1).loadsInProduction()).isFalse();
+    }
+
+    @Test
+    void diagnoseReportsApiFailureInsteadOfThrowing() {
+        Store store = store();
+        when(apiClient.listScripts(store)).thenThrow(new IllegalStateException("401 Unauthorized"));
+
+        ScriptInstallService service = new ScriptInstallService(
+                apiClient,
+                properties("7100", "7200", "7500"),
+                integrationLogService
+        );
+
+        var diagnostics = service.diagnose(store);
+
+        assertThat(diagnostics.error()).contains("401 Unauthorized");
+        assertThat(diagnostics.missingIds()).containsExactly(7100L, 7200L, 7500L);
+        assertThat(diagnostics.healthy()).isFalse();
+    }
+
+    @Test
+    void diagnoseReportsMissingTokenWithoutCallingTheApi() {
+        Store store = store();
+        store.setAccessToken(null);
+
+        ScriptInstallService service = new ScriptInstallService(
+                apiClient,
+                properties("7100", "7200", "7500"),
+                integrationLogService
+        );
+
+        var diagnostics = service.diagnose(store);
+
+        assertThat(diagnostics.error()).contains("sem access token");
+        verify(apiClient, never()).listScripts(store);
     }
 
     private Store store() {

@@ -20,6 +20,7 @@
             <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
                 <button class="button primary" type="submit">Entrar no modo loja</button>
             </form>
+            <a class="button" th:href="@{/backoffice/stores/{storeId}/scripts(storeId=${store.storeId})}">Scripts</a>
             <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
         </nav>
     </section>
