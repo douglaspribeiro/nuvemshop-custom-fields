@@ -3,6 +3,9 @@ import type { NubeComponent } from "@tiendanube/nube-sdk-types";
 import type { PersonalizationField } from "../shared/config";
 import { type FieldError, keyOf } from "./values";
 
+/** Mantenha em sincronia com SDK_MARKER_ID no nuvemshop-personalizer.js. */
+export const SDK_MARKER_ID = "ncf-sdk-fields";
+
 type Props = {
 	fields: PersonalizationField[];
 	errors: FieldError[];
@@ -12,7 +15,8 @@ type Props = {
 
 export function PersonalizationFields({ fields, errors, color, onValueChange }: Props) {
 	return (
-		<Column gap={12} style={{ paddingTop: "12px", paddingBottom: "12px" }}>
+		// id e o sinal que o script legado usa para se calar e nao duplicar os campos.
+		<Column id={SDK_MARKER_ID} gap={12} style={{ paddingTop: "12px", paddingBottom: "12px" }}>
 			{fields.map((field) => (
 				<Column gap={4}>{fieldGroup(field, errors, color, onValueChange)}</Column>
 			))}

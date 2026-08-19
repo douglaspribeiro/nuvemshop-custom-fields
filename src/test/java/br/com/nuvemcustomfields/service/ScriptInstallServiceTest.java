@@ -29,18 +29,19 @@ class ScriptInstallServiceTest {
         Store store = store();
         when(apiClient.listScripts(store)).thenReturn(new ObjectMapper().createArrayNode());
         doThrow(new IllegalStateException("404 Not Found"))
-                .when(apiClient).createScript(store, 7200L);
+                .when(apiClient).createScript(store, 7100L);
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
         service.installPersonalizerScript(store);
 
+        verify(apiClient).createScript(store, 7100L);
+        // legado obsoleto e o primeiro do laco; checkout e storefront precisam entrar mesmo assim
         verify(apiClient).createScript(store, 7200L);
-        // o storefront precisa entrar mesmo com o checkout falhando antes dele
         verify(apiClient).createScript(store, 7500L);
         verify(integrationLogService).warn(eq(123L), eq("script.install.script_failed"), anyString());
     }
@@ -52,12 +53,13 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
         service.installPersonalizerScript(store);
 
+        verify(apiClient).createScript(store, 7100L);
         verify(apiClient).createScript(store, 7200L);
         verify(apiClient).createScript(store, 7500L);
     }
@@ -66,18 +68,19 @@ class ScriptInstallServiceTest {
     void doesNotReinstallScriptAlreadyAssociatedToTheStore() {
         Store store = store();
         ArrayNode scripts = new ObjectMapper().createArrayNode();
-        scripts.addObject().put("id", 7200L).put("src", "https://cdn/checkout.js");
+        scripts.addObject().put("id", 7100L).put("src", "https://cdn/legacy.js");
         when(apiClient.listScripts(store)).thenReturn(scripts);
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
         service.installPersonalizerScript(store);
 
-        verify(apiClient, never()).createScript(store, 7200L);
+        verify(apiClient, never()).createScript(store, 7100L);
+        verify(apiClient).createScript(store, 7200L);
         verify(apiClient).createScript(store, 7500L);
     }
 
@@ -85,6 +88,7 @@ class ScriptInstallServiceTest {
     void removesScriptsByConfiguredIdsAndLegacySource() {
         Store store = store();
         ArrayNode scripts = new ObjectMapper().createArrayNode();
+        scripts.addObject().put("id", 7100L);
         scripts.addObject().put("id", 7200L);
         scripts.addObject()
                 .put("id", 7300L)
@@ -99,12 +103,13 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
         service.removePersonalizerScripts(store);
 
+        verify(apiClient).deleteScript(store, 7100L);
         verify(apiClient).deleteScript(store, 7200L);
         verify(apiClient).deleteScript(store, 7300L);
         verify(apiClient).deleteScript(store, 7400L);
@@ -130,15 +135,15 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
         var diagnostics = service.diagnose(store);
 
         assertThat(diagnostics.error()).isNull();
-        assertThat(diagnostics.configuredIds()).containsExactly(7200L, 7500L);
-        assertThat(diagnostics.missingIds()).containsExactly(7500L);
+        assertThat(diagnostics.configuredIds()).containsExactly(7100L, 7200L, 7500L);
+        assertThat(diagnostics.missingIds()).containsExactly(7100L, 7500L);
         assertThat(diagnostics.healthy()).isFalse();
         assertThat(diagnostics.scripts()).hasSize(2);
         assertThat(diagnostics.scripts().getFirst().configuredInApp()).isTrue();
@@ -161,7 +166,7 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("", "7500"),
+                properties("", "", "7500"),
                 integrationLogService
         );
 
@@ -183,7 +188,7 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("", "7500"),
+                properties("", "", "7500"),
                 integrationLogService
         );
 
@@ -197,14 +202,14 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
         var diagnostics = service.diagnose(store);
 
         assertThat(diagnostics.error()).contains("401 Unauthorized");
-        assertThat(diagnostics.missingIds()).containsExactly(7200L, 7500L);
+        assertThat(diagnostics.missingIds()).containsExactly(7100L, 7200L, 7500L);
         assertThat(diagnostics.healthy()).isFalse();
     }
 
@@ -215,7 +220,7 @@ class ScriptInstallServiceTest {
 
         ScriptInstallService service = new ScriptInstallService(
                 apiClient,
-                properties("7200", "7500"),
+                properties("7100", "7200", "7500"),
                 integrationLogService
         );
 
@@ -232,7 +237,7 @@ class ScriptInstallServiceTest {
         return store;
     }
 
-    private NuvemshopProperties properties(String checkoutScriptId, String storefrontSdkScriptId) {
+    private NuvemshopProperties properties(String scriptId, String checkoutScriptId, String storefrontSdkScriptId) {
         return new NuvemshopProperties(
                 "client",
                 "secret",
@@ -243,6 +248,7 @@ class ScriptInstallServiceTest {
                 "https://app.example.com",
                 "read_products",
                 "tests",
+                scriptId,
                 checkoutScriptId,
                 storefrontSdkScriptId
         );

@@ -34,11 +34,13 @@ public class ScriptInstallService {
     }
 
     /**
-     * O script legado de DOM foi removido: o app e SDK-only. Este src permanece apenas para
-     * a limpeza de associacoes antigas na desinstalacao, para nao deixar script orfao na loja.
+     * Script legado de vitrine (DOM). Mantido de proposito: a homologacao Nuvemshop exige que
+     * o legado e o NubeSDK coexistam enquanto houver temas nao migrados.
      */
-    private String legacyPersonalizerScriptSrc(Store store) {
-        return properties.appBaseUrl() + "/assets/nuvemshop-personalizer.js?store=" + store.getStoreId();
+    public String personalizerScriptSrc(Store store) {
+        String src = properties.appBaseUrl() + "/assets/nuvemshop-personalizer.js?store=" + store.getStoreId();
+        LOGGER.info("script.personalizer.src store_id={} src={}", store.getStoreId(), src);
+        return src;
     }
 
     public String checkoutScriptSrc() {
@@ -179,6 +181,7 @@ public class ScriptInstallService {
 
     private Set<Long> configuredScriptIds() {
         Set<Long> scriptIds = new LinkedHashSet<>();
+        addScriptId(scriptIds, "script_id", properties.scriptId());
         addScriptId(scriptIds, "checkout_script_id", properties.checkoutScriptId());
         addScriptId(scriptIds, "storefront_sdk_script_id", properties.storefrontSdkScriptId());
         return scriptIds;
@@ -263,7 +266,7 @@ public class ScriptInstallService {
 
     public Set<String> expectedScriptSrcs(Store store) {
         Set<String> expectedSrcs = new LinkedHashSet<>();
-        expectedSrcs.add(legacyPersonalizerScriptSrc(store));
+        expectedSrcs.add(personalizerScriptSrc(store));
         expectedSrcs.add(checkoutScriptSrc());
         expectedSrcs.add(storefrontSdkScriptSrc());
         return expectedSrcs;

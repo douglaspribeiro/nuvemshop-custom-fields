@@ -33,7 +33,8 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - Tipos de campo: `TEXT`, `NUMBER`, `SELECT` e `TEXTAREA`.
 - Validacoes por campo: obrigatorio, tamanho maximo, placeholder, regex/mascara e opcoes para select.
 - Templates por nicho em `/admin/onboarding`.
-- Registro dos scripts NubeSDK (vitrine e checkout) via Scripts API.
+- Registro dos scripts de vitrine e checkout via Scripts API.
+- Asset publico `/assets/nuvemshop-personalizer.js` (script legado de vitrine, sem SDK).
 - Scripts NubeSDK compilados em `src/main/frontend` (TypeScript + tsup).
 - Endpoint publico `/public/stores/{storeId}/personalization`.
 - Captura de valores no pedido via `properties[...]`.
@@ -203,8 +204,14 @@ O Hibernate roda com `ddl-auto: validate`, entao o schema deve ser criado/atuali
 
 ## Storefront
 
-O app e **SDK-only**: nao existe mais script legado de DOM. O script de vitrine roda dentro de
-um Web Worker via NubeSDK, compilado de `src/main/frontend/src/storefront/main.tsx`:
+O app e **hibrido**, por exigencia da homologacao Nuvemshop: o script legado de DOM e o
+script NubeSDK coexistem, para nao quebrar lojas com temas nao migrados.
+
+**Script legado** `nuvemshop-personalizer.js`: le o `store` na query string do proprio script,
+detecta o formulario de produto, busca os campos em `/public/stores/{storeId}/personalization`
+e injeta inputs com `name="properties[...]"` no form nativo.
+
+**Script NubeSDK**, compilado de `src/main/frontend/src/storefront/main.tsx`:
 
 1. Le `store.id` e o produto do state do SDK.
 2. Busca os campos em `/public/stores/{storeId}/personalization`.

@@ -9,15 +9,21 @@ Bundles NubeSDK do app, compilados com o toolchain oficial (`tsup`).
 | `nuvemshop-storefront-sdk.js` | `src/storefront/main.tsx` | `before_product_detail_add_to_cart` | `store` |
 | `nuvemshop-checkout-sdk.js` | `src/checkout/main.tsx` | `after_line_items` | `checkout` |
 
-O app é **SDK-only**: o script legado de DOM (`nuvemshop-personalizer.js`) foi removido, assim
-como o endpoint JSONP `/public/stores/{id}/personalization.js` que só existia para ele. Isso
-corresponde ao cenário *"Nube SDK script — fully migrated, no legacy script is needed"* da
-documentação, que é o caminho mais simples para homologação.
+O script legado `../resources/static/assets/nuvemshop-personalizer.js` (DOM, sem SDK)
+**continua registrado** e não é gerado aqui. É exigência da homologação Nuvemshop:
 
-Consequência a ter em mente: em loja **sem** o SDK liberado o app não funciona — não há
-fallback. A decisão só é segura porque não há base instalada a proteger. Se um dia houver,
-o cenário *"transition script"* (legado renderizando apenas quando `window.nubeSDK` não
-existir) volta a ser necessário.
+> "Para aplicativos que possuem um JavaScript instalado no storefront da loja, é necessário
+> manter ambos os scripts configurados simultaneamente — o script legado (sem o SDK) e o novo
+> script adaptado ao NubeSDK. [...] Os dois scripts devem coexistir até que a adoção do
+> NubeSDK seja integral em todos os temas."
+
+Isso é o cenário *"transition script"* da documentação. A regra que vem com ele: **o mesmo
+comportamento não pode rodar duas vezes** — em loja com SDK ativo os campos apareceriam
+duplicados. A supressão condicional (legado só renderiza quando `window.nubeSDK` não existe)
+é o que falta implementar.
+
+O endpoint JSONP `/public/stores/{id}/personalization.js` foi removido: o script legado usa
+`/personalization`, `/style` e `/public/script-events`, e nunca chamou o JSONP.
 
 ## Pré-requisito: a loja precisa estar liberada (whitelist)
 
