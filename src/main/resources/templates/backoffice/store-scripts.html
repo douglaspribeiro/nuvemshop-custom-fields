@@ -33,7 +33,7 @@
             <span class="status" th:text="${diagnostics.healthy()} ? 'Tudo associado' : 'Requer atencao'">Status</span>
         </div>
         <p class="muted" th:if="${#lists.isEmpty(diagnostics.configuredIds)}">
-            Nenhum script id configurado no app. Verifique NUVEMSHOP_SCRIPT_ID,
+            Nenhum script id configurado no app. Verifique
             NUVEMSHOP_CHECKOUT_SCRIPT_ID e NUVEMSHOP_STOREFRONT_SDK_SCRIPT_ID.
         </p>
         <p class="muted" th:unless="${#lists.isEmpty(diagnostics.configuredIds)}"

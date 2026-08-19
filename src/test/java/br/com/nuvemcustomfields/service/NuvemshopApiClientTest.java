@@ -165,7 +165,6 @@ class NuvemshopApiClientTest {
                 "billing",
                 "tests",
                 "",
-                "",
                 ""
         );
     }

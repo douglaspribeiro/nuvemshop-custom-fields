@@ -9,9 +9,64 @@ Bundles NubeSDK do app, compilados com o toolchain oficial (`tsup`).
 | `nuvemshop-storefront-sdk.js` | `src/storefront/main.tsx` | `before_product_detail_add_to_cart` | `store` |
 | `nuvemshop-checkout-sdk.js` | `src/checkout/main.tsx` | `after_line_items` | `checkout` |
 
-O script legado `../resources/static/assets/nuvemshop-personalizer.js` (DOM, sem SDK)
-**continua registrado** e não é gerado aqui. A Nuvemshop exige que os dois coexistam até
-a adoção do NubeSDK ser integral em todos os temas.
+O app é **SDK-only**: o script legado de DOM (`nuvemshop-personalizer.js`) foi removido, assim
+como o endpoint JSONP `/public/stores/{id}/personalization.js` que só existia para ele. Isso
+corresponde ao cenário *"Nube SDK script — fully migrated, no legacy script is needed"* da
+documentação, que é o caminho mais simples para homologação.
+
+Consequência a ter em mente: em loja **sem** o SDK liberado o app não funciona — não há
+fallback. A decisão só é segura porque não há base instalada a proteger. Se um dia houver,
+o cenário *"transition script"* (legado renderizando apenas quando `window.nubeSDK` não
+existir) volta a ser necessário.
+
+## Pré-requisito: a loja precisa estar liberada (whitelist)
+
+**A loja precisa ser habilitada pela Nuvemshop para receber o runtime do NubeSDK.** Sem isso
+nada abaixo funciona, e a falha é totalmente silenciosa: o script fica `active` e associado, o
+arquivo responde 200 na CDN, e mesmo assim nunca é executado.
+
+Como diagnosticar (numa página de produto):
+
+| Sintoma | Loja liberada | Loja não liberada |
+| --- | --- | --- |
+| `window.nubeSDK` no console | objeto | `undefined` |
+| `nsk-cdn-static.tiendanube.com/vanilla-adapter-*.min.js` | carrega | ausente |
+| requisição para `apps-scripts.tiendanube.com/.../<script>.js` | acontece | nenhuma |
+
+Atenção: `#nubesdk-root`, `#nubesdk-runtime`, os elementos `[data-nubesdk-slot]` e
+`nube_sdk_product_state: "full"` aparecem **mesmo em loja não liberada** — não servem como
+sinal de que o SDK está ativo.
+
+**Como liberar a loja de teste** (self-service, não precisa de ticket):
+[formulário oficial de SDK tag](https://docs.google.com/forms/d/e/1FAIpQLSesdE1j1psOl0eSZcqFA4Y8FtyHoKzRtbHXgeFNjETqpD-XMA/viewform).
+Contato: `api@nuvemshop.com.br`.
+
+Isto vale apenas para **loja de teste**. Em produção o SDK é ativado pela Nuvemshop em
+rollout canário depois da homologação — não se pede loja por loja.
+
+Documentação: [Finished Migrating — What's Next?](https://dev.nuvemshop.com.br/docs/applications/nube-sdk/after-migration)
+(o Migration Guide não menciona nada disso) e
+[nube-sdk#370](https://github.com/TiendaNube/nube-sdk/issues/370).
+
+### Checklist oficial antes de pedir ativação em produção
+
+- App validado em loja de teste com a SDK flag, em **todos** os temas (vitrine e checkout)
+- Flag **"Uses Nube SDK"** habilitada no script — é ela que diz à plataforma que o script é SDK
+- Script legado/transição **não executa mais** nenhum comportamento já migrado para o SDK
+- Bundle de produção enviado e *development mode* desligado
+- Pedido de homologação aberto ou atualizado
+
+O terceiro item é obrigatório, não opcional: renderizar os campos no legado **e** no SDK causa
+UI duplicada e eventos conflitantes. O cenário "transition script" (parte no SDK, legado como
+fallback para temas não migrados) é suportado — o que não pode é o mesmo comportamento rodar
+duas vezes.
+
+Para checar automaticamente: `scripts/check-nubesdk-storefront.mjs <url-do-produto>`
+(rode com o node pinado: `src/main/frontend/node/node`). Ele reporta o estado do runtime,
+todas as requisições, o conteúdo do slot, console e exceções. O script de vitrine é
+registrado com `event=onfirstinteraction` (obrigatório para `location=store`), então a
+ferramenta sintetiza interação — sem isso o bundle nunca é buscado e o resultado é um falso
+negativo.
 
 ## Como a personalização chega ao pedido
 

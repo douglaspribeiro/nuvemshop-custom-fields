@@ -33,8 +33,8 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - Tipos de campo: `TEXT`, `NUMBER`, `SELECT` e `TEXTAREA`.
 - Validacoes por campo: obrigatorio, tamanho maximo, placeholder, regex/mascara e opcoes para select.
 - Templates por nicho em `/admin/onboarding`.
-- Registro do script de vitrine via Scripts API.
-- Asset publico `/assets/nuvemshop-personalizer.js` para injecao dos campos no storefront.
+- Registro dos scripts NubeSDK (vitrine e checkout) via Scripts API.
+- Scripts NubeSDK compilados em `src/main/frontend` (TypeScript + tsup).
 - Endpoint publico `/public/stores/{storeId}/personalization`.
 - Captura de valores no pedido via `properties[...]`.
 - Planos e limites internos: `FREE`, `PREMIUM` e `PREMIUM_PLUS`.
@@ -203,16 +203,22 @@ O Hibernate roda com `ddl-auto: validate`, entao o schema deve ser criado/atuali
 
 ## Storefront
 
-O script publico `nuvemshop-personalizer.js`:
+O app e **SDK-only**: nao existe mais script legado de DOM. O script de vitrine roda dentro de
+um Web Worker via NubeSDK, compilado de `src/main/frontend/src/storefront/main.tsx`:
 
-1. Le o `store` na query string do proprio script.
-2. Detecta o formulario de produto.
-3. Extrai o `productId`.
-4. Busca os campos em `/public/stores/{storeId}/personalization`.
-5. Renderiza inputs, selects ou textareas.
-6. Define `name="properties[...]"` para enviar os valores no item do carrinho.
+1. Le `store.id` e o produto do state do SDK.
+2. Busca os campos em `/public/stores/{storeId}/personalization`.
+3. Renderiza os campos no slot `before_product_detail_add_to_cart`.
+4. Intercepta a adicao nativa ao carrinho (`cart:before_update`), cancela e reemite via
+   `cart:add` com `properties`, que e o unico caminho para a personalizacao chegar ao pedido.
 
-O script e registrado automaticamente na loja apos a instalacao OAuth, usando a Scripts API.
+O script e registrado na loja apos a instalacao OAuth, usando a Scripts API. Detalhes,
+pre-requisitos e armadilhas em `src/main/frontend/README.md` — em especial: **a loja precisa
+estar liberada pela Nuvemshop para receber o runtime do NubeSDK**, e a falha e silenciosa.
+
+Diagnostico: `/backoffice/stores/{storeId}/scripts` mostra o que esta associado na loja, com
+status, versao e o que falta; e `scripts/check-nubesdk-storefront.mjs <url>` inspeciona a loja
+ao vivo.
 
 ## Operacao
 

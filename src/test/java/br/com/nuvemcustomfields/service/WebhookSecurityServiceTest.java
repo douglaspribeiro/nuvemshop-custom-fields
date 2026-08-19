@@ -23,7 +23,6 @@ class WebhookSecurityServiceTest {
             "read_products",
             "tests",
             "",
-            "",
             ""
     );
 

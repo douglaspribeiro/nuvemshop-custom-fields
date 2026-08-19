@@ -9,8 +9,6 @@ import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.PlanLimitService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -29,20 +27,17 @@ public class PublicPersonalizationController {
     private final PersonalizationRuleRepository ruleRepository;
     private final PlanLimitService planLimitService;
     private final IntegrationLogService integrationLogService;
-    private final ObjectMapper objectMapper;
 
     public PublicPersonalizationController(
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
             PlanLimitService planLimitService,
-            IntegrationLogService integrationLogService,
-            ObjectMapper objectMapper
+            IntegrationLogService integrationLogService
     ) {
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.planLimitService = planLimitService;
         this.integrationLogService = integrationLogService;
-        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/public/stores/{storeId}/personalization")
@@ -97,18 +92,6 @@ public class PublicPersonalizationController {
         }
         LOGGER.info("public.style.enabled store_id={}", storeId);
         return PersonalizationStyleResponse.from(store);
-    }
-
-    @GetMapping(value = "/public/stores/{storeId}/personalization.js", produces = "application/javascript")
-    public String getFieldsJsonp(
-            @PathVariable Long storeId,
-            @RequestParam(required = false) Long productId,
-            @RequestParam(required = false) String path,
-            @RequestParam(defaultValue = "ncfPersonalizationCallback") String callback
-    ) throws JsonProcessingException {
-        String callbackName = safeCallback(callback);
-        PersonalizationResponse response = getFields(storeId, productId, path);
-        return callbackName + "(" + objectMapper.writeValueAsString(response) + ");";
     }
 
     @GetMapping("/public/script-events")
@@ -167,10 +150,4 @@ public class PublicPersonalizationController {
         return safe.length() > 400 ? safe.substring(0, 400) : safe;
     }
 
-    private String safeCallback(String callback) {
-        if (callback != null && callback.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")) {
-            return callback;
-        }
-        return "ncfPersonalizationCallback";
-    }
 }

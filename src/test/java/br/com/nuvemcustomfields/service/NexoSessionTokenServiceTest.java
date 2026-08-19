@@ -25,7 +25,6 @@ class NexoSessionTokenServiceTest {
             "https://app.example.com",
             "read_products",
             "Campos Personalizados suporte@example.com",
-            "7100",
             "7200",
             ""
     );
