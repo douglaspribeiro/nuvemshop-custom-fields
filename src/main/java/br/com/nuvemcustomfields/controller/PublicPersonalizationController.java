@@ -7,6 +7,7 @@ import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.PlanLimitService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,17 +28,20 @@ public class PublicPersonalizationController {
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
     private final PlanLimitService planLimitService;
+    private final IntegrationLogService integrationLogService;
     private final ObjectMapper objectMapper;
 
     public PublicPersonalizationController(
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
             PlanLimitService planLimitService,
+            IntegrationLogService integrationLogService,
             ObjectMapper objectMapper
     ) {
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.planLimitService = planLimitService;
+        this.integrationLogService = integrationLogService;
         this.objectMapper = objectMapper;
     }
 
@@ -125,6 +129,42 @@ public class PublicPersonalizationController {
                 path,
                 scriptSrc
         );
+        persistStorefrontSdkEvent(event, storeId, productId, reason, path);
+    }
+
+    /**
+     * Espelha o beacon do script NubeSDK em integration_logs para aparecer no backoffice.
+     * Restrito ao evento storefront_sdk de loja ativa: o endpoint e publico e sem auth,
+     * entao gravar qualquer coisa aqui seria vetor de flood.
+     */
+    private void persistStorefrontSdkEvent(String event, Long storeId, Long productId, String reason, String path) {
+        if (!"storefront_sdk".equals(event) || storeId == null) {
+            return;
+        }
+        if (storeRepository.findActiveByStoreId(storeId).isEmpty()) {
+            LOGGER.warn("public.script.event.not_persisted store_id={} reason=store_not_active", storeId);
+            return;
+        }
+        String message = "produto=" + (productId == null ? "-" : productId)
+                + " eventos=" + sanitizeDetail(path);
+        integrationLogService.info(storeId, "storefront.sdk." + sanitizeReason(reason), message);
+    }
+
+    /** Entrada publica: limita tamanho e charset antes de persistir. */
+    private String sanitizeReason(String value) {
+        if (value == null || value.isBlank()) {
+            return "unknown";
+        }
+        String safe = value.strip().replaceAll("[^A-Za-z0-9_.-]", "_");
+        return safe.length() > 60 ? safe.substring(0, 60) : safe;
+    }
+
+    private String sanitizeDetail(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+        String safe = value.strip().replaceAll("[^A-Za-z0-9_.:|-]", "_");
+        return safe.length() > 400 ? safe.substring(0, 400) : safe;
     }
 
     private String safeCallback(String callback) {
