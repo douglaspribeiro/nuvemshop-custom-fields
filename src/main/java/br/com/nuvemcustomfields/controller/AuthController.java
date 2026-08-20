@@ -54,7 +54,7 @@ public class AuthController {
                 expectedState != null,
                 code != null && !code.isBlank()
         );
-        if (expectedState != null && !state.equals(expectedState)) {
+        if (expectedState != null && !expectedState.equals(state)) {
             LOGGER.warn("auth.callback.invalid_state session_id={}", session.getId());
             throw new IllegalArgumentException("Estado OAuth invalido.");
         }
