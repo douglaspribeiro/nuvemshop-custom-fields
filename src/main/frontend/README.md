@@ -19,8 +19,8 @@ O script legado `../resources/static/assets/nuvemshop-personalizer.js` (DOM, sem
 
 Isso é o cenário *"transition script"* da documentação. A regra que vem com ele: **o mesmo
 comportamento não pode rodar duas vezes** — em loja com SDK ativo os campos apareceriam
-duplicados. A supressão condicional (legado só renderiza quando `window.nubeSDK` não existe)
-é o que falta implementar.
+duplicados. A supressão condicional está implementada: o legado só renderiza quando
+`window.nubeSDK` não existe ou quando o SDK não desenhou os campos em 2,5s.
 
 O endpoint JSONP `/public/stores/{id}/personalization.js` foi removido: o script legado usa
 `/personalization`, `/style` e `/public/script-events`, e nunca chamou o JSONP.
@@ -43,9 +43,9 @@ Atenção: `#nubesdk-root`, `#nubesdk-runtime`, os elementos `[data-nubesdk-slot
 `nube_sdk_product_state: "full"` aparecem **mesmo em loja não liberada** — não servem como
 sinal de que o SDK está ativo.
 
-**Como liberar a loja de teste** (self-service, não precisa de ticket):
-[formulário oficial de SDK tag](https://docs.google.com/forms/d/e/1FAIpQLSesdE1j1psOl0eSZcqFA4Y8FtyHoKzRtbHXgeFNjETqpD-XMA/viewform).
-Contato: `api@nuvemshop.com.br`.
+**Como liberar a loja de teste**: abrir chamado com o suporte pelo **Painel do Partner**.
+Confirmado pelo time de homologação em 20/08/2026 — o formulário de SDK tag que circula na
+documentação não é o canal correto.
 
 Isto vale apenas para **loja de teste**. Em produção o SDK é ativado pela Nuvemshop em
 rollout canário depois da homologação — não se pede loja por loja.

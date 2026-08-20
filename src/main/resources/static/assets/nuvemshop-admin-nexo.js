@@ -9,6 +9,7 @@
     const embedded = parentWindow && parentWindow !== window;
     const handlers = [];
     let connected = false;
+    let lastSyncedPath = null;
 
     function log(message, payload) {
         if (debug) {
@@ -80,15 +81,35 @@
     }
 
     function syncCurrentPath() {
-        dispatch("app/navigate/sync", { pathname: currentPath() });
+        lastSyncedPath = currentPath();
+        dispatch("app/navigate/sync", { pathname: lastSyncedPath });
+    }
+
+    /** Compara so pathname+search: divergencia de hash nao justifica recarregar a pagina. */
+    function samePage(left, right) {
+        try {
+            const a = new URL(left, window.location.origin);
+            const b = new URL(right, window.location.origin);
+            return a.pathname === b.pathname && a.search === b.search;
+        } catch (error) {
+            return left === right;
+        }
     }
 
     function bindRouteSync() {
         subscribe("app/navigate/sync", function (payload) {
             const path = payload.path || payload.pathname;
-            if (path && path !== currentPath()) {
-                window.location.assign(path);
+            if (!path) {
+                return;
             }
+            // O painel reflete de volta o mesmo sync que acabamos de enviar. Sem estes dois
+            // guards, o eco navegava para o proprio endereco atual e recarregava a pagina,
+            // duplicando toda chamada de API do request original.
+            if (path === lastSyncedPath || samePage(path, currentPath())) {
+                return;
+            }
+            lastSyncedPath = path;
+            window.location.assign(path);
         });
     }
 
