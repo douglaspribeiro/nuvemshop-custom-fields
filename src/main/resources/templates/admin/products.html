@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Produtos - Aplicativo: Campos Personalizados</title>
+    <title th:text="#{admin.products.title} + ' - ' + #{common.app.title}">Produtos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Produtos</p>
-            <h1>Campos por produto</h1>
+            <p class="eyebrow" th:text="#{admin.products.eyebrow}">Produtos</p>
+            <h1 th:text="#{admin.products.heading}">Campos por produto</h1>
         </div>
-        <a class="button" th:href="@{/admin}">Voltar</a>
+        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
@@ -22,43 +22,44 @@
 
     <section class="panel plan-strip">
         <div>
-            <h2 th:text="${store.plan.displayTitle}">Plano FREE</h2>
-            <p class="muted">
-                <span th:text="${usage.productsUsed}">0</span>
-                <span th:text="${usage.unlimitedProducts() ? ' produtos personalizados de limite ilimitado' : ' de ' + usage.productLimit + ' produtos personalizados'}">
-                    de 1 produto personalizado
-                </span>
+            <h2 th:with="planName=#{'plan.' + ${store.plan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
+            <p class="muted"
+               th:text="${usage.unlimitedProducts()}
+                        ? #{usage.products.unlimited(${usage.productsUsed})}
+                        : #{usage.products.limited(${usage.productsUsed}, ${usage.productLimit})}">
+                de 1 produto personalizado
             </p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
+        <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
     </section>
 
     <section class="panel">
         <div class="panel-title">
-            <h2>Produtos da loja</h2>
+            <h2 th:text="#{admin.products.list.title}">Produtos da loja</h2>
             <span class="muted"
                   th:text="${productPage.totalKnown()}
-                            ? ${productPage.totalCount} + ' produtos - pagina ' + ${productPage.page} + ' de ' + ${productPage.totalPages()}
-                            : 'Pagina ' + ${productPage.page} + ' - ' + ${#lists.size(products)} + ' produtos'">0 encontrados</span>
+                            ? #{pager.count.known(${productPage.totalCount}, ${productPage.page}, ${productPage.totalPages()})}
+                            : #{pager.count.unknown(${productPage.page}, ${#lists.size(products)})}">0 encontrados</span>
         </div>
 
         <form class="form inline-form" method="get" th:action="@{/admin/products}">
-            <input type="search" name="q" placeholder="Buscar produto por nome" th:value="${productPage.query}">
-            <button class="button" type="submit">Buscar</button>
-            <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/products}">Limpar</a>
+            <input type="search" name="q" th:placeholder="#{product.search.placeholder}" th:value="${productPage.query}">
+            <button class="button" type="submit" th:text="#{common.search}">Buscar</button>
+            <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/products}"
+               th:text="#{common.clear}">Limpar</a>
         </form>
 
         <div class="empty" th:if="${#lists.isEmpty(products)}">
-            <span th:if="${productPage.query != null}">Nenhum produto encontrado para essa busca.</span>
-            <span th:unless="${productPage.query != null}">Nenhum produto retornado pela API da Nuvemshop.</span>
+            <span th:if="${productPage.query != null}" th:text="#{admin.products.empty.search}">Nenhum produto encontrado para essa busca.</span>
+            <span th:unless="${productPage.query != null}" th:text="#{admin.products.empty.all}">Nenhum produto retornado pela API da Nuvemshop.</span>
         </div>
 
         <table class="table" th:if="${!#lists.isEmpty(products)}">
             <thead>
             <tr>
-                <th>Produto</th>
-                <th>ID</th>
-                <th>Personalizacao</th>
+                <th th:text="#{common.product}">Produto</th>
+                <th th:text="#{common.id}">ID</th>
+                <th th:text="#{admin.products.column.personalization}">Personalizacao</th>
                 <th></th>
             </tr>
             </thead>
@@ -68,20 +69,21 @@
                 <td th:text="${product.id}">0</td>
                 <td>
                     <span class="status"
-                          th:text="${configuredProductIds.contains(product.id) ? 'Configurado' : 'Nao configurado'}">
+                          th:text="${configuredProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">
                         Nao configurado
                     </span>
                 </td>
                 <td class="row-actions">
                     <a class="button small"
                        th:classappend="${!configuredProductIds.contains(product.id) and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
-                       th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}">
+                       th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}"
+                       th:text="#{admin.products.edit}">
                         Editar campos
                     </a>
                     <form th:if="${configuredProductIds.contains(product.id)}"
                           th:action="@{/admin/products/{productId}/delete(productId=${product.id})}"
                           method="post">
-                        <button class="button danger small" type="submit">Remover</button>
+                        <button class="button danger small" type="submit" th:text="#{admin.products.remove}">Remover</button>
                     </form>
                 </td>
             </tr>
@@ -91,11 +93,13 @@
         <nav class="pager" th:if="${productPage.hasPrevious() or productPage.hasNext()}">
             <a class="button small"
                th:if="${productPage.hasPrevious()}"
-               th:href="@{/admin/products(page=${productPage.previousPage()},q=${productPage.query})}">Anterior</a>
-            <span class="muted" th:text="'Pagina ' + ${productPage.page}">Pagina 1</span>
+               th:href="@{/admin/products(page=${productPage.previousPage()},q=${productPage.query})}"
+               th:text="#{common.previous}">Anterior</a>
+            <span class="muted" th:text="#{common.page.number(${productPage.page})}">Pagina 1</span>
             <a class="button small"
                th:if="${productPage.hasNext()}"
-               th:href="@{/admin/products(page=${productPage.nextPage()},q=${productPage.query})}">Proxima</a>
+               th:href="@{/admin/products(page=${productPage.nextPage()},q=${productPage.query})}"
+               th:text="#{common.next}">Proxima</a>
         </nav>
     </section>
 </main>

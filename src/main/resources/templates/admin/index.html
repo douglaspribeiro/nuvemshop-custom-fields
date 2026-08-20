@@ -1,60 +1,60 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Aplicativo: Campos Personalizados</title>
+    <title th:text="#{common.app.title}">Aplicativo: Campos Personalizados</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Painel Administrativo</p>
-            <h1>Aplicativo: Campos Personalizados</h1>
+            <p class="eyebrow" th:text="#{admin.index.eyebrow}">Painel Administrativo</p>
+            <h1 th:text="#{common.app.title}">Aplicativo: Campos Personalizados</h1>
         </div>
-        <span class="badge" th:text="${store.plan.displayName}">FREE</span>
+        <span class="badge" th:text="#{'plan.' + ${store.plan.name()}}">FREE</span>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
     <section class="panel" th:if="${backofficeStoreMode}">
-        <h2>Modo loja pelo backoffice</h2>
-        <p class="muted">As alteracoes feitas aqui serao aplicadas nesta loja.</p>
+        <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2>
+        <p class="muted" th:text="#{admin.index.storemode.description}">As alteracoes feitas aqui serao aplicadas nesta loja.</p>
         <form th:action="@{/backoffice/store-mode/exit}" method="post">
-            <button class="button" type="submit">Voltar ao backoffice</button>
+            <button class="button" type="submit" th:text="#{admin.index.storemode.exit}">Voltar ao backoffice</button>
         </form>
     </section>
 
     <section class="panel">
-        <h2>Loja conectada</h2>
+        <h2 th:text="#{admin.index.store.title}">Loja conectada</h2>
         <dl class="details">
             <div>
-                <dt>Store ID</dt>
+                <dt th:text="#{admin.index.store.id}">Store ID</dt>
                 <dd th:text="${store.storeId}">0</dd>
             </div>
             <div>
-                <dt>Status</dt>
-                <dd th:text="${store.active ? 'Ativa' : 'Inativa'}">Ativa</dd>
+                <dt th:text="#{common.status}">Status</dt>
+                <dd th:text="${store.active} ? #{admin.index.store.active} : #{admin.index.store.inactive}">Ativa</dd>
             </div>
             <div>
-                <dt>Produtos configurados</dt>
+                <dt th:text="#{admin.index.store.products}">Produtos configurados</dt>
                 <dd>
                     <span th:text="${usage.productsUsed}">0</span>
-                    <span th:text="${usage.unlimitedProducts() ? '/ ilimitado' : '/ ' + usage.productLimit}">/ 1</span>
+                    <span th:text="${usage.unlimitedProducts()} ? '/ ' + #{common.unlimited} : '/ ' + ${usage.productLimit}">/ 1</span>
                 </dd>
             </div>
         </dl>
     </section>
 
     <nav class="actions">
-        <a class="button primary" th:href="@{/admin/products}">Configurar produtos</a>
-        <a class="button" th:href="@{/admin/settings/style}">Cores dos campos personalizados</a>
-        <a class="button" th:href="@{/admin/dashboard}">Dashboard</a>
-        <a class="button" th:href="@{/admin/onboarding}">Templates</a>
-        <a class="button" th:href="@{/admin/help}">Ajuda</a>
-        <a class="button" th:href="@{/support/}">Falar com o suporte</a>
+        <a class="button primary" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
+        <a class="button" th:href="@{/admin/settings/style}" th:text="#{admin.index.action.style}">Cores dos campos personalizados</a>
+        <a class="button" th:href="@{/admin/dashboard}" th:text="#{admin.index.action.dashboard}">Dashboard</a>
+        <a class="button" th:href="@{/admin/onboarding}" th:text="#{admin.index.action.templates}">Templates</a>
+        <a class="button" th:href="@{/admin/help}" th:text="#{admin.index.action.help}">Ajuda</a>
+        <a class="button" th:href="@{/support/}" th:text="#{admin.index.action.support}">Falar com o suporte</a>
     </nav>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

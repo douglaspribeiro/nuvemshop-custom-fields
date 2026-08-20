@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Cores dos campos - Aplicativo: Campos Personalizados</title>
+    <title th:text="#{admin.style.title} + ' - ' + #{common.app.title}">Cores dos campos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Configuracoes</p>
-            <h1>Cores dos campos personalizados</h1>
+            <p class="eyebrow" th:text="#{admin.style.eyebrow}">Configuracoes</p>
+            <h1 th:text="#{admin.style.heading}">Cores dos campos personalizados</h1>
         </div>
-        <a class="button" th:href="@{/admin}">Admin</a>
+        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Admin</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
@@ -23,41 +23,41 @@
     <section class="panel">
         <form class="form color-settings-form" method="post" th:action="@{/admin/settings/style}">
             <label class="color-field">
-                Texto no produto
+                <span th:text="#{admin.style.product}">Texto no produto</span>
                 <span class="color-input-row">
                     <input type="color" name="productTextColor" th:value="${store.productTextColor ?: '#344450'}">
-                    <span class="muted" th:text="${store.productTextColor ?: 'Automatico'}">Automatico</span>
+                    <span class="muted" th:text="${store.productTextColor} ?: #{common.automatic}">Automatico</span>
                 </span>
             </label>
             <label class="checkbox">
                 <input type="checkbox" name="clearProductTextColor" value="true" th:checked="${store.productTextColor == null}">
-                Usar cor automatica no produto
+                <span th:text="#{admin.style.product.auto}">Usar cor automatica no produto</span>
             </label>
             <label class="color-field">
-                Texto no checkout
+                <span th:text="#{admin.style.checkout}">Texto no checkout</span>
                 <span class="color-input-row">
                     <input type="color" name="checkoutTextColor" th:value="${store.checkoutTextColor ?: '#344450'}">
-                    <span class="muted" th:text="${store.checkoutTextColor ?: 'Automatico'}">Automatico</span>
+                    <span class="muted" th:text="${store.checkoutTextColor} ?: #{common.automatic}">Automatico</span>
                 </span>
             </label>
             <label class="checkbox">
                 <input type="checkbox" name="clearCheckoutTextColor" value="true" th:checked="${store.checkoutTextColor == null}">
-                Usar cor automatica no checkout
+                <span th:text="#{admin.style.checkout.auto}">Usar cor automatica no checkout</span>
             </label>
             <label class="color-field">
-                Campos extras no carrinho
+                <span th:text="#{admin.style.cart}">Campos extras no carrinho</span>
                 <span class="color-input-row">
                     <input type="color" name="cartTextColor" th:value="${store.cartTextColor ?: '#344450'}">
-                    <span class="muted" th:text="${store.cartTextColor ?: 'Automatico'}">Automatico</span>
+                    <span class="muted" th:text="${store.cartTextColor} ?: #{common.automatic}">Automatico</span>
                 </span>
             </label>
             <label class="checkbox">
                 <input type="checkbox" name="clearCartTextColor" value="true" th:checked="${store.cartTextColor == null}">
-                Usar cor automatica nos campos extras do carrinho
+                <span th:text="#{admin.style.cart.auto}">Usar cor automatica nos campos extras do carrinho</span>
             </label>
             <div class="row-actions">
-                <button class="button primary" type="submit">Salvar cores</button>
-                <a class="button" th:href="@{/admin}">Cancelar</a>
+                <button class="button primary" type="submit" th:text="#{admin.style.submit}">Salvar cores</button>
+                <a class="button" th:href="@{/admin}" th:text="#{common.cancel}">Cancelar</a>
             </div>
         </form>
     </section>

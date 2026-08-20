@@ -1,52 +1,52 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Suporte - Campos Personalizados</title>
+    <title th:text="#{support.title} + ' - ' + #{common.app.name}">Suporte</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell public-page">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Campos Personalizados</p>
-            <h1>Suporte</h1>
-            <p class="muted">Envie dúvidas, problemas ou sugestões e acompanhe as respostas.</p>
+            <p class="eyebrow" th:text="#{common.app.name}">Campos Personalizados</p>
+            <h1 th:text="#{support.heading}">Suporte</h1>
+            <p class="muted" th:text="#{support.subtitle}">Envie duvidas, problemas ou sugestoes.</p>
         </div>
-        <a class="button" th:if="${store}" th:href="@{/admin}">Voltar ao aplicativo</a>
+        <a class="button" th:if="${store}" th:href="@{/admin}" th:text="#{support.back.app}">Voltar ao aplicativo</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
     <section class="panel" th:if="${store == null}">
-        <h2>Acesse pela sua loja</h2>
-        <p>Para abrir e acompanhar chamados, entre no aplicativo pelo painel da Nuvemshop.</p>
-        <a class="button primary" th:href="@{/install}">Instalar ou reconectar</a>
+        <h2 th:text="#{support.login.title}">Acesse pela sua loja</h2>
+        <p th:text="#{support.login.description}">Entre no aplicativo pelo painel da Nuvemshop.</p>
+        <a class="button primary" th:href="@{/install}" th:text="#{common.install}">Instalar ou reconectar</a>
     </section>
 
     <div class="grid two" th:if="${store}">
         <section class="panel">
-            <h2>Nova mensagem</h2>
+            <h2 th:text="#{support.new.title}">Nova mensagem</h2>
             <form class="form" th:action="@{/support/tickets}" method="post">
                 <label>
-                    Assunto
+                    <span th:text="#{support.new.subject}">Assunto</span>
                     <input type="text" name="subject" maxlength="160" required
-                           placeholder="Ex: Dúvida sobre campos no produto">
+                           th:placeholder="#{support.new.subject.placeholder}">
                 </label>
                 <label>
-                    Como podemos ajudar?
+                    <span th:text="#{support.new.message}">Como podemos ajudar?</span>
                     <textarea name="message" rows="8" maxlength="5000" required
-                              placeholder="Descreva o que aconteceu, o resultado esperado e os passos para reproduzir."></textarea>
+                              th:placeholder="#{support.new.message.placeholder}"></textarea>
                 </label>
-                <button class="button primary" type="submit">Enviar ao suporte</button>
+                <button class="button primary" type="submit" th:text="#{support.new.submit}">Enviar ao suporte</button>
             </form>
         </section>
 
         <section class="panel">
-            <h2>Meus chamados</h2>
-            <div class="empty" th:if="${#lists.isEmpty(tickets)}">Nenhum chamado enviado.</div>
+            <h2 th:text="#{support.tickets.title}">Meus chamados</h2>
+            <div class="empty" th:if="${#lists.isEmpty(tickets)}" th:text="#{support.tickets.empty}">Nenhum chamado enviado.</div>
             <div class="ticket-list" th:if="${!#lists.isEmpty(tickets)}">
                 <a class="ticket-card" th:each="ticket : ${tickets}"
                    th:href="@{/support/tickets/{id}(id=${ticket.id})}">
@@ -54,7 +54,7 @@
                         <strong th:text="${ticket.subject}">Assunto</strong>
                         <small th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</small>
                     </span>
-                    <span class="badge" th:text="${ticket.status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}">Aberto</span>
+                    <span class="badge" th:text="${ticket.status.name() == 'OPEN'} ? #{support.ticket.open} : #{support.ticket.closed}">Aberto</span>
                 </a>
             </div>
         </section>

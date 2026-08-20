@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
+import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import jakarta.servlet.http.HttpSession;
@@ -19,8 +20,11 @@ public class AdminStoreService {
 
     private final StoreRepository storeRepository;
 
-    public AdminStoreService(StoreRepository storeRepository) {
+    private final Messages messages;
+
+    public AdminStoreService(StoreRepository storeRepository, Messages messages) {
         this.storeRepository = storeRepository;
+        this.messages = messages;
     }
 
     public Store requireCurrentStore(HttpSession session) {
@@ -77,7 +81,7 @@ public class AdminStoreService {
         }
         String normalized = value.strip();
         if (!normalized.matches(HEX_COLOR_PATTERN)) {
-            throw new IllegalArgumentException("Cor invalida. Use o seletor de cor ou informe um hexadecimal no formato #RRGGBB.");
+            throw new IllegalArgumentException(messages.get("error.color.invalid"));
         }
         return normalized.toUpperCase();
     }

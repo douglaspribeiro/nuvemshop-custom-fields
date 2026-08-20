@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Campos - Aplicativo: Campos Personalizados</title>
+    <title th:text="#{admin.fields.title} + ' - ' + #{common.app.title}">Campos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Editor</p>
-            <h1 th:text="${rule.productName ?: 'Produto ' + rule.productId}">Produto</h1>
+            <p class="eyebrow" th:text="#{admin.fields.eyebrow}">Editor</p>
+            <h1 th:text="${rule.productName} ?: #{admin.fields.product.fallback(${rule.productId})}">Produto</h1>
         </div>
-        <a class="button" th:href="@{/admin/products}">Produtos</a>
+        <a class="button" th:href="@{/admin/products}" th:text="#{admin.products.title}">Produtos</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
@@ -22,72 +22,72 @@
 
     <section class="panel plan-strip">
         <div>
-            <h2 th:text="${store.plan.displayTitle}">Plano FREE</h2>
-            <p class="muted">
-                <span th:text="${usage.fieldsUsed}">0</span>
-                <span th:text="${usage.unlimitedFields() ? ' campos neste produto de limite ilimitado' : ' de ' + usage.fieldLimit + ' campos neste produto'}">
-                    de 1 campo neste produto
-                </span>
+            <h2 th:with="planName=#{'plan.' + ${store.plan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
+            <p class="muted"
+               th:text="${usage.unlimitedFields()}
+                        ? #{usage.fields.unlimited(${usage.fieldsUsed})}
+                        : #{usage.fields.limited(${usage.fieldsUsed}, ${usage.fieldLimit})}">
+                de 1 campo neste produto
             </p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
+        <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
     </section>
 
     <section class="grid two">
         <div class="panel">
-            <h2>Novo campo</h2>
-            <p class="notice error" th:if="${!canAddField}">Limite de campos atingido para este produto.</p>
+            <h2 th:text="#{admin.fields.new.title}">Novo campo</h2>
+            <p class="notice error" th:if="${!canAddField}" th:text="#{admin.fields.limit.reached}">Limite de campos atingido para este produto.</p>
             <form class="form preview-source" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
                   th:object="${fieldForm}" method="post" th:classappend="${!canAddField} ? ' blocked' : ''">
                 <label>
-                    Label
+                    <span th:text="#{admin.fields.label}">Label</span>
                     <input th:field="*{label}" maxlength="100" required>
                 </label>
                 <label>
-                    Tipo
+                    <span th:text="#{admin.fields.type}">Tipo</span>
                     <select th:field="*{fieldType}" required>
                         <option th:each="type : ${fieldTypes}" th:value="${type}" th:text="${type}">TEXT</option>
                     </select>
                 </label>
                 <label class="checkbox">
                     <input th:field="*{required}" type="checkbox">
-                    Obrigatorio
+                    <span th:text="#{admin.fields.required}">Obrigatorio</span>
                 </label>
                 <label>
-                    Maximo de caracteres
+                    <span th:text="#{admin.fields.maxlength}">Maximo de caracteres</span>
                     <input th:field="*{maxLength}" type="number" min="1" max="500" required>
                 </label>
                 <label>
-                    Placeholder
+                    <span th:text="#{admin.fields.placeholder}">Placeholder</span>
                     <input th:field="*{placeholder}" maxlength="150">
                 </label>
                 <label>
-                    Regex ou mascara
-                    <input th:field="*{validationPattern}" maxlength="255" placeholder="Ex: ^[0-9]{1,2}$">
+                    <span th:text="#{admin.fields.pattern}">Regex ou mascara</span>
+                    <input th:field="*{validationPattern}" maxlength="255" th:placeholder="#{admin.fields.pattern.example}">
                 </label>
                 <label>
-                    Opcoes do select
-                    <textarea th:field="*{optionsText}" rows="4" placeholder="Uma opcao por linha"></textarea>
+                    <span th:text="#{admin.fields.options}">Opcoes do select</span>
+                    <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
                 </label>
                 <label>
-                    Ordem
+                    <span th:text="#{admin.fields.order}">Ordem</span>
                     <input th:field="*{sortOrder}" type="number" min="0">
                 </label>
-                <button class="button primary" type="submit" th:disabled="${!canAddField}">Criar campo</button>
+                <button class="button primary" type="submit" th:disabled="${!canAddField}" th:text="#{admin.fields.create}">Criar campo</button>
             </form>
             <div class="preview-box">
-                <h2>Preview</h2>
-                <div id="field-preview"></div>
+                <h2 th:text="#{admin.fields.preview}">Preview</h2>
+                <div id="field-preview" th:attr="data-fallback-label=#{admin.fields.preview.fallback}"></div>
             </div>
         </div>
 
         <div class="panel">
             <div class="panel-title">
-                <h2>Campos configurados</h2>
-                <span class="muted" th:text="${#lists.size(rule.fields)} + ' campos'">0 campos</span>
+                <h2 th:text="#{admin.fields.list.title}">Campos configurados</h2>
+                <span class="muted" th:text="#{admin.fields.list.count(${#lists.size(rule.fields)})}">0 campos</span>
             </div>
 
-            <div class="empty" th:if="${#lists.isEmpty(rule.fields)}">
+            <div class="empty" th:if="${#lists.isEmpty(rule.fields)}" th:text="#{admin.fields.list.empty}">
                 Este produto ainda nao tem campos.
             </div>
 
@@ -97,11 +97,11 @@
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
                           method="post">
                         <label>
-                            Label
+                            <span th:text="#{admin.fields.label}">Label</span>
                             <input name="label" th:value="${field.label}" maxlength="100" required>
                         </label>
                         <label>
-                            Tipo
+                            <span th:text="#{admin.fields.type}">Tipo</span>
                             <select name="fieldType" required>
                                 <option th:each="type : ${fieldTypes}"
                                         th:value="${type}"
@@ -111,35 +111,35 @@
                         </label>
                         <label class="checkbox">
                             <input name="required" type="checkbox" value="true" th:checked="${field.required}">
-                            Obrigatorio
+                            <span th:text="#{admin.fields.required}">Obrigatorio</span>
                         </label>
                         <label>
-                            Maximo
+                            <span th:text="#{admin.fields.maxlength.short}">Maximo</span>
                             <input name="maxLength" th:value="${field.maxLength}" type="number" min="1" max="500" required>
                         </label>
                         <label>
-                            Placeholder
+                            <span th:text="#{admin.fields.placeholder}">Placeholder</span>
                             <input name="placeholder" th:value="${field.placeholder}" maxlength="150">
                         </label>
                         <label>
-                            Regex ou mascara
+                            <span th:text="#{admin.fields.pattern}">Regex ou mascara</span>
                             <input name="validationPattern" th:value="${field.validationPattern}" maxlength="255">
                         </label>
                         <label>
-                            Opcoes do select
+                            <span th:text="#{admin.fields.options}">Opcoes do select</span>
                             <textarea name="optionsText" rows="4" th:text="${field.optionsText}"></textarea>
                         </label>
                         <label>
-                            Ordem
+                            <span th:text="#{admin.fields.order}">Ordem</span>
                             <input name="sortOrder" th:value="${field.sortOrder}" type="number" min="0">
                         </label>
                         <div class="row-actions">
-                            <button class="button primary small" type="submit">Salvar</button>
+                            <button class="button primary small" type="submit" th:text="#{common.save}">Salvar</button>
                         </div>
                     </form>
                     <form th:action="@{/admin/products/{productId}/fields/{fieldId}/delete(productId=${rule.productId},fieldId=${field.id})}"
                           method="post">
-                        <button class="button danger small" type="submit">Excluir campo</button>
+                        <button class="button danger small" type="submit" th:text="#{admin.fields.delete}">Excluir campo</button>
                     </form>
                 </article>
             </div>
@@ -149,12 +149,13 @@
 <script>
     const source = document.querySelector(".preview-source");
     const preview = document.getElementById("field-preview");
+    const fallbackLabel = (preview && preview.dataset.fallbackLabel) || "";
 
     function updatePreview() {
         if (!source || !preview) {
             return;
         }
-        const label = source.querySelector("[name='label']").value || "Campo";
+        const label = source.querySelector("[name='label']").value || fallbackLabel;
         const type = source.querySelector("[name='fieldType']").value;
         const placeholder = source.querySelector("[name='placeholder']").value || "";
         const required = source.querySelector("[name='required']").checked;

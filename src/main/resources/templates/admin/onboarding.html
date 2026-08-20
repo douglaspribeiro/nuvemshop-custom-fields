@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Templates - Aplicativo: Campos Personalizados</title>
+    <title th:text="#{admin.onboarding.title} + ' - ' + #{common.app.title}">Templates</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Templates</p>
-            <h1>Templates por nicho</h1>
+            <p class="eyebrow" th:text="#{admin.onboarding.eyebrow}">Templates</p>
+            <h1 th:text="#{admin.onboarding.heading}">Templates por nicho</h1>
         </div>
-        <a class="button" th:href="@{/admin}">Voltar</a>
+        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
@@ -22,39 +22,41 @@
 
     <section class="panel plan-strip">
         <div>
-            <h2 th:text="${store.plan.displayTitle}">Plano FREE</h2>
-            <p class="muted">
-                <span th:text="${usage.productsUsed}">0</span>
-                <span th:text="${usage.unlimitedProducts() ? ' produtos personalizados de limite ilimitado' : ' de ' + usage.productLimit + ' produtos personalizados'}">
-                    de 1 produto personalizado
-                </span>
+            <h2 th:with="planName=#{'plan.' + ${store.plan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
+            <p class="muted"
+               th:text="${usage.unlimitedProducts()}
+                        ? #{usage.products.unlimited(${usage.productsUsed})}
+                        : #{usage.products.limited(${usage.productsUsed}, ${usage.productLimit})}">
+                de 1 produto personalizado
             </p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}">Upgrade</a>
+        <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
     </section>
 
     <section class="panel">
         <div class="panel-title">
-            <h2>Selecao de produto</h2>
+            <h2 th:text="#{admin.onboarding.selection.title}">Selecao de produto</h2>
             <span class="muted"
                   th:text="${productPage.totalKnown()}
-                            ? ${productPage.totalCount} + ' produtos - pagina ' + ${productPage.page} + ' de ' + ${productPage.totalPages()}
-                            : 'Pagina ' + ${productPage.page} + ' - ' + ${#lists.size(products)} + ' produtos'">0 produtos</span>
+                            ? #{pager.count.known(${productPage.totalCount}, ${productPage.page}, ${productPage.totalPages()})}
+                            : #{pager.count.unknown(${productPage.page}, ${#lists.size(products)})}">0 produtos</span>
         </div>
-        <p class="muted">Os selects abaixo mostram apenas os produtos desta pagina. Use a busca para encontrar um produto especifico.</p>
+        <p class="muted" th:text="#{admin.onboarding.selection.hint}">Os selects abaixo mostram apenas os produtos desta pagina.</p>
         <form class="form inline-form" method="get" th:action="@{/admin/onboarding}">
-            <input type="search" name="q" placeholder="Buscar produto por nome" th:value="${productPage.query}">
-            <button class="button" type="submit">Buscar</button>
-            <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/onboarding}">Limpar</a>
+            <input type="search" name="q" th:placeholder="#{product.search.placeholder}" th:value="${productPage.query}">
+            <button class="button" type="submit" th:text="#{common.search}">Buscar</button>
+            <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/onboarding}" th:text="#{common.clear}">Limpar</a>
         </form>
         <nav class="pager" th:if="${productPage.hasPrevious() or productPage.hasNext()}">
             <a class="button small"
                th:if="${productPage.hasPrevious()}"
-               th:href="@{/admin/onboarding(page=${productPage.previousPage()},q=${productPage.query})}">Anterior</a>
-            <span class="muted" th:text="'Pagina ' + ${productPage.page}">Pagina 1</span>
+               th:href="@{/admin/onboarding(page=${productPage.previousPage()},q=${productPage.query})}"
+               th:text="#{common.previous}">Anterior</a>
+            <span class="muted" th:text="#{common.page.number(${productPage.page})}">Pagina 1</span>
             <a class="button small"
                th:if="${productPage.hasNext()}"
-               th:href="@{/admin/onboarding(page=${productPage.nextPage()},q=${productPage.query})}">Proxima</a>
+               th:href="@{/admin/onboarding(page=${productPage.nextPage()},q=${productPage.query})}"
+               th:text="#{common.next}">Proxima</a>
         </nav>
     </section>
 
@@ -71,16 +73,16 @@
                 <input type="hidden" name="templateId" th:value="${template.id}">
                 <input type="hidden" name="productName">
                 <label>
-                    Produto
+                    <span th:text="#{common.product}">Produto</span>
                     <select name="productId" required>
-                        <option value="" disabled selected>Selecione um produto</option>
+                        <option value="" disabled selected th:text="#{admin.onboarding.product.choose}">Selecione um produto</option>
                         <option th:each="product : ${products}"
                                 th:value="${product.id}"
                                 th:text="${product.name}"
                                 th:attr="data-name=${product.name}">Produto</option>
                     </select>
                 </label>
-                <button class="button primary" type="submit">Aplicar template</button>
+                <button class="button primary" type="submit" th:text="#{admin.onboarding.apply}">Aplicar template</button>
             </form>
         </article>
     </section>

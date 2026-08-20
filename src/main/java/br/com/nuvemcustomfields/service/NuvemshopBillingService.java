@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.service;
 import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.PlanEvent;
 import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopBillingProperties;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
@@ -34,6 +35,7 @@ public class NuvemshopBillingService {
     private final PlanEventRepository planEventRepository;
     private final NuvemshopApiClient apiClient;
     private final RestClient restClient;
+    private final Messages messages;
 
     public NuvemshopBillingService(
             NuvemshopBillingProperties billingProperties,
@@ -41,7 +43,8 @@ public class NuvemshopBillingService {
             StoreRepository storeRepository,
             PlanEventRepository planEventRepository,
             NuvemshopApiClient apiClient,
-            RestClient.Builder builder
+            RestClient.Builder builder,
+            Messages messages
     ) {
         this.billingProperties = billingProperties;
         this.nuvemshopProperties = nuvemshopProperties;
@@ -49,6 +52,7 @@ public class NuvemshopBillingService {
         this.planEventRepository = planEventRepository;
         this.apiClient = apiClient;
         this.restClient = builder.defaultHeader("User-Agent", nuvemshopProperties.userAgent()).build();
+        this.messages = messages;
     }
 
     public boolean isEnabled() {
@@ -181,7 +185,7 @@ public class NuvemshopBillingService {
 
     private void validateTargetPlan(PlanType targetPlan) {
         if (!targetPlan.isBillable()) {
-            throw new IllegalArgumentException("Selecione um plano pago valido.");
+            throw new IllegalArgumentException(messages.get("error.plan.invalid"));
         }
     }
 
@@ -418,7 +422,7 @@ public class NuvemshopBillingService {
     private BillingPrice priceForCountry(String countryCode) {
         BillingPrice price = priceForCountryOrNull(countryCode);
         if (price == null) {
-            throw new IllegalStateException("Preco de billing nao configurado para " + countryCode + ".");
+            throw new IllegalStateException(messages.get("error.billing.price.missing", countryCode));
         }
         return price;
     }

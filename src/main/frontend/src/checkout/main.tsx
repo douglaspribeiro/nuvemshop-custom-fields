@@ -1,4 +1,5 @@
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
+import { messages } from "../shared/i18n";
 import { PersonalizationSummary } from "../shared/PersonalizationSummary";
 import { appOrigin, safeState, storeId } from "../shared/config";
 import { collectItemProperties, normalizedColor } from "../shared/properties";
@@ -6,13 +7,15 @@ import { collectItemProperties, normalizedColor } from "../shared/properties";
 const SLOT = "after_line_items";
 
 let textColor: string | undefined;
+let locale: string | null = null;
 
 export function App(nube: NubeSDK) {
 	const state = safeState(nube);
 	render(nube, state);
 
-	loadTextColor(state).then((color) => {
-		textColor = color;
+	loadStyle(state).then((style) => {
+		textColor = style.color;
+		locale = style.locale;
 		render(nube, safeState(nube) ?? state);
 	});
 
@@ -28,14 +31,18 @@ function render(nube: NubeSDK, state: NubeSDKState | null) {
 	}
 	nube.render(
 		SLOT,
-		<PersonalizationSummary title="Itens Personalizados" groups={groups} color={textColor} />,
+		<PersonalizationSummary title={messages(locale).checkoutTitle} groups={groups} color={textColor} />,
 	);
 }
 
-async function loadTextColor(state: NubeSDKState | null): Promise<string | undefined> {
+type StyleResult = { color: string | undefined; locale: string | null };
+
+const NO_STYLE: StyleResult = { color: undefined, locale: null };
+
+async function loadStyle(state: NubeSDKState | null): Promise<StyleResult> {
 	const store = storeId(state);
 	if (!store) {
-		return undefined;
+		return NO_STYLE;
 	}
 	try {
 		const response = await fetch(`${appOrigin()}/public/stores/${store}/style`, {
@@ -43,11 +50,14 @@ async function loadTextColor(state: NubeSDKState | null): Promise<string | undef
 			headers: { Accept: "application/json" },
 		});
 		if (!response.ok) {
-			return undefined;
+			return NO_STYLE;
 		}
-		const style = (await response.json()) as { checkoutTextColor?: string | null };
-		return normalizedColor(style?.checkoutTextColor);
+		const style = (await response.json()) as {
+			checkoutTextColor?: string | null;
+			locale?: string | null;
+		};
+		return { color: normalizedColor(style?.checkoutTextColor), locale: style?.locale ?? null };
 	} catch {
-		return undefined;
+		return NO_STYLE;
 	}
 }

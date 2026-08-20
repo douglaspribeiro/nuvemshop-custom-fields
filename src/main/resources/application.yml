@@ -14,6 +14,11 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  messages:
+    basename: messages
+    encoding: UTF-8
+    # false: sem esta linha, uma loja pt-BR cairia no locale do servidor em vez do bundle padrao.
+    fallback-to-system-locale: false
 
 server:
   forward-headers-strategy: framework

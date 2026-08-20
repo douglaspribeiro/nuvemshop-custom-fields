@@ -1,5 +1,8 @@
 package br.com.nuvemcustomfields.config;
 
+import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.i18n.AppLocaleResolver;
+import br.com.nuvemcustomfields.i18n.StoreLocale;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -7,6 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.util.Locale;
+import java.util.Optional;
 
 @Component
 public class AdminSessionInterceptor implements HandlerInterceptor {
@@ -25,14 +31,15 @@ public class AdminSessionInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         Object storeId = request.getSession().getAttribute(STORE_SESSION_KEY);
         if (storeId instanceof Long id) {
-            boolean activeStoreFound = storeRepository.findActiveByStoreId(id).isPresent();
+            Optional<Store> activeStore = storeRepository.findActiveByStoreId(id);
             LOGGER.info(
                     "admin.session.check uri={} store_id={} active_store_found={}",
                     request.getRequestURI(),
                     id,
-                    activeStoreFound
+                    activeStore.isPresent()
             );
-            if (activeStoreFound) {
+            if (activeStore.isPresent()) {
+                applyStoreLocale(request, activeStore.get());
                 return true;
             }
         } else {
@@ -46,5 +53,19 @@ public class AdminSessionInterceptor implements HandlerInterceptor {
         LOGGER.warn("admin.session.redirect_embedded uri={}", request.getRequestURI());
         response.sendRedirect("/admin/embedded");
         return false;
+    }
+
+    /** So escreve na sessao quando muda: evita replicar sessao a cada request. */
+    private void applyStoreLocale(HttpServletRequest request, Store store) {
+        Locale locale = StoreLocale.forCountry(store.getStoreCountryCode());
+        if (!locale.equals(request.getSession().getAttribute(AppLocaleResolver.SESSION_KEY))) {
+            request.getSession().setAttribute(AppLocaleResolver.SESSION_KEY, locale);
+            LOGGER.info(
+                    "admin.session.locale store_id={} country={} locale={}",
+                    store.getStoreId(),
+                    store.getStoreCountryCode(),
+                    locale.toLanguageTag()
+            );
+        }
     }
 }

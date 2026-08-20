@@ -1,54 +1,55 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Dashboard - Aplicativo: Campos Personalizados</title>
+    <title th:text="#{admin.dashboard.title} + ' - ' + #{common.app.title}">Dashboard</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Dashboard</p>
-            <h1>Uso e pedidos</h1>
+            <p class="eyebrow" th:text="#{admin.dashboard.eyebrow}">Dashboard</p>
+            <h1 th:text="#{admin.dashboard.heading}">Uso e pedidos</h1>
         </div>
-        <a class="button" th:href="@{/admin}">Voltar</a>
+        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
     </section>
 
     <section class="details metrics">
         <div>
-            <dt>Produtos configurados</dt>
+            <dt th:text="#{admin.dashboard.metric.products}">Produtos configurados</dt>
             <dd th:text="${summary.configuredProducts}">0</dd>
         </div>
         <div>
-            <dt>Campos ativos</dt>
+            <dt th:text="#{admin.dashboard.metric.fields}">Campos ativos</dt>
             <dd th:text="${summary.configuredFields}">0</dd>
         </div>
         <div>
-            <dt>Pedidos recentes com personalizacao</dt>
+            <dt th:text="#{admin.dashboard.metric.orders}">Pedidos recentes com personalizacao</dt>
             <dd th:text="${summary.ordersAvailable ? #lists.size(summary.personalizedOrders) : '-'}">0</dd>
         </div>
     </section>
 
     <section class="panel">
         <div class="panel-title">
-            <h2>Pedidos com personalizacao</h2>
-            <span class="muted">Ultimos 50 pedidos</span>
+            <h2 th:text="#{admin.dashboard.orders.title}">Pedidos com personalizacao</h2>
+            <span class="muted" th:text="#{admin.dashboard.orders.subtitle}">Ultimos 50 pedidos</span>
         </div>
-        <p class="notice error" th:if="${!summary.ordersAvailable}" th:text="${summary.ordersUnavailableReason}">
+        <p class="notice error" th:if="${!summary.ordersAvailable}" th:text="#{admin.dashboard.orders.unavailable}">
             Reinstale o app para liberar a leitura de pedidos.
         </p>
-        <div class="empty" th:if="${summary.ordersAvailable and #lists.isEmpty(summary.personalizedOrders)}">
+        <div class="empty" th:if="${summary.ordersAvailable and #lists.isEmpty(summary.personalizedOrders)}"
+             th:text="#{admin.dashboard.orders.empty}">
             Nenhum pedido recente com propriedades de personalizacao.
         </div>
         <table class="table" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}">
             <thead>
             <tr>
-                <th>Pedido</th>
-                <th>Data</th>
-                <th>Campos</th>
+                <th th:text="#{admin.dashboard.orders.column.order}">Pedido</th>
+                <th th:text="#{common.date}">Data</th>
+                <th th:text="#{admin.dashboard.orders.column.fields}">Campos</th>
             </tr>
             </thead>
             <tbody>

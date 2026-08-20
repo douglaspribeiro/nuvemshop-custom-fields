@@ -1,19 +1,19 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chamado - Campos Personalizados</title>
+    <title th:text="#{support.ticket.title} + ' - ' + #{common.app.name}">Chamado</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell public-page">
     <section class="page-header">
         <div>
-            <p class="eyebrow" th:text="'Chamado #' + ${ticket.id}">Chamado</p>
+            <p class="eyebrow" th:text="#{support.ticket.number(${ticket.id})}">Chamado</p>
             <h1 th:text="${ticket.subject}">Assunto</h1>
         </div>
-        <a class="button" th:href="@{/support/}">Voltar ao suporte</a>
+        <a class="button" th:href="@{/support/}" th:text="#{support.ticket.back}">Voltar ao suporte</a>
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
@@ -22,7 +22,7 @@
         <article class="message-card" th:each="item : ${messages}"
                  th:classappend="${item.authorType.name() == 'STORE'} ? ' from-store' : ' from-support'">
             <div class="message-meta">
-                <strong th:text="${item.authorType.name() == 'STORE' ? 'Você' : 'Suporte Campos Personalizados'}">Autor</strong>
+                <strong th:text="${item.authorType.name() == 'STORE'} ? #{support.ticket.author.store} : #{support.ticket.author.support}">Autor</strong>
                 <span th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
             </div>
             <p th:text="${item.message}">Mensagem</p>
@@ -30,13 +30,13 @@
     </section>
 
     <section class="panel settings-panel" th:if="${ticket.status.name() == 'OPEN'}">
-        <h2>Responder</h2>
+        <h2 th:text="#{support.ticket.reply}">Responder</h2>
         <form class="form" th:action="@{/support/tickets/{id}/messages(id=${ticket.id})}" method="post">
-            <textarea name="message" rows="6" maxlength="5000" required placeholder="Escreva sua resposta..."></textarea>
-            <button class="button primary" type="submit">Enviar resposta</button>
+            <textarea name="message" rows="6" maxlength="5000" required th:placeholder="#{support.ticket.reply.placeholder}"></textarea>
+            <button class="button primary" type="submit" th:text="#{support.ticket.reply.submit}">Enviar resposta</button>
         </form>
     </section>
-    <p class="notice warning" th:if="${ticket.status.name() == 'CLOSED'}">Este chamado foi encerrado pelo suporte.</p>
+    <p class="notice warning" th:if="${ticket.status.name() == 'CLOSED'}" th:text="#{support.ticket.closed.notice}">Este chamado foi encerrado pelo suporte.</p>
 </main>
 </body>
 </html>

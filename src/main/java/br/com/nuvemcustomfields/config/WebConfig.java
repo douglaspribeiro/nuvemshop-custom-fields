@@ -1,8 +1,11 @@
 package br.com.nuvemcustomfields.config;
 
+import br.com.nuvemcustomfields.i18n.AppLocaleResolver;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
@@ -24,6 +27,12 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(backofficeSessionInterceptor)
                 .addPathPatterns("/backoffice/**")
                 .excludePathPatterns("/backoffice/login");
+    }
+
+    /** O nome do bean precisa ser localeResolver: e por ele que o DispatcherServlet procura. */
+    @Bean
+    public LocaleResolver localeResolver() {
+        return new AppLocaleResolver();
     }
 
     @Override

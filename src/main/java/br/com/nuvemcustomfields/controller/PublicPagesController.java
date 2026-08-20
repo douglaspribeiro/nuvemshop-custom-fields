@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.controller;
 
+import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.service.SupportService;
@@ -23,10 +24,12 @@ public class PublicPagesController {
 
     private final StoreRepository storeRepository;
     private final SupportService supportService;
+    private final Messages messages;
 
-    public PublicPagesController(StoreRepository storeRepository, SupportService supportService) {
+    public PublicPagesController(StoreRepository storeRepository, SupportService supportService, Messages messages) {
         this.storeRepository = storeRepository;
         this.supportService = supportService;
+        this.messages = messages;
     }
 
     @GetMapping("/privacy")
@@ -61,13 +64,13 @@ public class PublicPagesController {
     ) {
         Store store = currentStore(session);
         if (store == null) {
-            redirectAttributes.addFlashAttribute("error", "Instale ou reconecte o aplicativo para acessar o suporte.");
+            redirectAttributes.addFlashAttribute("error", messages.get("support.flash.unauthenticated"));
             return "redirect:/support/";
         }
         try {
             var ticket = supportService.openTicket(store, subject, message);
             LOGGER.info("support.ticket.created ticket_id={} store_id={}", ticket.getId(), store.getStoreId());
-            redirectAttributes.addFlashAttribute("message", "Mensagem enviada ao suporte.");
+            redirectAttributes.addFlashAttribute("message", messages.get("support.flash.sent"));
             return "redirect:/support/tickets/" + ticket.getId();
         } catch (IllegalArgumentException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
@@ -97,12 +100,12 @@ public class PublicPagesController {
     ) {
         Store store = currentStore(session);
         if (store == null) {
-            redirectAttributes.addFlashAttribute("error", "Instale ou reconecte o aplicativo para acessar o suporte.");
+            redirectAttributes.addFlashAttribute("error", messages.get("support.flash.unauthenticated"));
             return "redirect:/support/";
         }
         try {
             supportService.replyFromStore(ticketId, store.getStoreId(), message);
-            redirectAttributes.addFlashAttribute("message", "Resposta enviada.");
+            redirectAttributes.addFlashAttribute("message", messages.get("support.flash.replied"));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
@@ -112,7 +115,7 @@ public class PublicPagesController {
     @ExceptionHandler(IllegalArgumentException.class)
     public String invalidTicket(IllegalArgumentException ex, RedirectAttributes redirectAttributes) {
         LOGGER.warn("support.ticket.invalid message={}", ex.getMessage());
-        redirectAttributes.addFlashAttribute("error", "Chamado nao encontrado para esta loja.");
+        redirectAttributes.addFlashAttribute("error", messages.get("support.flash.notfound"));
         return "redirect:/support/";
     }
 

@@ -202,6 +202,26 @@ As migrations Flyway ficam em `src/main/resources/db/migration` e criam as tabel
 
 O Hibernate roda com `ddl-auto: validate`, entao o schema deve ser criado/atualizado pelas migrations.
 
+## Idiomas
+
+O app fala pt-BR e espanhol neutro. O idioma **nao** vem do navegador do lojista: vem do
+pais da loja (`country` de `GET /store`, persistido em `store_country_code`). `BR`/`PT` ->
+pt-BR, qualquer outro pais Latam -> es.
+
+| Camada | Onde | Como resolve |
+| --- | --- | --- |
+| Telas do lojista | `messages.properties` / `messages_es.properties` | `AppLocaleResolver` le `appLocale` da sessao, semeado pelo `AdminSessionInterceptor` |
+| Flash e excecoes | `i18n/Messages` | mesmo locale, via `LocaleContextHolder` |
+| Paginas publicas | idem | sem loja em sessao: `Accept-Language`; idioma sem traducao cai em pt-BR |
+| Vitrine e checkout (comprador) | `frontend/src/shared/i18n.ts` e `nuvemshop-checkout.js` | `locale` vem no payload de `/personalization` e `/style` — o script roda em Web Worker e nao tem DOM para inspecionar |
+
+O backoffice interno fica em pt-BR de proposito: nao e acessivel ao lojista.
+
+**Armadilha:** chave ausente em `messages_es.properties` **nao** renderiza `??chave??`. O
+Spring cai no bundle padrao e entrega portugues em silencio. Por isso existem dois testes:
+`MessageBundleParityTest` (paridade de chaves) e `LocalizedPagesRenderTest`, que renderiza
+cada tela em `AR/MX/CL/CO` e falha se qualquer texto pt traduzido aparecer no HTML.
+
 ## Storefront
 
 O app e **hibrido**, por exigencia da homologacao Nuvemshop: o script legado de DOM e o

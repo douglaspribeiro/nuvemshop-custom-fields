@@ -1,22 +1,22 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Aplicativo: Campos Personalizados</title>
+    <title th:text="#{common.app.title}">Aplicativo: Campos Personalizados</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell narrow">
     <section class="panel embedded-loading">
-        <p class="eyebrow">Instalador</p>
-        <h1>Aplicativo: Campos Personalizados</h1>
-        <p class="muted" data-nexo-status>Conectando com o painel da loja...</p>
-        <a class="button" data-nexo-install-link th:href="@{/install}" hidden>Instalar ou reconectar</a>
+        <p class="eyebrow" th:text="#{admin.embedded.eyebrow}">Instalador</p>
+        <h1 th:text="#{common.app.title}">Aplicativo: Campos Personalizados</h1>
+        <p class="muted" data-nexo-status th:text="#{admin.embedded.connecting}">Conectando com o painel da loja...</p>
+        <a class="button" data-nexo-install-link th:href="@{/install}" hidden th:text="#{common.install}">Instalar ou reconectar</a>
     </section>
 </main>
 <script defer th:src="@{/assets/nuvemshop-admin-nexo.js}"
-        th:attr="data-client-id=${nuvemshopClientId},data-mode='bootstrap'"></script>
+        th:attr="data-client-id=${nuvemshopClientId},data-mode='bootstrap',data-error-connect=#{admin.embedded.error.connect},data-error-session=#{admin.embedded.error.session}"></script>
 </body>
 </html>

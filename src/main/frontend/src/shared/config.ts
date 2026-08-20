@@ -19,6 +19,7 @@ export type PersonalizationStyle = {
 	productTextColor: string | null;
 	checkoutTextColor: string | null;
 	cartTextColor: string | null;
+	locale: string;
 };
 
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationResponse. */
@@ -26,12 +27,14 @@ export type PersonalizationConfig = {
 	enabled: boolean;
 	fields: PersonalizationField[];
 	style: PersonalizationStyle;
+	locale: string;
 };
 
 export const DISABLED: PersonalizationConfig = {
 	enabled: false,
 	fields: [],
-	style: { productTextColor: null, checkoutTextColor: null, cartTextColor: null },
+	style: { productTextColor: null, checkoutTextColor: null, cartTextColor: null, locale: "pt-BR" },
+	locale: "pt-BR",
 };
 
 export function appOrigin(): string {
@@ -77,6 +80,7 @@ function normalize(config: PersonalizationConfig): PersonalizationConfig {
 		enabled: true,
 		fields: (config.fields ?? []).filter((field) => !!field?.label),
 		style: config.style ?? DISABLED.style,
+		locale: config.locale ?? DISABLED.locale,
 	};
 }
 

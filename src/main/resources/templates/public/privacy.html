@@ -1,52 +1,55 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Política de Privacidade - Campos Personalizados</title>
+    <title th:text="#{privacy.title} + ' - ' + #{common.app.name}">Politica de Privacidade</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell public-page legal-page">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Campos Personalizados</p>
-            <h1>Política de Privacidade</h1>
-            <p class="muted">Última atualização: 12 de junho de 2026</p>
+            <p class="eyebrow" th:text="#{common.app.name}">Campos Personalizados</p>
+            <h1 th:text="#{privacy.title}">Politica de Privacidade</h1>
+            <p class="muted" th:text="#{privacy.updated}">Ultima atualizacao</p>
         </div>
-        <a class="button" th:href="@{/support/}">Suporte</a>
+        <a class="button" th:href="@{/support/}" th:text="#{common.support}">Suporte</a>
     </section>
 
     <section class="panel legal-content">
-        <h2>1. Sobre esta política</h2>
-        <p>Esta política explica como o aplicativo Campos Personalizados trata dados ao ser instalado e utilizado em uma loja Nuvemshop.</p>
-        <p>O Campos Personalizados é responsável pelo tratamento realizado diretamente para a prestação do aplicativo. A Nuvemshop possui suas próprias responsabilidades e políticas para os dados tratados em sua plataforma.</p>
+        <h2 th:text="#{privacy.s1.title}">1. Sobre esta politica</h2>
+        <p th:text="#{privacy.s1.p1}"></p>
+        <p th:text="#{privacy.s1.p2}"></p>
 
-        <h2>2. Dados tratados</h2>
-        <p>Podemos tratar o identificador e nome da loja, token de acesso, permissões concedidas, plano contratado, informações de cobrança, configurações de campos personalizados, produtos associados, preferências visuais, logs técnicos e mensagens enviadas ao suporte.</p>
-        <p>Quando autorizado pela loja, o aplicativo consulta produtos, scripts, webhooks e pedidos pela API da Nuvemshop. Nos pedidos, a leitura é limitada às informações necessárias para apresentar relatórios sobre personalizações.</p>
+        <h2 th:text="#{privacy.s2.title}">2. Dados tratados</h2>
+        <p th:text="#{privacy.s2.p1}"></p>
+        <p th:text="#{privacy.s2.p2}"></p>
 
-        <h2>3. Dados de clientes da loja</h2>
-        <p>Os valores preenchidos pelos consumidores nos campos personalizados são enviados à própria loja por meio dos recursos de carrinho e pedido da Nuvemshop. O aplicativo não mantém uma base própria desses valores, salvo quando informações forem voluntariamente incluídas em uma mensagem de suporte ou log técnico.</p>
+        <h2 th:text="#{privacy.s3.title}">3. Dados de clientes da loja</h2>
+        <p th:text="#{privacy.s3.p1}"></p>
 
-        <h2>4. Finalidades</h2>
-        <p>Usamos os dados para autenticar a loja, fornecer e personalizar o serviço, aplicar limites do plano, registrar scripts e webhooks, processar assinaturas, apresentar relatórios, prevenir falhas, prestar suporte e cumprir obrigações legais.</p>
+        <h2 th:text="#{privacy.s4.title}">4. Finalidades</h2>
+        <p th:text="#{privacy.s4.p1}"></p>
 
-        <h2>5. Compartilhamento</h2>
-        <p>Os dados podem ser processados pela Nuvemshop e por fornecedores de infraestrutura estritamente necessários à operação, hospedagem, banco de dados e monitoramento. Não vendemos dados pessoais nem os utilizamos para publicidade de terceiros.</p>
+        <h2 th:text="#{privacy.s5.title}">5. Compartilhamento</h2>
+        <p th:text="#{privacy.s5.p1}"></p>
 
-        <h2>6. Retenção e exclusão</h2>
-        <p>Os dados permanecem armazenados enquanto a integração estiver ativa e pelo período necessário para suporte, auditoria, segurança e obrigações legais. Após a desinstalação, o token e os escopos de acesso são apagados imediatamente. Ao receber da Nuvemshop uma solicitação <code>store/redact</code>, o app exclui definitivamente os registros vinculados à loja.</p>
+        <h2 th:text="#{privacy.s6.title}">6. Retencao e exclusao</h2>
+        <p th:utext="#{privacy.s6.p1}"></p>
 
-        <h2>7. Segurança</h2>
-        <p>Adotamos controles técnicos e organizacionais razoáveis, incluindo acesso restrito, comunicação HTTPS e validação de assinaturas de webhooks. Nenhum sistema é totalmente imune a incidentes, mas trabalhamos para reduzir riscos e responder adequadamente.</p>
+        <h2 th:text="#{privacy.s7.title}">7. Seguranca</h2>
+        <p th:text="#{privacy.s7.p1}"></p>
 
-        <h2>8. Direitos e contato</h2>
-        <p>A loja e os titulares podem solicitar confirmação do tratamento, acesso, correção, portabilidade, oposição ou eliminação de dados, quando esses direitos forem aplicáveis e respeitadas as obrigações legais e técnicas.</p>
-        <p>Solicitações e dúvidas sobre privacidade devem ser enviadas pela nossa <a th:href="@{/support/}">central de suporte</a>. Poderemos pedir informações adicionais para confirmar a identidade e evitar acesso indevido.</p>
+        <h2 th:text="#{privacy.s8.title}">8. Direitos e contato</h2>
+        <p th:text="#{privacy.s8.p1}"></p>
+        <p>
+            <span th:text="#{privacy.s8.p2.before}"></span>
+            <a th:href="@{/support/}" th:text="#{privacy.s8.p2.link}">central de suporte</a><span th:text="#{privacy.s8.p2.after}"></span>
+        </p>
 
-        <h2>9. Alterações</h2>
-        <p>Esta política poderá ser atualizada para refletir mudanças no aplicativo, na legislação ou nos serviços utilizados. A data da versão vigente será informada no início desta página.</p>
+        <h2 th:text="#{privacy.s9.title}">9. Alteracoes</h2>
+        <p th:text="#{privacy.s9.p1}"></p>
     </section>
 </main>
 </body>

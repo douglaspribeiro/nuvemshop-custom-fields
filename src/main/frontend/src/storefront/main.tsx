@@ -183,7 +183,7 @@ function gate(nube: NubeSDK, state: NubeSDKState | null) {
 		return;
 	}
 
-	const found = validate(config.fields, values);
+	const found = validate(config.fields, values, config.locale);
 	if (found.length > 0) {
 		errors = found;
 		render(nube);

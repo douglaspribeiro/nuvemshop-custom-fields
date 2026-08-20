@@ -138,6 +138,16 @@ function normalizeProperty(property) {
     return { name, value };
 }
 
+/**
+ * Idioma vem do endpoint /style (derivado do pais da loja em GET /store): o script roda
+ * no checkout de qualquer pais em que o app for instalado.
+ */
+function checkoutTitle() {
+    const locale = styleConfig.locale;
+    const portuguese = typeof locale === "string" && locale.toLowerCase().indexOf("pt") === 0;
+    return portuguese ? "Itens Personalizados" : "\u00cdtems Personalizados";
+}
+
 function customFieldsBlock(groups) {
     const color = normalizedColor(styleConfig.checkoutTextColor);
     return {
@@ -151,7 +161,7 @@ function customFieldsBlock(groups) {
             backgroundColor: "rgba(0,0,0,.025)"
         },
         children: [
-            textNode("Itens Personalizados", color, ["bold"], {
+            textNode(checkoutTitle(), color, ["bold"], {
                 fontSize: "17px",
                 textAlign: "center",
                 marginBottom: "14px"

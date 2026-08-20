@@ -1,46 +1,46 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Ajuda - Aplicativo: Campos Personalizados</title>
+    <title th:text="#{admin.help.title} + ' - ' + #{common.app.title}">Ajuda</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
 </head>
 <body>
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Ajuda</p>
-            <h1>Suporte e operacao</h1>
+            <p class="eyebrow" th:text="#{admin.help.eyebrow}">Ajuda</p>
+            <h1 th:text="#{admin.help.heading}">Suporte e operacao</h1>
         </div>
-        <a class="button" th:href="@{/admin}">Voltar</a>
+        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
     </section>
 
     <section class="grid two">
         <div class="panel">
-            <h2>Checklist</h2>
+            <h2 th:text="#{admin.help.checklist}">Checklist</h2>
             <ul class="template-fields">
-                <li>OAuth conectado para a loja atual.</li>
-                <li>Produto com regra ativa e pelo menos um campo.</li>
-                <li>Plano com limite disponivel para novos campos.</li>
-                <li>Script instalado na vitrine apos a instalacao.</li>
+                <li th:text="#{admin.help.checklist.oauth}">OAuth conectado para a loja atual.</li>
+                <li th:text="#{admin.help.checklist.product}">Produto com regra ativa e pelo menos um campo.</li>
+                <li th:text="#{admin.help.checklist.plan}">Plano com limite disponivel para novos campos.</li>
+                <li th:text="#{admin.help.checklist.script}">Script instalado na vitrine apos a instalacao.</li>
             </ul>
         </div>
 
         <div class="panel">
             <div class="panel-title">
-                <h2>Eventos recentes</h2>
-                <span class="muted" th:text="${#lists.size(logs)} + ' eventos'">0 eventos</span>
+                <h2 th:text="#{admin.help.events.title}">Eventos recentes</h2>
+                <span class="muted" th:text="#{admin.help.events.count(${#lists.size(logs)})}">0 eventos</span>
             </div>
-            <div class="empty" th:if="${#lists.isEmpty(logs)}">Nenhum evento registrado para esta loja.</div>
+            <div class="empty" th:if="${#lists.isEmpty(logs)}" th:text="#{admin.help.events.empty}">Nenhum evento registrado para esta loja.</div>
             <table class="table" th:if="${!#lists.isEmpty(logs)}">
                 <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Nivel</th>
-                    <th>Evento</th>
-                    <th>Mensagem</th>
+                    <th th:text="#{common.date}">Data</th>
+                    <th th:text="#{admin.help.events.level}">Nivel</th>
+                    <th th:text="#{admin.help.events.event}">Evento</th>
+                    <th th:text="#{common.message}">Mensagem</th>
                 </tr>
                 </thead>
                 <tbody>

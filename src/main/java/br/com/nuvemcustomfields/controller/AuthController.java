@@ -54,13 +54,20 @@ public class AuthController {
                 expectedState != null,
                 code != null && !code.isBlank()
         );
-        if (expectedState != null && !expectedState.equals(state)) {
+        boolean stateReturned = state != null && !state.isBlank();
+        // Só rejeitamos state divergente. Instalação iniciada pelo admin da loja
+        // (/apps/{app_id}/authorize) não carrega o nosso state, e um oauthState antigo na
+        // sessão nao pode derrubar esse fluxo — era o que levava o revisor à tela de erro.
+        if (expectedState != null && stateReturned && !expectedState.equals(state)) {
             LOGGER.warn("auth.callback.invalid_state session_id={}", session.getId());
             throw new IllegalArgumentException("Estado OAuth invalido.");
         }
         if (expectedState == null) {
             LOGGER.warn("auth.callback.stateless session_id={}", session.getId());
         } else {
+            if (!stateReturned) {
+                LOGGER.warn("auth.callback.state_not_returned session_id={}", session.getId());
+            }
             session.removeAttribute(OAUTH_STATE_SESSION_KEY);
         }
         Store store = authService.exchangeCodeAndUpsertStore(code);

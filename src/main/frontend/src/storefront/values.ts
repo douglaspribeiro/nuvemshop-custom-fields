@@ -1,4 +1,5 @@
 import type { PersonalizationField } from "../shared/config";
+import { messages } from "../shared/i18n";
 
 export type ValueMap = Record<string, string>;
 
@@ -9,14 +10,19 @@ export function keyOf(field: PersonalizationField): string {
 	return field.propertyName || field.label;
 }
 
-export function validate(fields: PersonalizationField[], values: ValueMap): FieldError[] {
+export function validate(
+	fields: PersonalizationField[],
+	values: ValueMap,
+	locale?: string | null,
+): FieldError[] {
+	const text = messages(locale);
 	const errors: FieldError[] = [];
 	for (const field of fields) {
 		const key = keyOf(field);
 		const value = (values[key] ?? "").trim();
 
 		if (field.required && !value) {
-			errors.push({ propertyName: key, label: field.label, message: "Campo obrigatorio." });
+			errors.push({ propertyName: key, label: field.label, message: text.required });
 			continue;
 		}
 		if (!value) {
@@ -26,20 +32,20 @@ export function validate(fields: PersonalizationField[], values: ValueMap): Fiel
 			errors.push({
 				propertyName: key,
 				label: field.label,
-				message: `Use no maximo ${field.maxLength} caracteres.`,
+				message: text.maxLength(field.maxLength),
 			});
 			continue;
 		}
 		if (field.fieldType === "NUMBER" && !/^-?\d+([.,]\d+)?$/.test(value)) {
-			errors.push({ propertyName: key, label: field.label, message: "Informe um numero valido." });
+			errors.push({ propertyName: key, label: field.label, message: text.number });
 			continue;
 		}
 		if (field.fieldType === "SELECT" && field.options.length > 0 && !field.options.includes(value)) {
-			errors.push({ propertyName: key, label: field.label, message: "Selecione uma opcao valida." });
+			errors.push({ propertyName: key, label: field.label, message: text.select });
 			continue;
 		}
 		if (field.validationPattern) {
-			const error = patternError(field, value);
+			const error = patternError(field, value, locale);
 			if (error) {
 				errors.push(error);
 			}
@@ -52,7 +58,11 @@ export function validate(fields: PersonalizationField[], values: ValueMap): Fiel
  * Regex vem do banco e e editada pelo lojista, entao um padrao invalido nao pode
  * derrubar o script nem bloquear a compra: tratamos como "sem validacao".
  */
-function patternError(field: PersonalizationField, value: string): FieldError | null {
+function patternError(
+	field: PersonalizationField,
+	value: string,
+	locale?: string | null,
+): FieldError | null {
 	let pattern: RegExp;
 	try {
 		pattern = new RegExp(field.validationPattern as string);
@@ -65,7 +75,7 @@ function patternError(field: PersonalizationField, value: string): FieldError | 
 	return {
 		propertyName: keyOf(field),
 		label: field.label,
-		message: "Formato invalido.",
+		message: messages(locale).pattern,
 	};
 }
 

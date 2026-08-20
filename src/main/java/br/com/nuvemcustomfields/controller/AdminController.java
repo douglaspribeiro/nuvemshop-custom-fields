@@ -15,6 +15,7 @@ import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
+import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.service.ReportService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -49,6 +50,7 @@ public class AdminController {
     private final ReportService reportService;
     private final NuvemshopProperties nuvemshopProperties;
     private final NuvemshopBillingService billingService;
+    private final Messages messages;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -59,7 +61,8 @@ public class AdminController {
             PersonalizationAdminService personalizationAdminService,
             ReportService reportService,
             NuvemshopProperties nuvemshopProperties,
-            NuvemshopBillingService billingService
+            NuvemshopBillingService billingService,
+            Messages messages
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -70,6 +73,7 @@ public class AdminController {
         this.reportService = reportService;
         this.nuvemshopProperties = nuvemshopProperties;
         this.billingService = billingService;
+        this.messages = messages;
     }
 
     @ModelAttribute("nuvemshopClientId")
@@ -133,7 +137,7 @@ public class AdminController {
                     cartTextColor,
                     clearCartTextColor
             );
-            redirectAttributes.addFlashAttribute("message", "Cores salvas.");
+            redirectAttributes.addFlashAttribute("message", messages.get("flash.style.saved"));
         } catch (IllegalArgumentException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
@@ -190,7 +194,7 @@ public class AdminController {
         LOGGER.info("admin.billing.subscribe store_id={} plan={}", store.getStoreId(), plan);
         try {
             billingService.subscribe(store, plan);
-            redirectAttributes.addFlashAttribute("message", "Assinatura atualizada para " + plan + ".");
+            redirectAttributes.addFlashAttribute("message", messages.get("flash.subscription.updated", plan));
             LOGGER.info("admin.billing.subscribe.done store_id={} plan={}", store.getStoreId(), plan);
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
@@ -201,7 +205,7 @@ public class AdminController {
                     ex.getMessage()
             );
         } catch (RuntimeException ex) {
-            redirectAttributes.addFlashAttribute("error", "Nao foi possivel atualizar a assinatura agora. Tente novamente em alguns minutos.");
+            redirectAttributes.addFlashAttribute("error", messages.get("flash.subscription.failed"));
             LOGGER.error(
                     "admin.billing.subscribe.error store_id={} plan={} exception={} message={}",
                     store.getStoreId(),
@@ -285,7 +289,7 @@ public class AdminController {
         );
         if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
             LOGGER.warn("admin.onboarding.apply.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
-            redirectAttributes.addFlashAttribute("error", "Seu plano atual atingiu o limite de produtos personalizados.");
+            redirectAttributes.addFlashAttribute("error", messages.get("flash.product.limit"));
             return "redirect:/admin/onboarding";
         }
         int created = personalizationAdminService.applyTemplate(
@@ -301,7 +305,7 @@ public class AdminController {
                 productId,
                 created
         );
-        redirectAttributes.addFlashAttribute("message", created + " campos do template foram aplicados.");
+        redirectAttributes.addFlashAttribute("message", messages.get("flash.template.applied", created));
         return "redirect:/admin/products/" + productId + "/fields";
     }
 
@@ -324,7 +328,7 @@ public class AdminController {
             model.addAttribute("rules", rules);
             model.addAttribute("configuredProductIds", configuredProductIds(rules));
             model.addAttribute("usage", planLimitService.usage(store, 0));
-            model.addAttribute("error", "Seu plano atual atingiu o limite de produtos personalizados.");
+            model.addAttribute("error", messages.get("flash.product.limit"));
             return "admin/products";
         }
         PersonalizationRule rule = personalizationAdminService.ensureRule(store.getStoreId(), productId, productName);
@@ -352,13 +356,13 @@ public class AdminController {
         PersonalizationRule rule = personalizationAdminService.requireRuleWithFields(store.getStoreId(), productId);
         if (!planLimitService.canAddField(store, rule.getId())) {
             LOGGER.warn("admin.fields.add.limit_reached store_id={} product_id={} rule_id={}", store.getStoreId(), productId, rule.getId());
-            model.addAttribute("error", "Seu plano atual atingiu o limite de campos por produto.");
+            model.addAttribute("error", messages.get("flash.field.limit"));
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
         personalizationAdminService.addField(store.getStoreId(), productId, fieldForm);
         LOGGER.info("admin.fields.add.done store_id={} product_id={}", store.getStoreId(), productId);
-        redirectAttributes.addFlashAttribute("message", "Campo criado.");
+        redirectAttributes.addFlashAttribute("message", messages.get("flash.field.created"));
         return "redirect:/admin/products/{productId}/fields";
     }
 
@@ -375,12 +379,12 @@ public class AdminController {
         LOGGER.info("admin.fields.update store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
         if (bindingResult.hasErrors()) {
             LOGGER.warn("admin.fields.update.validation_error store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
-            redirectAttributes.addFlashAttribute("error", "Revise label, tipo e limites antes de salvar.");
+            redirectAttributes.addFlashAttribute("error", messages.get("flash.field.invalid"));
             return "redirect:/admin/products/{productId}/fields";
         }
         personalizationAdminService.updateField(store.getStoreId(), productId, fieldId, fieldForm);
         LOGGER.info("admin.fields.update.done store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
-        redirectAttributes.addFlashAttribute("message", "Campo atualizado.");
+        redirectAttributes.addFlashAttribute("message", messages.get("flash.field.updated"));
         return "redirect:/admin/products/{productId}/fields";
     }
 
@@ -394,7 +398,7 @@ public class AdminController {
         Store store = adminStoreService.requireCurrentStore(session);
         LOGGER.info("admin.fields.delete store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
         personalizationAdminService.deleteField(store.getStoreId(), productId, fieldId);
-        redirectAttributes.addFlashAttribute("message", "Campo removido.");
+        redirectAttributes.addFlashAttribute("message", messages.get("flash.field.deleted"));
         return "redirect:/admin/products/{productId}/fields";
     }
 
@@ -403,7 +407,7 @@ public class AdminController {
         Store store = adminStoreService.requireCurrentStore(session);
         LOGGER.info("admin.rule.delete store_id={} product_id={}", store.getStoreId(), productId);
         personalizationAdminService.deleteRule(store.getStoreId(), productId);
-        redirectAttributes.addFlashAttribute("message", "Personalizacao removida do produto.");
+        redirectAttributes.addFlashAttribute("message", messages.get("flash.product.removed"));
         return "redirect:/admin/products";
     }
 

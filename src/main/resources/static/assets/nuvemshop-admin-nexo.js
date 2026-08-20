@@ -5,6 +5,10 @@
     const clientId = script && script.dataset.clientId ? script.dataset.clientId : "";
     const mode = script && script.dataset.mode ? script.dataset.mode : "page";
     const debug = script && script.dataset.debug === "true";
+    // Textos vem do template: o installer roda antes de existir loja em sessao, entao o
+    // idioma e resolvido no servidor (Accept-Language) e injetado como data-attribute.
+    const errorConnect = (script && script.dataset.errorConnect) || "";
+    const errorSession = (script && script.dataset.errorSession) || "";
     const parentWindow = window.parent;
     const embedded = parentWindow && parentWindow !== window;
     const handlers = [];
@@ -122,7 +126,7 @@
     function showBootstrapError(message) {
         const status = document.querySelector("[data-nexo-status]");
         const installLink = document.querySelector("[data-nexo-install-link]");
-        if (status) {
+        if (status && message) {
             status.textContent = message;
         }
         if (installLink) {
@@ -156,7 +160,7 @@
             })
             .catch(function (error) {
                 log("bootstrap failed", error.message);
-                showBootstrapError("Nao foi possivel identificar a loja no painel. Reinstale ou reconecte o aplicativo.");
+                showBootstrapError(errorSession);
             });
     }
 
@@ -186,7 +190,7 @@
         .catch(function (error) {
             log("connection failed", error.message);
             if (mode === "bootstrap") {
-                showBootstrapError("Nao foi possivel conectar com o painel da loja. Verifique a URL do app no Partner Portal.");
+                showBootstrapError(errorConnect);
             }
         });
 })();

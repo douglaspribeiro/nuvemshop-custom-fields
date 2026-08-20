@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.dto.FieldResponse;
 import br.com.nuvemcustomfields.dto.PersonalizationResponse;
+import br.com.nuvemcustomfields.i18n.StoreLocale;
 import br.com.nuvemcustomfields.dto.PersonalizationStyleResponse;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
@@ -79,7 +80,8 @@ public class PublicPersonalizationController {
         return new PersonalizationResponse(
                 true,
                 fields,
-                PersonalizationStyleResponse.from(store)
+                PersonalizationStyleResponse.from(store),
+                StoreLocale.tagFor(store.getStoreCountryCode())
         );
     }
 

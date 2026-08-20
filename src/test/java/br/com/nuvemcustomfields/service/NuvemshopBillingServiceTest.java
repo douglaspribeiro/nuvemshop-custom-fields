@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopBillingProperties;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
@@ -9,6 +10,7 @@ import br.com.nuvemcustomfields.repository.StoreRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
@@ -276,8 +278,18 @@ class NuvemshopBillingServiceTest {
                 storeRepository,
                 planEventRepository,
                 apiClient,
-                builder
+                builder,
+                messages()
         );
+    }
+
+    /** Bundle real: garante que a excecao de preco ausente tem chave e nao explode em runtime. */
+    private Messages messages() {
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("messages");
+        source.setDefaultEncoding("UTF-8");
+        source.setFallbackToSystemLocale(false);
+        return new Messages(source);
     }
 
     private Store store(boolean courtesyPremium) {

@@ -40,7 +40,8 @@ public class ReportService {
                     ruleRepository.countByStoreId(store.getStoreId()),
                     fields,
                     false,
-                    "A loja foi instalada sem o escopo read_orders. Reinstale o app para liberar a leitura de pedidos.",
+                    // Texto vive em admin.dashboard.orders.unavailable: precisa seguir o idioma da loja.
+                    null,
                     List.of()
             );
         }
