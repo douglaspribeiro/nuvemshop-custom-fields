@@ -4,6 +4,7 @@ import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.PlanEvent;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.i18n.Messages;
+import br.com.nuvemcustomfields.i18n.StoreLocale;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopBillingProperties;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
@@ -379,6 +380,14 @@ public class NuvemshopBillingService {
             }
             if (changed) {
                 storeRepository.save(store);
+                // Pais preenchido depois da instalacao muda o idioma do app: precisa de rastro.
+                LOGGER.info(
+                        "nuvemshop.billing.store_locale.updated store_id={} country={} currency={} locale={} source=get_store_refresh",
+                        store.getStoreId(),
+                        store.getStoreCountryCode(),
+                        store.getStoreCurrency(),
+                        StoreLocale.forCountry(store.getStoreCountryCode()).toLanguageTag()
+                );
             }
         } catch (RuntimeException ex) {
             LOGGER.warn("nuvemshop.billing.store_market.refresh_failed store_id={} message={}", store.getStoreId(), ex.getMessage());

@@ -123,6 +123,68 @@ class NuvemshopAuthServiceTest {
         verify(webhookRegistrationService).registerRequiredWebhooks(store);
         verify(scriptInstallService).installPersonalizerScript(store);
         verify(integrationLogService).info(987L, "oauth.installed", "Loja instalada ou reconectada via OAuth.");
+        verify(integrationLogService).info(
+                987L,
+                "store.locale.resolved",
+                "Pais da loja MX (GET /store): idioma do app em es."
+        );
+        server.verify();
+    }
+
+    /**
+     * Sem o pais o app cai em pt-BR sem avisar ninguem — foi exatamente a classe de defeito
+     * que a Nuvemshop apontou. O registro precisa dizer que o idioma veio do padrao.
+     */
+    @Test
+    void auditsLanguageFallbackWhenStoreProfileIsUnavailable() {
+        NuvemshopProperties properties = new NuvemshopProperties(
+                "client-123",
+                "secret",
+                "https://app.example.com/oauth/callback",
+                "https://www.tiendanube.com/apps/{clientId}/authorize",
+                "https://www.tiendanube.com/apps/authorize/token",
+                "https://api.tiendanube.com",
+                "https://app.example.com",
+                "read_products",
+                "NuvemCustomFields tests",
+                "",
+                "",
+                ""
+        );
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        StoreRepository storeRepository = mock(StoreRepository.class);
+        IntegrationLogService integrationLogService = mock(IntegrationLogService.class);
+        NuvemshopApiClient apiClient = mock(NuvemshopApiClient.class);
+
+        when(storeRepository.findByStoreId(987L)).thenReturn(Optional.empty());
+        when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(apiClient.getStoreProfile(any(Store.class))).thenThrow(new IllegalStateException("503"));
+
+        server.expect(requestTo("https://www.tiendanube.com/apps/authorize/token"))
+                .andExpect(method(POST))
+                .andRespond(withSuccess(
+                        "{\"access_token\":\"token-123\",\"token_type\":\"bearer\",\"scope\":\"read_products\",\"user_id\":987}",
+                        MediaType.TEXT_HTML
+                ));
+
+        NuvemshopAuthService service = new NuvemshopAuthService(
+                properties,
+                storeRepository,
+                apiClient,
+                mock(WebhookRegistrationService.class),
+                mock(ScriptInstallService.class),
+                integrationLogService,
+                builder
+        );
+
+        service.exchangeCodeAndUpsertStore("oauth-code");
+
+        verify(integrationLogService).info(
+                987L,
+                "store.locale.resolved",
+                "Pais da loja indisponivel (GET /store falhou): idioma do app em pt-BR por padrao."
+        );
         server.verify();
     }
 }

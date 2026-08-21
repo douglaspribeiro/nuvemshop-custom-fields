@@ -61,10 +61,11 @@ public class AdminSessionInterceptor implements HandlerInterceptor {
         if (!locale.equals(request.getSession().getAttribute(AppLocaleResolver.SESSION_KEY))) {
             request.getSession().setAttribute(AppLocaleResolver.SESSION_KEY, locale);
             LOGGER.info(
-                    "admin.session.locale store_id={} country={} locale={}",
+                    "admin.session.locale.applied store_id={} country={} locale={} uri={}",
                     store.getStoreId(),
                     store.getStoreCountryCode(),
-                    locale.toLanguageTag()
+                    locale.toLanguageTag(),
+                    request.getRequestURI()
             );
         }
     }

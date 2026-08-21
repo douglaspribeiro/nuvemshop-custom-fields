@@ -217,6 +217,22 @@ pt-BR, qualquer outro pais Latam -> es.
 
 O backoffice interno fica em pt-BR de proposito: nao e acessivel ao lojista.
 
+### Rastro do idioma
+
+Para responder "por que a loja X viu portugues?" depois do fato:
+
+| Evento no log | Quando | Diz |
+| --- | --- | --- |
+| `nuvemshop.api.get_store.done` | toda leitura de `GET /store` | `country` e `currency` crus da API |
+| `nuvemshop.oauth.store_locale` | instalacao/reconexao | pais, moeda, idioma escolhido, `profile_loaded`, `source=get_store\|fallback` |
+| `nuvemshop.billing.store_locale.updated` | pais preenchido depois da instalacao | idioma novo (pode ter mudado) |
+| `admin.session.locale.applied` | 1a request admin da sessao | idioma aplicado e a URI |
+| `public.personalization.enabled` / `public.style.enabled` | request do script do comprador | idioma entregue a vitrine/checkout |
+
+Log de servidor rotaciona, entao a decisao tambem vai para `integration_logs` como
+`store.locale.resolved` — consultavel por loja em `/admin/help` e no backoffice, com o texto
+explicito de qual pais gerou qual idioma, ou de que o idioma veio do padrao por falta de pais.
+
 **Armadilha:** chave ausente em `messages_es.properties` **nao** renderiza `??chave??`. O
 Spring cai no bundle padrao e entrega portugues em silencio. Por isso existem dois testes:
 `MessageBundleParityTest` (paridade de chaves) e `LocalizedPagesRenderTest`, que renderiza

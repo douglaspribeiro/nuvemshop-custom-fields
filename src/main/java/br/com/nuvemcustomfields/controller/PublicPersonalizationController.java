@@ -71,11 +71,13 @@ public class PublicPersonalizationController {
                 .map(FieldResponse::from)
                 .toList();
         LOGGER.info(
-                "public.personalization.enabled store_id={} product_id={} rule_id={} fields_count={}",
+                "public.personalization.enabled store_id={} product_id={} rule_id={} fields_count={} country={} locale={}",
                 storeId,
                 productId,
                 rule.getId(),
-                fields.size()
+                fields.size(),
+                store.getStoreCountryCode(),
+                StoreLocale.tagFor(store.getStoreCountryCode())
         );
         return new PersonalizationResponse(
                 true,
@@ -92,7 +94,12 @@ public class PublicPersonalizationController {
             LOGGER.warn("public.style.disabled store_id={} reason=store_not_active", storeId);
             return PersonalizationStyleResponse.empty();
         }
-        LOGGER.info("public.style.enabled store_id={}", storeId);
+        LOGGER.info(
+                "public.style.enabled store_id={} country={} locale={}",
+                storeId,
+                store.getStoreCountryCode(),
+                StoreLocale.tagFor(store.getStoreCountryCode())
+        );
         return PersonalizationStyleResponse.from(store);
     }
 

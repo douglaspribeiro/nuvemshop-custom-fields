@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.service;
 import br.com.nuvemcustomfields.dto.NuvemshopTokenResponse;
 import br.com.nuvemcustomfields.dto.StoreProfile;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.i18n.StoreLocale;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -113,14 +114,17 @@ public class NuvemshopAuthService {
         store.setStoreId(token.storeId());
         store.setAccessToken(token.accessToken());
         store.setScope(token.scope());
+        boolean profileLoaded = false;
         try {
             StoreProfile profile = apiClient.getStoreProfile(store);
             store.setStoreName(profile.name());
             store.setStoreCountryCode(profile.countryCode());
             store.setStoreCurrency(profile.currency());
+            profileLoaded = true;
         } catch (RuntimeException ex) {
             LOGGER.warn("nuvemshop.oauth.store_profile.unavailable store_id={} message={}", token.storeId(), ex.getMessage());
         }
+        logStoreLocale(store, profileLoaded);
         store.setUninstalledAt(null);
         Store saved = storeRepository.save(store);
         webhookRegistrationService.registerRequiredWebhooks(saved);
@@ -131,6 +135,11 @@ public class NuvemshopAuthService {
             integrationLogService.warn(saved.getStoreId(), "script.install.failed", "Falha ao instalar script na vitrine: " + ex.getMessage());
         }
         integrationLogService.info(saved.getStoreId(), "oauth.installed", "Loja instalada ou reconectada via OAuth.");
+        integrationLogService.info(
+                saved.getStoreId(),
+                "store.locale.resolved",
+                localeAuditMessage(saved, profileLoaded)
+        );
         LOGGER.info("nuvemshop.oauth.installation.done store_id={}", saved.getStoreId());
         return saved;
     }
@@ -155,5 +164,33 @@ public class NuvemshopAuthService {
         String sanitized = ACCESS_TOKEN_PATTERN.matcher(value).replaceAll("$1***$2");
         sanitized = CLIENT_SECRET_PATTERN.matcher(sanitized).replaceAll("$1***$2");
         return sanitized.length() > 500 ? sanitized.substring(0, 500) : sanitized;
+    }
+
+    /**
+     * Registra em que idioma a loja vai ver o app e de onde essa decisao veio. Pais ausente
+     * cai em pt-BR silenciosamente, e essa e a linha que explica um "por que apareceu em
+     * portugues" meses depois.
+     */
+    private void logStoreLocale(Store store, boolean profileLoaded) {
+        LOGGER.info(
+                "nuvemshop.oauth.store_locale store_id={} country={} currency={} locale={} profile_loaded={} source={}",
+                store.getStoreId(),
+                store.getStoreCountryCode(),
+                store.getStoreCurrency(),
+                StoreLocale.forCountry(store.getStoreCountryCode()).toLanguageTag(),
+                profileLoaded,
+                profileLoaded ? "get_store" : "fallback"
+        );
+    }
+
+    private String localeAuditMessage(Store store, boolean profileLoaded) {
+        String country = store.getStoreCountryCode();
+        String locale = StoreLocale.forCountry(country).toLanguageTag();
+        if (country == null || country.isBlank()) {
+            return "Pais da loja indisponivel"
+                    + (profileLoaded ? " na resposta de GET /store" : " (GET /store falhou)")
+                    + ": idioma do app em " + locale + " por padrao.";
+        }
+        return "Pais da loja " + country + " (GET /store): idioma do app em " + locale + ".";
     }
 }
