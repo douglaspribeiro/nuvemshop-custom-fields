@@ -1,90 +1,195 @@
-# Template Nuvemshop de FAQs e guia tutorial de instalacao
+# FAQ — Campos Personalizados
 
-Este arquivo atende ao requisito obrigatorio de publicacao: "Template Nuvemshop de FAQs (com atencao ao Guia Tutorial de Instalacao)".
+**Última atualização:** 01/09/2026
 
-## FAQs
+> Antes de publicar, substitua os campos entre colchetes pelos dados reais de contato, SLA, conta de teste e condições comerciais.
 
-### O que o app Campos Personalizados faz?
+## 1. Gerais
 
-O app permite adicionar campos personalizados em produtos da loja, como nome, numero, mensagem, data, medida, observacao ou selecao de opcoes. As respostas do comprador sao enviadas junto com o item no carrinho e ficam disponiveis no pedido da Nuvemshop.
+### 1.1. Qual a categoria do aplicativo? Para que serve?
 
-### Para quem o app e indicado?
+**Categoria:** Personalização de produtos / Gestão de loja.
 
-Para lojas que vendem produtos personalizados, como camisetas, canecas, brindes, convites, itens gravados, produtos sob medida e kits com informacoes especificas do cliente.
+O Campos Personalizados permite criar campos adicionais nos produtos da Nuvemshop, como nome, número, mensagem, data, medida e seleção de opções. As informações preenchidas pelo comprador acompanham o item no carrinho e no pedido.
 
-### Quais tipos de campo o app suporta?
+### 1.2. Quais problemas o aplicativo resolve e como?
 
-O app suporta texto curto, numero, area de texto e lista de selecao. Cada campo pode ter label, obrigatoriedade, placeholder, limite de tamanho e validacoes conforme o tipo.
+O aplicativo atende lojas que precisam coletar informações específicas para produzir ou preparar pedidos personalizados. Ele reduz o uso de mensagens manuais, planilhas e observações separadas, diminuindo erros no processamento dos pedidos.
 
-### Os dados aparecem no pedido?
+### 1.3. Qual o perfil de lojista recomendado?
 
-Sim. Os campos sao enviados usando `properties[...]`, mecanismo da propria Nuvemshop para acompanhar informacoes extras no item do carrinho e no pedido.
+É indicado para lojas de camisetas personalizadas, canecas, brindes, convites, produtos gravados, itens sob medida, kits e outros produtos que dependam de informações fornecidas pelo comprador.
 
-### O app altera o checkout?
+Requisitos:
 
-O app adiciona os dados da personalizacao ao item antes do checkout. Ele nao substitui o checkout da Nuvemshop e nao processa pagamentos do pedido.
+- Loja ativa na Nuvemshop;
+- Usuário com permissão de administrador;
+- Produtos cadastrados;
+- Tema compatível com a inserção de campos na página do produto.
 
-### O app cobra valor extra por opcao personalizada?
+### 1.4. Onde funciona o aplicativo?
 
-Na versao atual, o foco e coletar as informacoes da personalizacao. Cobranca extra por campo ou opcao depende de definicao tecnica/comercial separada.
+O aplicativo funciona online, integrado à plataforma Nuvemshop/Tiendanube. A configuração atual contempla lojas nos mercados Brasil, Argentina, Chile, México e Colômbia, conforme disponibilidade comercial e publicação aprovada para cada país.
 
-### Quais planos existem?
+### 1.5. Quem desenvolveu o aplicativo e como funciona o suporte?
 
-- `FREE`: 1 produto personalizado e 1 campo por produto.
-- `PREMIUM`: ate 10 produtos personalizados e ate 3 campos por produto.
-- `PREMIUM_PLUS`: produtos e campos ilimitados.
+**Desenvolvedor:** `[informar nome da empresa ou responsável legal]`
 
-### Como funcionam os planos pagos?
+**POC Nível 1**
 
-Quando o billing automatico estiver ativo, o lojista escolhe um plano pago em `/admin/billing`. O app solicita a assinatura pela Billing API da Nuvemshop e somente libera o plano local depois da confirmacao da plataforma.
+- Canal: [central de suporte](https://campos-personalizados.wzhub.pro/support/);
+- Dias e horários: `[informar]`;
+- SLA de primeira resposta: `[informar]`.
 
-### O que acontece se uma assinatura for suspensa?
+**POC Nível 2**
 
-Se a Nuvemshop enviar `app/suspended`, o app marca a cobranca como suspensa e bloqueia o acesso premium. Quando receber `app/resumed`, o app reativa o acesso e sincroniza a assinatura.
+- Contato: `[nome e e-mail do responsável pela escalação]`;
+- Dias e horários: `[informar]`;
+- SLA: `[informar]`.
 
-### Como recebo suporte?
+**POC Comercial**
 
-O lojista pode acessar a pagina de ajuda dentro do app em `/admin/help` e a pagina publica de suporte em `/support/`.
+- Contato: `[nome, e-mail e telefone]`;
+- Dias e horários: `[informar]`;
+- SLA: `[informar]`.
 
-## Guia Tutorial de Instalacao
+**POC Comercial exclusivo Nuvemshop Next**
 
-### Antes de comecar
+- Contato: `[nome e e-mail]`;
+- SLA: `[informar]`;
+- Possibilidade de negociar taxas: `[Sim/Não — explicar condições]`.
 
-- Tenha permissao de administrador na loja Nuvemshop.
-- Confirme que sua loja esta ativa.
-- Se estiver reinstalando, use o mesmo navegador onde esta logado na loja para evitar escolher a conta errada.
+**POC Técnico**
 
-### Passo a passo
+- Contato: `[nome e e-mail]`;
+- Dias e horários: `[informar]`;
+- SLA: `[informar]`.
 
-1. Acesse o link de instalacao do app.
-2. A Nuvemshop exibira a tela de autorizacao com as permissoes solicitadas.
-3. Revise as permissoes e confirme a instalacao.
-4. Ao retornar ao app, aguarde a abertura do painel.
-5. Acesse `Produtos` ou `Comecar rapido`.
-6. Escolha o produto que recebera campos personalizados.
-7. Crie os campos ou aplique um template de nicho.
-8. Salve as alteracoes.
-9. Abra o produto na vitrine e teste a compra adicionando o item ao carrinho.
-10. Verifique se as informacoes aparecem no carrinho/pedido.
+### 1.6. Temos uma conta teste disponível?
 
-### Instalacao com Nexo/painel embutido
+`[Sim/Não]`
 
-Se o app abrir dentro do painel da Nuvemshop, a tela embutida pode redirecionar para `/install` quando a sessao ou token estiverem ausentes. Esse fluxo reconecta a loja e reinstala scripts/webhooks de forma idempotente.
+Se houver conta de teste, informar URL da loja, usuário, senha, restrições e validade.
 
-### Reinstalacao
+## 2. Planos e Preços
 
-Use o link de instalacao novamente. O app atualiza o token da loja, preserva as regras existentes quando o `store_id` e o mesmo e garante novamente os scripts e webhooks necessarios.
+### 2.1. Qual a tabela de preços?
 
-### Desinstalacao
+| Plano | Preço mensal | Limites |
+|---|---:|---|
+| FREE | R$ 0 | 1 produto personalizado e 1 campo por produto |
+| Essencial | R$ 19,99/mês | 10 produtos personalizados e 3 campos por produto |
+| Pro | R$ 29,99/mês | Até 50 produtos personalizados e campos ilimitados |
 
-Ao desinstalar pela Nuvemshop, o app recebe `app/uninstalled`, bloqueia o acesso, apaga o token e os escopos e limpa os dados locais da assinatura. A propria Nuvemshop remove automaticamente os scripts e webhooks registrados pelo app. Quando a plataforma envia `store/redact`, os registros vinculados a loja sao excluidos definitivamente.
+O plano Pro também inclui templates por nicho e relatórios operacionais. Não existe cobrança adicional por campo ou opção personalizada. O aplicativo coleta e transmite as informações, mas não altera o preço do produto.
+
+Não há landing page pública de preços configurada atualmente. Os valores devem ser confirmados comercialmente antes da publicação.
+
+Valores padrão configurados para outros mercados:
+
+- Argentina: ARS 5.747 e ARS 8.622;
+- Chile: CLP 3.566 e CLP 5.350;
+- México: MXN 67,49 e MXN 101,26;
+- Colômbia: COP 13.146 e COP 19.723.
+
+### 2.2. Existe desconto para lojista Nuvemshop?
+
+Não há desconto específico configurado atualmente. `[Confirmar condição comercial antes da publicação.]`
+
+### 2.3. O aplicativo possui trial?
+
+Não há período de trial configurado. O plano FREE pode ser utilizado sem cobrança.
+
+### 2.4. Existe taxa de setup?
+
+Não há taxa de setup configurada.
+
+### 2.5. Existe preço diferenciado para Nuvemshop Next?
+
+Não há precificação diferenciada configurada para a Nuvemshop Next. `[Confirmar eventual condição especial.]`
+
+## 3. Instalação
+
+### 3.1. URL da área de login
+
+URL de instalação: [https://campos-personalizados.wzhub.pro/install](https://campos-personalizados.wzhub.pro/install)
+
+O aplicativo não possui login e senha próprios. A autenticação é feita pela conta do lojista na Nuvemshop por OAuth.
+
+### 3.2. Existem requisitos prévios?
+
+- Loja ativa na Nuvemshop;
+- Acesso de administrador;
+- Usuário logado no painel da Nuvemshop;
+- Produtos cadastrados;
+- Autorização das permissões solicitadas.
+
+O lojista não precisa gerar API keys. A integração utiliza OAuth.
+
+Permissões utilizadas: `read_store`, `read_products`, `read_orders`, `read_scripts`, `write_scripts` e `billing` para os planos pagos.
+
+### 3.3. Como é o processo de instalação?
+
+1. Acesse [https://campos-personalizados.wzhub.pro/install](https://campos-personalizados.wzhub.pro/install).
+2. Faça login na Nuvemshop, caso solicitado.
+3. Revise as permissões apresentadas.
+4. Clique em **Autorizar instalação**.
+5. Aguarde o retorno ao aplicativo.
+6. O aplicativo salvará a loja e instalará os scripts necessários.
+7. Acesse **Configurar produtos** ou **Começar rápido**.
+8. Selecione um produto.
+9. Crie os campos ou aplique um template.
+10. Salve a configuração.
+11. Abra o produto na vitrine e adicione-o ao carrinho para testar.
+12. Confirme se os dados aparecem no carrinho e no pedido.
+
+### 3.4. O aplicativo possui tutoriais próprios?
+
+Não há, no momento, tutorial público separado. Esta FAQ contém o tutorial de instalação.
+
+Também estão disponíveis:
+
+- Ajuda dentro do app: `/admin/help`;
+- Central de suporte: [https://campos-personalizados.wzhub.pro/support/](https://campos-personalizados.wzhub.pro/support/).
+
+### 3.5. Tutorial de instalação Nuvemshop
+
+#### 3.5.1. Como instalar o aplicativo?
+
+A instalação é feita pelo OAuth da Nuvemshop, utilizando a URL [https://campos-personalizados.wzhub.pro/install](https://campos-personalizados.wzhub.pro/install).
+
+#### 3.5.2. Prints das etapas
+
+Inserir capturas de tela da autorização, confirmação, painel inicial, lista de produtos, configuração dos campos, vitrine e carrinho/pedido.
+
+#### 3.5.3. Direcionamento para suporte
+
+Em caso de dúvidas, acesse [https://campos-personalizados.wzhub.pro/support/](https://campos-personalizados.wzhub.pro/support/). Após instalar ou reconectar o aplicativo, o lojista pode abrir e acompanhar chamados pela central de suporte.
+
+#### 3.5.4. Considerações gerais
+
+- O aplicativo não substitui o checkout nem processa pagamentos.
+- Os dados são enviados como propriedades do item por meio de `properties[...]`.
+- Os campos só aparecem em produtos com configuração ativa.
+- Pode ser necessário atualizar a página ou limpar o cache da vitrine após a instalação.
+- Ao desinstalar, a Nuvemshop remove os scripts registrados pelo aplicativo.
 
 ### Problemas comuns
 
-| Problema | Causa provavel | Como resolver |
-| --- | --- | --- |
-| Campos nao aparecem na vitrine | Script ainda nao instalado, produto sem regra ativa ou limite do plano atingido. | Reinstale/reconecte o app e confira o produto em `/admin/products`. |
-| Produto nao aparece no painel | Token sem acesso ou falha temporaria na API. | Reinstale o app e tente novamente. |
-| Pedido nao aparece no dashboard | Loja instalada sem `read_orders` ou sem pedidos recentes com personalizacao. | Reinstale autorizando os escopos e faca um pedido de teste. |
-| Assinatura nao atualiza | Billing desativado, mercado sem preco configurado ou erro da Billing API. | Conferir `/admin/billing`, logs e configuracoes de billing. |
-| App premium ficou bloqueado | Nuvemshop enviou `app/suspended`. | Regularizar a assinatura; o webhook `app/resumed` reativa o plano. |
+| Problema | Solução |
+|---|---|
+| Campos não aparecem | Confira se o produto possui regra ativa, se o limite do plano não foi atingido e reconecte o app se necessário. |
+| Produto não aparece | Reinstale o app e tente novamente; pode haver falha temporária de acesso à API. |
+| Pedido não aparece no dashboard | Faça um pedido de teste e confirme a permissão `read_orders`. |
+| Assinatura não atualiza | Confira o billing, os logs e a disponibilidade do mercado. |
+| Plano premium bloqueado | Regularize a assinatura; o acesso é reativado após o evento `app/resumed`. |
+
+## 4. Funcionamento
+
+O lojista seleciona um produto e configura os campos que deseja exibir para o comprador.
+
+Tipos disponíveis: texto curto, número, área de texto e lista de seleção. Cada campo pode conter rótulo, obrigatoriedade, placeholder, limite de caracteres, máscara, validação e opções de seleção.
+
+Na vitrine, os campos aparecem na página do produto. Quando o comprador preenche as informações e adiciona o produto ao carrinho, os dados acompanham o item até o pedido da Nuvemshop.
+
+O aplicativo também oferece templates por nicho, painel de uso, dashboard de pedidos personalizados, configuração de cores e registros de integração.
