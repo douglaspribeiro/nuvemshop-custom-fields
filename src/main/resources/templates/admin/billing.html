@@ -19,7 +19,7 @@
 
     <section class="panel plan-strip">
         <div>
-            <h2 th:with="planName=#{'plan.' + ${store.plan.name()}}"
+            <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}"
                 th:text="${store.courtesyPremium} ? #{plan.current.courtesy} : #{plan.current(${planName})}">
                 Plano atual: FREE
             </h2>
@@ -69,11 +69,11 @@
                 <li th:text="#{admin.billing.premium.feature.fields}">3 campos por produto</li>
                 <li th:text="#{admin.billing.premium.feature.templates}">Templates por nicho</li>
             </ul>
-            <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and !store.courtesyPremium}" th:with="planName=#{plan.PREMIUM}" th:text="#{plan.current(${planName})}">Plano atual</span>
-            <span class="badge" th:if="${store.plan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
+            <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and !store.courtesyPremium}" th:with="planName=#{plan.PREMIUM}" th:text="#{plan.current(${planName})}">Plano atual</span>
+            <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
                 <input type="hidden" name="plan" value="PREMIUM">
-                <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM'}"
+                <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM'}"
                         th:with="planName=#{plan.PREMIUM}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Essencial
                 </button>
@@ -91,10 +91,10 @@
                 <li th:text="#{admin.billing.premiumplus.feature.fields}">Campos ilimitados</li>
                 <li th:text="#{admin.billing.premiumplus.feature.reports}">Relatorios operacionais</li>
             </ul>
-            <span class="badge" th:if="${store.plan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
+            <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
-                <button class="button primary" type="submit" th:disabled="${store.plan.name() == 'PREMIUM_PLUS'}"
+                <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM_PLUS'}"
                         th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Pro
                 </button>

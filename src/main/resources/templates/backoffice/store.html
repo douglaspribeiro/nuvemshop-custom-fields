@@ -38,7 +38,22 @@
                 </label>
                 <button class="button primary" type="submit">Salvar override</button>
             </form>
-            <form class="form settings-panel" th:action="@{/backoffice/stores/{storeId}/courtesy-premium(storeId=${store.storeId})}" method="post">
+            <div class="settings-panel">
+                <h3>Premium gratuito por 30 dias</h3>
+                <p>Libera ate 10 produtos e 3 campos por produto. Sem cobranca ou renovacao automatica.
+                    Ao expirar, a loja volta aos limites do plano gratuito, preservando os dados cadastrados.</p>
+                <p>Plano em uso: <strong th:text="${store.effectivePlan.displayName}">FREE</strong></p>
+                <p th:if="${store.premiumBonusStartedAt}">
+                    Inicio: <span th:text="${#temporals.format(store.premiumBonusStartedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span><br>
+                    Termino: <span th:text="${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span> (Brasilia)
+                    <strong th:text="${store.premiumBonusActive ? ' — Ativa' : ' — Encerrada'}"></strong>
+                </p>
+                <form th:if="${store.active and !store.plan.billable and store.subscriptionId == null and !store.courtesyPremium}"
+                      th:action="@{/backoffice/stores/{storeId}/premium-bonus(storeId=${store.storeId})}" method="post">
+                    <button class="button primary" type="submit">Conceder Premium por 30 dias</button>
+                </form>
+            </div>
+            <form th:if="${!store.premiumBonusActive}" class="form settings-panel" th:action="@{/backoffice/stores/{storeId}/courtesy-premium(storeId=${store.storeId})}" method="post">
                 <label class="checkbox">
                     <input type="checkbox" name="courtesyPremium" value="true" th:checked="${store.courtesyPremium}">
                     Premium Cortesia
