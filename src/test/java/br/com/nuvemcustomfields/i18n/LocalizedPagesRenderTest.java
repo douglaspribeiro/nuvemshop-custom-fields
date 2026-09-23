@@ -154,8 +154,8 @@ class LocalizedPagesRenderTest {
     void pausedUpgradeRedirectsWithLocalizedMessage(String country) throws Exception {
         MockHttpSession session = sessionForStoreIn(country);
         String expected = "BR".equals(country)
-                ? "Upgrade temporariamente indisponível. Entre em contato com o suporte."
-                : "El cambio de plan está temporalmente no disponible. Contacta con soporte.";
+                ? "Em breve"
+                : "Próximamente";
         var result = mockMvc.perform(get("/admin/billing").session(session))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/admin"))
@@ -165,7 +165,10 @@ class LocalizedPagesRenderTest {
                         .flashAttrs(result.getFlashMap()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(body).contains(expected).doesNotContain("??", "href=\"/admin/billing\"");
+        assertThat(body).contains(expected).doesNotContain("??");
+        for (String page : List.of("/admin/products", "/admin/products/5001/fields", "/admin/onboarding")) {
+            assertThat(render(page, session)).contains("href=\"/admin/billing\"");
+        }
         mockMvc.perform(post("/admin/billing/subscribe").session(session).param("plan", "PREMIUM"))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/admin"))

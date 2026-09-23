@@ -284,8 +284,8 @@ O MVP funcional de campos personalizados esta implementado. Os principais pontos
 ### Cortesia Premium por 30 dias
 
 Enquanto a modalidade de cobrança é regularizada com a Nuvemshop, os botões
-de upgrade ficam removidos e as rotas de contratação redirecionam para o painel,
-sem chamar a Billing API.
+de upgrade exibem “Em breve” (ou “Próximamente” em espanhol) ao redirecionar
+para o painel. As rotas de contratação continuam bloqueadas, sem chamar a Billing API.
 
 Em **Backoffice > Lojas > Detalhe > Premium gratuito por 30 dias**, use
 **Conceder Premium por 30 dias**. A concessão exige loja ativa no plano gratuito,
