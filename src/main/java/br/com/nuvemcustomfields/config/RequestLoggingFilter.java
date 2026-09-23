@@ -18,15 +18,18 @@ import java.util.UUID;
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestLoggingFilter.class);
-    private static final String REQUEST_ID_HEADER = "X-Request-Id";
-    private static final String REQUEST_ID_MDC_KEY = "requestId";
+    public static final String REQUEST_ID_HEADER = "X-Request-Id";
+    public static final String REQUEST_ID_ATTRIBUTE = "requestId";
+    public static final String REQUEST_ID_MDC_KEY = "requestId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String requestId = requestId(request);
         long startedAt = System.currentTimeMillis();
+        String previousRequestId = MDC.get(REQUEST_ID_MDC_KEY);
         MDC.put(REQUEST_ID_MDC_KEY, requestId);
+        request.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
         response.setHeader(REQUEST_ID_HEADER, requestId);
 
         try {
@@ -47,14 +50,13 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             );
             throw ex;
         } finally {
-            MDC.remove(REQUEST_ID_MDC_KEY);
+            restorePreviousRequestId(previousRequestId);
         }
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        return uri.startsWith("/assets/") || uri.startsWith("/styles/");
+        return false;
     }
 
     private void logStart(HttpServletRequest request, String requestId) {
@@ -87,9 +89,21 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private String requestId(HttpServletRequest request) {
         String headerValue = request.getHeader(REQUEST_ID_HEADER);
-        if (headerValue != null && !headerValue.isBlank()) {
-            return headerValue;
+        if (headerValue != null) {
+            try {
+                return UUID.fromString(headerValue.strip()).toString();
+            } catch (IllegalArgumentException ignored) {
+                LOGGER.debug("request.id.invalid_header value={}", headerValue);
+            }
         }
         return UUID.randomUUID().toString();
+    }
+
+    private void restorePreviousRequestId(String previousRequestId) {
+        if (previousRequestId == null) {
+            MDC.remove(REQUEST_ID_MDC_KEY);
+            return;
+        }
+        MDC.put(REQUEST_ID_MDC_KEY, previousRequestId);
     }
 }
