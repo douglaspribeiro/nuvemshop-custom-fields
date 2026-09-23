@@ -12,6 +12,7 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/arquitetura.md`
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/roadmap.md`
 - `docs/nuvemshop-homologacao/` contem os artefatos separados para homologacao e publicacao Nuvemshop: diagrama/escopos, roteiro de video, assinatura de planos pagos, FAQs/guia de instalacao e checklist do perfil do app.
+- `docs/pagamentos-v1-e-roadmap.md` registra a decisao de usar Stripe em todos os mercados na V1 e avaliar Mercado Pago/Efí para BRL no futuro.
 
 ## Stack
 
@@ -277,7 +278,7 @@ Webhooks registrados:
 
 O MVP funcional de campos personalizados esta implementado. Os principais pontos em aberto no roadmap sao:
 
-- Billing recorrente oficial via Nuvemshop, pendente de IDs/conceitos oficiais dos planos.
+- Assinaturas via Stripe em todos os mercados, conforme a especificacao da V1; implementacao pendente.
 - Preco adicional por campo/opcao, pendente de decisao tecnica/comercial sobre como refletir valor no total do pedido.
 - Homologacao e publicacao na App Store da Nuvemshop.
 
@@ -287,19 +288,23 @@ Enquanto a modalidade de cobrança é regularizada com a Nuvemshop, os botões
 de upgrade exibem “Em breve” (ou “Próximamente” em espanhol) ao redirecionar
 para o painel. As rotas de contratação continuam bloqueadas, sem chamar a Billing API.
 
-Em **Backoffice > Lojas > Detalhe > Premium gratuito por 30 dias**, use
-**Conceder Premium por 30 dias**. A concessão exige loja ativa no plano gratuito,
+Em **Backoffice > Lojas > Detalhe > Plano gratuito por 30 dias**, escolha
+**Conceder Essencial por 30 dias** ou **Conceder Pro por 30 dias**. A concessão exige loja ativa no plano gratuito,
 sem assinatura e sem cortesia ativa. O início e o término aparecem no horário de
 Brasília e a concessão é registrada na auditoria de planos.
 
-O benefício libera os limites do Premium por 30 dias corridos, sem cobrança nem
+O benefício libera os limites do plano escolhido por 30 dias corridos, sem cobrança nem
 renovação automática. O plano base permanece gratuito e volta a determinar os
 limites assim que o prazo termina, sem depender de um job ou de acesso ao painel.
 Os dados cadastrados permanecem salvos. Salvar um override de plano encerra o
 bônus ativo. A funcionalidade não envia e-mail automaticamente.
 
-A migration V15 adiciona as datas do benefício; deve ser aplicada pelo Flyway
-durante a atualização da aplicação.
+As migrations V15 e V16 adicionam as datas e o plano do benefício; devem ser
+aplicadas pelo Flyway durante a atualização da aplicação. Ao entrar no painel, o
+lojista vê o plano temporário, os dias restantes e a data de término.
+Enquanto o benefício estiver ativo, o backoffice permite trocar entre Essencial
+e Pro sem reiniciar o prazo; a mudança mantém o término original e gera um evento
+de auditoria.
 
 ### Publicação e versão automática
 

@@ -36,14 +36,14 @@ class BackofficeServiceTest {
         store.setStoreId(123L);
         when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
 
-        service.grantPremiumBonus(123L);
+        service.grantOrChangePlanBonus(123L, PlanType.PREMIUM);
 
         assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
         assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM);
         assertThat(store.isCourtesyPremium()).isTrue();
         assertThat(Duration.between(store.getPremiumBonusStartedAt(), store.getPremiumBonusExpiresAt()))
                 .isEqualTo(Duration.ofDays(30));
-        assertThatThrownBy(() -> service.grantPremiumBonus(123L))
+        assertThatThrownBy(() -> service.grantOrChangePlanBonus(123L, PlanType.PREMIUM))
                 .isInstanceOf(IllegalArgumentException.class);
 
         store.setPremiumBonusExpiresAt(Instant.now().minusSeconds(1));
@@ -57,13 +57,37 @@ class BackofficeServiceTest {
         store.setStoreId(123L);
         when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
         store.setPlan(PlanType.PREMIUM);
-        assertThatThrownBy(() -> service.grantPremiumBonus(123L))
+        assertThatThrownBy(() -> service.grantOrChangePlanBonus(123L, PlanType.PREMIUM_PLUS))
                 .isInstanceOf(IllegalArgumentException.class);
         store.setPlan(PlanType.FREE);
         store.setUninstalledAt(Instant.now());
-        assertThatThrownBy(() -> service.grantPremiumBonus(123L))
+        assertThatThrownBy(() -> service.grantOrChangePlanBonus(123L, PlanType.PREMIUM_PLUS))
                 .isInstanceOf(IllegalArgumentException.class);
         org.mockito.Mockito.verify(storeRepository, org.mockito.Mockito.never()).save(store);
+    }
+
+    @Test
+    void changesTemporaryPlanWithoutRestartingThirtyDays() {
+        Store store = new Store();
+        store.setStoreId(123L);
+        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+
+        assertThat(service.grantOrChangePlanBonus(123L, PlanType.PREMIUM)).isFalse();
+        Instant startedAt = store.getPremiumBonusStartedAt();
+        Instant expiresAt = store.getPremiumBonusExpiresAt();
+
+        assertThat(service.grantOrChangePlanBonus(123L, PlanType.PREMIUM_PLUS)).isTrue();
+
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(store.getPremiumBonusStartedAt()).isEqualTo(startedAt);
+        assertThat(store.getPremiumBonusExpiresAt()).isEqualTo(expiresAt);
+    }
+
+    @Test
+    void rejectsAFreePlanAsTemporaryBonus() {
+        assertThatThrownBy(() -> service.grantOrChangePlanBonus(123L, PlanType.FREE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Essencial ou Pro");
     }
 
     @Test

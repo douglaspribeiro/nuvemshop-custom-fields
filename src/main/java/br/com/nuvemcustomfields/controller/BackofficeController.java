@@ -175,10 +175,19 @@ public class BackofficeController {
     }
 
     @PostMapping("/backoffice/stores/{storeId}/premium-bonus")
-    public String premiumBonus(@PathVariable Long storeId, RedirectAttributes redirectAttributes) {
+    public String premiumBonus(
+            @PathVariable Long storeId,
+            @RequestParam PlanType plan,
+            RedirectAttributes redirectAttributes
+    ) {
         try {
-            backofficeService.grantPremiumBonus(storeId);
-            redirectAttributes.addFlashAttribute("message", "Premium concedido por 30 dias, sem cobranca ou renovacao automatica.");
+            boolean changedExistingBonus = backofficeService.grantOrChangePlanBonus(storeId, plan);
+            redirectAttributes.addFlashAttribute(
+                    "message",
+                    changedExistingBonus
+                            ? "Plano temporario alterado para " + plan.getDisplayName() + ". A data de termino foi mantida."
+                            : plan.getDisplayName() + " concedido por 30 dias, sem cobranca ou renovacao automatica."
+            );
         } catch (IllegalArgumentException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }

@@ -79,24 +79,36 @@ public class BackofficeService {
     }
 
     @Transactional
-    public void grantPremiumBonus(Long storeId) {
+    public boolean grantOrChangePlanBonus(Long storeId, PlanType bonusPlan) {
+        if (bonusPlan != PlanType.PREMIUM && bonusPlan != PlanType.PREMIUM_PLUS) {
+            throw new IllegalArgumentException("Selecione o plano Essencial ou Pro para a cortesia.");
+        }
         Store store = storeRepository.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja nao encontrada."));
+        boolean changingActiveBonus = store.isPremiumBonusActive();
         if (!store.isActive() || store.getPlan().isBillable() || store.getSubscriptionId() != null
-                || store.isCourtesyPremium()) {
+                || (store.isCourtesyPremium() && !changingActiveBonus)) {
             throw new IllegalArgumentException("Cortesia de 30 dias disponivel apenas para loja ativa no plano gratuito, sem assinatura ou cortesia ativa.");
         }
-        java.time.Instant now = java.time.Instant.now();
-        store.setPremiumBonusStartedAt(now);
-        store.setPremiumBonusExpiresAt(now.plus(30, java.time.temporal.ChronoUnit.DAYS));
+        PlanType previousPlan = store.getEffectivePlan();
+        if (changingActiveBonus && previousPlan == bonusPlan) {
+            throw new IllegalArgumentException("A loja ja esta usando esse plano temporario.");
+        }
+        if (!changingActiveBonus) {
+            java.time.Instant now = java.time.Instant.now();
+            store.setPremiumBonusStartedAt(now);
+            store.setPremiumBonusExpiresAt(now.plus(30, java.time.temporal.ChronoUnit.DAYS));
+        }
+        store.setPremiumBonusPlan(bonusPlan);
         storeRepository.save(store);
 
         PlanEvent event = new PlanEvent();
         event.setStoreId(storeId);
-        event.setFromPlan(store.getPlan());
-        event.setToPlan(PlanType.PREMIUM);
-        event.setSource("PREMIUM_BONUS_30_DAYS");
+        event.setFromPlan(previousPlan);
+        event.setToPlan(bonusPlan);
+        event.setSource(changingActiveBonus ? "BONUS_PLAN_CHANGE" : "BONUS_30_DAYS");
         planEventRepository.save(event);
+        return changingActiveBonus;
     }
 
     @Transactional

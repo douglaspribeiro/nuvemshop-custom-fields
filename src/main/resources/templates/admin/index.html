@@ -19,6 +19,17 @@
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="notice" th:if="${store.premiumBonusActive}"
+             th:with="bonusPlanName=#{'plan.' + ${store.premiumBonusPlan.name()}}">
+        <strong th:text="#{admin.index.bonus.active(${bonusPlanName})}">Você está no plano Essencial por 30 dias.</strong>
+        <span th:if="${store.premiumBonusDaysRemaining == 1}"
+              th:text="#{admin.index.bonus.remaining.one}">Resta 1 dia.</span>
+        <span th:if="${store.premiumBonusDaysRemaining != 1}"
+              th:text="#{admin.index.bonus.remaining.many(${store.premiumBonusDaysRemaining})}">Restam 30 dias.</span>
+        <span th:text="#{admin.index.bonus.until(${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')})}">
+            Disponível até 23/10/2026.
+        </span>
+    </section>
     <section class="panel" th:if="${backofficeStoreMode}">
         <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2>
         <p class="muted" th:text="#{admin.index.storemode.description}">As alteracoes feitas aqui serao aplicadas nesta loja.</p>

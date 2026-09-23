@@ -2,6 +2,13 @@
 
 Este artefato atende ao requisito: "Requisitos tecnicos e cuidados com etapas de assinatura, caso o app tenha planos pago".
 
+> **Documento legado:** os requisitos abaixo descrevem a integracao originalmente
+> planejada com a Billing API da Nuvemshop. A decisao vigente para a V1 e usar
+> Stripe em todos os mercados. Consulte
+> [Especificacao de pagamentos V1 e evolucao futura](../pagamentos-v1-e-roadmap.md).
+> Este artefato deve ser reescrito a partir da implementacao Stripe antes de uma
+> nova homologacao dos planos pagos.
+
 ## Planos do app
 
 | Plano | Cobranca automatica | Limites |

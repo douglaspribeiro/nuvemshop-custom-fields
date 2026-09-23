@@ -35,23 +35,48 @@ class PremiumBonusPageTest {
         Store store = new Store();
         store.setStoreId(7654321L);
         store.setAccessToken("test");
+        store.setStoreCountryCode("BR");
         stores.save(store);
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(BackofficeSessionInterceptor.SESSION_KEY, true);
         String path = "/backoffice/stores/7654321";
 
         mvc.perform(get(path).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Conceder Premium por 30 dias")));
-        mvc.perform(post(path + "/premium-bonus").session(session))
+                .andExpect(content().string(containsString("Conceder Essencial por 30 dias")))
+                .andExpect(content().string(containsString("Conceder Pro por 30 dias")));
+        mvc.perform(post(path + "/premium-bonus").param("plan", "PREMIUM").session(session))
                 .andExpect(redirectedUrl(path));
         Store saved = stores.findByStoreId(7654321L).orElseThrow();
         assertThat(saved.getEffectivePlan()).isEqualTo(PlanType.PREMIUM);
         assertThat(saved.getPremiumBonusExpiresAt()).isNotNull();
+        var originalExpiration = saved.getPremiumBonusExpiresAt();
         mvc.perform(get(path).session(session)).andExpect(status().isOk())
                 .andExpect(content().string(containsString("Brasilia")))
-                .andExpect(content().string(not(containsString("Conceder Premium por 30 dias"))));
-        mvc.perform(post(path + "/premium-bonus").session(session))
-                .andExpect(flash().attributeExists("error"));
+                .andExpect(content().string(containsString("Trocar para Pro (manter prazo)")))
+                .andExpect(content().string(not(containsString("Trocar para Essencial"))));
+
+        mvc.perform(post(path + "/premium-bonus").param("plan", "PREMIUM_PLUS").session(session))
+                .andExpect(redirectedUrl(path))
+                .andExpect(flash().attribute("message", containsString("data de termino foi mantida")));
+        saved = stores.findByStoreId(7654321L).orElseThrow();
+        assertThat(saved.getEffectivePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(saved.getPremiumBonusExpiresAt()).isEqualTo(originalExpiration);
+
+        MockHttpSession merchantSession = new MockHttpSession();
+        merchantSession.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, 7654321L);
+        mvc.perform(get("/admin").session(merchantSession))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Você está no plano Pro por 30 dias.")))
+                .andExpect(content().string(containsString("Restam 30 dias.")));
+
+        saved.setStoreCountryCode("AR");
+        stores.saveAndFlush(saved);
+        MockHttpSession spanishMerchantSession = new MockHttpSession();
+        spanishMerchantSession.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, 7654321L);
+        mvc.perform(get("/admin").session(spanishMerchantSession))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Estás en el plan Pro por 30 días.")))
+                .andExpect(content().string(containsString("Quedan 30 días.")));
         verifyNoInteractions(billing);
     }
 

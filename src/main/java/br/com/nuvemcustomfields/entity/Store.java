@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -58,13 +59,45 @@ public class Store {
     @Column(name = "premium_bonus_expires_at")
     private Instant premiumBonusExpiresAt;
 
-    public Instant getPremiumBonusStartedAt() { return premiumBonusStartedAt; }
-    public void setPremiumBonusStartedAt(Instant value) { premiumBonusStartedAt = value; }
-    public Instant getPremiumBonusExpiresAt() { return premiumBonusExpiresAt; }
-    public void setPremiumBonusExpiresAt(Instant value) { premiumBonusExpiresAt = value; }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "premium_bonus_plan", length = 30)
+    private PlanType premiumBonusPlan;
+
+    public Instant getPremiumBonusStartedAt() {
+        return premiumBonusStartedAt;
+    }
+
+    public void setPremiumBonusStartedAt(Instant value) {
+        premiumBonusStartedAt = value;
+    }
+
+    public Instant getPremiumBonusExpiresAt() {
+        return premiumBonusExpiresAt;
+    }
+
+    public void setPremiumBonusExpiresAt(Instant value) {
+        premiumBonusExpiresAt = value;
+    }
+
+    public PlanType getPremiumBonusPlan() {
+        // Bonuses created before V16 were always Essencial.
+        return premiumBonusPlan == null ? PlanType.PREMIUM : premiumBonusPlan;
+    }
+
+    public void setPremiumBonusPlan(PlanType premiumBonusPlan) {
+        this.premiumBonusPlan = premiumBonusPlan;
+    }
 
     public boolean isPremiumBonusActive() {
         return premiumBonusExpiresAt != null && Instant.now().isBefore(premiumBonusExpiresAt);
+    }
+
+    public long getPremiumBonusDaysRemaining() {
+        if (!isPremiumBonusActive()) {
+            return 0;
+        }
+        long secondsRemaining = Duration.between(Instant.now(), premiumBonusExpiresAt).getSeconds();
+        return Math.max(1, (secondsRemaining + 86_399) / 86_400);
     }
 
     @Column(name = "billing_plan_external_id", length = 80)
@@ -256,7 +289,7 @@ public class Store {
 
     public PlanType getEffectivePlan() {
         if (!plan.isBillable() && isPremiumBonusActive()) {
-            return PlanType.PREMIUM;
+            return getPremiumBonusPlan();
         }
         return billingSuspended && plan.isBillable() ? PlanType.FREE : plan;
     }
