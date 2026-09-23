@@ -1,6 +1,10 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.entity.PlanType;
+import java.time.Instant;
+import java.time.Duration;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.com.nuvemcustomfields.repository.FeatureFlagRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
@@ -25,6 +29,53 @@ class BackofficeServiceTest {
             mock(PlanEventRepository.class),
             mock(FeatureFlagRepository.class)
     );
+
+    @Test
+    void grantsThirtyDaysAndExpiresWithoutChangingTheFreeBasePlan() {
+        Store store = new Store();
+        store.setStoreId(123L);
+        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+
+        service.grantPremiumBonus(123L);
+
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(store.isCourtesyPremium()).isTrue();
+        assertThat(Duration.between(store.getPremiumBonusStartedAt(), store.getPremiumBonusExpiresAt()))
+                .isEqualTo(Duration.ofDays(30));
+        assertThatThrownBy(() -> service.grantPremiumBonus(123L))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        store.setPremiumBonusExpiresAt(Instant.now().minusSeconds(1));
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.FREE);
+        assertThat(store.isCourtesyPremium()).isFalse();
+    }
+
+    @Test
+    void rejectsPaidOrInactiveStores() {
+        Store store = new Store();
+        store.setStoreId(123L);
+        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+        store.setPlan(PlanType.PREMIUM);
+        assertThatThrownBy(() -> service.grantPremiumBonus(123L))
+                .isInstanceOf(IllegalArgumentException.class);
+        store.setPlan(PlanType.FREE);
+        store.setUninstalledAt(Instant.now());
+        assertThatThrownBy(() -> service.grantPremiumBonus(123L))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.mockito.Mockito.verify(storeRepository, org.mockito.Mockito.never()).save(store);
+    }
+
+    @Test
+    void manualPlanChangeEndsTheBonus() {
+        Store store = new Store();
+        store.setStoreId(123L);
+        store.setPremiumBonusExpiresAt(Instant.now().plusSeconds(3600));
+        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+        service.overridePlan(123L, PlanType.FREE);
+        assertThat(store.isPremiumBonusActive()).isFalse();
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.FREE);
+    }
 
     @Test
     void updatesCourtesyPremiumFlagAndReason() {

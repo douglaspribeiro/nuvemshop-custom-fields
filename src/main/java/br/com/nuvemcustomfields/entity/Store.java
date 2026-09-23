@@ -52,6 +52,21 @@ public class Store {
     @Column(name = "courtesy_premium_reason")
     private String courtesyPremiumReason;
 
+    @Column(name = "premium_bonus_started_at")
+    private Instant premiumBonusStartedAt;
+
+    @Column(name = "premium_bonus_expires_at")
+    private Instant premiumBonusExpiresAt;
+
+    public Instant getPremiumBonusStartedAt() { return premiumBonusStartedAt; }
+    public void setPremiumBonusStartedAt(Instant value) { premiumBonusStartedAt = value; }
+    public Instant getPremiumBonusExpiresAt() { return premiumBonusExpiresAt; }
+    public void setPremiumBonusExpiresAt(Instant value) { premiumBonusExpiresAt = value; }
+
+    public boolean isPremiumBonusActive() {
+        return premiumBonusExpiresAt != null && Instant.now().isBefore(premiumBonusExpiresAt);
+    }
+
     @Column(name = "billing_plan_external_id", length = 80)
     private String billingPlanExternalId;
 
@@ -160,7 +175,7 @@ public class Store {
     }
 
     public boolean isCourtesyPremium() {
-        return courtesyPremium;
+        return courtesyPremium || isPremiumBonusActive();
     }
 
     public void setCourtesyPremium(boolean courtesyPremium) {
@@ -240,6 +255,9 @@ public class Store {
     }
 
     public PlanType getEffectivePlan() {
+        if (!plan.isBillable() && isPremiumBonusActive()) {
+            return PlanType.PREMIUM;
+        }
         return billingSuspended && plan.isBillable() ? PlanType.FREE : plan;
     }
 

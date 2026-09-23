@@ -162,60 +162,19 @@ public class AdminController {
         return "admin/dashboard";
     }
 
+    // Upgrade temporariamente indisponivel enquanto o billing e regularizado.
     @GetMapping("/admin/billing")
-    public String billing(HttpSession session, Model model) {
-        Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.billing.open store_id={}", store.getStoreId());
-        model.addAttribute("store", store);
-        model.addAttribute("usage", planLimitService.usage(store, 0));
-        model.addAttribute("billingEnabled", billingService.isEnabled());
-        try {
-            model.addAttribute("billingAvailable", true);
-            model.addAttribute("billingCurrency", billingService.currencyFor(store));
-            model.addAttribute("premiumAmount", billingService.amountFor(store, PlanType.PREMIUM));
-            model.addAttribute("premiumPlusAmount", billingService.amountFor(store, PlanType.PREMIUM_PLUS));
-        } catch (IllegalStateException ex) {
-            model.addAttribute("billingAvailable", false);
-            model.addAttribute("billingCurrency", store.getStoreCurrency() == null ? "-" : store.getStoreCurrency());
-            model.addAttribute("premiumAmount", null);
-            model.addAttribute("premiumPlusAmount", null);
-            model.addAttribute("billingMarketError", ex.getMessage());
-        }
-        return "admin/billing";
+    public String billing(HttpSession session, RedirectAttributes redirectAttributes) {
+        adminStoreService.requireCurrentStore(session);
+        redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.paused"));
+        return "redirect:/admin";
     }
 
     @PostMapping("/admin/billing/subscribe")
-    public String subscribe(
-            @RequestParam PlanType plan,
-            HttpSession session,
-            RedirectAttributes redirectAttributes
-    ) {
-        Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.billing.subscribe store_id={} plan={}", store.getStoreId(), plan);
-        try {
-            billingService.subscribe(store, plan);
-            redirectAttributes.addFlashAttribute("message", messages.get("flash.subscription.updated", plan));
-            LOGGER.info("admin.billing.subscribe.done store_id={} plan={}", store.getStoreId(), plan);
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("error", ex.getMessage());
-            LOGGER.warn(
-                    "admin.billing.subscribe.rejected store_id={} plan={} reason={}",
-                    store.getStoreId(),
-                    plan,
-                    ex.getMessage()
-            );
-        } catch (RuntimeException ex) {
-            redirectAttributes.addFlashAttribute("error", messages.get("flash.subscription.failed"));
-            LOGGER.error(
-                    "admin.billing.subscribe.error store_id={} plan={} exception={} message={}",
-                    store.getStoreId(),
-                    plan,
-                    ex.getClass().getSimpleName(),
-                    ex.getMessage(),
-                    ex
-            );
-        }
-        return "redirect:/admin/billing";
+    public String subscribe(HttpSession session, RedirectAttributes redirectAttributes) {
+        adminStoreService.requireCurrentStore(session);
+        redirectAttributes.addFlashAttribute("error", messages.get("admin.billing.paused"));
+        return "redirect:/admin";
     }
 
     @GetMapping("/admin/products")

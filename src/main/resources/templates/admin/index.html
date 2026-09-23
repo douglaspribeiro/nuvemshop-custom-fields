@@ -14,7 +14,7 @@
             <p class="eyebrow" th:text="#{admin.index.eyebrow}">Painel Administrativo</p>
             <h1 th:text="#{common.app.title}">Aplicativo: Campos Personalizados</h1>
         </div>
-        <span class="badge" th:text="#{'plan.' + ${store.plan.name()}}">FREE</span>
+        <span class="badge" th:text="#{'plan.' + ${store.effectivePlan.name()}}">FREE</span>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>

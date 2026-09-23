@@ -47,7 +47,10 @@ public class BackofficeService {
     public void overridePlan(Long storeId, PlanType toPlan) {
         Store store = storeRepository.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja nao encontrada."));
-        PlanType fromPlan = store.getPlan();
+        PlanType fromPlan = store.getEffectivePlan();
+        if (store.isPremiumBonusActive()) {
+            store.setPremiumBonusExpiresAt(java.time.Instant.now());
+        }
         store.setPlan(toPlan);
         storeRepository.save(store);
 
@@ -73,6 +76,27 @@ public class BackofficeService {
             return null;
         }
         return reason.strip();
+    }
+
+    @Transactional
+    public void grantPremiumBonus(Long storeId) {
+        Store store = storeRepository.findByStoreId(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("Loja nao encontrada."));
+        if (!store.isActive() || store.getPlan().isBillable() || store.getSubscriptionId() != null
+                || store.isCourtesyPremium()) {
+            throw new IllegalArgumentException("Cortesia de 30 dias disponivel apenas para loja ativa no plano gratuito, sem assinatura ou cortesia ativa.");
+        }
+        java.time.Instant now = java.time.Instant.now();
+        store.setPremiumBonusStartedAt(now);
+        store.setPremiumBonusExpiresAt(now.plus(30, java.time.temporal.ChronoUnit.DAYS));
+        storeRepository.save(store);
+
+        PlanEvent event = new PlanEvent();
+        event.setStoreId(storeId);
+        event.setFromPlan(store.getPlan());
+        event.setToPlan(PlanType.PREMIUM);
+        event.setSource("PREMIUM_BONUS_30_DAYS");
+        planEventRepository.save(event);
     }
 
     @Transactional

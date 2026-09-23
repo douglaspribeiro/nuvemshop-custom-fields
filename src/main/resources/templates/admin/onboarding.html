@@ -22,7 +22,7 @@
 
     <section class="panel plan-strip">
         <div>
-            <h2 th:with="planName=#{'plan.' + ${store.plan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
+            <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
             <p class="muted"
                th:text="${usage.unlimitedProducts()}
                         ? #{usage.products.unlimited(${usage.productsUsed})}
@@ -30,7 +30,6 @@
                 de 1 produto personalizado
             </p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
     </section>
 
     <section class="panel">

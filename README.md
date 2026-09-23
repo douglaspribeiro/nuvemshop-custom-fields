@@ -280,3 +280,23 @@ O MVP funcional de campos personalizados esta implementado. Os principais pontos
 - Billing recorrente oficial via Nuvemshop, pendente de IDs/conceitos oficiais dos planos.
 - Preco adicional por campo/opcao, pendente de decisao tecnica/comercial sobre como refletir valor no total do pedido.
 - Homologacao e publicacao na App Store da Nuvemshop.
+
+### Cortesia Premium por 30 dias
+
+Enquanto a modalidade de cobrança é regularizada com a Nuvemshop, os botões
+de upgrade ficam removidos e as rotas de contratação redirecionam para o painel,
+sem chamar a Billing API.
+
+Em **Backoffice > Lojas > Detalhe > Premium gratuito por 30 dias**, use
+**Conceder Premium por 30 dias**. A concessão exige loja ativa no plano gratuito,
+sem assinatura e sem cortesia ativa. O início e o término aparecem no horário de
+Brasília e a concessão é registrada na auditoria de planos.
+
+O benefício libera os limites do Premium por 30 dias corridos, sem cobrança nem
+renovação automática. O plano base permanece gratuito e volta a determinar os
+limites assim que o prazo termina, sem depender de um job ou de acesso ao painel.
+Os dados cadastrados permanecem salvos. Salvar um override de plano encerra o
+bônus ativo. A funcionalidade não envia e-mail automaticamente.
+
+A migration V15 adiciona as datas do benefício; deve ser aplicada pelo Flyway
+durante a atualização da aplicação.

@@ -174,6 +174,17 @@ public class BackofficeController {
         return "redirect:/backoffice/stores/{storeId}";
     }
 
+    @PostMapping("/backoffice/stores/{storeId}/premium-bonus")
+    public String premiumBonus(@PathVariable Long storeId, RedirectAttributes redirectAttributes) {
+        try {
+            backofficeService.grantPremiumBonus(storeId);
+            redirectAttributes.addFlashAttribute("message", "Premium concedido por 30 dias, sem cobranca ou renovacao automatica.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/backoffice/stores/{storeId}";
+    }
+
     @PostMapping("/backoffice/stores/{storeId}/enter")
     public String enterStoreMode(@PathVariable Long storeId, HttpSession session, RedirectAttributes redirectAttributes) {
         LOGGER.info("backoffice.store_mode.enter store_id={} session_id={}", storeId, session.getId());

@@ -37,7 +37,7 @@
                 <td th:text="${store.storeId}">0</td>
                 <td th:text="${(store.storeCountryCode ?: '-') + ' / ' + (store.storeCurrency ?: '-')}">BR / BRL</td>
                 <td>
-                    <span th:text="${store.plan.displayName}">FREE</span>
+                    <span th:text="${store.effectivePlan.displayName}">FREE</span>
                     <span class="badge" th:if="${store.courtesyPremium}">Cortesia</span>
                 </td>
                 <td th:text="${store.active ? 'Ativa' : 'Desinstalada'}">Ativa</td>
