@@ -2,7 +2,7 @@
 # Builda a imagem SÓ para linux/arm64 (a VM Oracle Always Free é ARM64) e
 # envia para o GHCR. Como o JAR já é buildado localmente, o build arm64 é
 # rápido mesmo em host amd64 (sem Maven sob QEMU).
-# Uso: ./scripts/push-docker.sh [--tag TAG]
+# Uso: ./scripts/push-docker.sh [--release major|minor|patch|build] [--no-bump] [--tag TAG]
 #
 # Pré-requisitos (uma vez por máquina):
 #   docker buildx create --use --name multi-arch-builder
@@ -12,23 +12,24 @@ set -euo pipefail
 
 GHCR_USER="${GHCR_USER:-douglaspribeiro}"
 IMAGE="ghcr.io/$GHCR_USER/nuvemshop-custom-fields"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
 CUSTOM_TAG=""
-
+BUMP=true
+PRECHECK=true
+BUMP_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag)
-      if [[ $# -lt 2 || -z "${2:-}" ]]; then
-        echo "Uso: $0 [--tag TAG]" >&2
-        exit 2
-      fi
-      CUSTOM_TAG="$2"
-      shift 2
-      ;;
-    *)
-      echo "Argumento desconhecido: $1" >&2
-      echo "Uso: $0 [--tag TAG]" >&2
-      exit 2
-      ;;
+    --tag) CUSTOM_TAG="${2:?--tag exige TAG}"; BUMP=false; shift 2 ;;
+    --no-bump) BUMP=false; shift ;;
+    --skip-precheck) PRECHECK=false; shift ;;
+    --release) BUMP_ARGS+=(--release "${2:?--release exige major|minor|patch|build}"); shift 2 ;;
+    --set-version) BUMP_ARGS+=(--set "${2:?--set-version exige X.Y.Z[.B]}"); shift 2 ;;
+    --allow-dirty) BUMP_ARGS+=(--allow-dirty); shift ;;
+    -h|--help)
+      echo "Uso: $0 [--release major|minor|patch|build] [--set-version X.Y.Z[.B]] [--no-bump] [--tag TAG] [--allow-dirty] [--skip-precheck]"
+      exit 0 ;;
+    *) echo "Argumento desconhecido: $1" >&2; exit 2 ;;
   esac
 done
 
@@ -38,21 +39,7 @@ done
 # reenvia ~93 MB num deploy que mexe só no código). 2020-01-01 UTC.
 export SOURCE_DATE_EPOCH=1577836800
 
-# --- Versão a partir do git --------------------------------------------------
-# VERSION = build number monotônico (nº de commits). Ex: v487.
-GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-GIT_MSG=$(git log -1 --pretty=%s 2>/dev/null || echo "")
-VERSION="${CUSTOM_TAG:-v$(git rev-list --count HEAD 2>/dev/null || echo 0)}"
-
-# Aviso se há mudanças não commitadas — a imagem incluiria esses arquivos, mas a
-# tag git $VERSION aponta só pro commit $GIT_SHA (imagem não reproduzível pela tag).
-if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
-  echo "⚠️  Working tree com mudanças não commitadas. A imagem vai incluí-las,"
-  echo "    mas a tag git $VERSION aponta só pro commit $GIT_SHA. Commite antes pra rastreabilidade."
-fi
-
-# --- Gate de testes: roda mvn clean package COM testes. Aborta o push se falhar.
-echo "▶ Rodando testes (mvn clean package, sem skip)..."
+# Testes antes de criar o commit de release.
 MVN=$([ -x ./mvnw ] && echo "./mvnw" || echo "mvn")
 MVN_VERSION=$("$MVN" -version)
 if ! grep -q "Java version: 25" <<< "$MVN_VERSION"; then
@@ -61,11 +48,30 @@ if ! grep -q "Java version: 25" <<< "$MVN_VERSION"; then
   echo "$MVN_VERSION" >&2
   exit 1
 fi
-if ! "$MVN" clean package; then
-  echo "❌ Build/testes falharam — push abortado (imagem NÃO publicada)." >&2
+if [[ "$PRECHECK" == true ]]; then
+  echo "▶ Pre-check: Maven clean test"
+  if ! "$MVN" -B -ntp clean test; then
+    echo "❌ Pre-check falhou: nada foi versionado nem publicado." >&2
+    exit 1
+  fi
+fi
+
+# Commit e tag ficam locais ate a imagem ser publicada com sucesso.
+if [[ "$BUMP" == true ]]; then
+  RELEASE_VERSION="$(./scripts/release-version.sh --no-push "${BUMP_ARGS[@]}" | tee /dev/stderr | tail -1)"
+  VERSION="v${RELEASE_VERSION}"
+else
+  RELEASE_VERSION="$(python3 -c 'import xml.etree.ElementTree as E; print(E.parse("pom.xml").getroot().find("{http://maven.apache.org/POM/4.0.0}version").text)')"
+  VERSION="${CUSTOM_TAG:-v${RELEASE_VERSION}}"
+fi
+GIT_SHA=$(git rev-parse HEAD)
+GIT_MSG=$(git log -1 --pretty=%s)
+
+# Reempacota com a nova versao; os testes ja passaram antes do bump.
+if ! "$MVN" -B -ntp clean package -DskipTests -Dskip.frontend.tests=true; then
+  echo "❌ Build falhou — imagem nao publicada; release permanece local." >&2
   exit 1
 fi
-echo "✅ Testes passaram."
 
 echo "▶ Empacotando ${IMAGE}  versão ${VERSION}  (linux/arm64)"
 echo "  commit: ${GIT_SHA} — ${GIT_MSG}"
@@ -94,14 +100,15 @@ docker buildx build \
 echo ""
 echo "✅ Imagem publicada: ${IMAGE}:${VERSION}  (e :latest)"
 
-# Tag git no commit que gerou a imagem (só se ainda não existir)
-if git rev-parse "$VERSION" >/dev/null 2>&1; then
-  echo "ℹ️  Tag git $VERSION já existe — pulando"
-else
-  git tag -a "$VERSION" -m "build $VERSION — $GIT_MSG" \
-    && git push origin "$VERSION" \
-    && echo "🏷️  Tag git $VERSION criada e pushada"
+# Publica o commit que contem pom/changelog e sua tag.
+if [[ "$BUMP" == true ]]; then
+  BRANCH="$(git symbolic-ref --short HEAD)"
+  git push origin "$BRANCH"
 fi
+if ! git show-ref --verify --quiet "refs/tags/$VERSION"; then
+  git tag -a "$VERSION" -m "build $VERSION — $GIT_MSG"
+fi
+git push origin "refs/tags/$VERSION"
 
 echo "   O sync-infra detectará o novo digest de :latest e fará o deploy."
 

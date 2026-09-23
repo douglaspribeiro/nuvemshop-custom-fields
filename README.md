@@ -300,3 +300,38 @@ bônus ativo. A funcionalidade não envia e-mail automaticamente.
 
 A migration V15 adiciona as datas do benefício; deve ser aplicada pelo Flyway
 durante a atualização da aplicação.
+
+### Publicação e versão automática
+
+O fluxo de release segue o wzrank: testes antes do versionamento, atualização
+do `pom.xml` e `CHANGELOG.md`, commit `chore(release)`, tag Git `vX.Y.Z` e
+imagem GHCR com a mesma versão, além de `latest`. Requer Java 25, Maven,
+Python 3, Git e Docker Buildx; o push local exige login prévio no GHCR.
+
+```bash
+./scripts/release-version.sh --dry-run       # simula sem alterar arquivos
+./scripts/push-docker.sh                     # testa, versiona e publica
+./scripts/push-docker.sh --release minor      # força incremento minor
+./scripts/push-docker.sh --set-version 1.2.0  # define versão exata
+./scripts/push-docker.sh --no-bump            # publica a versão atual do pom
+./scripts/push-docker.sh --tag teste          # tag explícita, sem alterar o pom
+```
+
+Desde a última tag, vence a mudança de maior nível: `BREAKING CHANGE` ou
+`tipo!:` incrementa major; `feat:`/`add:` incrementa minor; outros prefixos
+incrementam patch; commits sem prefixo incrementam um quarto componente
+(`1.0.0.1`). Sem commits novos, a versão permanece igual. O changelog agrupa
+as mudanças por tipo. As tags antigas `v<N>` servem como base da primeira release.
+
+Antes do push local, commite as alterações. `--allow-dirty` permite publicar
+arquivos não commitados, comprometendo a reprodução da imagem pela tag.
+`--skip-precheck` pula os testes prévios. Se o build ou push Docker falhar após
+o bump, o commit e a tag permanecem locais; retome o fluxo sem novos commits
+para reutilizar a versão. O script só envia o branch e a tag após publicar a imagem.
+
+O GitHub Actions compila e testa os pushes. Branches `deploy-*` também executam
+o workflow de publicação ARM64: versão/changelog, imagem, tag, merge no branch
+de origem e remoção do branch de deploy após o merge. A variável de repositório
+`RELEASE_BASE_BRANCH` permite definir explicitamente o destino; sem ela, ele é
+inferido como no wzrank. O token do workflow precisa poder escrever no repositório
+e no GHCR; proteções de branch devem permitir o merge efetuado pelo workflow.

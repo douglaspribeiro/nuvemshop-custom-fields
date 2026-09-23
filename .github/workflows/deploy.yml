@@ -1,0 +1,181 @@
+name: Deploy Docker Image to GHCR
+
+on:
+  push:
+    branches:
+      - "deploy-*"
+
+concurrency:
+  group: release-nuvemshop-custom-fields
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/douglaspribeiro/nuvemshop-custom-fields
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      base_branch: ${{ steps.base.outputs.branch }}
+    steps:
+      # fetch-depth: 0 + tags: release-version.sh calcula o range desde a ultima tag semver
+      # e o merge de volta precisa do historico do branch de origem.
+      - name: Checkout source code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch all remote branches
+        run: git fetch --prune --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+
+      # Branch de origem = o remoto que menos commits atras do deploy-* esta. Empate
+      # (feature ja mergeada em master) vai para a feature: o deploy saiu dela.
+      - name: Detect base branch
+        id: base
+        env:
+          OVERRIDE: ${{ vars.RELEASE_BASE_BRANCH }}
+        run: |
+          set -euo pipefail
+          if [ -n "${OVERRIDE:-}" ]; then
+            echo "branch=$OVERRIDE" >> "$GITHUB_OUTPUT"
+            echo "Branch de origem definido por RELEASE_BASE_BRANCH: $OVERRIDE"
+            exit 0
+          fi
+          # Sem pipeline gigante de proposito: "sort | head -1" com pipefail pode morrer
+          # em SIGPIPE e derrubar o step por um motivo que nao e o do deploy.
+          CANDIDATES="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin \
+            | sed 's#^origin/##' | grep -vE '^(HEAD$|deploy-)' | sort -u || true)"
+          RANKED="$(mktemp)"
+          for b in $CANDIDATES; do
+            git rev-parse -q --verify "refs/remotes/origin/$b" >/dev/null || continue
+            COUNT="$(git rev-list --count "origin/$b..HEAD")"
+            case "$b" in master|main) RANK=1 ;; *) RANK=0 ;; esac
+            DATE="$(git log -1 --format=%ct "origin/$b")"
+            printf '%010d %d %010d %s\n' "$COUNT" "$RANK" "$((9999999999 - DATE))" "$b" >> "$RANKED"
+          done
+          BASE="$(sort "$RANKED" | sed -n '1s/.* //p')"
+          if [ -z "$BASE" ]; then
+            echo "Nao consegui inferir o branch de origem. Defina a variable RELEASE_BASE_BRANCH." >&2
+            exit 1
+          fi
+          echo "branch=$BASE" >> "$GITHUB_OUTPUT"
+          echo "Branch de origem inferido: $BASE (deploy esta $(git rev-list --count "origin/$BASE..HEAD") commit(s) a frente)"
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "temurin"
+          cache: "maven"
+
+      # Gate antes do bump: "clean test" cobre compilacao de main, de test e a suite.
+      # Sem isso um commit quebrado ainda geraria chore(release) + tag de uma versao
+      # que nunca vira imagem. O package adiante usa -DskipTests: ja rodaram aqui.
+      - name: Compile and run tests
+        run: mvn -B -ntp clean test
+
+      # Mesmo bump do scripts/push-docker.sh: versao do pom pelos commits, CHANGELOG.md
+      # e commit + tag locais. O push sai nos steps de tag e merge, depois da imagem.
+      - name: Bump version and changelog
+        id: bump
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BEFORE="$(git rev-parse HEAD)"
+          VERSION="$(./scripts/release-version.sh --no-push | tee /dev/stderr | tail -1)"
+          AFTER="$(git rev-parse HEAD)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$AFTER" >> "$GITHUB_OUTPUT"
+          if [ "$BEFORE" = "$AFTER" ]; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "Nenhum commit novo desde a ultima tag: seguindo com a versao $VERSION do pom."
+          else
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build project with Maven
+        run: mvn -B -ntp clean package -DskipTests -Dskip.frontend.tests=true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        env:
+          APP_VERSION: v${{ steps.bump.outputs.version }}
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:v${{ steps.bump.outputs.version }}
+          build-args: |
+            APP_VERSION=v${{ steps.bump.outputs.version }}
+            SOURCE_DATE_EPOCH=1577836800
+          labels: |
+            org.opencontainers.image.revision=${{ steps.bump.outputs.release_sha }}
+            org.opencontainers.image.version=v${{ steps.bump.outputs.version }}
+
+      - name: Push git tag
+        if: steps.bump.outputs.bumped == 'true'
+        env:
+          TAG_NAME: v${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME ja existe no remoto, pulando push."
+            exit 0
+          fi
+          git push origin "refs/tags/$TAG_NAME"
+
+      # A imagem ja esta publicada: se o merge conflitar, o deploy nao e desfeito --
+      # o step falha para o merge ser resolvido a mao e o branch deploy-* sobrevive.
+      - name: Merge deploy branch into base
+        id: merge
+        env:
+          BASE: ${{ steps.base.outputs.branch }}
+          RELEASE_SHA: ${{ steps.bump.outputs.release_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/${BASE}:refs/remotes/origin/${BASE}"
+          git checkout -q -B "release-merge-${GITHUB_RUN_ID}" "origin/${BASE}"
+          if git merge-base --is-ancestor "$RELEASE_SHA" HEAD; then
+            echo "origin/${BASE} ja contem ${RELEASE_SHA}; nada a mesclar."
+            exit 0
+          fi
+          if ! git merge --no-edit -m "chore: merge ${GITHUB_REF_NAME} em ${BASE}" "$RELEASE_SHA"; then
+            git merge --abort || true
+            echo "Conflito ao mesclar ${GITHUB_REF_NAME} em ${BASE}. Resolva manualmente; a imagem ja foi publicada." >&2
+            exit 1
+          fi
+          git push origin "HEAD:refs/heads/${BASE}"
+          echo "Merge de ${GITHUB_REF_NAME} em ${BASE} enviado."
+
+      - name: Delete deploy branch
+        if: steps.merge.outcome == 'success'
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: git push origin --delete "$BRANCH_NAME"
+
