@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.4.1] - 2026-09-23
+
+### Correções
+
+- cancel pending Mercado Pago checkout (`3db0e60`)
+
 ## [1.4.0] - 2026-09-23
 
 ### Features
