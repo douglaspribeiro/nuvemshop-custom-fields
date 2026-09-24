@@ -336,7 +336,7 @@ public class PaymentSubscriptionService {
         int separator = normalized.indexOf('@');
         if (separator <= 0 || separator == normalized.length() - 1 || normalized.indexOf('@', separator + 1) >= 0
                 || normalized.chars().anyMatch(Character::isWhitespace)) {
-            throw new IllegalArgumentException("Informe um e-mail valido da conta Mercado Pago.");
+            throw new IllegalArgumentException("Informe um e-mail valido do pagador.");
         }
         return normalized;
     }

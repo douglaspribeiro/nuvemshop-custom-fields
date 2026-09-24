@@ -50,7 +50,7 @@ public class MercadoPagoGateway implements PaymentGateway {
                                           String payerEmail) {
         requireConfigured();
         if (payerEmail == null || payerEmail.isBlank()) {
-            throw new IllegalArgumentException("Informe o e-mail da conta Mercado Pago.");
+            throw new IllegalArgumentException("Informe o e-mail do pagador.");
         }
         Map<String, Object> payload = Map.of(
                 "reason", "Campos Personalizados - " + plan.getDisplayName(),
