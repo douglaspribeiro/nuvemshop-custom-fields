@@ -25,18 +25,18 @@ class MercadoPagoGatewayTest {
     private static final String SECRET = "webhook-secret";
 
     @Test
-    void createsPendingCreditCardSubscriptionWithIdempotency() {
+    void createsCreditCardSubscriptionPlanWithoutPayerEmail() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("https://api.example.com/preapproval"))
+        server.expect(requestTo("https://api.example.com/preapproval_plan"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", "Bearer access-token"))
                 .andExpect(header("X-Idempotency-Key", "ncf_123_ref"))
-                .andExpect(jsonPath("$.status").value("pending"))
-                .andExpect(jsonPath("$.payer_email").value("owner@example.com"))
+                .andExpect(jsonPath("$.external_reference").doesNotExist())
+                .andExpect(jsonPath("$.payer_email").doesNotExist())
                 .andExpect(jsonPath("$.auto_recurring.currency_id").value("BRL"))
                 .andExpect(jsonPath("$.payment_methods_allowed.payment_types[0].id").value("credit_card"))
-                .andRespond(withSuccess("{\"id\":\"sub-1\",\"init_point\":\"https://mp.test/checkout\",\"status\":\"pending\"}",
+                .andRespond(withSuccess("{\"id\":\"plan-1\",\"init_point\":\"https://mp.test/checkout\",\"status\":\"active\"}",
                         MediaType.APPLICATION_JSON));
 
         Store store = new Store();
@@ -46,10 +46,43 @@ class MercadoPagoGatewayTest {
         MercadoPagoGateway gateway = gateway(builder);
 
         GatewayCheckout checkout = gateway.createCheckout(store, PlanType.PREMIUM, "ncf_123_ref",
-                "https://app.test/return", "owner@example.com");
+                "https://app.test/return");
 
-        assertThat(checkout.subscriptionId()).isEqualTo("sub-1");
+        assertThat(checkout.subscriptionId()).isNull();
+        assertThat(checkout.checkoutResourceId()).isEqualTo("plan-1");
         assertThat(checkout.checkoutUrl()).isEqualTo("https://mp.test/checkout");
+        server.verify();
+    }
+
+    @Test
+    void readsPlanIdFromCreatedSubscription() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.example.com/preapproval/sub-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"id":"sub-1","preapproval_plan_id":"plan-1","status":"authorized",
+                         "auto_recurring":{"currency_id":"BRL","transaction_amount":19.99}}
+                        """, MediaType.APPLICATION_JSON));
+
+        GatewaySubscription subscription = gateway(builder).getSubscription("sub-1");
+
+        assertThat(subscription.checkoutResourceId()).isEqualTo("plan-1");
+        assertThat(subscription.amount()).isEqualByComparingTo("19.99");
+        server.verify();
+    }
+
+    @Test
+    void cancelsUnusedCheckoutPlan() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.example.com/preapproval_plan/plan-1"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(jsonPath("$.status").value("canceled"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        gateway(builder).cancelCheckout("plan-1");
+
         server.verify();
     }
 

@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -83,11 +82,10 @@ public class PaymentSubscriptionService {
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
-    public String startCheckout(Long storeId, PlanType plan, String payerEmail) {
+    public String startCheckout(Long storeId, PlanType plan) {
         if (plan == null || !plan.isBillable()) {
             throw new IllegalArgumentException("Selecione o plano Essencial ou Pro.");
         }
-        String normalizedPayerEmail = normalizePayerEmail(payerEmail);
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
         refreshProfileIfNeeded(store);
@@ -101,14 +99,20 @@ public class PaymentSubscriptionService {
         }
         if (subscription != null && subscription.getStatus() == PaymentSubscriptionStatus.PENDING
                 && plan == subscription.getPlan()
-                && Objects.equals(normalizedPayerEmail, subscription.getPayerEmail())
+                && hasText(subscription.getProviderCheckoutId())
                 && hasText(subscription.getCheckoutUrl())) {
             return subscription.getCheckoutUrl();
         }
-        if (subscription != null && subscription.getStatus() == PaymentSubscriptionStatus.PENDING
-                && subscription.getProviderSubscriptionId() != null) {
-            router.require(subscription.getProvider()).cancel(subscription.getProviderSubscriptionId());
-            subscription.setProviderSubscriptionId(null);
+        if (subscription != null && subscription.getStatus() == PaymentSubscriptionStatus.PENDING) {
+            PaymentGateway previousGateway = router.require(subscription.getProvider());
+            if (hasText(subscription.getProviderSubscriptionId())) {
+                previousGateway.cancel(subscription.getProviderSubscriptionId());
+                subscription.setProviderSubscriptionId(null);
+            }
+            if (hasText(subscription.getProviderCheckoutId())) {
+                previousGateway.cancelCheckout(subscription.getProviderCheckoutId());
+                subscription.setProviderCheckoutId(null);
+            }
         }
 
         if (subscription == null) {
@@ -117,7 +121,9 @@ public class PaymentSubscriptionService {
         }
         String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
         subscription.setProvider(gateway.provider());
-        subscription.setPayerEmail(normalizedPayerEmail);
+        subscription.setPayerEmail(null);
+        subscription.setProviderSubscriptionId(null);
+        subscription.setProviderCheckoutId(null);
         subscription.setExternalReference(reference);
         subscription.setPlan(plan);
         subscription.setCurrency("BRL");
@@ -130,14 +136,15 @@ public class PaymentSubscriptionService {
 
         try {
             String returnUrl = nuvemshopProperties.appBaseUrl() + "/admin/billing/return";
-            GatewayCheckout checkout = gateway.createCheckout(store, plan, reference, returnUrl, normalizedPayerEmail);
+            GatewayCheckout checkout = gateway.createCheckout(store, plan, reference, returnUrl);
             subscription.setProviderSubscriptionId(checkout.subscriptionId());
+            subscription.setProviderCheckoutId(checkout.checkoutResourceId());
             subscription.setCheckoutUrl(checkout.checkoutUrl());
             subscription.setProviderStatus(checkout.providerStatus());
             subscription.setLastSyncedAt(Instant.now());
             subscriptions.save(subscription);
-            LOGGER.info("payments.checkout.created store_id={} provider={} plan={} subscription_id={}",
-                    storeId, gateway.provider(), plan, checkout.subscriptionId());
+            LOGGER.info("payments.checkout.created store_id={} provider={} plan={} checkout_id={} subscription_id={}",
+                    storeId, gateway.provider(), plan, checkout.checkoutResourceId(), checkout.subscriptionId());
             return checkout.checkoutUrl();
         } catch (RuntimeException ex) {
             subscription.setStatus(PaymentSubscriptionStatus.ERROR);
@@ -190,10 +197,19 @@ public class PaymentSubscriptionService {
         local.setCancellationPending(true);
         subscriptions.saveAndFlush(local);
         try {
-            router.require(local.getProvider()).cancel(local.getProviderSubscriptionId());
+            PaymentGateway gateway = router.require(local.getProvider());
+            if (hasText(local.getProviderSubscriptionId())) {
+                gateway.cancel(local.getProviderSubscriptionId());
+            } else if (hasText(local.getProviderCheckoutId())) {
+                gateway.cancelCheckout(local.getProviderCheckoutId());
+                local.setStatus(PaymentSubscriptionStatus.CANCELED);
+                local.setProviderStatus("canceled");
+            } else {
+                throw new IllegalArgumentException("Assinatura ainda nao foi criada no provedor.");
+            }
             local.setCancellationPending(false);
             subscriptions.saveAndFlush(local);
-            reconcile(storeId);
+            if (hasText(local.getProviderSubscriptionId())) reconcile(storeId);
         } catch (RuntimeException ex) {
             local.setLastError(truncate(ex.getMessage()));
             subscriptions.save(local);
@@ -205,13 +221,16 @@ public class PaymentSubscriptionService {
     public void cancelAfterUninstall(Long storeId) {
         subscriptions.findByStoreId(storeId).ifPresent(local -> {
             deactivate(local, stores.findByStoreId(storeId).orElse(null), "APP_UNINSTALLED");
-            if (local.getProviderSubscriptionId() == null || local.getStatus() == PaymentSubscriptionStatus.CANCELED) return;
+            if ((!hasText(local.getProviderSubscriptionId()) && !hasText(local.getProviderCheckoutId()))
+                    || local.getStatus() == PaymentSubscriptionStatus.CANCELED) return;
             local.setCancellationPending(true);
             try {
-                router.require(local.getProvider()).cancel(local.getProviderSubscriptionId());
+                PaymentGateway gateway = router.require(local.getProvider());
+                if (hasText(local.getProviderSubscriptionId())) gateway.cancel(local.getProviderSubscriptionId());
+                else gateway.cancelCheckout(local.getProviderCheckoutId());
                 local.setCancellationPending(false);
                 local.setStatus(PaymentSubscriptionStatus.CANCELED);
-                local.setProviderStatus("cancelled");
+                local.setProviderStatus("canceled");
                 local.setLastError(null);
             } catch (RuntimeException ex) {
                 local.setLastError(truncate(ex.getMessage()));
@@ -229,6 +248,7 @@ public class PaymentSubscriptionService {
     ) {
         validateRemote(local, remote);
         local.setProviderSubscriptionId(remote.id());
+        if (hasText(remote.checkoutResourceId())) local.setProviderCheckoutId(remote.checkoutResourceId());
         local.setProviderStatus(remote.status());
         if (remote.nextPaymentAt() != null) local.setNextPaymentAt(remote.nextPaymentAt());
         local.setLastSyncedAt(Instant.now());
@@ -268,13 +288,25 @@ public class PaymentSubscriptionService {
     }
 
     private PaymentSubscription locate(GatewaySubscription remote) {
-        return subscriptions.findByProviderSubscriptionId(remote.id())
-                .or(() -> subscriptions.findByExternalReference(remote.externalReference()))
+        Optional<PaymentSubscription> local = hasText(remote.id())
+                ? subscriptions.findByProviderSubscriptionId(remote.id()) : Optional.empty();
+        if (local.isEmpty() && hasText(remote.checkoutResourceId())) {
+            local = subscriptions.findByProviderCheckoutId(remote.checkoutResourceId());
+        }
+        if (local.isEmpty() && hasText(remote.externalReference())) {
+            local = subscriptions.findByExternalReference(remote.externalReference());
+        }
+        return local
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura notificada nao pertence a uma loja."));
     }
 
     private void validateRemote(PaymentSubscription local, GatewaySubscription remote) {
-        if (!local.getExternalReference().equals(remote.externalReference())) {
+        if (hasText(local.getProviderCheckoutId())
+                && !Objects.equals(local.getProviderCheckoutId(), remote.checkoutResourceId())) {
+            throw new IllegalArgumentException("Plano de checkout da assinatura divergente.");
+        }
+        if (hasText(remote.externalReference())
+                && !Objects.equals(local.getExternalReference(), remote.externalReference())) {
             throw new IllegalArgumentException("Referencia externa da assinatura divergente.");
         }
         if (!local.getCurrency().equalsIgnoreCase(remote.currency())
@@ -330,15 +362,6 @@ public class PaymentSubscriptionService {
     private static String truncate(String value) {
         if (value == null) return null;
         return value.length() <= 500 ? value : value.substring(0, 500);
-    }
-    private static String normalizePayerEmail(String value) {
-        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-        int separator = normalized.indexOf('@');
-        if (separator <= 0 || separator == normalized.length() - 1 || normalized.indexOf('@', separator + 1) >= 0
-                || normalized.chars().anyMatch(Character::isWhitespace)) {
-            throw new IllegalArgumentException("Informe um e-mail valido do pagador.");
-        }
-        return normalized;
     }
     private static boolean hasText(String value) { return value != null && !value.isBlank(); }
 }

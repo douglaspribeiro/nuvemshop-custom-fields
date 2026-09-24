@@ -75,12 +75,6 @@
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or !paymentSubscription.accessActive)}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM">
-                <label>
-                    <span th:text="#{admin.billing.payer.email}">E-mail do pagador</span>
-                    <input type="email" name="payerEmail" required autocomplete="email"
-                           th:placeholder="#{admin.billing.payer.email.placeholder}">
-                </label>
-                <p class="muted" th:text="#{admin.billing.payer.email.help}">Use este mesmo e-mail no checkout, com ou sem conta Mercado Pago.</p>
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM'}"
                         th:with="planName=#{plan.PREMIUM}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Essencial
@@ -103,12 +97,6 @@
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or !paymentSubscription.accessActive)}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
-                <label>
-                    <span th:text="#{admin.billing.payer.email}">E-mail do pagador</span>
-                    <input type="email" name="payerEmail" required autocomplete="email"
-                           th:placeholder="#{admin.billing.payer.email.placeholder}">
-                </label>
-                <p class="muted" th:text="#{admin.billing.payer.email.help}">Use este mesmo e-mail no checkout, com ou sem conta Mercado Pago.</p>
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM_PLUS'}"
                         th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Pro

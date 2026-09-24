@@ -9,6 +9,7 @@ import java.util.List;
 public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubscription, Long> {
     Optional<PaymentSubscription> findByStoreId(Long storeId);
     Optional<PaymentSubscription> findByProviderSubscriptionId(String providerSubscriptionId);
+    Optional<PaymentSubscription> findByProviderCheckoutId(String providerCheckoutId);
     Optional<PaymentSubscription> findByExternalReference(String externalReference);
     List<PaymentSubscription> findByProviderAndStatusIn(
             br.com.nuvemcustomfields.entity.PaymentProviderType provider,

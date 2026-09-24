@@ -163,8 +163,7 @@ class LocalizedPagesRenderTest {
         for (String page : List.of("/admin/products", "/admin/products/5001/fields", "/admin/onboarding")) {
             assertThat(render(page, session)).contains("href=\"/admin/billing\"");
         }
-        mockMvc.perform(post("/admin/billing/subscribe").session(session).param("plan", "PREMIUM")
-                        .param("payerEmail", "payer@example.com"))
+        mockMvc.perform(post("/admin/billing/subscribe").session(session).param("plan", "PREMIUM"))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/admin/billing"))
                 .andExpect(flash().attribute("error", expected));

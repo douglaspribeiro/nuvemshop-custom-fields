@@ -12,11 +12,11 @@ public interface PaymentGateway {
     boolean configured();
     boolean supports(Store store);
     BigDecimal amount(PlanType plan);
-    GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl,
-                                   String payerEmail);
+    GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl);
     GatewaySubscription getSubscription(String subscriptionId);
     Optional<GatewayInvoice> getLatestInvoice(String subscriptionId);
     GatewayInvoice getInvoice(String invoiceId);
     void cancel(String subscriptionId);
+    void cancelCheckout(String checkoutResourceId);
     GatewayNotification verifyNotification(String body, String signature, String requestId, String dataId);
 }

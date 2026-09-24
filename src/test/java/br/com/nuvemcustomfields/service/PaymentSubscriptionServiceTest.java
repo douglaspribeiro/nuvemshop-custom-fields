@@ -70,14 +70,13 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
-    void replacesPendingCheckoutWhenMerchantUsesAnotherMercadoPagoEmail() {
+    void replacesLegacyPendingSubscriptionWithCheckoutPlanWithoutPayerEmail() {
         Store store = store();
         store.setStoreCountryCode("BR");
         store.setStoreCurrency("BRL");
         store.setStoreEmail("nuvemshop@example.com");
         PaymentSubscription pending = local();
         pending.setStatus(PaymentSubscriptionStatus.PENDING);
-        pending.setPayerEmail("old@example.com");
         pending.setCheckoutUrl("https://mp.test/old");
         when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
         when(router.requireForStore(store)).thenReturn(gateway);
@@ -87,15 +86,37 @@ class PaymentSubscriptionServiceTest {
         when(gateway.amount(PlanType.PREMIUM)).thenReturn(new BigDecimal("19.99"));
         when(nuvemshopProperties.appBaseUrl()).thenReturn("https://app.test");
         when(gateway.createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(),
-                eq("https://app.test/admin/billing/return"), eq("payer@example.com")))
-                .thenReturn(new GatewayCheckout("sub-2", "https://mp.test/new", "pending"));
+                eq("https://app.test/admin/billing/return")))
+                .thenReturn(new GatewayCheckout(null, "plan-2", "https://mp.test/new", "active"));
 
-        String checkoutUrl = service.startCheckout(123L, PlanType.PREMIUM, " PAYER@EXAMPLE.COM ");
+        String checkoutUrl = service.startCheckout(123L, PlanType.PREMIUM);
 
         assertThat(checkoutUrl).isEqualTo("https://mp.test/new");
-        assertThat(pending.getPayerEmail()).isEqualTo("payer@example.com");
-        assertThat(pending.getProviderSubscriptionId()).isEqualTo("sub-2");
+        assertThat(pending.getPayerEmail()).isNull();
+        assertThat(pending.getProviderSubscriptionId()).isNull();
+        assertThat(pending.getProviderCheckoutId()).isEqualTo("plan-2");
         verify(gateway).cancel("sub-1");
+    }
+
+    @Test
+    void associatesWebhookSubscriptionByCheckoutPlanId() {
+        PaymentSubscription local = local();
+        local.setProviderSubscriptionId(null);
+        local.setProviderCheckoutId("plan-1");
+        Store store = store();
+        GatewaySubscription remote = remote();
+        when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote);
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.empty());
+        when(subscriptions.findByProviderCheckoutId("plan-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO, "sub-1");
+
+        assertThat(local.getProviderSubscriptionId()).isEqualTo("sub-1");
+        assertThat(local.getProviderCheckoutId()).isEqualTo("plan-1");
     }
 
     private PaymentSubscription local() {
@@ -118,7 +139,7 @@ class PaymentSubscriptionServiceTest {
     }
 
     private GatewaySubscription remote() {
-        return new GatewaySubscription("sub-1", "ncf_123_ref", "authorized", "BRL",
+        return new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref", "authorized", "BRL",
                 new BigDecimal("19.99"), Instant.now().plusSeconds(86400));
     }
 }

@@ -5,6 +5,7 @@ import java.time.Instant;
 
 public record GatewaySubscription(
         String id,
+        String checkoutResourceId,
         String externalReference,
         String status,
         String currency,

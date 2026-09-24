@@ -46,16 +46,10 @@ public class MercadoPagoGateway implements PaymentGateway {
     @Override public BigDecimal amount(PlanType plan) { return properties.amount(plan); }
 
     @Override
-    public GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl,
-                                          String payerEmail) {
+    public GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl) {
         requireConfigured();
-        if (payerEmail == null || payerEmail.isBlank()) {
-            throw new IllegalArgumentException("Informe o e-mail do pagador.");
-        }
         Map<String, Object> payload = Map.of(
                 "reason", "Campos Personalizados - " + plan.getDisplayName(),
-                "external_reference", externalReference,
-                "payer_email", payerEmail,
                 "auto_recurring", Map.of(
                         "frequency", 1,
                         "frequency_type", "months",
@@ -65,11 +59,11 @@ public class MercadoPagoGateway implements PaymentGateway {
                 "payment_methods_allowed", Map.of(
                         "payment_types", List.of(Map.of("id", "credit_card"))
                 ),
-                "back_url", returnUrl,
-                "status", "pending"
+                "back_url", returnUrl
         );
-        JsonNode response = post("/preapproval", payload, externalReference);
-        return new GatewayCheckout(requiredText(response, "id"), requiredText(response, "init_point"), text(response, "status"));
+        JsonNode response = post("/preapproval_plan", payload, externalReference);
+        return new GatewayCheckout(null, requiredText(response, "id"), requiredText(response, "init_point"),
+                text(response, "status"));
     }
 
     @Override
@@ -78,6 +72,7 @@ public class MercadoPagoGateway implements PaymentGateway {
         JsonNode recurring = response.path("auto_recurring");
         return new GatewaySubscription(
                 requiredText(response, "id"),
+                text(response, "preapproval_plan_id"),
                 text(response, "external_reference"),
                 text(response, "status"),
                 text(recurring, "currency_id"),
@@ -101,7 +96,12 @@ public class MercadoPagoGateway implements PaymentGateway {
 
     @Override
     public void cancel(String subscriptionId) {
-        put("/preapproval/" + subscriptionId, Map.of("status", "cancelled"));
+        put("/preapproval/" + subscriptionId, Map.of("status", "canceled"));
+    }
+
+    @Override
+    public void cancelCheckout(String checkoutResourceId) {
+        put("/preapproval_plan/" + checkoutResourceId, Map.of("status", "canceled"));
     }
 
     @Override
