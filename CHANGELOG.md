@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.3.1] - 2026-09-23
+
+### Correções
+
+- render payment subscription without error (`d6b7b2e`)
+
 ## [1.3.0] - 2026-09-23
 
 ### Features
