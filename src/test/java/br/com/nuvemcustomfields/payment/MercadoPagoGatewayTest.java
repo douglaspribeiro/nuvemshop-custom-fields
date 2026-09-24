@@ -43,10 +43,10 @@ class MercadoPagoGatewayTest {
         store.setStoreId(123L);
         store.setStoreCountryCode("BR");
         store.setStoreCurrency("BRL");
-        store.setStoreEmail("OWNER@EXAMPLE.COM");
         MercadoPagoGateway gateway = gateway(builder);
 
-        GatewayCheckout checkout = gateway.createCheckout(store, PlanType.PREMIUM, "ncf_123_ref", "https://app.test/return");
+        GatewayCheckout checkout = gateway.createCheckout(store, PlanType.PREMIUM, "ncf_123_ref",
+                "https://app.test/return", "owner@example.com");
 
         assertThat(checkout.subscriptionId()).isEqualTo("sub-1");
         assertThat(checkout.checkoutUrl()).isEqualTo("https://mp.test/checkout");

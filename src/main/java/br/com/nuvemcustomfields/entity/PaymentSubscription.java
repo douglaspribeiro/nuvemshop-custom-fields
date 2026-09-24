@@ -26,6 +26,8 @@ public class PaymentSubscription {
     private PaymentProviderType provider;
     @Column(name = "provider_subscription_id", unique = true, length = 120)
     private String providerSubscriptionId;
+    @Column(name = "payer_email", length = 254)
+    private String payerEmail;
     @Column(name = "external_reference", nullable = false, unique = true, length = 64)
     private String externalReference;
     @Column(name = "checkout_url", columnDefinition = "TEXT")
@@ -72,6 +74,8 @@ public class PaymentSubscription {
     public void setProvider(PaymentProviderType value) { provider = value; }
     public String getProviderSubscriptionId() { return providerSubscriptionId; }
     public void setProviderSubscriptionId(String value) { providerSubscriptionId = value; touch(); }
+    public String getPayerEmail() { return payerEmail; }
+    public void setPayerEmail(String value) { payerEmail = value; touch(); }
     public String getExternalReference() { return externalReference; }
     public void setExternalReference(String value) { externalReference = value; }
     public String getCheckoutUrl() { return checkoutUrl; }

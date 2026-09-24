@@ -46,15 +46,16 @@ public class MercadoPagoGateway implements PaymentGateway {
     @Override public BigDecimal amount(PlanType plan) { return properties.amount(plan); }
 
     @Override
-    public GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl) {
+    public GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl,
+                                          String payerEmail) {
         requireConfigured();
-        if (store.getStoreEmail() == null) {
-            throw new IllegalArgumentException("E-mail do responsavel pela loja nao encontrado.");
+        if (payerEmail == null || payerEmail.isBlank()) {
+            throw new IllegalArgumentException("Informe o e-mail da conta Mercado Pago.");
         }
         Map<String, Object> payload = Map.of(
                 "reason", "Campos Personalizados - " + plan.getDisplayName(),
                 "external_reference", externalReference,
-                "payer_email", store.getStoreEmail(),
+                "payer_email", payerEmail,
                 "auto_recurring", Map.of(
                         "frequency", 1,
                         "frequency_type", "months",

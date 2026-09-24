@@ -178,7 +178,8 @@ public class AdminController {
     }
 
     @PostMapping({"/admin/billing/subscribe", "/admin/billing/checkout"})
-    public String subscribe(@RequestParam PlanType plan, HttpSession session, RedirectAttributes redirectAttributes) {
+    public String subscribe(@RequestParam PlanType plan, @RequestParam String payerEmail,
+                            HttpSession session, RedirectAttributes redirectAttributes) {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
             if (!paymentSubscriptionService.mercadoPagoEnabled()) {
@@ -187,7 +188,7 @@ public class AdminController {
             if (!paymentSubscriptionService.available(store)) {
                 throw new IllegalStateException(messages.get("admin.billing.unavailable"));
             }
-            return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
+            return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan, payerEmail);
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
