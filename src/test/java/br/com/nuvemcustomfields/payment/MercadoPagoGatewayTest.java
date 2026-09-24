@@ -78,10 +78,24 @@ class MercadoPagoGatewayTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("https://api.example.com/preapproval_plan/plan-1"))
                 .andExpect(method(HttpMethod.PUT))
-                .andExpect(jsonPath("$.status").value("canceled"))
+                .andExpect(jsonPath("$.status").value("cancelled"))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         gateway(builder).cancelCheckout("plan-1");
+
+        server.verify();
+    }
+
+    @Test
+    void cancelsLegacyPendingSubscriptionWithMercadoPagoStatusSpelling() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.example.com/preapproval/sub-1"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(jsonPath("$.status").value("cancelled"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        gateway(builder).cancel("sub-1");
 
         server.verify();
     }

@@ -110,6 +110,24 @@ class PremiumBonusPageTest {
     }
 
     @Test
+    void rendersCheckoutFailureOnBillingPage() throws Exception {
+        Store store = new Store();
+        store.setStoreId(7654323L);
+        store.setAccessToken("test");
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("merchant@example.com");
+        stores.save(store);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
+
+        mvc.perform(get("/admin/billing").session(session)
+                        .flashAttr("error", "Falha ao iniciar o checkout"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Falha ao iniciar o checkout")));
+    }
+
+    @Test
     void bonusRequiresBackofficeAuthentication() throws Exception {
         mvc.perform(post("/backoffice/stores/7654321/premium-bonus"))
                 .andExpect(redirectedUrl("/backoffice/login"));

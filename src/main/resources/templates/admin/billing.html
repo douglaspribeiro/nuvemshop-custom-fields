@@ -17,6 +17,9 @@
         <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
     </section>
 
+    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
     <section class="panel plan-strip">
         <div>
             <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}"

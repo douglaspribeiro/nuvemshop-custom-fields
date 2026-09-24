@@ -96,12 +96,12 @@ public class MercadoPagoGateway implements PaymentGateway {
 
     @Override
     public void cancel(String subscriptionId) {
-        put("/preapproval/" + subscriptionId, Map.of("status", "canceled"));
+        put("/preapproval/" + subscriptionId, Map.of("status", "cancelled"));
     }
 
     @Override
     public void cancelCheckout(String checkoutResourceId) {
-        put("/preapproval_plan/" + checkoutResourceId, Map.of("status", "canceled"));
+        put("/preapproval_plan/" + checkoutResourceId, Map.of("status", "cancelled"));
     }
 
     @Override
