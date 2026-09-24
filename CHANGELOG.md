@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.3.2] - 2026-09-23
+
+### Correções
+
+- use merchant Mercado Pago email for checkout (`23066e8`)
+
 ## [1.3.1] - 2026-09-23
 
 ### Correções
