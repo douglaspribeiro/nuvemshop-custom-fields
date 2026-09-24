@@ -3,7 +3,10 @@ package br.com.nuvemcustomfields.controller;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.entity.PaymentProviderType;
+import br.com.nuvemcustomfields.entity.PaymentSubscription;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.NuvemshopBillingService;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -28,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PremiumBonusPageTest {
     @Autowired MockMvc mvc;
     @Autowired StoreRepository stores;
+    @Autowired PaymentSubscriptionRepository paymentSubscriptions;
     @MockitoBean NuvemshopBillingService billing;
 
     @Test
@@ -81,11 +87,19 @@ class PremiumBonusPageTest {
     }
 
     @Test
-    void blocksDirectUpgradeEvenWithAnAuthenticatedStore() throws Exception {
+    void rendersBillingWithPendingSubscriptionWithoutAnErrorMessage() throws Exception {
         Store store = new Store();
         store.setStoreId(7654322L);
         store.setAccessToken("test");
         stores.save(store);
+        PaymentSubscription subscription = new PaymentSubscription();
+        subscription.setStoreId(store.getStoreId());
+        subscription.setProvider(PaymentProviderType.MERCADO_PAGO);
+        subscription.setExternalReference("store-7654322-premium");
+        subscription.setPlan(PlanType.PREMIUM);
+        subscription.setCurrency("BRL");
+        subscription.setAmountValue(new BigDecimal("19.99"));
+        paymentSubscriptions.save(subscription);
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, 7654322L);
         mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk());

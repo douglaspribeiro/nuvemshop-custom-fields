@@ -110,7 +110,7 @@
                 — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
             <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
             <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
-            <p class="notice error" th:if="${paymentSubscription.lastError}" th:text="${paymentSubscription.lastError}">Erro</p>
+            <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.lastError)}" th:text="${paymentSubscription.lastError}">Erro</p>
             <form th:if="${paymentSubscription.providerSubscriptionId != null}"
                   th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
                 <button class="button" type="submit">Reconciliar agora</button>

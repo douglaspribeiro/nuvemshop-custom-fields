@@ -32,7 +32,7 @@
             <p class="notice" th:if="${store.courtesyPremium}" th:text="#{admin.billing.courtesy.notice}">
                 Premium Cortesia liberado sem cobranca ativa.
             </p>
-            <p class="notice warning" th:if="${paymentSubscription != null and paymentSubscription.lastError}">
+            <p class="notice warning" th:if="${paymentSubscription != null and !#strings.isEmpty(paymentSubscription.lastError)}">
                 <span th:text="#{admin.billing.lasterror}">Ultima tentativa de billing falhou:</span>
                 <span th:text="${paymentSubscription.lastError}">erro</span>
             </p>
