@@ -100,6 +100,24 @@
         </div>
     </section>
     <section class="panel">
+        <h2>Assinatura externa</h2>
+        <div class="empty" th:if="${paymentSubscription == null}">Sem assinatura criada.</div>
+        <div th:if="${paymentSubscription != null}">
+            <p>Gateway: <strong th:text="${paymentSubscription.provider}">MERCADO_PAGO</strong></p>
+            <p>Status: <strong th:text="${paymentSubscription.status}">ACTIVE</strong>
+                / remoto: <span th:text="${paymentSubscription.providerStatus ?: '-'}">authorized</span></p>
+            <p>Plano e valor: <span th:text="${paymentSubscription.plan.displayName}">Essencial</span>
+                — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
+            <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
+            <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
+            <p class="notice error" th:if="${paymentSubscription.lastError}" th:text="${paymentSubscription.lastError}">Erro</p>
+            <form th:if="${paymentSubscription.providerSubscriptionId != null}"
+                  th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
+                <button class="button" type="submit">Reconciliar agora</button>
+            </form>
+        </div>
+    </section>
+    <section class="panel">
         <h2>Logs recentes</h2>
         <div class="empty" th:if="${#lists.isEmpty(logs)}">Sem logs.</div>
         <table class="table" th:if="${!#lists.isEmpty(logs)}">

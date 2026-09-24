@@ -151,27 +151,21 @@ class LocalizedPagesRenderTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"BR", "AR", "MX", "CL", "CO"})
-    void pausedUpgradeRedirectsWithLocalizedMessage(String country) throws Exception {
+    void rendersBillingAndRejectsCheckoutWithLocalizedMessageWhenGatewayIsDisabled(String country) throws Exception {
         MockHttpSession session = sessionForStoreIn(country);
         String expected = "BR".equals(country)
                 ? "Em breve"
                 : "Próximamente";
-        var result = mockMvc.perform(get("/admin/billing").session(session))
-                .andExpect(status().isFound())
-                .andExpect(redirectedUrl("/admin"))
-                .andExpect(flash().attribute("message", expected))
-                .andReturn();
-        String body = mockMvc.perform(get("/admin").session(session)
-                        .flashAttrs(result.getFlashMap()))
+        String body = mockMvc.perform(get("/admin/billing").session(session))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(body).contains(expected).doesNotContain("??");
+        assertThat(body).doesNotContain("??");
         for (String page : List.of("/admin/products", "/admin/products/5001/fields", "/admin/onboarding")) {
             assertThat(render(page, session)).contains("href=\"/admin/billing\"");
         }
         mockMvc.perform(post("/admin/billing/subscribe").session(session).param("plan", "PREMIUM"))
                 .andExpect(status().isFound())
-                .andExpect(redirectedUrl("/admin"))
+                .andExpect(redirectedUrl("/admin/billing"))
                 .andExpect(flash().attribute("error", expected));
     }
 

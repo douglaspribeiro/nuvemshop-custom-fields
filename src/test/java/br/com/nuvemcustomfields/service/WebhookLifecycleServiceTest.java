@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,11 +20,13 @@ class WebhookLifecycleServiceTest {
     private final StoreRepository storeRepository = mock(StoreRepository.class);
     private final NuvemshopBillingService billingService = mock(NuvemshopBillingService.class);
     private final IntegrationLogService integrationLogService = mock(IntegrationLogService.class);
+    private final PaymentSubscriptionService paymentSubscriptionService = mock(PaymentSubscriptionService.class);
     private final WebhookLifecycleService service = new WebhookLifecycleService(
             storeRepository,
             mock(PersonalizationRuleRepository.class),
             integrationLogService,
-            billingService
+            billingService,
+            paymentSubscriptionService
     );
 
     @Test
@@ -41,6 +44,7 @@ class WebhookLifecycleServiceTest {
         assertThat(store.getScope()).isNull();
         assertThat(store.getPlan()).isEqualTo(br.com.nuvemcustomfields.entity.PlanType.FREE);
         verify(storeRepository).save(store);
+        verify(paymentSubscriptionService).cancelAfterUninstall(123L);
         verify(integrationLogService).info(
                 123L,
                 "webhook.app_uninstalled",
@@ -50,14 +54,12 @@ class WebhookLifecycleServiceTest {
     }
 
     @Test
-    void syncsSubscriptionUpdatedWebhook() {
-        Store store = store();
-        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
-
+    void ignoresLegacySubscriptionUpdatedWebhook() {
         service.handle(new WebhookPayload(123L, "subscription/updated", null));
 
-        verify(billingService).syncSubscription(store);
-        verify(integrationLogService).info(123L, "webhook.subscription_updated", "Assinatura sincronizada pela Nuvemshop.");
+        verify(billingService, never()).syncSubscription(any());
+        verify(integrationLogService).info(123L, "webhook.subscription_updated",
+                "Evento de assinatura Nuvemshop ignorado; cobranca externa gerenciada pelo gateway configurado.");
     }
 
     @Test
@@ -76,8 +78,8 @@ class WebhookLifecycleServiceTest {
         service.handle(new WebhookPayload(123L, "app/resumed", null));
 
         verify(billingService).markResumed(123L);
-        verify(billingService).syncSubscription(store);
-        verify(integrationLogService).info(123L, "webhook.app_resumed", "App retomado pela Nuvemshop; acesso premium reativado.");
+        verify(billingService, never()).syncSubscription(store);
+        verify(integrationLogService).info(123L, "webhook.app_resumed", "App retomado pela Nuvemshop; bloqueio da plataforma removido.");
     }
 
     private Store store() {

@@ -9,10 +9,12 @@ import br.com.nuvemcustomfields.repository.FeatureFlagRepository;
 import br.com.nuvemcustomfields.repository.IntegrationLogRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
+import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,8 @@ public class BackofficeController {
     private final ManagementReportService managementReportService;
     private final SupportService supportService;
     private final ScriptInstallService scriptInstallService;
+    private final PaymentSubscriptionRepository paymentSubscriptionRepository;
+    private final PaymentSubscriptionService paymentSubscriptionService;
     private final String appVersion;
 
     public BackofficeController(
@@ -51,6 +55,8 @@ public class BackofficeController {
             ManagementReportService managementReportService,
             SupportService supportService,
             ScriptInstallService scriptInstallService,
+            PaymentSubscriptionRepository paymentSubscriptionRepository,
+            PaymentSubscriptionService paymentSubscriptionService,
             @Value("${APP_VERSION:dev}") String appVersion
     ) {
         this.properties = properties;
@@ -62,6 +68,8 @@ public class BackofficeController {
         this.managementReportService = managementReportService;
         this.supportService = supportService;
         this.scriptInstallService = scriptInstallService;
+        this.paymentSubscriptionRepository = paymentSubscriptionRepository;
+        this.paymentSubscriptionService = paymentSubscriptionService;
         this.appVersion = appVersion;
     }
 
@@ -117,8 +125,20 @@ public class BackofficeController {
         model.addAttribute("planTypes", PlanType.values());
         model.addAttribute("events", planEventRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
+        model.addAttribute("paymentSubscription", paymentSubscriptionRepository.findByStoreId(storeId).orElse(null));
         LOGGER.info("backoffice.store.loaded store_id={}", storeId);
         return "backoffice/store";
+    }
+
+    @PostMapping("/backoffice/stores/{storeId}/payment/reconcile")
+    public String reconcilePayment(@PathVariable Long storeId, RedirectAttributes redirectAttributes) {
+        try {
+            paymentSubscriptionService.reconcile(storeId);
+            redirectAttributes.addFlashAttribute("message", "Assinatura reconciliada com o gateway.");
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("error", "Falha ao reconciliar assinatura: " + ex.getMessage());
+        }
+        return "redirect:/backoffice/stores/{storeId}";
     }
 
     @GetMapping("/backoffice/stores/{storeId}/scripts")

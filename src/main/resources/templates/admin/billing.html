@@ -32,16 +32,17 @@
             <p class="notice" th:if="${store.courtesyPremium}" th:text="#{admin.billing.courtesy.notice}">
                 Premium Cortesia liberado sem cobranca ativa.
             </p>
-            <p class="notice warning" th:if="${store.billingSuspended}" th:text="#{admin.billing.suspended}">
-                A cobranca do app esta suspensa na Nuvemshop.
-            </p>
-            <p class="notice warning" th:if="${store.billingLastError}">
+            <p class="notice warning" th:if="${paymentSubscription != null and paymentSubscription.lastError}">
                 <span th:text="#{admin.billing.lasterror}">Ultima tentativa de billing falhou:</span>
-                <span th:text="${store.billingLastError}">erro</span>
+                <span th:text="${paymentSubscription.lastError}">erro</span>
             </p>
-            <p class="muted" th:if="${store.billingNextExecution}">
-                <span th:text="#{admin.billing.next}">Proxima cobranca:</span>
-                <span th:text="${store.billingNextExecution}">2026-06-16</span>
+            <p class="notice" th:if="${paymentSubscription != null}">
+                <span th:text="#{admin.billing.subscription.status}">Status da assinatura:</span>
+                <strong th:with="statusName=#{'payment.status.' + ${paymentSubscription.status.name()}}" th:text="${statusName}">Pendente</strong>
+            </p>
+            <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.nextPaymentAt != null}">
+                <span th:text="#{admin.billing.next}">Próxima cobrança:</span>
+                <span th:text="${paymentSubscription.nextPaymentAt}">2026-06-16</span>
             </p>
         </div>
     </section>
@@ -60,10 +61,11 @@
 
         <article class="panel plan-card">
             <h2 th:text="#{plan.PREMIUM}">Essencial</h2>
-            <p class="price">
+            <p class="price" th:if="${billingAvailable}">
                 <span th:text="${billingCurrency}">BRL</span>
                 <span th:text="${premiumAmount}">19.99</span><span th:text="#{admin.billing.month}">/mes</span>
             </p>
+            <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             <ul class="feature-list">
                 <li th:text="#{admin.billing.premium.feature.products}">10 produtos personalizados</li>
                 <li th:text="#{admin.billing.premium.feature.fields}">3 campos por produto</li>
@@ -71,7 +73,7 @@
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and !store.courtesyPremium}" th:with="planName=#{plan.PREMIUM}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
-            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
+            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or !paymentSubscription.accessActive)}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM">
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM'}"
                         th:with="planName=#{plan.PREMIUM}" th:text="#{admin.billing.subscribe.plan(${planName})}">
@@ -82,17 +84,18 @@
 
         <article class="panel plan-card">
             <h2 th:text="#{plan.PREMIUM_PLUS}">Pro</h2>
-            <p class="price">
+            <p class="price" th:if="${billingAvailable}">
                 <span th:text="${billingCurrency}">BRL</span>
                 <span th:text="${premiumPlusAmount}">29.99</span><span th:text="#{admin.billing.month}">/mes</span>
             </p>
+            <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             <ul class="feature-list">
                 <li th:text="#{admin.billing.premiumplus.feature.products}">50 produtos personalizados</li>
                 <li th:text="#{admin.billing.premiumplus.feature.fields}">Campos ilimitados</li>
                 <li th:text="#{admin.billing.premiumplus.feature.reports}">Relatorios operacionais</li>
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
-            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium}" th:action="@{/admin/billing/subscribe}" method="post">
+            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or !paymentSubscription.accessActive)}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM_PLUS'}"
                         th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{admin.billing.subscribe.plan(${planName})}">
@@ -111,6 +114,9 @@
     <p class="notice" th:if="${billingEnabled and store.courtesyPremium}" th:text="#{admin.billing.courtesy.blocked}">
         Premium Cortesia nao gera cobranca automatica.
     </p>
+    <form th:if="${paymentSubscription != null and paymentSubscription.accessActive}" th:action="@{/admin/billing/cancel}" method="post">
+        <button class="button" type="submit" th:text="#{admin.billing.cancel}">Cancelar assinatura</button>
+    </form>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
 </body>

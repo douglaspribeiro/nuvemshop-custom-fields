@@ -89,6 +89,17 @@ backoffice:
   username: ${BACKOFFICE_USERNAME:admin}
   password: ${BACKOFFICE_PASSWORD:admin}
 
+payments:
+  reconciliation-delay-ms: ${PAYMENTS_RECONCILIATION_DELAY_MS:3600000}
+  mercado-pago:
+    enabled: ${MERCADO_PAGO_ENABLED:false}
+    api-base-url: ${MERCADO_PAGO_API_BASE_URL:https://api.mercadopago.com}
+    access-token: ${MERCADO_PAGO_ACCESS_TOKEN:}
+    webhook-secret: ${MERCADO_PAGO_WEBHOOK_SECRET:}
+    grace-days: ${MERCADO_PAGO_GRACE_DAYS:3}
+    premium-amount: ${MERCADO_PAGO_PREMIUM_AMOUNT:19.99}
+    premium-plus-amount: ${MERCADO_PAGO_PREMIUM_PLUS_AMOUNT:29.99}
+
 logging:
   file:
     name: logs/application.log

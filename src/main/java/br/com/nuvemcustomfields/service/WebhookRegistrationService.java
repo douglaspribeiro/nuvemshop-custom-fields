@@ -18,7 +18,6 @@ public class WebhookRegistrationService {
     private static final Set<String> REQUIRED_EVENTS = Set.of(
             "app/uninstalled",
             "product/deleted",
-            "subscription/updated",
             "app/suspended",
             "app/resumed"
     );

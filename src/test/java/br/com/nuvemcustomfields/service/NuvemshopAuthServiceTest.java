@@ -85,7 +85,7 @@ class NuvemshopAuthServiceTest {
 
         when(storeRepository.findByStoreId(987L)).thenReturn(Optional.empty());
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(apiClient.getStoreProfile(any(Store.class))).thenReturn(new StoreProfile("Loja Teste", "MX", "MXN"));
+        when(apiClient.getStoreProfile(any(Store.class))).thenReturn(new StoreProfile("Loja Teste", "MX", "MXN", "owner@example.com"));
 
         MultiValueMap<String, String> expectedForm = new LinkedMultiValueMap<>();
         expectedForm.add("client_id", "client-123");

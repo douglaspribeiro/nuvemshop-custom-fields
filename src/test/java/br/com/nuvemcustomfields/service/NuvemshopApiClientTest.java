@@ -28,14 +28,15 @@ class NuvemshopApiClientTest {
         store.setStoreId(123L);
         store.setAccessToken("store-token");
 
-        server.expect(requestTo("https://api.example.com/v1/123/store?fields=name,country,main_currency"))
+        server.expect(requestTo("https://api.example.com/v1/123/store?fields=name,country,main_currency,email,contact_email"))
                 .andExpect(method(GET))
                 .andExpect(header("Authentication", "bearer store-token"))
                 .andRespond(withSuccess("""
                         {
                           "name": { "es": "Tienda Test" },
                           "country": "AR",
-                          "main_currency": "ARS"
+                          "main_currency": "ARS",
+                          "email": "owner@example.com"
                         }
                         """, MediaType.APPLICATION_JSON));
 
@@ -44,6 +45,7 @@ class NuvemshopApiClientTest {
         assertThat(profile.name()).isEqualTo("Tienda Test");
         assertThat(profile.countryCode()).isEqualTo("AR");
         assertThat(profile.currency()).isEqualTo("ARS");
+        assertThat(profile.email()).isEqualTo("owner@example.com");
         server.verify();
     }
 

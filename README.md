@@ -12,7 +12,7 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/arquitetura.md`
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/roadmap.md`
 - `docs/nuvemshop-homologacao/` contem os artefatos separados para homologacao e publicacao Nuvemshop: diagrama/escopos, roteiro de video, assinatura de planos pagos, FAQs/guia de instalacao e checklist do perfil do app.
-- `docs/pagamentos-v1-e-roadmap.md` registra a decisao de usar Stripe em todos os mercados na V1 e avaliar Mercado Pago/Efí para BRL no futuro.
+- `docs/pagamentos-v1-e-roadmap.md` descreve Mercado Pago para lojas BR e a arquitetura preparada para um segundo gateway internacional, inicialmente Paddle.
 
 ## Stack
 
@@ -44,8 +44,9 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - Logs operacionais e pagina de ajuda em `/admin/help`.
 - Webhook `/webhooks/nuvemshop` com validacao HMAC para `app/uninstalled` e `product/deleted`.
 - Backoffice interno em `/backoffice`, com login proprio, lojas, flags, override de plano e relatorios.
+- Assinaturas Mercado Pago para lojas brasileiras, com checkout hospedado, webhook assinado e reconciliacao.
 
-Ainda dependem de definicao externa ou homologacao: Billing recorrente via Billing API, preco adicional por campo/opcao e publicacao na App Store da Nuvemshop.
+Ainda dependem de homologacao: credenciais e prova real do Mercado Pago, segundo gateway para lojas internacionais, preco adicional por campo/opcao e publicacao na App Store da Nuvemshop.
 
 ## Arquitetura
 
@@ -87,6 +88,7 @@ Principais camadas do codigo:
 | `GET /admin/help` | Logs recentes e apoio operacional. |
 | `GET /public/stores/{storeId}/personalization` | Configuracao consumida pelo script da vitrine. |
 | `POST /webhooks/nuvemshop` | Webhooks oficiais da Nuvemshop. |
+| `POST /prod/webhooks/mercado-pago2` | Webhooks assinados de assinaturas Mercado Pago. |
 | `POST /hook/store/redact` | Exclui definitivamente os dados da loja apos validar o HMAC. |
 | `POST /hook/customer/redact` | Registra a solicitacao sem copiar dados pessoais do payload; o app nao persiste dados de compradores. |
 | `POST /hook/customer/data` | Registra a solicitacao sem copiar dados pessoais do payload; o app nao persiste dados de compradores. |
@@ -122,6 +124,11 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `NUVEMSHOP_USER_AGENT` | `NuvemCustomFields suporte@example.com` | User-Agent exigido pela API. |
 | `NUVEMSHOP_BILLING_ENABLED` | `false` | Ativa a assinatura automatica quando toda a configuracao de billing estiver pronta. |
 | `NUVEMSHOP_BILLING_CONCEPT_CODE` | `app-cost` | Codigo do conceito usado pela assinatura recorrente de aplicativos. |
+| `MERCADO_PAGO_ENABLED` | `false` | Habilita checkout para lojas BR quando todas as credenciais estiverem presentes. |
+| `MERCADO_PAGO_ACCESS_TOKEN` | vazio | Access token privado da aplicacao Mercado Pago. |
+| `MERCADO_PAGO_WEBHOOK_SECRET` | vazio | Segredo usado para validar notificacoes Mercado Pago. |
+| `MERCADO_PAGO_PREMIUM_AMOUNT` | `19.99` | Mensalidade Essencial em BRL. |
+| `MERCADO_PAGO_PREMIUM_PLUS_AMOUNT` | `29.99` | Mensalidade Pro em BRL. |
 | `BACKOFFICE_USERNAME` | `admin` | Usuario do backoffice. |
 | `BACKOFFICE_PASSWORD` | `admin` | Senha do backoffice. |
 

@@ -117,13 +117,14 @@ public class NuvemshopApiClient {
         LOGGER.info("nuvemshop.api.get_store.start store_id={}", store.getStoreId());
         try {
             JsonNode response = restClient.get()
-                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=name,country,main_currency", store.getStoreId())
+                    .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=name,country,main_currency,email,contact_email", store.getStoreId())
                     .header("Authentication", "bearer " + store.getAccessToken())
                     .retrieve()
                     .body(JsonNode.class);
             String name = localizedName(response == null ? null : response.path("name"), "Loja sem nome");
             String countryCode = normalizeCountry(countryCode(response));
             String currency = normalizeCurrency(firstText(response, "main_currency", "currency"));
+            String email = firstText(response, "email", "contact_email");
             if ((currency == null || currency.isBlank()) && countryCode != null) {
                 currency = currencyForCountry(countryCode);
             }
@@ -134,7 +135,7 @@ public class NuvemshopApiClient {
                     countryCode,
                     currency
             );
-            return new StoreProfile(name, countryCode, currency);
+            return new StoreProfile(name, countryCode, currency, email);
         } catch (RuntimeException ex) {
             logRestFailure("nuvemshop.api.get_store.error", store.getStoreId(), ex);
             throw ex;

@@ -21,17 +21,20 @@ public class WebhookLifecycleService {
     private final PersonalizationRuleRepository ruleRepository;
     private final IntegrationLogService integrationLogService;
     private final NuvemshopBillingService billingService;
+    private final PaymentSubscriptionService paymentSubscriptionService;
 
     public WebhookLifecycleService(
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
             IntegrationLogService integrationLogService,
-            NuvemshopBillingService billingService
+            NuvemshopBillingService billingService,
+            PaymentSubscriptionService paymentSubscriptionService
     ) {
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.integrationLogService = integrationLogService;
         this.billingService = billingService;
+        this.paymentSubscriptionService = paymentSubscriptionService;
     }
 
     @Transactional
@@ -55,6 +58,7 @@ public class WebhookLifecycleService {
             LOGGER.warn("webhook.app_uninstalled.ignored reason=missing_store_id");
             return;
         }
+        paymentSubscriptionService.cancelAfterUninstall(storeId);
         storeRepository.findByStoreId(storeId).ifPresent(store -> {
             store.setUninstalledAt(Instant.now());
             store.setAccessToken(null);
@@ -86,10 +90,8 @@ public class WebhookLifecycleService {
     }
 
     private void handleSubscriptionUpdated(Long storeId) {
-        storeRepository.findByStoreId(storeId).ifPresent(store -> {
-            billingService.syncSubscription(store);
-            integrationLogService.info(storeId, "webhook.subscription_updated", "Assinatura sincronizada pela Nuvemshop.");
-        });
+        integrationLogService.info(storeId, "webhook.subscription_updated",
+                "Evento de assinatura Nuvemshop ignorado; cobranca externa gerenciada pelo gateway configurado.");
     }
 
     private void handleAppSuspended(Long storeId) {
@@ -99,7 +101,6 @@ public class WebhookLifecycleService {
 
     private void handleAppResumed(Long storeId) {
         billingService.markResumed(storeId);
-        storeRepository.findByStoreId(storeId).ifPresent(billingService::syncSubscription);
-        integrationLogService.info(storeId, "webhook.app_resumed", "App retomado pela Nuvemshop; acesso premium reativado.");
+        integrationLogService.info(storeId, "webhook.app_resumed", "App retomado pela Nuvemshop; bloqueio da plataforma removido.");
     }
 }

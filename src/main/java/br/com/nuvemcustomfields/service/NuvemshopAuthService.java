@@ -120,6 +120,7 @@ public class NuvemshopAuthService {
             store.setStoreName(profile.name());
             store.setStoreCountryCode(profile.countryCode());
             store.setStoreCurrency(profile.currency());
+            store.setStoreEmail(profile.email());
             profileLoaded = true;
         } catch (RuntimeException ex) {
             LOGGER.warn("nuvemshop.oauth.store_profile.unavailable store_id={} message={}", token.storeId(), ex.getMessage());

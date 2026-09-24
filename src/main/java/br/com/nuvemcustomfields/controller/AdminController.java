@@ -10,7 +10,7 @@ import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
-import br.com.nuvemcustomfields.service.NuvemshopBillingService;
+import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
@@ -49,7 +49,7 @@ public class AdminController {
     private final PersonalizationAdminService personalizationAdminService;
     private final ReportService reportService;
     private final NuvemshopProperties nuvemshopProperties;
-    private final NuvemshopBillingService billingService;
+    private final PaymentSubscriptionService paymentSubscriptionService;
     private final Messages messages;
 
     public AdminController(
@@ -61,7 +61,7 @@ public class AdminController {
             PersonalizationAdminService personalizationAdminService,
             ReportService reportService,
             NuvemshopProperties nuvemshopProperties,
-            NuvemshopBillingService billingService,
+            PaymentSubscriptionService paymentSubscriptionService,
             Messages messages
     ) {
         this.adminStoreService = adminStoreService;
@@ -72,7 +72,7 @@ public class AdminController {
         this.personalizationAdminService = personalizationAdminService;
         this.reportService = reportService;
         this.nuvemshopProperties = nuvemshopProperties;
-        this.billingService = billingService;
+        this.paymentSubscriptionService = paymentSubscriptionService;
         this.messages = messages;
     }
 
@@ -162,19 +162,63 @@ public class AdminController {
         return "admin/dashboard";
     }
 
-    // Upgrade temporariamente indisponivel enquanto o billing e regularizado.
     @GetMapping("/admin/billing")
-    public String billing(HttpSession session, RedirectAttributes redirectAttributes) {
-        adminStoreService.requireCurrentStore(session);
-        redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.paused"));
-        return "redirect:/admin";
+    public String billing(HttpSession session, Model model) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        boolean available = paymentSubscriptionService.available(store);
+        model.addAttribute("store", store);
+        model.addAttribute("usage", planLimitService.usage(store, 0));
+        model.addAttribute("billingEnabled", paymentSubscriptionService.mercadoPagoEnabled());
+        model.addAttribute("billingAvailable", available);
+        model.addAttribute("billingCurrency", available ? paymentSubscriptionService.currency(store) : "");
+        model.addAttribute("premiumAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM));
+        model.addAttribute("premiumPlusAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM_PLUS));
+        model.addAttribute("paymentSubscription", paymentSubscriptionService.find(store.getStoreId()).orElse(null));
+        return "admin/billing";
     }
 
-    @PostMapping("/admin/billing/subscribe")
-    public String subscribe(HttpSession session, RedirectAttributes redirectAttributes) {
-        adminStoreService.requireCurrentStore(session);
-        redirectAttributes.addFlashAttribute("error", messages.get("admin.billing.paused"));
-        return "redirect:/admin";
+    @PostMapping({"/admin/billing/subscribe", "/admin/billing/checkout"})
+    public String subscribe(@RequestParam PlanType plan, HttpSession session, RedirectAttributes redirectAttributes) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            if (!paymentSubscriptionService.mercadoPagoEnabled()) {
+                throw new IllegalStateException(messages.get("admin.billing.paused"));
+            }
+            if (!paymentSubscriptionService.available(store)) {
+                throw new IllegalStateException(messages.get("admin.billing.unavailable"));
+            }
+            return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
+        } catch (RuntimeException ex) {
+            LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/admin/billing";
+        }
+    }
+
+    @GetMapping("/admin/billing/return")
+    public String billingReturn(HttpSession session, RedirectAttributes redirectAttributes) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            if (paymentSubscriptionService.find(store.getStoreId()).isPresent()) {
+                paymentSubscriptionService.reconcile(store.getStoreId());
+            }
+        } catch (RuntimeException ex) {
+            LOGGER.info("payments.return.awaiting_webhook store_id={} message={}", store.getStoreId(), ex.getMessage());
+        }
+        redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.processing"));
+        return "redirect:/admin/billing";
+    }
+
+    @PostMapping("/admin/billing/cancel")
+    public String cancelSubscription(HttpSession session, RedirectAttributes redirectAttributes) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            paymentSubscriptionService.cancel(store.getStoreId());
+            redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.cancelled"));
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/admin/billing";
     }
 
     @GetMapping("/admin/products")

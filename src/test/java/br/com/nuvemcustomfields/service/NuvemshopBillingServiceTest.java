@@ -162,7 +162,7 @@ class NuvemshopBillingServiceTest {
         Store store = store(false);
         store.setStoreCountryCode(null);
         store.setStoreCurrency(null);
-        when(apiClient.getStoreProfile(store)).thenReturn(new br.com.nuvemcustomfields.dto.StoreProfile("Loja", "BR", "BRL"));
+        when(apiClient.getStoreProfile(store)).thenReturn(new br.com.nuvemcustomfields.dto.StoreProfile("Loja", "BR", "BRL", "owner@example.com"));
         when(storeRepository.save(store)).thenReturn(store);
 
         BigDecimal amount = service(builder).amountFor(store, PlanType.PREMIUM);

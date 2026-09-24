@@ -1,174 +1,99 @@
-# Especificacao de pagamentos V1 e evolucao futura
+# Pagamentos V1 e evolucao multi-gateway
 
-## Status da decisao
+## Decisao
 
-- **V1:** Stripe sera o unico provedor de pagamentos dos planos pagos em todos os paises.
-- **Futuro:** avaliar Mercado Pago e Efí para novas assinaturas cobradas em BRL.
-- **Fora do escopo:** migracao automatica ou cobranca retroativa de lojas existentes.
+- A V1 usa Mercado Pago Assinaturas para lojas brasileiras, em BRL e somente com cartao de credito.
+- Lojas de outros paises continuam sem checkout pago nesta etapa.
+- Paddle e o primeiro candidato para uma segunda integracao internacional, sujeito a aprovacao comercial e aos termos do produto.
+- Nao ha migracao nem cobranca retroativa. Somente upgrades iniciados depois da ativacao do gateway criam uma assinatura.
+- Stripe permanece suspensa e nao faz parte desta versao.
 
-Esta decisao substitui o uso da Billing API da Nuvemshop na V1. O aplicativo
-permanece gratuito para instalacao e cobra, por conta propria, apenas o lojista
-que solicitar um upgrade depois que a integracao estiver publicada.
+O Checkout Pro multi-moeda do Mercado Pago aceita cartoes internacionais e liquida em reais para uma conta brasileira. Essa divulgacao nao confirma o mesmo comportamento para a API de Assinaturas usada pelo app. Por isso, a V1 continua restrita a lojas BR ate que recorrencia, renovacao e experiencia do pagador estrangeiro sejam comprovadas em sandbox e confirmadas comercialmente.
 
-## Escopo da V1
+## Fluxo implementado
 
-### Provedor e mercados
+1. O backend identifica pais e moeda da loja usando a Store API da Nuvemshop.
+2. O roteador seleciona um adaptador configurado que suporte o mercado. Hoje, `BR/BRL` seleciona `MERCADO_PAGO`; o enum ja reserva `PADDLE`.
+3. O lojista escolhe Essencial ou Pro em `/admin/billing`.
+4. O backend define plano, valor e moeda, cria uma assinatura pendente em `/preapproval` e redireciona a janela principal ao checkout hospedado.
+5. O retorno do navegador apenas informa que a confirmacao esta em andamento.
+6. O plano pago so e ativado depois que o backend consulta a assinatura e uma fatura aprovada no Mercado Pago.
+7. Webhooks assinados e a reconciliacao periodica mantem o estado local.
 
-A Stripe processara `PREMIUM` e `PREMIUM_PLUS` em todos os mercados suportados
-pelo aplicativo. O backend selecionara o preco pela combinacao de plano, pais e
-moeda da loja. A configuracao inicial deve contemplar:
+Cliques repetidos reutilizam o checkout pendente. A cortesia temporaria bloqueia uma nova assinatura paga. Upgrade ou downgrade de uma assinatura ja ativa fica fora do primeiro corte, evitando cobranca proporcional inesperada.
 
-| Pais | Moeda |
+## Fonte de verdade e estados
+
+`payment_subscriptions` armazena o contrato comercial atual da loja, sem reutilizar os campos legados `billing_*` da Nuvemshop. O registro contem gateway, IDs e status remotos, referencia externa, plano, moeda, valor, proxima cobranca, ultimo pagamento, tolerancia, cancelamento pendente, sincronizacao, erro e versao otimista.
+
+`payment_webhook_events` e a caixa de entrada idempotente. Cada notificacao tem chave unica, tipo, recurso remoto, loja associada, numero de tentativas e estado de processamento. O corpo integral e dados de cartao nao sao persistidos.
+
+| Estado | Acesso |
 | --- | --- |
-| Brasil | `BRL` |
-| Argentina | `ARS` |
-| Chile | `CLP` |
-| Colombia | `COP` |
-| Mexico | `MXN` |
+| `PENDING` | Mantem o plano anterior; nunca libera pelo redirect. |
+| `ACTIVE` | Libera o plano contratado apos fatura aprovada. |
+| `PAST_DUE` | Mantem durante a tolerancia configurada, inicialmente 3 dias. |
+| `PAUSED` | Volta ao Free. |
+| `CANCELED` | Mantem ate a proxima data ja paga, quando conhecida, e depois volta ao Free. |
+| `ERROR` | Nao libera acesso e mostra o erro operacional. |
 
-Somente cartao sera habilitado na V1. Cada preco recorrente da Stripe deve ter
-um identificador configurado no ambiente; IDs e valores nao devem ficar fixos no
-codigo. Alteracoes de preco criam novos Prices na Stripe e nao modificam de forma
-silenciosa assinaturas existentes.
+Na desinstalacao, o acesso local e revogado e o app solicita cancelamento remoto sem depender do token Nuvemshop. Falhas ficam marcadas para operacao. A exclusao LGPD remove assinatura e eventos vinculados a loja.
 
-### Jornada do upgrade
+## Seguranca
 
-1. O lojista escolhe `PREMIUM` ou `PREMIUM_PLUS` dentro do aplicativo.
-2. O backend valida loja ativa, plano, pais, moeda e ausencia de outra tentativa
-   ou assinatura incompatível.
-3. O backend cria ou reutiliza o Customer da Stripe e cria uma Checkout Session
-   em `mode=subscription`.
-4. O checkout hospedado pela Stripe abre fora do iframe do admin da Nuvemshop.
-5. Depois da conclusao, a Stripe retorna o navegador para uma pagina do app.
-6. A pagina de retorno mostra apenas o estado de processamento. Ela nao concede
-   acesso por conta propria.
-7. O webhook assinado e a consulta da assinatura na Stripe determinam o plano
-   efetivo da loja.
+- Access token e segredo de webhook existem somente no backend.
+- O webhook valida `x-signature` por HMAC-SHA256 com `x-request-id`, `data.id` e o timestamp antes de processar o evento.
+- Valores enviados pelo navegador nunca sao usados como fonte de verdade.
+- A referencia externa, moeda e valor retornados pelo gateway precisam coincidir com o registro criado pelo servidor.
+- A aplicacao nao recebe nem armazena numero completo do cartao ou CVC.
 
-O `store_id`, o plano solicitado e um identificador interno da tentativa devem
-ser enviados em `client_reference_id` e/ou `metadata`. Nenhum segredo ou token da
-Nuvemshop pode ser enviado nesses campos.
+## Rotas
 
-### Fonte de verdade e eventos
+| Metodo e rota | Responsabilidade |
+| --- | --- |
+| `GET /admin/billing` | Exibe planos, disponibilidade e assinatura corrente. |
+| `POST /admin/billing/checkout` | Cria ou reutiliza o checkout pendente. |
+| `GET /admin/billing/return` | Reconcilia e informa que a confirmacao esta em andamento. |
+| `POST /admin/billing/cancel` | Solicita cancelamento da assinatura. |
+| `POST /prod/webhooks/mercado-pago2` | Valida e processa notificacao idempotente. |
+| `POST /backoffice/stores/{storeId}/payment/reconcile` | Forca reconciliacao operacional. |
 
-A Stripe e a fonte de verdade para o estado financeiro. A aplicacao deve validar
-a assinatura de todo webhook, processar eventos de forma idempotente e consultar
-o objeto remoto quando o evento nao trouxer informacao suficiente.
+## Configuracao
 
-Eventos minimos da V1:
+| Variavel | Uso |
+| --- | --- |
+| `MERCADO_PAGO_ENABLED` | Libera o roteamento para Mercado Pago. |
+| `MERCADO_PAGO_ACCESS_TOKEN` | Credencial privada da aplicacao. |
+| `MERCADO_PAGO_WEBHOOK_SECRET` | Segredo da assinatura das notificacoes. |
+| `MERCADO_PAGO_PREMIUM_AMOUNT` | Mensalidade Essencial em BRL. |
+| `MERCADO_PAGO_PREMIUM_PLUS_AMOUNT` | Mensalidade Pro em BRL. |
+| `MERCADO_PAGO_GRACE_DAYS` | Tolerancia apos falha de renovacao. |
+| `PAYMENTS_RECONCILIATION_DELAY_MS` | Intervalo do job de reconciliacao. |
 
-- `checkout.session.completed`: vincular Customer e Subscription a loja, sem
-  substituir as validacoes de status e pagamento.
-- `invoice.paid`: ativar ou manter o acesso ao plano contratado.
-- `invoice.payment_failed`: registrar a falha e aplicar a politica de tolerancia.
-- `customer.subscription.updated`: sincronizar plano e status.
-- `customer.subscription.deleted`: encerrar o acesso pago e voltar ao plano base.
+O endpoint cadastrado no Mercado Pago deve ser `https://campos-personalizados.wzhub.pro/prod/webhooks/mercado-pago2`, com os topicos de Planos e assinaturas e Pagamentos. O controller tambem aceita `/webhooks/mercado-pago2` internamente caso o proxy remova o prefixo `/prod`.
 
-Eventos repetidos ou fora de ordem nao podem duplicar auditoria, trocar um plano
-mais novo por um estado antigo ou conceder acesso indevido.
+## Liberacao
 
-### Estados locais
+Antes de habilitar em producao:
 
-Persistir separadamente:
+1. Confirmar que a conta e o produto de assinaturas foram aprovados.
+2. Validar no sandbox que `/preapproval` aceita a restricao `payment_methods_allowed=credit_card` no fluxo sem plano associado.
+3. Executar assinatura, primeira aprovacao, renovacao recusada, recuperacao, cancelamento, webhook repetido e desinstalacao.
+4. Fazer uma assinatura real de baixo valor e conferir Mercado Pago, banco, logs, backoffice e limites do plano.
+5. Ativar por ambiente com `MERCADO_PAGO_ENABLED=true`.
 
-- provedor (`STRIPE` na V1);
-- ID do Customer;
-- ID da Subscription;
-- ID do Price;
-- plano contratado;
-- moeda e valor;
-- status remoto;
-- periodo corrente e proxima renovacao;
-- datas de cancelamento e encerramento;
-- ultimo evento processado e ultima sincronizacao;
-- ultimo erro de integracao.
+Se a restricao de meio de pagamento nao for aceita pela API de Assinaturas, a V1 nao deve ser publicada ate escolher entre um plano de assinatura compativel ou outro fluxo oficial que preserve recorrencia somente em cartao.
 
-`stores.plan` nao deve mudar ao criar a Checkout Session nem ao receber apenas o
-retorno do navegador. O acesso pago muda somente depois de confirmacao confiavel
-da Stripe. A cortesia de 30 dias continua independente da assinatura comercial.
+## Proximo gateway
 
-### Gestao e suporte
+O contrato `PaymentGateway` concentra criacao de checkout, consulta de assinatura e fatura, cancelamento e validacao de webhook. Controllers e regras de plano usam apenas estados internos. Para adicionar Paddle, sera necessario criar o adaptador, suas credenciais e seu endpoint de webhook, e registrar no roteador os paises e moedas aprovados.
 
-O app deve oferecer acesso ao Stripe Customer Portal para atualizar cartao,
-consultar faturas e cancelar a assinatura. O backoffice deve mostrar o provedor,
-IDs remotos, status, periodo atual e erros recentes, sem expor credenciais ou
-dados completos do cartao.
+Uma eventual ampliacao do Mercado Pago para cartoes internacionais sera um experimento separado. Aceitar um cartao emitido fora do Brasil com liquidacao em BRL nao equivale a oferecer preco local, meios locais ou uma operacao recorrente local em Argentina, Chile, Colombia e Mexico.
 
-Devem existir reconciliacao manual por loja e rotina periodica para corrigir
-webhooks perdidos. Logs de checkout, webhook e sincronizacao devem carregar o
-`requestId`, `store_id` e os IDs remotos aplicaveis.
+## Referencias
 
-### Seguranca e configuracao
-
-- Chave secreta da Stripe somente no backend e em secret do ambiente.
-- Chave publicavel pode ser exposta ao frontend quando necessaria.
-- Segredo de webhook separado por ambiente.
-- HTTPS obrigatorio em checkout, retorno, portal e webhook.
-- Ambientes de teste e producao nao compartilham Products, Prices ou credenciais.
-- O app nunca recebe nem persiste numero completo do cartao ou CVC.
-
-### Criterios de aceite da V1
-
-- Upgrade funciona nos cinco mercados e cobra na moeda configurada para a loja.
-- Apenas cartao aparece como forma de pagamento.
-- Cancelar ou abandonar o checkout mantem o plano anterior.
-- Retorno forjado nao concede Premium.
-- Webhook invalido e rejeitado sem alterar a loja.
-- Reenvio do mesmo evento e idempotente.
-- Pagamento aprovado, falha, recuperacao e cancelamento refletem o acesso correto.
-- Uma loja nao cria assinaturas duplicadas por clique duplo ou repeticao de request.
-- Lojas instaladas antes da V1 nao sao cobradas nem migradas automaticamente.
-
-## Abstracao para provedores futuros
-
-A V1 deve evitar nomes e regras da Stripe no dominio central. O servico de planos
-deve depender de um contrato interno com operacoes equivalentes a:
-
-- iniciar checkout;
-- consultar assinatura;
-- criar sessao de gerenciamento;
-- cancelar assinatura;
-- validar e normalizar webhook;
-- reconciliar estado.
-
-Controllers e regras de limite trabalham com estados internos normalizados. SDKs,
-payloads e status especificos ficam no adaptador da Stripe. Essa separacao permite
-incluir outro provedor sem alterar as regras dos planos.
-
-## Avaliacao futura para BRL
-
-Mercado Pago e Efí serao avaliados somente para **novas assinaturas em BRL**. As
-demais moedas permanecem na Stripe. A avaliacao nao autoriza troca automatica do
-provedor nem faz parte da entrega da V1.
-
-Fontes iniciais para a avaliacao:
-
-- Mercado Pago: API de Assinaturas, checkout hospedado e checkout transparente.
-- Efí: [pagina publica de tarifas](https://sejaefi.com.br/tarifas) e
-  documentacao oficial da API vigente na data da prova de conceito.
-
-A pagina da Efí consultada em 23/09/2026 anuncia pagamento recorrente, checkout
-transparente e integracao por API sem tarifa adicional de uso, alem da tarifa da
-transacao de cartao. Ela tambem informa que valores podem variar conforme data de
-contratacao ou negociacao. Portanto, numeros atuais nao devem ser codificados nem
-usados como compromisso comercial futuro.
-
-### Criterios de comparacao
-
-- tarifa efetiva e prazo de recebimento;
-- taxa de aprovacao e qualidade do antifraude;
-- recorrencia, retentativas e tratamento de inadimplencia;
-- tokenizacao, 3DS e experiencia dentro/fora do iframe;
-- webhooks assinados, idempotencia e consulta para reconciliacao;
-- cancelamento, estorno, chargeback e portal do assinante;
-- ambiente de teste, observabilidade e suporte operacional;
-- conciliacao financeira, exportacao e emissao fiscal;
-- estabilidade contratual e requisitos de homologacao da Nuvemshop.
-
-### Regra de migracao futura
-
-Uma eventual escolha de Mercado Pago ou Efí afetara primeiro apenas upgrades BRL
-feitos depois da ativacao do novo roteamento. Assinaturas Stripe existentes
-continuarao na Stripe ate cancelamento ou migracao explicitamente consentida pelo
-lojista. Dados de cartao nao sao portados pelo aplicativo entre provedores.
-
+- [Mercado Pago — API de Assinaturas](https://www.mercadopago.com.br/developers/pt/reference/online-payments/subscriptions/overview)
+- [Mercado Pago — assinaturas com pagamento pendente](https://www.mercadopago.com.br/developers/pt/docs/subscriptions/integration-configuration/subscription-no-associated-plan/pending-payments)
+- [Mercado Pago — webhooks](https://www.mercadopago.com.br/developers/pt/docs/links-and-debts/additional-content/your-integrations/notifications/webhooks?scope=prod)
+- [Mercado Pago — checkout multi-moeda](https://www.mercadopago.com.br/blog/checkout-multi-moeda-sem-risco-cambial)
+- [Paddle — SaaS](https://developer.paddle.com/get-started/how-paddle-works/saas/)

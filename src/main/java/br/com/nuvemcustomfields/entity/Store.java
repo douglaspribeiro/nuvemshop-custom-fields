@@ -34,6 +34,9 @@ public class Store {
     @Column(name = "store_currency", length = 3)
     private String storeCurrency;
 
+    @Column(name = "store_email")
+    private String storeEmail;
+
     @Column(name = "access_token", columnDefinition = "TEXT")
     private String accessToken;
 
@@ -173,6 +176,14 @@ public class Store {
 
     public void setStoreCurrency(String storeCurrency) {
         this.storeCurrency = normalizeUpper(storeCurrency);
+    }
+
+    public String getStoreEmail() {
+        return storeEmail;
+    }
+
+    public void setStoreEmail(String storeEmail) {
+        this.storeEmail = storeEmail == null || storeEmail.isBlank() ? null : storeEmail.strip().toLowerCase();
     }
 
     public String getAccessToken() {

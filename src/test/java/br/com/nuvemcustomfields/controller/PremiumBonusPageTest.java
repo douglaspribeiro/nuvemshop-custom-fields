@@ -88,9 +88,9 @@ class PremiumBonusPageTest {
         stores.save(store);
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, 7654322L);
-        mvc.perform(get("/admin/billing").session(session)).andExpect(redirectedUrl("/admin"));
+        mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk());
         mvc.perform(post("/admin/billing/subscribe").param("plan", "PREMIUM").session(session))
-                .andExpect(redirectedUrl("/admin"));
+                .andExpect(redirectedUrl("/admin/billing"));
         verifyNoInteractions(billing);
     }
 
