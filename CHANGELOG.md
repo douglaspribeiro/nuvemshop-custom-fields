@@ -13,6 +13,12 @@ A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
 - reconcile pending payments safely and format BRL prices (`6134b83`)
 
+## [1.7.4] - 2026-09-25
+
+### Correções
+
+- reconcile pending payments safely and format BRL prices (`6134b83`)
+
 ## [1.7.3] - 2026-09-25
 
 ### Correções
