@@ -189,9 +189,11 @@ public class AdminController {
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("billingEnabled", paymentSubscriptionService.efiEnabled() || paymentSubscriptionService.mercadoPagoEnabled());
         model.addAttribute("billingAvailable", available);
-        model.addAttribute("billingCurrency", available ? paymentSubscriptionService.currency(store) : "");
-        model.addAttribute("premiumAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM));
-        model.addAttribute("premiumPlusAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM_PLUS));
+        String billingCurrency = available ? paymentSubscriptionService.currency(store) : "";
+        model.addAttribute("premiumPrice", formatBillingPrice(billingCurrency,
+                paymentSubscriptionService.amount(store, PlanType.PREMIUM)));
+        model.addAttribute("premiumPlusPrice", formatBillingPrice(billingCurrency,
+                paymentSubscriptionService.amount(store, PlanType.PREMIUM_PLUS)));
         model.addAttribute("paymentSubscription", subscription);
         return "admin/billing";
     }
@@ -554,5 +556,12 @@ public class AdminController {
             LOGGER.warn("payments.efi.reconcile_failed store_id={} type={}", storeId, ex.getClass().getSimpleName());
             return false;
         }
+    }
+
+    static String formatBillingPrice(String currency, java.math.BigDecimal amount) {
+        if ("BRL".equals(currency)) {
+            return NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(amount);
+        }
+        return currency + " " + amount;
     }
 }

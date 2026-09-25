@@ -72,8 +72,7 @@
         <article class="panel plan-card">
             <h2 th:text="#{plan.PREMIUM}">Essencial</h2>
             <p class="price" th:if="${billingAvailable}">
-                <span th:text="${billingCurrency}">BRL</span>
-                <span th:text="${premiumAmount}">19.99</span><span th:text="#{admin.billing.month}">/mes</span>
+                <span th:text="${premiumPrice}">R$ 19,99</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             <ul class="feature-list">
@@ -95,8 +94,7 @@
         <article class="panel plan-card">
             <h2 th:text="#{plan.PREMIUM_PLUS}">Pro</h2>
             <p class="price" th:if="${billingAvailable}">
-                <span th:text="${billingCurrency}">BRL</span>
-                <span th:text="${premiumPlusAmount}">29.99</span><span th:text="#{admin.billing.month}">/mes</span>
+                <span th:text="${premiumPlusPrice}">R$ 29,99</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             <ul class="feature-list">

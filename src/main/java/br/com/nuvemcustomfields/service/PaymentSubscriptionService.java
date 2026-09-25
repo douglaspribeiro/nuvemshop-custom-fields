@@ -289,12 +289,18 @@ public class PaymentSubscriptionService {
             return local;
         }
         PaymentGateway gateway = router.require(local.getProvider());
-        if (local.isCancellationPending()) {
-            gateway.cancel(local.getProviderSubscriptionId());
-            local.setCancellationPending(false);
-            subscriptions.saveAndFlush(local);
-        }
         GatewaySubscription remote = gateway.getSubscription(local.getProviderSubscriptionId());
+        validateRemote(local, remote);
+        if (local.isCancellationPending()) {
+            if (!canceled(remote.status())) {
+                gateway.cancel(local.getProviderSubscriptionId());
+                remote = gateway.getSubscription(local.getProviderSubscriptionId());
+                validateRemote(local, remote);
+            }
+            if (!canceled(remote.status())) {
+                throw new PaymentGatewayException("Aguardando a confirmação do cancelamento pelo provedor.");
+            }
+        }
         Optional<GatewayInvoice> invoice = latestInvoice(gateway, local, remote);
         return synchronize(local, remote, invoice.orElse(null), "PAYMENT_RECONCILE");
     }
@@ -405,7 +411,7 @@ public class PaymentSubscriptionService {
         } else if ("paused".equals(status)) {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
             deactivate(local, store, source);
-        } else if ("cancelled".equals(status) || "canceled".equals(status)) {
+        } else if (canceled(status)) {
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
             local.setCancellationPending(false);
             if (local.getNextPaymentAt() == null || !Instant.now().isBefore(local.getNextPaymentAt())) {
@@ -472,7 +478,7 @@ public class PaymentSubscriptionService {
 
     private void deactivate(PaymentSubscription local, Store store, String source) {
         local.setAccessActive(false);
-        if (store != null && store.getPlan().isBillable()) {
+        if (store != null && store.getPlan().isBillable() && !store.isCourtesyPremium()) {
             PlanType previous = store.getPlan();
             store.setPlan(PlanType.FREE);
             store.setBillingSuspended(false);
@@ -509,4 +515,7 @@ public class PaymentSubscriptionService {
         return value.length() <= 500 ? value : value.substring(0, 500);
     }
     private static boolean hasText(String value) { return value != null && !value.isBlank(); }
+    private static boolean canceled(String status) {
+        return "cancelled".equalsIgnoreCase(status) || "canceled".equalsIgnoreCase(status);
+    }
 }

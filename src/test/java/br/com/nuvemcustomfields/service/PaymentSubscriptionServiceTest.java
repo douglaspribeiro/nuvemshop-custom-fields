@@ -103,6 +103,101 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
+    void cancelsQueuedPendingSubscriptionBeforeClearingLocalPendingStatus() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        local.setCancellationPending(true);
+        Store store = store();
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(
+                new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                        "active", "BRL", new BigDecimal("19.99"), null),
+                new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                        "canceled", "BRL", new BigDecimal("19.99"), null));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.reconcile(123L);
+
+        var order = inOrder(efi);
+        order.verify(efi).getSubscription("sub-1");
+        order.verify(efi).cancel("sub-1");
+        order.verify(efi).getSubscription("sub-1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.isCancellationPending()).isFalse();
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+    }
+
+    @Test
+    void cancelingPendingPaymentDoesNotRemoveCourtesyPlan() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        local.setCancellationPending(true);
+        Store store = store();
+        store.setPlan(PlanType.PREMIUM);
+        store.setCourtesyPremium(true);
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(
+                new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                        "active", "BRL", new BigDecimal("19.99"), null),
+                new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                        "canceled", "BRL", new BigDecimal("19.99"), null));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.reconcile(123L);
+
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(store.isCourtesyPremium()).isTrue();
+        verify(events, never()).save(any(PlanEvent.class));
+    }
+
+    @Test
+    void queuedCancellationRejectsMismatchedRemoteSubscription() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        local.setCancellationPending(true);
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1", "plan-1", "another-store",
+                "active", "BRL", new BigDecimal("19.99"), null));
+
+        assertThatThrownBy(() -> service.reconcile(123L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Referencia externa");
+        verify(efi, never()).cancel(anyString());
+        assertThat(local.isCancellationPending()).isTrue();
+    }
+
+    @Test
+    void queuedCancellationStaysPendingUntilRemoteConfirmsCancellation() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        local.setCancellationPending(true);
+        GatewaySubscription active = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), null);
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(active);
+
+        assertThatThrownBy(() -> service.reconcile(123L))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("Aguardando a confirmação");
+        verify(efi).cancel("sub-1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        assertThat(local.isCancellationPending()).isTrue();
+    }
+
+    @Test
     void marksRejectedFirstEfiChargeAsErrorWithoutActivatingPlan() {
         PaymentSubscription local = local();
         local.setProvider(PaymentProviderType.EFI);

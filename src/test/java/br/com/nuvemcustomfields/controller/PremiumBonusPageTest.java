@@ -44,6 +44,14 @@ class PremiumBonusPageTest {
     @MockitoBean NuvemshopBillingService billing;
 
     @Test
+    void displaysBrazilianPricesWithCurrencySymbolAndComma() {
+        assertThat(AdminController.formatBillingPrice("BRL", new BigDecimal("19.99")))
+                .isEqualTo("R$\u00a019,99");
+        assertThat(AdminController.formatBillingPrice("BRL", new BigDecimal("29.99")))
+                .isEqualTo("R$\u00a029,99");
+    }
+
+    @Test
     void guidesFirstProductUntilFirstFieldIsCreated() throws Exception {
         Store store = new Store();
         store.setStoreId(7654330L);
