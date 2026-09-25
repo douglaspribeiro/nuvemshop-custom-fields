@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
@@ -59,6 +60,9 @@ class LocalizedPagesRenderTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Value("${app.version}")
+    private String appVersion;
 
     @Autowired
     private StoreRepository storeRepository;
@@ -146,6 +150,11 @@ class LocalizedPagesRenderTest {
             String body = render(page, session);
             assertNoMissingKeys(page, "BR", body);
             assertThat(body).as("%s deveria estar em portugues", page).contains("lang=\"pt\"");
+            assertThat(appVersion).doesNotContain("@");
+            assertThat(body).as("%s deve usar navegacao compacta no iframe", page)
+                    .contains("class=\"merchant-topbar\"", "/styles/merchant.css?v=" + appVersion,
+                            "/styles/app.css?v=" + appVersion)
+                    .doesNotContain("merchant-sidebar");
         }
     }
 
@@ -190,6 +199,7 @@ class LocalizedPagesRenderTest {
                 .andReturn().getResponse().getContentAsString();
         assertNoMissingKeys(page, "es-AR", spanish);
         assertThat(spanish).as("%s com Accept-Language es", page).contains("lang=\"es\"");
+        assertThat(spanish).contains("/styles/app.css?v=" + appVersion);
 
         String portuguese = mockMvc.perform(get(page).header("Accept-Language", "pt-BR,pt;q=0.9"))
                 .andExpect(status().isOk())

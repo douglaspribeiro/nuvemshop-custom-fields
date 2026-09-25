@@ -244,7 +244,7 @@ public class AdminController {
         try {
             paymentSubscriptionService.payWithEfi(store.getStoreId(), plan,
                     new EfiGateway.EfiPayer(payerName, cpf.replaceAll("\\D", ""), payerEmail,
-                            phone.replaceAll("\\D", ""), birth), paymentToken);
+                            normalizeEfiPhone(phone), birth), paymentToken);
             redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.processing"));
             return "redirect:/admin/billing";
         } catch (RuntimeException ex) {
@@ -253,6 +253,14 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
             return "redirect:/admin/billing/pay?plan=" + plan.name();
         }
+    }
+
+    static String normalizeEfiPhone(String phone) {
+        String digits = phone.replaceAll("\\D", "");
+        if (digits.startsWith("55") && digits.length() >= 12 && digits.length() <= 13) {
+            return digits.substring(2);
+        }
+        return digits;
     }
 
     @GetMapping("/admin/billing/return")

@@ -4,8 +4,8 @@
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{merchant.nav.overview} + ' - ' + #{common.app.name}">Visão geral</title>
-    <link rel="stylesheet" th:href="@{/styles/app.css}">
-    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('overview')}"></th:block>

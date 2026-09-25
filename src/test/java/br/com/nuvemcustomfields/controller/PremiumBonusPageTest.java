@@ -5,8 +5,12 @@ import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.PaymentProviderType;
 import br.com.nuvemcustomfields.entity.PaymentSubscription;
+import br.com.nuvemcustomfields.entity.PersonalizationField;
+import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
+import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
+import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.NuvemshopBillingService;
 import org.junit.jupiter.api.Test;
@@ -34,7 +38,44 @@ class PremiumBonusPageTest {
     @Autowired MockMvc mvc;
     @Autowired StoreRepository stores;
     @Autowired PaymentSubscriptionRepository paymentSubscriptions;
+    @Autowired PersonalizationRuleRepository rules;
+    @Autowired PersonalizationFieldRepository fields;
     @MockitoBean NuvemshopBillingService billing;
+
+    @Test
+    void freePlanStillAllowsEditingExistingFieldAtLimit() throws Exception {
+        Store store = new Store();
+        store.setStoreId(7654399L);
+        store.setAccessToken("test");
+        stores.save(store);
+        PersonalizationRule rule = new PersonalizationRule();
+        rule.setStoreId(store.getStoreId());
+        rule.setProductId(9001L);
+        rule.setProductName("Caneca");
+        rules.save(rule);
+        PersonalizationField field = new PersonalizationField();
+        field.setRule(rule);
+        field.setLabel("Nome");
+        fields.save(field);
+        rule.getFields().add(field);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
+        String path = "/admin/products/9001/fields";
+        mvc.perform(get(path).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Editar campos existentes")))
+                .andExpect(content().string(containsString("Você pode alterar e salvar os campos atuais normalmente.")))
+                .andExpect(content().string(not(containsString("class=\"form preview-source\""))));
+
+        mvc.perform(post(path + "/" + field.getId()).session(session)
+                        .param("label", "Nome gravado")
+                        .param("fieldType", "TEXT")
+                        .param("maxLength", "100")
+                        .param("sortOrder", "0"))
+                .andExpect(status().isFound());
+        assertThat(fields.findById(field.getId()).orElseThrow().getLabel()).isEqualTo("Nome gravado");
+    }
 
     @Test
     void grantsPersistsAndRendersBonusWithoutBillingAndRejectsDuplicate() throws Exception {

@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pagamento seguro - Campos Personalizados</title>
-    <link rel="stylesheet" href="../../static/styles/app.css" th:href="@{/styles/app.css}">
-    <link rel="stylesheet" href="../../static/styles/checkout-20260925.css" th:href="@{/styles/checkout-20260925.css}">
+    <link rel="stylesheet" href="../../static/styles/app.css" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" href="../../static/styles/checkout.css" th:href="@{/styles/checkout.css(v=${assetVersion})}">
     <script defer src="https://cdn.jsdelivr.net/gh/efipay/js-payment-token-efi@3.4.1/dist/payment-token-efi-umd.min.js"></script>
 </head>
 <body class="payment-page">
@@ -40,10 +40,10 @@
                     <p class="payment-fieldset-hint">Use os dados da pessoa responsável pelo cartão.</p>
                     <div class="payment-fields">
                         <label class="payment-full">Nome completo<input required name="payerName" id="payer-name" autocomplete="name" maxlength="120" placeholder="Nome e sobrenome"></label>
-                        <label>CPF<input required name="cpf" id="payer-cpf" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label>
+                        <label>CPF<input required name="cpf" id="payer-cpf" inputmode="numeric" autocomplete="off" maxlength="14" minlength="14" pattern="[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2}" placeholder="000.000.000-00"></label>
                         <label>Data de nascimento<input required name="birth" type="date" autocomplete="bday"></label>
                         <label>E-mail<input required name="payerEmail" type="email" autocomplete="email" th:value="${store.storeEmail}" placeholder="voce@empresa.com.br"></label>
-                        <label>Telefone<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(00) 00000-0000"></label>
+                        <label>Telefone com DDD<input required name="phone" id="payer-phone" type="tel" inputmode="numeric" autocomplete="tel-national" minlength="14" pattern="[(][0-9]{2}[)] [0-9]{4,5}-[0-9]{4}" placeholder="(11) 99999-9999"></label>
                     </div>
                 </fieldset>
 
@@ -53,8 +53,8 @@
                     <div class="payment-fields">
                         <label class="payment-full">Número do cartão<input required id="card-number" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="0000 0000 0000 0000"></label>
                         <label class="payment-full">Nome no cartão<input required id="card-holder" autocomplete="cc-name" maxlength="120" placeholder="Como aparece no cartão"></label>
-                        <label>Validade<input required id="card-expiration" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AAAA" maxlength="7"></label>
-                        <label>Código de segurança<input required id="card-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" type="password" placeholder="CVV"></label>
+                        <label>Validade<input required id="card-expiration" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AAAA" maxlength="7" pattern="(0[1-9]|1[0-2])/[0-9]{4}"></label>
+                        <label>Código de segurança<input required id="card-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" minlength="3" pattern="[0-9]{3,4}" type="password" placeholder="CVV"></label>
                     </div>
                 </fieldset>
 
@@ -87,6 +87,62 @@
     </div>
 </main>
 <script>
+function bindNumericMask(id, maxDigits, format, brazilianPhone = false) {
+    const input = document.getElementById(id);
+    let previousDigits = '';
+    let previousMasked = '';
+    input.addEventListener('input', event => {
+        const raw = input.value;
+        let digitsBeforeCaret = raw.slice(0, input.selectionStart ?? raw.length).replace(/\D/g, '').length;
+        let digits = raw.replace(/\D/g, '');
+        if (raw !== previousMasked && digits === previousDigits && event.inputType === 'deleteContentBackward' && digitsBeforeCaret > 0) {
+            digits = digits.slice(0, digitsBeforeCaret - 1) + digits.slice(digitsBeforeCaret);
+            digitsBeforeCaret--;
+        } else if (raw !== previousMasked && digits === previousDigits && event.inputType === 'deleteContentForward') {
+            digits = digits.slice(0, digitsBeforeCaret) + digits.slice(digitsBeforeCaret + 1);
+        }
+        if (brazilianPhone && digits.startsWith('55') && digits.length > 11) {
+            digits = digits.slice(2);
+            digitsBeforeCaret = Math.max(0, digitsBeforeCaret - 2);
+        }
+        digits = digits.slice(0, maxDigits);
+        const masked = format(digits);
+        input.value = masked;
+        let caret = 0;
+        let seenDigits = 0;
+        while (caret < masked.length && seenDigits < digitsBeforeCaret) {
+            if (/\d/.test(masked[caret])) seenDigits++;
+            caret++;
+        }
+        if (caret === masked.length || digitsBeforeCaret >= digits.length) caret = masked.length;
+        input.setSelectionRange(caret, caret);
+        previousDigits = digits;
+        previousMasked = masked;
+    });
+}
+
+bindNumericMask('payer-cpf', 11, digits =>
+    digits.slice(0, 3)
+    + (digits.length > 3 ? '.' + digits.slice(3, 6) : '')
+    + (digits.length > 6 ? '.' + digits.slice(6, 9) : '')
+    + (digits.length > 9 ? '-' + digits.slice(9, 11) : '')
+);
+bindNumericMask('payer-phone', 11, digits => {
+    if (!digits) return '';
+    if (digits.length < 3) return '(' + digits + (digits.length === 2 ? ') ' : '');
+    const number = digits.slice(2);
+    const split = digits.length > 10 ? 5 : 4;
+    return '(' + digits.slice(0, 2) + ') ' + number.slice(0, split)
+        + (number.length > split ? '-' + number.slice(split) : '');
+}, true);
+bindNumericMask('card-expiration', 6, digits =>
+    digits.slice(0, 2) + (digits.length >= 2 ? '/' + digits.slice(2) : '')
+);
+bindNumericMask('card-number', 19, digits =>
+    (digits.match(/.{1,4}/g) || []).join(' ')
+);
+bindNumericMask('card-cvv', 4, digits => digits);
+
 document.getElementById('efi-payment-form').addEventListener('submit', async function (event) {
     event.preventDefault();
     const form = event.currentTarget;

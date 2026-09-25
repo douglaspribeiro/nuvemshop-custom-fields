@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.fields.title} + ' - ' + #{common.app.title}">Campos</title>
-    <link rel="stylesheet" th:href="@{/styles/app.css}">
-    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
@@ -33,15 +33,14 @@
                 de 1 campo neste produto
             </p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
+        <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
     </section>
 
-    <section class="grid two">
-        <div class="panel">
+    <section class="grid two" th:classappend="${!canAddField} ? ' fields-edit-only'">
+        <div class="panel" th:if="${canAddField}">
             <h2 th:text="#{admin.fields.new.title}">Novo campo</h2>
-            <p class="notice error" th:if="${!canAddField}" th:text="#{admin.fields.limit.reached}">Limite de campos atingido para este produto.</p>
             <form class="form preview-source" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
-                  th:object="${fieldForm}" method="post" th:classappend="${!canAddField} ? ' blocked' : ''">
+                  th:object="${fieldForm}" method="post">
                 <label>
                     <span th:text="#{admin.fields.label}">Label</span>
                     <input th:field="*{label}" maxlength="100" required>
@@ -76,7 +75,7 @@
                     <span th:text="#{admin.fields.order}">Ordem</span>
                     <input th:field="*{sortOrder}" type="number" min="0">
                 </label>
-                <button class="button primary" type="submit" th:disabled="${!canAddField}" th:text="#{admin.fields.create}">Criar campo</button>
+                <button class="button primary" type="submit" th:text="#{admin.fields.create}">Criar campo</button>
             </form>
             <div class="preview-box">
                 <h2 th:text="#{admin.fields.preview}">Preview</h2>
@@ -86,9 +85,10 @@
 
         <div class="panel">
             <div class="panel-title">
-                <h2 th:text="#{admin.fields.list.title}">Campos configurados</h2>
+                <h2 th:text="${canAddField} ? #{admin.fields.list.title} : #{merchant.fields.edit.title}">Editar campos existentes</h2>
                 <span class="muted" th:text="#{admin.fields.list.count(${#lists.size(rule.fields)})}">0 campos</span>
             </div>
+            <p class="muted" th:unless="${canAddField}" th:text="#{merchant.fields.edit.description}">Você pode editar e salvar os campos atuais normalmente.</p>
 
             <div class="empty" th:if="${#lists.isEmpty(rule.fields)}" th:text="#{admin.fields.list.empty}">
                 Este produto ainda nao tem campos.
@@ -147,6 +147,13 @@
                 </article>
             </div>
         </div>
+    </section>
+    <section class="panel merchant-field-upgrade" th:unless="${canAddField}">
+        <div>
+            <h2 th:text="#{merchant.fields.upgrade.title}">Quer adicionar outro campo?</h2>
+            <p th:text="#{merchant.fields.upgrade.description}">O limite do plano vale apenas para novos campos. Editar os campos existentes continua disponível.</p>
+        </div>
+        <a class="button primary" th:href="@{/admin/billing}" th:text="#{merchant.fields.upgrade.cta}">Aumentar limite</a>
     </section>
 </main>
 <script>

@@ -10,6 +10,9 @@ spring:
       ddl-auto: create-drop
     open-in-view: false
 
+app:
+  version: '@project.version@'
+
 nuvemshop:
   client-id: test-client
   client-secret: test-secret

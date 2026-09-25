@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title>Backoffice - Scripts da loja</title>
-    <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
 </head>
 <body>
 <main class="shell">

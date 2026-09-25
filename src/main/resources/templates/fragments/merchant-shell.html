@@ -1,24 +1,26 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<aside class="merchant-sidebar" th:fragment="navigation(active)">
-    <a class="merchant-brand" th:href="@{/admin}" aria-label="Campos Personalizados">
-        <span class="merchant-brand-mark" aria-hidden="true">C</span>
-        <span class="merchant-brand-copy"><strong th:text="#{common.app.name}">Campos Personalizados</strong><small th:text="#{merchant.brand.subtitle}">Painel da loja</small></span>
-    </a>
-    <div class="merchant-store" th:if="${store != null}">
-        <span class="merchant-store-avatar" aria-hidden="true" th:text="${#strings.isEmpty(store.storeName) ? 'L' : #strings.substring(store.storeName, 0, 1).toUpperCase()}">L</span>
-        <span class="merchant-store-copy"><strong th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</strong><small th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</small></span>
+<header class="merchant-topbar" th:fragment="navigation(active)">
+    <div class="merchant-topbar-inner">
+        <a class="merchant-brand" th:href="@{/admin}" aria-label="Campos Personalizados">
+            <span class="merchant-brand-mark" aria-hidden="true">C</span>
+            <span class="merchant-brand-copy"><strong th:text="#{common.app.name}">Campos Personalizados</strong><small th:text="#{merchant.brand.subtitle}">Painel da loja</small></span>
+        </a>
+        <div class="merchant-store" th:if="${store != null}">
+            <span class="merchant-store-copy"><strong th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</strong><small th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</small></span>
+        </div>
     </div>
     <nav class="merchant-nav" th:aria-label="#{merchant.nav.label}">
-        <a th:href="@{/admin}" th:classappend="${active == 'overview'} ? ' is-active'" th:aria-current="${active == 'overview'} ? 'page'" th:text="#{merchant.nav.overview}">Visão geral</a>
-        <a th:href="@{/admin/products}" th:classappend="${active == 'products'} ? ' is-active'" th:aria-current="${active == 'products'} ? 'page'" th:text="#{merchant.nav.products}">Produtos e campos</a>
-        <a th:href="@{/admin/dashboard}" th:classappend="${active == 'orders'} ? ' is-active'" th:aria-current="${active == 'orders'} ? 'page'" th:text="#{merchant.nav.orders}">Pedidos personalizados</a>
-        <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>
-        <a th:href="@{/admin/billing}" th:classappend="${active == 'billing'} ? ' is-active'" th:aria-current="${active == 'billing'} ? 'page'" th:text="#{merchant.nav.billing}">Planos e cobrança</a>
-        <a th:href="@{/admin/help}" th:classappend="${active == 'help'} ? ' is-active'" th:aria-current="${active == 'help'} ? 'page'" th:text="#{merchant.nav.help}">Ajuda</a>
+        <div class="merchant-nav-inner">
+            <a th:href="@{/admin}" th:classappend="${active == 'overview'} ? ' is-active'" th:aria-current="${active == 'overview'} ? 'page'" th:text="#{merchant.nav.overview}">Visão geral</a>
+            <a th:href="@{/admin/products}" th:classappend="${active == 'products'} ? ' is-active'" th:aria-current="${active == 'products'} ? 'page'" th:text="#{merchant.nav.products}">Produtos e campos</a>
+            <a th:href="@{/admin/dashboard}" th:classappend="${active == 'orders'} ? ' is-active'" th:aria-current="${active == 'orders'} ? 'page'" th:text="#{merchant.nav.orders}">Pedidos personalizados</a>
+            <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>
+            <a th:href="@{/admin/billing}" th:classappend="${active == 'billing'} ? ' is-active'" th:aria-current="${active == 'billing'} ? 'page'" th:text="#{merchant.nav.billing}">Planos e cobrança</a>
+            <a th:href="@{/admin/help}" th:classappend="${active == 'help'} ? ' is-active'" th:aria-current="${active == 'help'} ? 'page'" th:text="#{merchant.nav.help}">Ajuda</a>
+        </div>
     </nav>
-    <a class="merchant-support" th:href="@{/support/}" th:text="#{merchant.support}">Falar com o suporte ↗</a>
-</aside>
+</header>
 </body>
 </html>

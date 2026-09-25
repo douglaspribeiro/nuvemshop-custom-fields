@@ -20,6 +20,9 @@ spring:
     # false: sem esta linha, uma loja pt-BR cairia no locale do servidor em vez do bundle padrao.
     fallback-to-system-locale: false
 
+app:
+  version: '@project.version@'
+
 server:
   forward-headers-strategy: framework
   servlet:
