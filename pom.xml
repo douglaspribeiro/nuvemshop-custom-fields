@@ -13,7 +13,7 @@
 
     <groupId>br.com.nuvemcustomfields</groupId>
     <artifactId>nuvemshop-custom-fields</artifactId>
-    <version>1.8.0</version>
+    <version>1.8.1</version>
     <name>Nuvemshop Custom Fields</name>
     <description>App de campos personalizados para produtos Nuvemshop</description>
 
