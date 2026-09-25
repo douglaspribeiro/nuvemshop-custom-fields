@@ -1,0 +1,99 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pagamento seguro - Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <script defer src="https://cdn.jsdelivr.net/gh/efipay/js-payment-token-efi@3.4.1/dist/payment-token-efi-umd.min.js"></script>
+</head>
+<body>
+<main class="shell payment-shell">
+    <header class="page-header">
+        <div><p class="eyebrow">Assinatura</p><h1>Conclua seu plano</h1></div>
+        <a class="button" th:href="@{/admin/billing}">Voltar aos planos</a>
+    </header>
+    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <div class="payment-layout">
+        <section class="panel payment-panel">
+            <h2>Dados do pagador e cartão</h2>
+            <p class="muted">A cobrança é mensal e pode ser cancelada quando você quiser.</p>
+            <form id="efi-payment-form" th:action="@{/admin/billing/pay}" method="post"
+                  th:attr="data-payee-code=${payeeCode},data-environment=${efiEnvironment}">
+                <input type="hidden" name="plan" th:value="${plan.name()}">
+                <input type="hidden" name="paymentToken" id="payment-token">
+                <div class="payment-fields">
+                    <label>Nome completo<input required name="payerName" id="payer-name" autocomplete="name" maxlength="120"></label>
+                    <label>CPF<input required name="cpf" id="payer-cpf" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label>
+                    <label>E-mail<input required name="payerEmail" type="email" autocomplete="email" th:value="${store.storeEmail}"></label>
+                    <label>Telefone<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(00) 00000-0000"></label>
+                    <label>Data de nascimento<input required name="birth" type="date" autocomplete="bday"></label>
+                    <label class="payment-full">Número do cartão<input required id="card-number" inputmode="numeric" autocomplete="cc-number" maxlength="23"></label>
+                    <label class="payment-full">Nome impresso no cartão<input required id="card-holder" autocomplete="cc-name" maxlength="120"></label>
+                    <label>Validade (MM/AAAA)<input required id="card-expiration" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AAAA" maxlength="7"></label>
+                    <label>Código de segurança<input required id="card-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" type="password"></label>
+                </div>
+                <p id="payment-error" class="notice error" role="alert" hidden></p>
+                <button class="button primary payment-submit" id="payment-submit" type="submit">Assinar e pagar</button>
+            </form>
+            <div class="payment-trust">
+                <span>Pagamento processado por</span>
+                <img th:src="@{/images/efi-bank-logo.svg}" alt="Efí Bank" width="64" height="56">
+                <span>Os dados do cartão são tokenizados pela Efí no navegador.</span>
+            </div>
+        </section>
+        <aside class="panel payment-summary">
+            <p class="eyebrow">Resumo da assinatura</p>
+            <h2 th:text="${plan.displayName}">Essencial</h2>
+            <p class="price">R$ <span th:text="${amount}">19,99</span> / mês</p>
+            <p class="muted">O acesso ao plano será liberado após a confirmação da primeira cobrança.</p>
+            <p class="payment-security">Conexão segura. Dados do cartão enviados diretamente para tokenização pela Efí.</p>
+        </aside>
+    </div>
+</main>
+<script>
+document.getElementById('efi-payment-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = document.getElementById('payment-submit');
+    const error = document.getElementById('payment-error');
+    error.hidden = true;
+    if (!form.reportValidity()) return;
+    button.disabled = true;
+    button.textContent = 'Processando...';
+    try {
+        if (!window.EfiPay || await EfiPay.CreditCard.isScriptBlocked()) {
+            throw new Error('Não foi possível carregar a proteção do cartão. Desative bloqueadores para esta página e tente novamente.');
+        }
+        const number = document.getElementById('card-number').value.replace(/\D/g, '');
+        const expiration = document.getElementById('card-expiration').value.match(/^(0[1-9]|1[0-2])\s*\/\s*(\d{4})$/);
+        if (!expiration) throw new Error('Informe a validade no formato MM/AAAA.');
+        const brand = await EfiPay.CreditCard.setCardNumber(number).verifyCardBrand();
+        if (!brand || brand === 'unsupported' || brand === 'undefined') throw new Error('Bandeira do cartão não aceita.');
+        const token = await EfiPay.CreditCard
+            .setAccount(form.dataset.payeeCode)
+            .setEnvironment(form.dataset.environment)
+            .setCreditCardData({
+                brand,
+                number,
+                cvv: document.getElementById('card-cvv').value,
+                expirationMonth: expiration[1],
+                expirationYear: expiration[2],
+                holderName: document.getElementById('card-holder').value.trim(),
+                holderDocument: document.getElementById('payer-cpf').value.replace(/\D/g, ''),
+                reuse: true
+            }).getPaymentToken();
+        if (!token.payment_token) throw new Error('Não foi possível gerar o token do cartão.');
+        document.getElementById('payment-token').value = token.payment_token;
+        for (const id of ['card-number', 'card-holder', 'card-expiration', 'card-cvv']) document.getElementById(id).value = '';
+        form.submit();
+    } catch (failure) {
+        error.textContent = failure.message || 'Não foi possível validar o cartão. Confira os dados e tente novamente.';
+        error.hidden = false;
+        button.disabled = false;
+        button.textContent = 'Assinar e pagar';
+    }
+});
+</script>
+</body>
+</html>

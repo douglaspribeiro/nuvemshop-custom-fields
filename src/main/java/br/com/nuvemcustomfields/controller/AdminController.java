@@ -7,6 +7,7 @@ import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.payment.EfiGateway;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
@@ -18,6 +19,7 @@ import br.com.nuvemcustomfields.service.PersonalizationAdminService;
 import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.service.ReportService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,7 +170,7 @@ public class AdminController {
         boolean available = paymentSubscriptionService.available(store);
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
-        model.addAttribute("billingEnabled", paymentSubscriptionService.mercadoPagoEnabled());
+        model.addAttribute("billingEnabled", paymentSubscriptionService.efiEnabled() || paymentSubscriptionService.mercadoPagoEnabled());
         model.addAttribute("billingAvailable", available);
         model.addAttribute("billingCurrency", available ? paymentSubscriptionService.currency(store) : "");
         model.addAttribute("premiumAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM));
@@ -182,17 +184,56 @@ public class AdminController {
                             HttpSession session, RedirectAttributes redirectAttributes) {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
-            if (!paymentSubscriptionService.mercadoPagoEnabled()) {
+            if (!paymentSubscriptionService.efiEnabled() && !paymentSubscriptionService.mercadoPagoEnabled()) {
                 throw new IllegalStateException(messages.get("admin.billing.paused"));
             }
             if (!paymentSubscriptionService.available(store)) {
                 throw new IllegalStateException(messages.get("admin.billing.unavailable"));
+            }
+            if (paymentSubscriptionService.efiEnabled()) {
+                return "redirect:/admin/billing/pay?plan=" + plan.name();
             }
             return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
             return "redirect:/admin/billing";
+        }
+    }
+
+    @GetMapping("/admin/billing/pay")
+    public String efiPaymentPage(@RequestParam PlanType plan, HttpSession session, Model model,
+                                 HttpServletResponse response) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        if (!paymentSubscriptionService.efiEnabled() || !paymentSubscriptionService.available(store)
+                || plan == null || !plan.isBillable()) return "redirect:/admin/billing";
+        response.setHeader("Cache-Control", "no-store");
+        model.addAttribute("store", store);
+        model.addAttribute("plan", plan);
+        model.addAttribute("amount", paymentSubscriptionService.amount(store, plan));
+        model.addAttribute("payeeCode", paymentSubscriptionService.efiPayeeCode());
+        model.addAttribute("efiEnvironment", paymentSubscriptionService.efiSandbox() ? "sandbox" : "production");
+        return "admin/billing-payment";
+    }
+
+    @PostMapping("/admin/billing/pay")
+    public String payWithEfi(@RequestParam PlanType plan,
+                             @RequestParam String payerName, @RequestParam String cpf,
+                             @RequestParam String payerEmail, @RequestParam String phone,
+                             @RequestParam String birth, @RequestParam String paymentToken,
+                             HttpSession session, RedirectAttributes redirectAttributes) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            paymentSubscriptionService.payWithEfi(store.getStoreId(), plan,
+                    new EfiGateway.EfiPayer(payerName, cpf.replaceAll("\\D", ""), payerEmail,
+                            phone.replaceAll("\\D", ""), birth), paymentToken);
+            redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.processing"));
+            return "redirect:/admin/billing";
+        } catch (RuntimeException ex) {
+            LOGGER.warn("payments.efi.failed store_id={} plan={} type={}", store.getStoreId(), plan,
+                    ex.getClass().getSimpleName());
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/admin/billing/pay?plan=" + plan.name();
         }
     }
 

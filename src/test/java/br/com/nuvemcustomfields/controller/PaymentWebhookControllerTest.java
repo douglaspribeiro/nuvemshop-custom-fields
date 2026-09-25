@@ -42,4 +42,17 @@ class PaymentWebhookControllerTest {
 
         verify(service).receiveMercadoPago("{}", "valid", "request", "sub-1");
     }
+
+    @Test
+    void acceptsNewEfiWebhookWithOrWithoutProdPrefix() throws Exception {
+        PaymentWebhookService service = mock(PaymentWebhookService.class);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PaymentWebhookController(service)).build();
+
+        mvc.perform(post("/prod/webhooks/efi3").param("notification", "efi-notification-token"))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/webhooks/efi3").param("notification", "efi-notification-token"))
+                .andExpect(status().isNoContent());
+
+        verify(service, times(2)).receiveEfi("efi-notification-token");
+    }
 }

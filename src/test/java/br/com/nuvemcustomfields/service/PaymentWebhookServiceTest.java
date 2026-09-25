@@ -4,6 +4,7 @@ import br.com.nuvemcustomfields.entity.PaymentProviderType;
 import br.com.nuvemcustomfields.entity.PaymentWebhookEvent;
 import br.com.nuvemcustomfields.entity.PaymentWebhookStatus;
 import br.com.nuvemcustomfields.payment.GatewayNotification;
+import br.com.nuvemcustomfields.payment.EfiGateway;
 import br.com.nuvemcustomfields.payment.PaymentGateway;
 import br.com.nuvemcustomfields.repository.PaymentWebhookEventRepository;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class PaymentWebhookServiceTest {
         when(gateway.verifyNotification("{}", "signature", "request", "sub-1")).thenReturn(notification);
         when(events.findByEventKey(notification.eventKey())).thenReturn(Optional.of(processed));
 
-        new PaymentWebhookService(router, events, subscriptions)
+        new PaymentWebhookService(router, events, subscriptions, mock(EfiGateway.class))
                 .receiveMercadoPago("{}", "signature", "request", "sub-1");
 
         verifyNoInteractions(subscriptions);

@@ -20,6 +20,8 @@ public class PaymentGatewayRouter {
     }
 
     public Optional<PaymentGateway> forStore(Store store) {
+        PaymentGateway preferred = gateways.get(PaymentProviderType.EFI);
+        if (preferred != null && preferred.configured() && preferred.supports(store)) return Optional.of(preferred);
         return gateways.values().stream().filter(PaymentGateway::configured).filter(g -> g.supports(store)).findFirst();
     }
 

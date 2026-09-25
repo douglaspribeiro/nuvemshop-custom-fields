@@ -91,6 +91,16 @@ backoffice:
 
 payments:
   reconciliation-delay-ms: ${PAYMENTS_RECONCILIATION_DELAY_MS:3600000}
+  efi:
+    enabled: ${EFI_ENABLED:false}
+    sandbox: ${EFI_SANDBOX:true}
+    client-id: ${EFI_CLIENT_ID:}
+    client-secret: ${EFI_CLIENT_SECRET:}
+    payee-code: ${EFI_PAYEE_CODE:}
+    premium-plan-id: ${EFI_PREMIUM_PLAN_ID:}
+    premium-plus-plan-id: ${EFI_PREMIUM_PLUS_PLAN_ID:}
+    premium-amount: ${EFI_PREMIUM_AMOUNT:19.99}
+    premium-plus-amount: ${EFI_PREMIUM_PLUS_AMOUNT:29.99}
   mercado-pago:
     enabled: ${MERCADO_PAGO_ENABLED:false}
     api-base-url: ${MERCADO_PAGO_API_BASE_URL:https://api.mercadopago.com}

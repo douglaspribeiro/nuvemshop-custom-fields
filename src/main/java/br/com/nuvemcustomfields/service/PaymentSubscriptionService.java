@@ -9,6 +9,7 @@ import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.payment.GatewayCheckout;
 import br.com.nuvemcustomfields.payment.GatewayInvoice;
 import br.com.nuvemcustomfields.payment.GatewaySubscription;
+import br.com.nuvemcustomfields.payment.EfiGateway;
 import br.com.nuvemcustomfields.payment.PaymentGateway;
 import br.com.nuvemcustomfields.payment.PaymentGatewayException;
 import br.com.nuvemcustomfields.properties.MercadoPagoProperties;
@@ -39,6 +40,7 @@ public class PaymentSubscriptionService {
     private final NuvemshopApiClient nuvemshopApi;
     private final NuvemshopProperties nuvemshopProperties;
     private final MercadoPagoProperties mercadoPagoProperties;
+    private final EfiGateway efi;
 
     public PaymentSubscriptionService(
             StoreRepository stores,
@@ -47,7 +49,8 @@ public class PaymentSubscriptionService {
             PaymentGatewayRouter router,
             NuvemshopApiClient nuvemshopApi,
             NuvemshopProperties nuvemshopProperties,
-            MercadoPagoProperties mercadoPagoProperties
+            MercadoPagoProperties mercadoPagoProperties,
+            EfiGateway efi
     ) {
         this.stores = stores;
         this.subscriptions = subscriptions;
@@ -56,6 +59,7 @@ public class PaymentSubscriptionService {
         this.nuvemshopApi = nuvemshopApi;
         this.nuvemshopProperties = nuvemshopProperties;
         this.mercadoPagoProperties = mercadoPagoProperties;
+        this.efi = efi;
     }
 
     public boolean available(Store store) {
@@ -67,6 +71,86 @@ public class PaymentSubscriptionService {
 
     public boolean mercadoPagoEnabled() {
         return router.configured(PaymentProviderType.MERCADO_PAGO);
+    }
+
+    public boolean efiEnabled() { return efi.configured(); }
+    public String efiPayeeCode() { return efi.payeeCode(); }
+    public boolean efiSandbox() { return efi.sandbox(); }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void payWithEfi(Long storeId, PlanType plan, EfiGateway.EfiPayer payer, String paymentToken) {
+        if (plan == null || !plan.isBillable()) throw new IllegalArgumentException("Selecione um plano pago.");
+        if (payer == null || !validPayer(payer) || paymentToken == null || !paymentToken.matches("[a-zA-Z0-9]{20,120}")) {
+            throw new IllegalArgumentException("Confira os dados do pagador e do cartão.");
+        }
+        Store store = stores.findActiveByStoreIdForUpdate(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("Loja ativa não encontrada."));
+        refreshProfileIfNeeded(store);
+        if (store.isCourtesyPremium()) throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
+        if (!efi.configured() || !efi.supports(store)) throw new IllegalArgumentException("Pagamento Efí indisponível para esta loja.");
+        PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
+                && hasText(local.getProviderSubscriptionId())) {
+            local = reconcile(storeId);
+        }
+        if (local != null && local.isAccessActive()) throw new IllegalArgumentException("A loja já possui uma assinatura ativa.");
+        if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
+                && hasText(local.getProviderSubscriptionId())) {
+            router.require(local.getProvider()).cancel(local.getProviderSubscriptionId());
+        } else if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
+                && hasText(local.getProviderCheckoutId()) && local.getProvider() != PaymentProviderType.EFI) {
+            router.require(local.getProvider()).cancelCheckout(local.getProviderCheckoutId());
+        }
+        if (local == null) {
+            local = new PaymentSubscription();
+            local.setStoreId(storeId);
+        }
+        String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderSubscriptionId(null);
+        local.setProviderCheckoutId(null);
+        local.setExternalReference(reference);
+        local.setPayerEmail(payer.email());
+        local.setPlan(plan);
+        local.setCurrency("BRL");
+        local.setAmountValue(efi.amount(plan));
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setProviderStatus("new");
+        local.setCheckoutUrl(null);
+        local.setLastError(null);
+        subscriptions.saveAndFlush(local);
+        try {
+            String id = efi.createSubscription(plan, reference,
+                    nuvemshopProperties.appBaseUrl() + "/prod/webhooks/efi3");
+            local.setProviderSubscriptionId(id);
+            local.setProviderCheckoutId(efi.planId(plan));
+            subscriptions.saveAndFlush(local);
+            var paid = efi.pay(id, payer, paymentToken);
+            var charge = paid.path("charge");
+            String chargeId = charge.path("id").asText(null);
+            String chargeStatus = charge.path("status").asText(null);
+            if (chargeId == null || chargeStatus == null) {
+                throw new PaymentGatewayException("A Efí não retornou o resultado da cobrança.");
+            }
+            GatewayInvoice invoice = new GatewayInvoice(chargeId, id, chargeId, chargeStatus);
+            synchronize(local, efi.getSubscription(id), invoice, "EFI_CHECKOUT");
+            if ("unpaid".equalsIgnoreCase(chargeStatus)) {
+                throw new PaymentGatewayException("O cartão não foi aprovado pela Efí. Confira os dados ou use outro cartão.");
+            }
+        } catch (RuntimeException ex) {
+            local.setLastError(truncate(ex.getMessage()));
+            local.setLastSyncedAt(Instant.now());
+            subscriptions.save(local);
+            throw ex;
+        }
+    }
+
+    private static boolean validPayer(EfiGateway.EfiPayer payer) {
+        return hasText(payer.name()) && payer.name().length() <= 120
+                && payer.cpf() != null && payer.cpf().matches("\\d{11}")
+                && payer.email() != null && payer.email().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")
+                && payer.phone() != null && payer.phone().matches("\\d{10,11}")
+                && payer.birth() != null && payer.birth().matches("\\d{4}-\\d{2}-\\d{2}");
     }
 
     public BigDecimal amount(Store store, PlanType plan) {
@@ -260,7 +344,7 @@ public class PaymentSubscriptionService {
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
-        if ("authorized".equals(status) && invoice != null && invoice.approved()) {
+        if (("authorized".equals(status) || "active".equals(status)) && invoice != null && invoice.approved()) {
             local.setStatus(PaymentSubscriptionStatus.ACTIVE);
             local.setGraceUntil(null);
             local.setCancellationPending(false);

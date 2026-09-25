@@ -27,23 +27,21 @@ public class PaymentReconciliationJob {
 
     @Scheduled(fixedDelayString = "${payments.reconciliation-delay-ms:3600000}")
     public void reconcile() {
-        try {
-            router.require(PaymentProviderType.MERCADO_PAGO);
-        } catch (RuntimeException disabled) {
-            return;
-        }
         var statuses = EnumSet.of(PaymentSubscriptionStatus.PENDING, PaymentSubscriptionStatus.ACTIVE,
                 PaymentSubscriptionStatus.PAST_DUE, PaymentSubscriptionStatus.PAUSED,
                 PaymentSubscriptionStatus.CANCELED);
-        for (var subscription : repository.findByProviderAndStatusIn(PaymentProviderType.MERCADO_PAGO, statuses)) {
-            try {
-                if (subscription.getProviderSubscriptionId() != null) service.reconcile(subscription.getStoreId());
-            } catch (RuntimeException ex) {
-                subscription.setLastError(ex.getMessage() == null ? null
-                        : ex.getMessage().substring(0, Math.min(500, ex.getMessage().length())));
-                repository.save(subscription);
-                LOGGER.warn("payments.reconciliation.failed store_id={} message={}",
-                        subscription.getStoreId(), ex.getMessage());
+        for (PaymentProviderType provider : new PaymentProviderType[]{PaymentProviderType.MERCADO_PAGO, PaymentProviderType.EFI}) {
+            if (!router.configured(provider)) continue;
+            for (var subscription : repository.findByProviderAndStatusIn(provider, statuses)) {
+                try {
+                    if (subscription.getProviderSubscriptionId() != null) service.reconcile(subscription.getStoreId());
+                } catch (RuntimeException ex) {
+                    subscription.setLastError(ex.getMessage() == null ? null
+                            : ex.getMessage().substring(0, Math.min(500, ex.getMessage().length())));
+                    repository.save(subscription);
+                    LOGGER.warn("payments.reconciliation.failed store_id={} message={}",
+                            subscription.getStoreId(), ex.getMessage());
+                }
             }
         }
     }

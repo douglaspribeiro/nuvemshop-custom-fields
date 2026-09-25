@@ -5,6 +5,8 @@ import br.com.nuvemcustomfields.entity.PaymentSubscription;
 import br.com.nuvemcustomfields.entity.PaymentWebhookEvent;
 import br.com.nuvemcustomfields.entity.PaymentWebhookStatus;
 import br.com.nuvemcustomfields.payment.GatewayNotification;
+import br.com.nuvemcustomfields.payment.EfiGateway;
+import com.fasterxml.jackson.databind.JsonNode;
 import br.com.nuvemcustomfields.repository.PaymentWebhookEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +21,50 @@ public class PaymentWebhookService {
     private final PaymentGatewayRouter router;
     private final PaymentWebhookEventRepository events;
     private final PaymentSubscriptionService subscriptions;
+    private final EfiGateway efi;
 
     public PaymentWebhookService(PaymentGatewayRouter router, PaymentWebhookEventRepository events,
-                                 PaymentSubscriptionService subscriptions) {
+                                 PaymentSubscriptionService subscriptions, EfiGateway efi) {
         this.router = router;
         this.events = events;
         this.subscriptions = subscriptions;
+        this.efi = efi;
+    }
+
+    public void receiveEfi(String token) {
+        if (token == null || !token.matches("[a-zA-Z0-9-]{20,120}")) {
+            throw new IllegalArgumentException("Token de notificação inválido.");
+        }
+        JsonNode history = efi.notification(token);
+        if (!history.isArray() || history.isEmpty()) throw new IllegalArgumentException("Notificação Efí vazia.");
+        JsonNode latest = history.get(history.size() - 1);
+        String subscriptionId = latest.path("identifiers").path("subscription_id").asText("");
+        if (subscriptionId.isBlank()) return;
+        String key = "EFI:" + token + ":" + latest.path("id").asText();
+        PaymentWebhookEvent event = events.findByEventKey(key).orElseGet(() -> {
+            PaymentWebhookEvent created = new PaymentWebhookEvent();
+            created.setProvider(PaymentProviderType.EFI);
+            created.setEventKey(key);
+            created.setEventType(latest.path("type").asText("unknown"));
+            created.setProviderResourceId(subscriptionId);
+            return events.save(created);
+        });
+        if (event.getStatus() == PaymentWebhookStatus.PROCESSED) return;
+        event.setProcessingAttempts(event.getProcessingAttempts() + 1);
+        events.save(event);
+        try {
+            PaymentSubscription subscription = subscriptions.synchronizeFromSubscription(PaymentProviderType.EFI, subscriptionId);
+            event.setStoreId(subscription.getStoreId());
+            event.setStatus(PaymentWebhookStatus.PROCESSED);
+            event.setProcessedAt(Instant.now());
+            event.setLastError(null);
+            events.save(event);
+        } catch (RuntimeException ex) {
+            event.setStatus(PaymentWebhookStatus.FAILED);
+            event.setLastError(truncate(ex.getMessage()));
+            events.save(event);
+            throw ex;
+        }
     }
 
     public void receiveMercadoPago(String body, String signature, String requestId, String dataId) {

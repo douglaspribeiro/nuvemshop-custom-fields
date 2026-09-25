@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class PaymentSubscriptionServiceTest {
@@ -22,11 +23,12 @@ class PaymentSubscriptionServiceTest {
     private final PlanEventRepository events = mock(PlanEventRepository.class);
     private final PaymentGatewayRouter router = mock(PaymentGatewayRouter.class);
     private final PaymentGateway gateway = mock(PaymentGateway.class);
+    private final EfiGateway efi = mock(EfiGateway.class);
     private final NuvemshopProperties nuvemshopProperties = mock(NuvemshopProperties.class);
     private final PaymentSubscriptionService service = new PaymentSubscriptionService(
             stores, subscriptions, events, router, mock(NuvemshopApiClient.class), nuvemshopProperties,
             new MercadoPagoProperties(true, "https://api.example.com", "token", "secret", 3,
-                    new BigDecimal("19.99"), new BigDecimal("29.99"))
+            new BigDecimal("19.99"), new BigDecimal("29.99")), efi
     );
 
     @Test
@@ -48,6 +50,53 @@ class PaymentSubscriptionServiceTest {
         assertThat(local.isAccessActive()).isTrue();
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         verify(events).save(any(PlanEvent.class));
+    }
+
+    @Test
+    void activatesEfiPlanOnlyAfterPaidCharge() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        Store store = store();
+        GatewaySubscription remote = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote);
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("charge-1", "sub-1", "charge-1", "paid")));
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.synchronizeFromSubscription(PaymentProviderType.EFI, "sub-1");
+
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        verify(events).save(any(PlanEvent.class));
+    }
+
+    @Test
+    void sendsPublicEfi3NotificationUrlWhenCreatingSubscription() {
+        Store store = store();
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("loja@example.com");
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(efi.configured()).thenReturn(true);
+        when(efi.supports(store)).thenReturn(true);
+        when(efi.amount(PlanType.PREMIUM)).thenReturn(new BigDecimal("19.99"));
+        when(nuvemshopProperties.appBaseUrl()).thenReturn("https://campos-personalizados.wzhub.pro");
+        when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(),
+                eq("https://campos-personalizados.wzhub.pro/prod/webhooks/efi3")))
+                .thenThrow(new PaymentGatewayException("Efí indisponível"));
+
+        assertThatThrownBy(() -> service.payWithEfi(123L, PlanType.PREMIUM,
+                new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
+                        "11999999999", "1990-01-01"), "12345678901234567890"))
+                .isInstanceOf(PaymentGatewayException.class);
+
+        verify(efi).createSubscription(eq(PlanType.PREMIUM), anyString(),
+                eq("https://campos-personalizados.wzhub.pro/prod/webhooks/efi3"));
     }
 
     @Test

@@ -35,4 +35,12 @@ public class PaymentWebhookController {
             throw ex;
         }
     }
+
+    // O proxy pode preservar ou remover /prod. Mantemos a rota antiga para assinaturas existentes.
+    @PostMapping({"/prod/webhooks/efi3", "/webhooks/efi3", "/prod/webhooks/efi", "/webhooks/efi"})
+    public ResponseEntity<Void> efi(@RequestParam(name = "notification", required = false) String notification) {
+        if (notification == null || notification.isBlank()) return ResponseEntity.badRequest().build();
+        service.receiveEfi(notification);
+        return ResponseEntity.noContent().build();
+    }
 }
