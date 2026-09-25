@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.7.1] - 2026-09-25
+
+### Correções
+
+- conciliar resposta de pagamento da assinatura Efi (`880c16f`)
+
 ## [1.7.0] - 2026-09-25
 
 ### Features
