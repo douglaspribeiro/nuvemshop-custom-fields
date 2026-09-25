@@ -6,15 +6,18 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.dashboard.title} + ' - ' + #{common.app.title}">Dashboard</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
 </head>
-<body>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('orders')}"></th:block>
 <main class="shell">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.dashboard.eyebrow}">Dashboard</p>
-            <h1 th:text="#{admin.dashboard.heading}">Uso e pedidos</h1>
+            <h1 th:text="#{merchant.nav.orders}">Pedidos personalizados</h1>
+            <p th:text="#{merchant.orders.intro}">Consulte os pedidos recentes com personalização.</p>
         </div>
-        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
+        <a class="button" th:href="@{/admin/products}" th:text="#{merchant.nav.products}">Produtos e campos</a>
     </section>
 
     <section class="details metrics">
@@ -44,24 +47,12 @@
              th:text="#{admin.dashboard.orders.empty}">
             Nenhum pedido recente com propriedades de personalizacao.
         </div>
-        <table class="table" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}">
-            <thead>
-            <tr>
-                <th th:text="#{admin.dashboard.orders.column.order}">Pedido</th>
-                <th th:text="#{common.date}">Data</th>
-                <th th:text="#{admin.dashboard.orders.column.fields}">Campos</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="order : ${summary.personalizedOrders}">
-                <td th:text="${order.number}">123</td>
-                <td th:text="${order.createdAt}">2026-06-02</td>
-                <td>
-                    <span th:each="property : ${order.properties}" class="chip" th:text="${property}">Nome: Ana</span>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <div class="merchant-order-list" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}">
+            <article class="merchant-order" th:each="order : ${summary.personalizedOrders}">
+                <div><strong th:text="#{merchant.orders.order(${order.number})}">Pedido #123</strong><small th:text="${order.createdAt}">2026-06-02</small></div>
+                <div><span th:each="property : ${order.properties}" class="chip" th:text="${property}">Nome: Ana</span></div>
+            </article>
+        </div>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

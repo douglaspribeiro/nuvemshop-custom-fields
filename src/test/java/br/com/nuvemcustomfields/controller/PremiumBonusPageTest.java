@@ -40,6 +40,7 @@ class PremiumBonusPageTest {
     void grantsPersistsAndRendersBonusWithoutBillingAndRejectsDuplicate() throws Exception {
         Store store = new Store();
         store.setStoreId(7654321L);
+        store.setStoreName("Ateliê Aurora");
         store.setAccessToken("test");
         store.setStoreCountryCode("BR");
         stores.save(store);
@@ -72,6 +73,9 @@ class PremiumBonusPageTest {
         merchantSession.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, 7654321L);
         mvc.perform(get("/admin").session(merchantSession))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<h1>Ateliê Aurora</h1>")))
+                .andExpect(content().string(containsString("Ver planos e limites")))
+                .andExpect(content().string(containsString("Comece pelo primeiro produto")))
                 .andExpect(content().string(containsString("Você está no plano Pro por 30 dias.")))
                 .andExpect(content().string(containsString("Restam 30 dias.")));
 

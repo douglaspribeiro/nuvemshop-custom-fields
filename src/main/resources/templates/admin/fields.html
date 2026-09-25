@@ -6,13 +6,16 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.fields.title} + ' - ' + #{common.app.title}">Campos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
 </head>
-<body>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
 <main class="shell">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.fields.eyebrow}">Editor</p>
             <h1 th:text="${rule.productName} ?: #{admin.fields.product.fallback(${rule.productId})}">Produto</h1>
+            <p th:text="#{merchant.fields.intro}">Defina os dados preenchidos pelo cliente.</p>
         </div>
         <a class="button" th:href="@{/admin/products}" th:text="#{admin.products.title}">Produtos</a>
     </section>

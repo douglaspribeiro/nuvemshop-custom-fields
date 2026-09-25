@@ -6,15 +6,18 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.products.title} + ' - ' + #{common.app.title}">Produtos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
 </head>
-<body>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
 <main class="shell">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.products.eyebrow}">Produtos</p>
             <h1 th:text="#{admin.products.heading}">Campos por produto</h1>
+            <p th:text="#{merchant.products.intro}">Encontre um produto para criar ou editar campos.</p>
         </div>
-        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
+        <a class="button" th:href="@{/admin/onboarding}" th:text="#{merchant.products.templates}">Usar um modelo pronto</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
@@ -31,6 +34,11 @@
             </p>
         </div>
         <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
+    </section>
+    <section class="notice warning" th:if="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()}">
+        <strong th:text="#{merchant.upgrade.full}">Você chegou ao limite do seu plano</strong>
+        <span th:text="#{merchant.upgrade.full.detail}">Veja outros planos.</span>
+        <a th:href="@{/admin/billing}" th:text="#{merchant.upgrade.cta}">Ver opções de upgrade</a>
     </section>
 
     <section class="panel">
@@ -54,26 +62,14 @@
             <span th:unless="${productPage.query != null}" th:text="#{admin.products.empty.all}">Nenhum produto retornado pela API da Nuvemshop.</span>
         </div>
 
-        <table class="table" th:if="${!#lists.isEmpty(products)}">
-            <thead>
-            <tr>
-                <th th:text="#{common.product}">Produto</th>
-                <th th:text="#{common.id}">ID</th>
-                <th th:text="#{admin.products.column.personalization}">Personalizacao</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="product : ${products}">
-                <td th:text="${product.name}">Produto</td>
-                <td th:text="${product.id}">0</td>
-                <td>
-                    <span class="status"
-                          th:text="${configuredProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">
-                        Nao configurado
-                    </span>
-                </td>
-                <td class="row-actions">
+        <div class="merchant-product-list" th:if="${!#lists.isEmpty(products)}">
+            <article class="merchant-product" th:each="product : ${products}">
+                <div><h3 th:text="${product.name}">Produto</h3>
+                    <span class="status" th:classappend="${configuredProductIds.contains(product.id)} ? ' is-configured'"
+                          th:text="${configuredProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">Não configurado</span>
+                    <small th:text="#{merchant.products.id(${product.id})}">ID do produto</small>
+                </div>
+                <div class="row-actions">
                     <a class="button small"
                        th:classappend="${!configuredProductIds.contains(product.id) and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
                        th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}"
@@ -85,10 +81,9 @@
                           method="post">
                         <button class="button danger small" type="submit" th:text="#{admin.products.remove}">Remover</button>
                     </form>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+                </div>
+            </article>
+        </div>
 
         <nav class="pager" th:if="${productPage.hasPrevious() or productPage.hasNext()}">
             <a class="button small"

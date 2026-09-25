@@ -1,72 +1,77 @@
 <!doctype html>
 <html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title th:text="#{common.app.title}">Aplicativo: Campos Personalizados</title>
+    <title th:text="#{merchant.nav.overview} + ' - ' + #{common.app.name}">Visão geral</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
 </head>
-<body>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('overview')}"></th:block>
 <main class="shell">
     <section class="page-header">
-        <div>
-            <p class="eyebrow" th:text="#{admin.index.eyebrow}">Painel Administrativo</p>
-            <h1 th:text="#{common.app.title}">Aplicativo: Campos Personalizados</h1>
-        </div>
-        <span class="badge" th:text="#{'plan.' + ${store.effectivePlan.name()}}">FREE</span>
+        <div><p class="eyebrow" th:text="#{merchant.nav.overview}">Visão geral</p><h1 th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</h1><p th:text="#{merchant.overview.intro}">Acompanhe sua loja.</p></div>
+        <a class="button primary" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
     </section>
-
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
-    <section class="notice" th:if="${store.premiumBonusActive}"
-             th:with="bonusPlanName=#{'plan.' + ${store.premiumBonusPlan.name()}}">
-        <strong th:text="#{admin.index.bonus.active(${bonusPlanName})}">Você está no plano Essencial por 30 dias.</strong>
-        <span th:if="${store.premiumBonusDaysRemaining == 1}"
-              th:text="#{admin.index.bonus.remaining.one}">Resta 1 dia.</span>
-        <span th:if="${store.premiumBonusDaysRemaining != 1}"
-              th:text="#{admin.index.bonus.remaining.many(${store.premiumBonusDaysRemaining})}">Restam 30 dias.</span>
-        <span th:text="#{admin.index.bonus.until(${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')})}">
-            Disponível até 23/10/2026.
-        </span>
+    <section class="notice" th:if="${store.premiumBonusActive}" th:with="bonusPlanName=#{'plan.' + ${store.premiumBonusPlan.name()}}">
+        <strong th:text="#{admin.index.bonus.active(${bonusPlanName})}">Plano Essencial por 30 dias.</strong>
+        <span th:if="${store.premiumBonusDaysRemaining == 1}" th:text="#{admin.index.bonus.remaining.one}">Resta 1 dia.</span>
+        <span th:if="${store.premiumBonusDaysRemaining != 1}" th:text="#{admin.index.bonus.remaining.many(${store.premiumBonusDaysRemaining})}">Restam 30 dias.</span>
+        <span th:text="#{admin.index.bonus.until(${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')})}">Disponível até 23/10/2026.</span>
     </section>
     <section class="panel" th:if="${backofficeStoreMode}">
-        <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2>
-        <p class="muted" th:text="#{admin.index.storemode.description}">As alteracoes feitas aqui serao aplicadas nesta loja.</p>
-        <form th:action="@{/backoffice/store-mode/exit}" method="post">
-            <button class="button" type="submit" th:text="#{admin.index.storemode.exit}">Voltar ao backoffice</button>
-        </form>
+        <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2><p class="muted" th:text="#{admin.index.storemode.description}">As alterações serão aplicadas nesta loja.</p>
+        <form th:action="@{/backoffice/store-mode/exit}" method="post"><button class="button" type="submit" th:text="#{admin.index.storemode.exit}">Voltar ao backoffice</button></form>
     </section>
-
-    <section class="panel">
-        <h2 th:text="#{admin.index.store.title}">Loja conectada</h2>
-        <dl class="details">
-            <div>
-                <dt th:text="#{admin.index.store.id}">Store ID</dt>
-                <dd th:text="${store.storeId}">0</dd>
-            </div>
-            <div>
-                <dt th:text="#{common.status}">Status</dt>
-                <dd th:text="${store.active} ? #{admin.index.store.active} : #{admin.index.store.inactive}">Ativa</dd>
-            </div>
-            <div>
-                <dt th:text="#{admin.index.store.products}">Produtos configurados</dt>
-                <dd>
-                    <span th:text="${usage.productsUsed}">0</span>
-                    <span th:text="${usage.unlimitedProducts()} ? '/ ' + #{common.unlimited} : '/ ' + ${usage.productLimit}">/ 1</span>
-                </dd>
-            </div>
-        </dl>
+    <section class="merchant-overview-hero">
+        <div class="panel hero-primary">
+            <p class="eyebrow" th:text="#{merchant.overview.next}">Próximos passos</p>
+            <h2 th:if="${configuredFields > 0}" th:text="#{merchant.overview.ready}">Sua loja está pronta para personalizar</h2>
+            <h2 th:if="${configuredFields == 0 and usage.productsUsed > 0}" th:text="#{merchant.overview.addfield}">Adicione o primeiro campo</h2>
+            <h2 th:if="${configuredFields == 0 and usage.productsUsed == 0}" th:text="#{merchant.overview.start}">Comece pelo primeiro produto</h2>
+            <p th:if="${configuredFields > 0}" th:text="#{merchant.overview.ready.description}">Os campos já podem aparecer na loja.</p>
+            <p th:if="${configuredFields == 0 and usage.productsUsed > 0}" th:text="#{merchant.overview.addfield.description}">Defina os dados que o cliente vai preencher.</p>
+            <p th:if="${configuredFields == 0 and usage.productsUsed == 0}" th:text="#{merchant.overview.start.description}">Configure um produto.</p>
+            <a class="button" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
+        </div>
+        <div class="panel merchant-health">
+            <span class="health-label" th:text="#{merchant.overview.health}">Estado da integração</span>
+            <strong><span class="health-dot" th:classappend="${!store.active} ? ' is-off'"></span><span th:text="${store.active} ? #{merchant.overview.connected} : #{merchant.overview.inactive}">Loja conectada</span></strong>
+            <p th:text="${store.active} ? #{merchant.overview.health.description} : #{merchant.overview.health.inactive}">A conexão está ativa.</p>
+        </div>
     </section>
-
-    <nav class="actions">
-        <a class="button primary" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
-        <a class="button" th:href="@{/admin/settings/style}" th:text="#{admin.index.action.style}">Cores dos campos personalizados</a>
-        <a class="button" th:href="@{/admin/dashboard}" th:text="#{admin.index.action.dashboard}">Dashboard</a>
-        <a class="button" th:href="@{/admin/onboarding}" th:text="#{admin.index.action.templates}">Templates</a>
-        <a class="button" th:href="@{/admin/help}" th:text="#{admin.index.action.help}">Ajuda</a>
-        <a class="button" th:href="@{/support/}" th:text="#{admin.index.action.support}">Falar com o suporte</a>
-    </nav>
+    <section class="merchant-stat-grid">
+        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.products}">Produtos personalizados</span><strong th:text="${usage.productsUsed}">0</strong><span class="stat-note" th:text="${usage.unlimitedProducts()} ? #{usage.products.unlimited(${usage.productsUsed})} : #{usage.products.limited(${usage.productsUsed}, ${usage.productLimit})}">0 de 1</span></div>
+        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.fields}">Campos configurados</span><strong th:text="${configuredFields}">0</strong><span class="stat-note" th:text="#{merchant.nav.products}">Produtos e campos</span></div>
+        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.plan}">Plano em uso</span><strong th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="${planName}">FREE</strong><a class="stat-note" th:href="@{/admin/billing}" th:text="#{merchant.nav.billing}">Planos e cobrança</a></div>
+    </section>
+    <section class="panel merchant-upgrade">
+        <div><span class="eyebrow" th:text="#{merchant.upgrade.eyebrow}">Seu plano</span>
+            <h2 th:text="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full} : #{merchant.upgrade.available}">Veja o que seu plano permite</h2>
+            <p th:text="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full.detail} : #{merchant.upgrade.available.detail}">Consulte os limites e compare planos.</p>
+        </div>
+        <a class="button primary" th:href="@{/admin/billing}" th:text="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.cta} : #{merchant.upgrade.view}">Ver planos</a>
+    </section>
+    <section class="merchant-section-grid">
+        <div class="panel"><h2 th:text="#{merchant.overview.next}">Próximos passos</h2>
+            <ol class="merchant-steps">
+                <li><span class="merchant-step-number">1</span><div><strong th:text="#{merchant.overview.step.product}">Configure seus produtos</strong><p th:text="#{merchant.overview.step.product.detail}">Escolha produtos.</p><a th:href="@{/admin/products}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
+                <li><span class="merchant-step-number">2</span><div><strong th:text="#{merchant.overview.step.appearance}">Revise a aparência</strong><p th:text="#{merchant.overview.step.appearance.detail}">Ajuste as cores.</p><a th:href="@{/admin/settings/style}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
+                <li><span class="merchant-step-number">3</span><div><strong th:text="#{merchant.overview.step.orders}">Acompanhe os pedidos</strong><p th:text="#{merchant.overview.step.orders.detail}">Confira os dados.</p><a th:href="@{/admin/dashboard}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
+            </ol>
+        </div>
+        <div class="panel"><h2 th:text="#{merchant.overview.shortcuts}">Acesso rápido</h2>
+            <div class="merchant-quicklinks">
+                <a th:href="@{/admin/onboarding}"><span th:text="#{merchant.overview.templates}">Começar com um modelo</span><span aria-hidden="true">↗</span></a>
+                <a th:href="@{/admin/dashboard}"><span th:text="#{merchant.nav.orders}">Pedidos personalizados</span><span aria-hidden="true">↗</span></a>
+                <a th:href="@{/support/}"><span th:text="#{merchant.support}">Falar com o suporte</span><span aria-hidden="true">↗</span></a>
+            </div>
+            <details class="merchant-technical"><summary th:text="#{merchant.overview.technical}">Detalhes técnicos da loja</summary><p><span th:text="#{admin.index.store.id}">Store ID</span>: <span th:text="${store.storeId}">0</span></p></details>
+        </div>
+    </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
 </body>

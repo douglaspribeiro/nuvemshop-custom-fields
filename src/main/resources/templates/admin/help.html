@@ -6,15 +6,18 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.help.title} + ' - ' + #{common.app.title}">Ajuda</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
 </head>
-<body>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('help')}"></th:block>
 <main class="shell">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.help.eyebrow}">Ajuda</p>
             <h1 th:text="#{admin.help.heading}">Suporte e operacao</h1>
+            <p th:text="#{merchant.help.intro}">Consulte a integração da loja.</p>
         </div>
-        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Voltar</a>
+        <a class="button primary" th:href="@{/support/}" th:text="#{merchant.support}">Falar com o suporte</a>
     </section>
 
     <section class="grid two">

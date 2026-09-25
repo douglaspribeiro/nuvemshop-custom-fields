@@ -6,21 +6,26 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.style.title} + ' - ' + #{common.app.title}">Cores dos campos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" th:href="@{/styles/merchant-20260925.css}">
 </head>
-<body>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('appearance')}"></th:block>
 <main class="shell">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.style.eyebrow}">Configuracoes</p>
-            <h1 th:text="#{admin.style.heading}">Cores dos campos personalizados</h1>
+            <h1 th:text="#{merchant.nav.appearance}">Aparência</h1>
+            <p th:text="#{merchant.appearance.intro}">Defina como os textos aparecem na compra.</p>
         </div>
-        <a class="button" th:href="@{/admin}" th:text="#{common.back}">Admin</a>
+        <a class="button" th:href="@{/admin/products}" th:text="#{merchant.nav.products}">Produtos e campos</a>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
-    <section class="panel">
+    <section class="grid two">
+    <div class="panel">
+        <h2 th:text="#{admin.style.heading}">Cores dos campos personalizados</h2>
         <form class="form color-settings-form" method="post" th:action="@{/admin/settings/style}">
             <label class="color-field">
                 <span th:text="#{admin.style.product}">Texto no produto</span>
@@ -60,6 +65,20 @@
                 <a class="button" th:href="@{/admin}" th:text="#{common.cancel}">Cancelar</a>
             </div>
         </form>
+    </div>
+    <div class="panel">
+        <h2 th:text="#{merchant.appearance.preview}">Prévia da vitrine</h2>
+        <p class="muted" th:text="#{merchant.appearance.preview.note}">Referência visual das cores.</p>
+        <div class="merchant-preview">
+            <div class="merchant-preview-card">
+                <strong th:text="#{common.product}">Produto</strong>
+                <label id="merchant-preview-label" th:style="${store.productTextColor != null} ? 'color:' + ${store.productTextColor}">
+                    <span th:text="#{merchant.appearance.preview.label}">Nome para personalização</span>
+                    <input type="text" disabled th:placeholder="#{merchant.appearance.preview.placeholder}">
+                </label>
+            </div>
+        </div>
+    </div>
     </section>
 </main>
 <script>
@@ -74,7 +93,15 @@
             if (clearInput) {
                 clearInput.checked = false;
             }
+            if (input.name === "productTextColor") {
+                document.getElementById("merchant-preview-label").style.color = input.value;
+            }
         });
+    });
+    document.querySelector("[name='clearProductTextColor']").addEventListener("change", (event) => {
+        if (event.target.checked) {
+            document.getElementById("merchant-preview-label").style.color = "";
+        }
     });
 </script>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

@@ -106,6 +106,7 @@ public class AdminController {
         var rules = personalizationAdminService.listRules(store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("rules", rules);
+        model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("backofficeStoreMode", Boolean.TRUE.equals(session.getAttribute(BackofficeSessionInterceptor.STORE_MODE_SESSION_KEY)));
         LOGGER.info("admin.index.loaded store_id={} rules_count={}", store.getStoreId(), rules.size());
