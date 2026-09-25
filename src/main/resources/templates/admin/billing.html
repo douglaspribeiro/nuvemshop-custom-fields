@@ -38,10 +38,12 @@
             <p class="notice" th:if="${store.courtesyPremium}" th:text="#{admin.billing.courtesy.notice}">
                 Premium Cortesia liberado sem cobranca ativa.
             </p>
-            <p class="notice warning" th:if="${paymentSubscription != null and !#strings.isEmpty(paymentSubscription.lastError)}">
+            <p class="notice warning" th:if="${paymentSubscription != null and !#strings.isEmpty(paymentSubscription.lastError) and !(paymentSubscription.status.name() == 'CANCELED' and !paymentSubscription.accessActive)}">
                 <span th:text="#{admin.billing.lasterror}">Ultima tentativa de billing falhou:</span>
                 <span th:text="${paymentSubscription.lastError}">erro</span>
             </p>
+            <p class="notice" th:if="${paymentSubscription != null and paymentSubscription.status.name() == 'CANCELED' and !paymentSubscription.accessActive and !#strings.isEmpty(paymentSubscription.lastError)}"
+               th:text="#{admin.billing.retry.ready}">A tentativa anterior foi encerrada. Você já pode tentar novamente.</p>
             <p class="notice" th:if="${paymentSubscription != null}">
                 <span th:text="#{admin.billing.subscription.status}">Status da assinatura:</span>
                 <strong th:with="statusName=#{'payment.status.' + ${paymentSubscription.status.name()}}" th:text="${statusName}">Pendente</strong>

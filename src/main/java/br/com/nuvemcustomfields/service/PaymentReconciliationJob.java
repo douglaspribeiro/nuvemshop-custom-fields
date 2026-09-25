@@ -9,6 +9,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumSet;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Component
 public class PaymentReconciliationJob {
@@ -49,5 +51,20 @@ public class PaymentReconciliationJob {
     @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")
     public void expireCanceledAccess() {
         service.expireCanceledAccess();
+    }
+
+    @Scheduled(fixedDelayString = "${payments.pending-expiration-delay-ms:60000}")
+    public void expirePendingEfiPayments() {
+        var expired = repository.findByProviderAndStatusAndAccessActiveFalseAndPendingStartedAtLessThanEqual(
+                PaymentProviderType.EFI, PaymentSubscriptionStatus.PENDING,
+                Instant.now().minus(30, ChronoUnit.MINUTES));
+        for (var subscription : expired) {
+            try {
+                service.expirePendingEfi(subscription.getStoreId());
+            } catch (RuntimeException ex) {
+                LOGGER.warn("payments.efi.pending_expiration_failed store_id={} type={}",
+                        subscription.getStoreId(), ex.getClass().getSimpleName());
+            }
+        }
     }
 }

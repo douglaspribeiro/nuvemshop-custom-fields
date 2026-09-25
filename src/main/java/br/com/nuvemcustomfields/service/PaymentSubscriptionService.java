@@ -32,6 +32,9 @@ import java.util.UUID;
 @Service
 public class PaymentSubscriptionService {
     private static final Logger LOGGER = LoggerFactory.getLogger(PaymentSubscriptionService.class);
+    private static final long PENDING_TIMEOUT_MINUTES = 30;
+    private static final String EXPIRED_ATTEMPT_MESSAGE =
+            "A tentativa anterior não foi confirmada em 30 minutos e foi cancelada. Você pode tentar novamente.";
 
     private final StoreRepository stores;
     private final PaymentSubscriptionRepository subscriptions;
@@ -92,7 +95,20 @@ public class PaymentSubscriptionService {
         if (store.isCourtesyPremium()) throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
         if (!efi.configured() || !efi.supports(store)) throw new IllegalArgumentException("Pagamento Efí indisponível para esta loja.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local != null && local.getProvider() == PaymentProviderType.EFI
+                && local.getStatus() == PaymentSubscriptionStatus.PENDING) {
+            if (pendingExpired(local, Instant.now())) {
+                expirePendingEfi(storeId);
+            } else if (hasText(local.getProviderSubscriptionId())) {
+                reconcile(storeId);
+            }
+            local = subscriptions.findByStoreId(storeId).orElse(local);
+            if (local.getStatus() == PaymentSubscriptionStatus.PENDING) {
+                throw new IllegalStateException("Aguarde a confirmação do pagamento anterior antes de tentar novamente.");
+            }
+        }
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
+                && local.getProvider() != PaymentProviderType.EFI
                 && hasText(local.getProviderSubscriptionId())) {
             if (!router.configured(local.getProvider())) {
                 throw new IllegalStateException("Existe uma assinatura pendente no provedor anterior. Contate o suporte antes de tentar outro pagamento.");
@@ -101,6 +117,7 @@ public class PaymentSubscriptionService {
         }
         if (local != null && local.isAccessActive()) throw new IllegalArgumentException("A loja já possui uma assinatura ativa.");
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
+                && local.getProvider() != PaymentProviderType.EFI
                 && hasText(local.getProviderSubscriptionId())) {
             router.require(local.getProvider()).cancel(local.getProviderSubscriptionId());
         } else if (local != null && local.getStatus() == PaymentSubscriptionStatus.ERROR
@@ -137,6 +154,7 @@ public class PaymentSubscriptionService {
         local.setCurrency("BRL");
         local.setAmountValue(efi.amount(plan));
         local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setPendingStartedAt(Instant.now());
         local.setProviderStatus("new");
         local.setCheckoutUrl(null);
         local.setLastPaymentId(null);
@@ -258,6 +276,7 @@ public class PaymentSubscriptionService {
         subscription.setCurrency("BRL");
         subscription.setAmountValue(gateway.amount(plan));
         subscription.setStatus(PaymentSubscriptionStatus.PENDING);
+        subscription.setPendingStartedAt(Instant.now());
         subscription.setProviderStatus("pending");
         subscription.setCheckoutUrl(null);
         subscription.setLastError(null);
@@ -304,9 +323,85 @@ public class PaymentSubscriptionService {
                 throw new PaymentGatewayException("Aguardando a confirmação do cancelamento pelo provedor.");
             }
         }
-        Optional<GatewayInvoice> invoice = canceled(remote.status())
+        Optional<GatewayInvoice> invoice = canceled(remote.status()) && local.getProvider() != PaymentProviderType.EFI
                 ? Optional.empty() : latestInvoice(gateway, local, remote);
+        if (local.getProvider() == PaymentProviderType.EFI && local.getStatus() == PaymentSubscriptionStatus.PENDING
+                && canceled(remote.status()) && invoice.isPresent()
+                && !"canceled".equalsIgnoreCase(invoice.get().paymentStatus())) {
+            // A assinatura pode estar cancelada enquanto a cobranca ainda aguarda.
+            // Nao libere outra tentativa ate confirmar tambem o cancelamento dela.
+            return local;
+        }
         return synchronize(local, remote, invoice.orElse(null), "PAYMENT_RECONCILE");
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public boolean expirePendingEfi(Long storeId) {
+        if (stores.findActiveByStoreIdForUpdate(storeId).isEmpty()) return false;
+        PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local == null || local.getProvider() != PaymentProviderType.EFI
+                || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()
+                || !pendingExpired(local, Instant.now())) return false;
+        if (!hasText(local.getProviderSubscriptionId())) {
+            if (hasText(local.getLastPaymentId())) {
+                throw new PaymentGatewayException("Pagamento anterior sem assinatura identificada. Contate o suporte.");
+            }
+            local.setStatus(PaymentSubscriptionStatus.ERROR);
+            local.setProviderStatus("timeout");
+            local.setLastError(EXPIRED_ATTEMPT_MESSAGE);
+            subscriptions.save(local);
+            return true;
+        }
+        if (!efi.configured()) {
+            throw new PaymentGatewayException("Não foi possível verificar a tentativa anterior na Efí. Contate o suporte.");
+        }
+        GatewaySubscription remote = efi.getSubscription(local.getProviderSubscriptionId());
+        validateRemote(local, remote);
+        GatewayInvoice invoice = latestInvoice(efi, local, remote).orElse(null);
+        if (invoice != null && invoice.approved()) {
+            if ("active".equalsIgnoreCase(remote.status()) || "new_charge".equalsIgnoreCase(remote.status())) {
+                synchronize(local, remote, invoice, "PENDING_TIMEOUT_RECONCILE");
+            }
+            // Um pagamento aprovado nunca deve ser cancelado automaticamente, mesmo que
+            // o estado da assinatura ainda nao tenha acompanhado a cobranca.
+            return true;
+        }
+        if (invoice == null && !canceled(remote.status())) {
+            throw new PaymentGatewayException("A Efí ainda não informou a cobrança da assinatura. Tente novamente mais tarde.");
+        }
+        if (invoice != null && !"canceled".equalsIgnoreCase(invoice.paymentStatus())) {
+            String chargeStatus = invoice.paymentStatus();
+            if (!"new".equalsIgnoreCase(chargeStatus) && !"waiting".equalsIgnoreCase(chargeStatus)
+                    && !"unpaid".equalsIgnoreCase(chargeStatus)) {
+                throw new PaymentGatewayException("A cobrança anterior ainda precisa ser verificada pela Efí.");
+            }
+            efi.cancelCharge(invoice.paymentId());
+            invoice = efi.getCharge(local.getProviderSubscriptionId(), invoice.paymentId());
+            if (invoice.approved()) return true;
+            if (!"canceled".equalsIgnoreCase(invoice.paymentStatus())) {
+                throw new PaymentGatewayException("Aguardando confirmação do cancelamento da cobrança pela Efí.");
+            }
+        }
+        if (!canceled(remote.status())) {
+            efi.cancel(local.getProviderSubscriptionId());
+            remote = efi.getSubscription(local.getProviderSubscriptionId());
+            validateRemote(local, remote);
+            if (!canceled(remote.status())) {
+                throw new PaymentGatewayException("Aguardando confirmação do cancelamento da assinatura pela Efí.");
+            }
+        }
+        synchronize(local, remote, invoice, "PENDING_TIMEOUT");
+        local.setNextPaymentAt(null);
+        local.setLastError(EXPIRED_ATTEMPT_MESSAGE);
+        subscriptions.save(local);
+        LOGGER.info("payments.efi.pending_expired store_id={} subscription_id={} charge_id={}",
+                storeId, local.getProviderSubscriptionId(), invoice == null ? "none" : invoice.paymentId());
+        return true;
+    }
+
+    private static boolean pendingExpired(PaymentSubscription local, Instant now) {
+        return local.getPendingStartedAt() != null
+                && !now.isBefore(local.getPendingStartedAt().plus(PENDING_TIMEOUT_MINUTES, ChronoUnit.MINUTES));
     }
 
     @Transactional

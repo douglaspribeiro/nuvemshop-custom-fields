@@ -60,6 +60,8 @@ public class PaymentSubscription {
     private boolean cancellationPending;
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
+    @Column(name = "pending_started_at")
+    private Instant pendingStartedAt;
     @Column(name = "last_error", length = 500)
     private String lastError;
     @Version
@@ -108,6 +110,8 @@ public class PaymentSubscription {
     public void setCancellationPending(boolean value) { cancellationPending = value; touch(); }
     public Instant getLastSyncedAt() { return lastSyncedAt; }
     public void setLastSyncedAt(Instant value) { lastSyncedAt = value; touch(); }
+    public Instant getPendingStartedAt() { return pendingStartedAt; }
+    public void setPendingStartedAt(Instant value) { pendingStartedAt = value; touch(); }
     public String getLastError() { return lastError; }
     public void setLastError(String value) { lastError = value; touch(); }
     public long getVersion() { return version; }

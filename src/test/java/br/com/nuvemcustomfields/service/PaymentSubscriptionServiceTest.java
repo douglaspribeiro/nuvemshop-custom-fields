@@ -247,6 +247,115 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
+    void expiresStaleEfiAttemptOnlyAfterCancelingChargeAndSubscription() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setPendingStartedAt(Instant.now().minusSeconds(31 * 60));
+        Store store = store();
+        GatewaySubscription active = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), null);
+        GatewaySubscription canceled = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "canceled", "BRL", new BigDecimal("19.99"), null);
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(subscriptions.save(local)).thenReturn(local);
+        when(efi.configured()).thenReturn(true);
+        when(efi.getSubscription("sub-1")).thenReturn(active, canceled);
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("charge-1", "sub-1", "charge-1", "waiting")));
+        when(efi.getCharge("sub-1", "charge-1")).thenReturn(
+                new GatewayInvoice("charge-1", "sub-1", "charge-1", "canceled"));
+
+        assertThat(service.expirePendingEfi(123L)).isTrue();
+
+        var order = inOrder(efi);
+        order.verify(efi).cancelCharge("charge-1");
+        order.verify(efi).cancel("sub-1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.getLastPaymentStatus()).isEqualTo("canceled");
+        assertThat(local.getLastError()).contains("pode tentar novamente");
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+    }
+
+    @Test
+    void staleEfiAttemptActivatesPaidChargeInsteadOfCancelingIt() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setPendingStartedAt(Instant.now().minusSeconds(31 * 60));
+        Store store = store();
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(subscriptions.save(local)).thenReturn(local);
+        when(efi.configured()).thenReturn(true);
+        when(efi.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400)));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("charge-1", "sub-1", "charge-1", "paid")));
+
+        assertThat(service.expirePendingEfi(123L)).isTrue();
+
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        verify(efi, never()).cancelCharge(anyString());
+        verify(efi, never()).cancel(anyString());
+    }
+
+    @Test
+    void failedRemoteChargeCancellationKeepsAttemptPending() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setPendingStartedAt(Instant.now().minusSeconds(31 * 60));
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store()));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(efi.configured()).thenReturn(true);
+        when(efi.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), null));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("charge-1", "sub-1", "charge-1", "waiting")));
+        doThrow(new PaymentGatewayException("Efí indisponível")).when(efi).cancelCharge("charge-1");
+
+        assertThatThrownBy(() -> service.expirePendingEfi(123L))
+                .isInstanceOf(PaymentGatewayException.class);
+
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        verify(efi, never()).cancel(anyString());
+    }
+
+    @Test
+    void canceledEfiSubscriptionWithWaitingChargeStillBlocksRetry() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "canceled", "BRL", new BigDecimal("19.99"), null));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("charge-1", "sub-1", "charge-1", "waiting")));
+
+        assertThat(service.reconcile(123L).getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        verify(subscriptions, never()).save(local);
+    }
+
+    @Test
+    void recentEfiAttemptIsNotCanceled() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setPendingStartedAt(Instant.now().minusSeconds(5 * 60));
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store()));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+
+        assertThat(service.expirePendingEfi(123L)).isFalse();
+        verifyNoInteractions(efi);
+    }
+
+    @Test
     void marksRejectedFirstEfiChargeAsErrorWithoutActivatingPlan() {
         PaymentSubscription local = local();
         local.setProvider(PaymentProviderType.EFI);

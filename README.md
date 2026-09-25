@@ -120,6 +120,7 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `NUVEMSHOP_TOKEN_URL` | URL oficial Tiendanube | Endpoint de token. |
 | `NUVEMSHOP_API_BASE_URL` | `https://api.tiendanube.com` | Base URL da API. |
 | `APP_BASE_URL` | `http://localhost:8080` | URL publica usada em scripts e webhooks. |
+| `GA4_MEASUREMENT_ID` | `G-RM8VWNPDT8` | ID de medição do Google Analytics 4; deixe vazio para desativar. Mede as telas administrativas, sem parâmetros da URL nem dados do formulário de pagamento. |
 | `NUVEMSHOP_SCOPES` | `read_products,read_orders,write_scripts,read_scripts,billing,read_store` | Scopes OAuth solicitados. |
 | `NUVEMSHOP_USER_AGENT` | `NuvemCustomFields suporte@example.com` | User-Agent exigido pela API. |
 | `NUVEMSHOP_BILLING_ENABLED` | `false` | Ativa a assinatura automatica quando toda a configuracao de billing estiver pronta. |

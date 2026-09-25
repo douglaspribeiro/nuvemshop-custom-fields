@@ -19,4 +19,7 @@ public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubs
     );
     List<PaymentSubscription> findByStatusAndAccessActiveTrueAndNextPaymentAtLessThanEqual(
             PaymentSubscriptionStatus status, Instant nextPaymentAt);
+    List<PaymentSubscription> findByProviderAndStatusAndAccessActiveFalseAndPendingStartedAtLessThanEqual(
+            br.com.nuvemcustomfields.entity.PaymentProviderType provider,
+            PaymentSubscriptionStatus status, Instant pendingStartedAt);
 }

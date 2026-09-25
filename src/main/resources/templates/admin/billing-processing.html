@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{merchant.payment.wait.title} + ' - ' + #{common.app.name}">Confirmando pagamento</title>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
 </head>

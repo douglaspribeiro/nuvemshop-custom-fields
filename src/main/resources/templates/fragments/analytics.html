@@ -1,15 +1,20 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <body>
-<th:block th:fragment="googleAnalytics">
+<th:block th:fragment="googleAnalytics" th:if="${ga4MeasurementId != null and !#strings.isEmpty(ga4MeasurementId)}">
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RM8VWNPDT8"></script>
-    <script>
+    <script async th:src="@{https://www.googletagmanager.com/gtag/js(id=${ga4MeasurementId})}"></script>
+    <script th:inline="javascript">
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-
-        gtag('config', 'G-RM8VWNPDT8');
+        // URLs de OAuth e billing podem ter parâmetros sensíveis; não os envie ao GA.
+        gtag('config', /*[[${ga4MeasurementId}]]*/ '', {
+            page_location: window.location.origin + window.location.pathname,
+            page_referrer: '',
+            allow_google_signals: false,
+            allow_ad_personalization_signals: false
+        });
     </script>
 </th:block>
 </body>

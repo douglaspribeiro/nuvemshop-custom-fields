@@ -94,6 +94,10 @@ public class EfiGateway implements PaymentGateway {
         return new GatewayInvoice(chargeId, subscriptionId, chargeId, required(charge, "status"));
     }
 
+    public void cancelCharge(String chargeId) {
+        call("cancelCharge", Map.of("id", chargeId), Map.of());
+    }
+
     @Override public GatewayInvoice getInvoice(String invoiceId) {
         throw new UnsupportedOperationException("Concilie a assinatura Efí pelo ID da assinatura.");
     }

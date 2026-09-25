@@ -23,6 +23,10 @@ spring:
 app:
   version: '@project.version@'
 
+analytics:
+  ga4:
+    measurement-id: ${GA4_MEASUREMENT_ID:G-RM8VWNPDT8}
+
 server:
   forward-headers-strategy: framework
   servlet:
