@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.9.2] - 2026-09-25
+
+### Correções
+
+- canal de suporte (`e270cfc`)
+
 ## [1.9.1] - 2026-09-25
 
 ### Manutenção
