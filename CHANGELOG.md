@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.8.2] - 2026-09-25
+
+### Correções
+
+- expira tentativas pendentes da Efi (`8173675`)
+
 ## [1.8.1] - 2026-09-25
 
 _Sem commits com mudança de produto neste range._
