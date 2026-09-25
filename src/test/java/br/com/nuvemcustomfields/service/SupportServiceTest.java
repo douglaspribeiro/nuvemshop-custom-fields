@@ -16,6 +16,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,7 +26,9 @@ class SupportServiceTest {
     private final SupportTicketRepository ticketRepository = mock(SupportTicketRepository.class);
     private final SupportMessageRepository messageRepository = mock(SupportMessageRepository.class);
     private final StoreRepository storeRepository = mock(StoreRepository.class);
-    private final SupportService service = new SupportService(ticketRepository, messageRepository, storeRepository);
+    private final DiscordSupportWebhookClient discord = mock(DiscordSupportWebhookClient.class);
+    private final SupportService service = new SupportService(ticketRepository, messageRepository, storeRepository,
+            discord);
 
     @Test
     void opensTicketWithNormalizedStoreMessage() {
@@ -43,6 +46,7 @@ class SupportServiceTest {
         verify(messageRepository).save(messageCaptor.capture());
         assertThat(messageCaptor.getValue().getAuthorType()).isEqualTo(SupportMessageAuthor.STORE);
         assertThat(messageCaptor.getValue().getMessage()).isEqualTo("Minha mensagem");
+        verify(discord).sendNewTicket(eq(store), eq(ticket));
     }
 
     @Test

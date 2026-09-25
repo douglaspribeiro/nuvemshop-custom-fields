@@ -10,12 +10,15 @@ import br.com.nuvemcustomfields.repository.SupportMessageRepository;
 import br.com.nuvemcustomfields.repository.SupportTicketRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
 
 @Service
 public class SupportService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SupportService.class);
 
     private static final int SUBJECT_MAX_LENGTH = 160;
     private static final int MESSAGE_MAX_LENGTH = 5000;
@@ -23,15 +26,18 @@ public class SupportService {
     private final SupportTicketRepository ticketRepository;
     private final SupportMessageRepository messageRepository;
     private final StoreRepository storeRepository;
+    private final DiscordSupportWebhookClient discord;
 
     public SupportService(
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
-            StoreRepository storeRepository
+            StoreRepository storeRepository,
+            DiscordSupportWebhookClient discord
     ) {
         this.ticketRepository = ticketRepository;
         this.messageRepository = messageRepository;
         this.storeRepository = storeRepository;
+        this.discord = discord;
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +80,9 @@ public class SupportService {
 
     @Transactional
     public SupportTicket openTicket(Store store, String subject, String message) {
-        return openTicket(store.getStoreId(), subject, message);
+        SupportTicket ticket = openTicket(store.getStoreId(), subject, message);
+        notifyDiscord(() -> discord.sendNewTicket(store, ticket), ticket.getId(), "new_ticket");
+        return ticket;
     }
 
     @Transactional
@@ -106,6 +114,8 @@ public class SupportService {
     public void replyFromStore(Long ticketId, Long storeId, String message) {
         SupportTicket ticket = requireStoreTicket(ticketId, storeId);
         addReply(ticket, SupportMessageAuthor.STORE, message);
+        Store store = requireTicketStore(ticket);
+        notifyDiscord(() -> discord.sendStoreReply(store, ticket), ticket.getId(), "store_reply");
     }
 
     @Transactional
@@ -140,6 +150,16 @@ public class SupportService {
         supportMessage.setAuthorType(author);
         supportMessage.setMessage(message);
         messageRepository.save(supportMessage);
+    }
+
+    private void notifyDiscord(Runnable action, Long ticketId, String event) {
+        try {
+            action.run();
+        } catch (RuntimeException ex) {
+            // Suporte não pode deixar de ser registrado por falha no canal de aviso.
+            LOGGER.warn("support.discord_notification_failed ticket_id={} event={} type={}",
+                    ticketId, event, ex.getClass().getSimpleName());
+        }
     }
 
     private String normalize(String value, String emptyMessage, int maxLength) {

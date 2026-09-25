@@ -67,7 +67,10 @@ nuvemshop:
   checkout-script-id: ${NUVEMSHOP_CHECKOUT_SCRIPT_ID:}
   storefront-sdk-script-id: ${NUVEMSHOP_STOREFRONT_SDK_SCRIPT_ID:}
   billing:
-    enabled: ${NUVEMSHOP_BILLING_ENABLED:true}
+    # A cobrança recorrente do produto é processada pela Efí. Só habilite o
+    # billing nativo da Nuvemshop se o conceito de assinatura tiver sido criado
+    # e aprovado para este aplicativo.
+    enabled: ${NUVEMSHOP_BILLING_ENABLED:false}
     api-base-url: ${NUVEMSHOP_BILLING_API_BASE_URL:https://api.nuvemshop.com.br/2025-03}
     concept-code: ${NUVEMSHOP_BILLING_CONCEPT_CODE:app-cost}
     currency: ${NUVEMSHOP_BILLING_CURRENCY:BRL}
@@ -125,6 +128,7 @@ payments:
 notifications:
   discord:
     payment-webhook-url: ${DISCORD_PAYMENT_WEBHOOK_URL:}
+    support-webhook-url: ${DISCORD_SUPPORT_WEBHOOK_URL:${DISCORD_PAYMENT_WEBHOOK_URL:}}
 
 logging:
   file:

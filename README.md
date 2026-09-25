@@ -134,12 +134,15 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `MERCADO_PAGO_PREMIUM_AMOUNT` | `19.99` | Mensalidade Essencial em BRL. |
 | `MERCADO_PAGO_PREMIUM_PLUS_AMOUNT` | `29.99` | Mensalidade Pro em BRL. |
 | `DISCORD_PAYMENT_WEBHOOK_URL` | vazio | URL privada do webhook que recebe avisos de pagamentos aprovados; nunca versionar o token. |
+| `DISCORD_SUPPORT_WEBHOOK_URL` | usa o webhook de pagamentos | URL opcional para avisos de novos chamados e respostas de lojas. |
 | `BACKOFFICE_USERNAME` | `admin` | Usuario do backoffice. |
 | `BACKOFFICE_PASSWORD` | `admin` | Senha do backoffice. |
 
 Para testar o OAuth localmente, `APP_BASE_URL` e `NUVEMSHOP_REDIRECT_URI` precisam apontar para uma URL acessivel pela Nuvemshop, normalmente via tunnel HTTPS.
 
 Quando `DISCORD_PAYMENT_WEBHOOK_URL` estiver configurada, cada cobranca aprovada gera um aviso no Discord. O envio ocorre em segundo plano, com retentativas; atualizacoes posteriores da mesma cobranca nao geram outro aviso. Cobranças pendentes ou recusadas nao sao anunciadas.
+
+`DISCORD_SUPPORT_WEBHOOK_URL` é opcional. Sem ela, os avisos de novo chamado e de resposta da loja usam o mesmo webhook de pagamentos. Os avisos não incluem o conteúdo da mensagem do cliente.
 
 ## Rodando Localmente
 
