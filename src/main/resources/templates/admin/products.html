@@ -23,6 +23,12 @@
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
+    <section class="panel merchant-ftue-banner" th:if="${configuredFields == 0}">
+        <span class="merchant-step-number" aria-hidden="true" th:text="${#lists.isEmpty(rules)} ? '1' : '2'">1</span>
+        <div><strong th:text="${#lists.isEmpty(rules)} ? #{merchant.ftue.select} : #{merchant.ftue.create}">Escolha um produto</strong>
+            <p th:text="${#lists.isEmpty(rules)} ? #{merchant.ftue.products.detail} : #{merchant.ftue.products.selected}">Selecione um produto da lista.</p></div>
+    </section>
+
     <section class="panel plan-strip">
         <div>
             <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
@@ -35,7 +41,7 @@
         </div>
         <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
     </section>
-    <section class="notice warning" th:if="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()}">
+    <section class="notice warning" th:if="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()}">
         <strong th:text="#{merchant.upgrade.full}">Você chegou ao limite do seu plano</strong>
         <span th:text="#{merchant.upgrade.full.detail}">Veja outros planos.</span>
         <a th:href="@{/admin/billing}" th:text="#{merchant.upgrade.cta}">Ver opções de upgrade</a>
@@ -65,15 +71,15 @@
         <div class="merchant-product-list" th:if="${!#lists.isEmpty(products)}">
             <article class="merchant-product" th:each="product : ${products}">
                 <div><h3 th:text="${product.name}">Produto</h3>
-                    <span class="status" th:classappend="${configuredProductIds.contains(product.id)} ? ' is-configured'"
-                          th:text="${configuredProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">Não configurado</span>
+                    <span class="status" th:classappend="${configuredFieldProductIds.contains(product.id)} ? ' is-configured'"
+                          th:text="${configuredFieldProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">Não configurado</span>
                     <small th:text="#{merchant.products.id(${product.id})}">ID do produto</small>
                 </div>
                 <div class="row-actions">
                     <a class="button small"
                        th:classappend="${!configuredProductIds.contains(product.id) and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? ' disabled' : ''"
                        th:href="@{/admin/products/{productId}/fields(productId=${product.id},productName=${product.name})}"
-                       th:text="#{admin.products.edit}">
+                       th:text="${configuredFieldProductIds.contains(product.id)} ? #{admin.products.edit} : (${configuredProductIds.contains(product.id)} ? #{merchant.ftue.create.cta} : #{merchant.ftue.select.cta})">
                         Editar campos
                     </a>
                     <form th:if="${configuredProductIds.contains(product.id)}"

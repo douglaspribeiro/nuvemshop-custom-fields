@@ -78,6 +78,53 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
+    void reconcilesEfiUsingChargeIdSavedFromPaymentWhenHistoryIsEmpty() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        local.setLastPaymentId("12345");
+        Store store = store();
+        GatewaySubscription remote = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(remote);
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        when(efi.getCharge("sub-1", "12345"))
+                .thenReturn(new GatewayInvoice("12345", "sub-1", "12345", "settled"));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.reconcile(123L);
+
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getLastPaymentStatus()).isEqualTo("settled");
+    }
+
+    @Test
+    void marksRejectedFirstEfiChargeAsErrorWithoutActivatingPlan() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setProviderCheckoutId("plan-1");
+        Store store = store();
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(efi);
+        when(efi.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400)));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("12345", "sub-1", "12345", "unpaid")));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.reconcile(123L);
+
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ERROR);
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+        verifyNoInteractions(events);
+    }
+
+    @Test
     void activatesEfiPlanFromDocumentedPaymentResponse() throws Exception {
         Store store = store();
         store.setStoreCountryCode("BR");
@@ -98,7 +145,7 @@ class PaymentSubscriptionServiceTest {
         when(efi.planId(PlanType.PREMIUM)).thenReturn("72050");
         when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(), anyString())).thenReturn("sub-1");
         when(efi.pay(eq("sub-1"), any(), eq("12345678901234567890"))).thenReturn(
-                new ObjectMapper().readTree("{\"subscription_id\":\"sub-1\",\"status\":\"active\",\"charge\":{\"id\":12345,\"status\":\"waiting\"}}"));
+                new ObjectMapper().readTree("{\"charge_id\":12345,\"status\":\"waiting\",\"payment\":\"credit_card\"}"));
         when(efi.getSubscription("sub-1")).thenAnswer(invocation ->
                 new GatewaySubscription("sub-1", "72050", saved.get().getExternalReference(),
                         "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400)));

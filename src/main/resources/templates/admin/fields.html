@@ -23,6 +23,12 @@
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
+    <section class="panel merchant-ftue-banner" th:if="${#lists.isEmpty(rule.fields)}">
+        <span class="merchant-step-number" aria-hidden="true">2</span>
+        <div><strong th:text="#{merchant.ftue.create}">Crie o primeiro campo</strong>
+            <p th:text="#{merchant.ftue.fields.detail}">Dê um nome ao campo, escolha o tipo e salve. Você poderá editar depois.</p></div>
+    </section>
+
     <section class="panel plan-strip">
         <div>
             <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>

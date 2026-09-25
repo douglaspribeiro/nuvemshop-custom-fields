@@ -34,11 +34,15 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.text.NumberFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -102,11 +106,15 @@ public class AdminController {
     @GetMapping("/admin")
     public String index(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
+        if (reconcilePendingEfi(store.getStoreId(), true)) {
+            store = adminStoreService.requireCurrentStore(session);
+        }
         LOGGER.info("admin.index.open store_id={}", store.getStoreId());
         var rules = personalizationAdminService.listRules(store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("rules", rules);
         model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
+        model.addAttribute("setupRule", rules.isEmpty() ? null : rules.get(0));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("backofficeStoreMode", Boolean.TRUE.equals(session.getAttribute(BackofficeSessionInterceptor.STORE_MODE_SESSION_KEY)));
         LOGGER.info("admin.index.loaded store_id={} rules_count={}", store.getStoreId(), rules.size());
@@ -173,17 +181,10 @@ public class AdminController {
     public String billing(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
         boolean available = paymentSubscriptionService.available(store);
-        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
-        if (subscription != null && subscription.getProvider() == PaymentProviderType.EFI
-                && subscription.getStatus() == PaymentSubscriptionStatus.PENDING
-                && subscription.getProviderSubscriptionId() != null) {
-            try {
-                subscription = paymentSubscriptionService.reconcile(store.getStoreId());
-            } catch (RuntimeException ex) {
-                LOGGER.warn("payments.efi.billing_reconcile_failed store_id={} type={}",
-                        store.getStoreId(), ex.getClass().getSimpleName());
-            }
+        if (reconcilePendingEfi(store.getStoreId(), false)) {
+            store = adminStoreService.requireCurrentStore(session);
         }
+        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("billingEnabled", paymentSubscriptionService.efiEnabled() || paymentSubscriptionService.mercadoPagoEnabled());
@@ -245,14 +246,42 @@ public class AdminController {
             paymentSubscriptionService.payWithEfi(store.getStoreId(), plan,
                     new EfiGateway.EfiPayer(payerName, cpf.replaceAll("\\D", ""), payerEmail,
                             normalizeEfiPhone(phone), birth), paymentToken);
-            redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.processing"));
-            return "redirect:/admin/billing";
+            return "redirect:/admin/billing/processing";
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.efi.failed store_id={} plan={} type={}", store.getStoreId(), plan,
                     ex.getClass().getSimpleName());
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
             return "redirect:/admin/billing/pay?plan=" + plan.name();
         }
+    }
+
+    @GetMapping("/admin/billing/processing")
+    public String paymentProcessing(HttpSession session, Model model, HttpServletResponse response) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        response.setHeader("Cache-Control", "no-store");
+        if (paymentSubscriptionService.find(store.getStoreId()).isEmpty()) return "redirect:/admin/billing";
+        model.addAttribute("store", store);
+        return "admin/billing-processing";
+    }
+
+    @GetMapping("/admin/billing/status")
+    @ResponseBody
+    public Map<String, String> paymentStatus(HttpSession session, HttpServletResponse response) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        response.setHeader("Cache-Control", "no-store");
+        reconcilePendingEfi(store.getStoreId(), false);
+        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+        if (subscription == null) return Map.of("state", "failed");
+        if (subscription.getStatus() == PaymentSubscriptionStatus.ACTIVE && subscription.isAccessActive()) {
+            return Map.of("state", "active");
+        }
+        if (subscription.getStatus() == PaymentSubscriptionStatus.ERROR
+                || subscription.getStatus() == PaymentSubscriptionStatus.CANCELED
+                || subscription.getStatus() == PaymentSubscriptionStatus.PAUSED
+                || "unpaid".equalsIgnoreCase(subscription.getLastPaymentStatus())) {
+            return Map.of("state", "failed");
+        }
+        return Map.of("state", "pending");
     }
 
     static String normalizeEfiPhone(String phone) {
@@ -305,6 +334,8 @@ public class AdminController {
         model.addAttribute("products", productPage.items());
         model.addAttribute("rules", rules);
         model.addAttribute("configuredProductIds", configuredProductIds(rules));
+        model.addAttribute("configuredFieldProductIds", personalizationAdminService.configuredFieldProductIds(store.getStoreId()));
+        model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         LOGGER.info(
                 "admin.products.loaded store_id={} page={} products_count={} total_count={} rules_count={}",
@@ -398,6 +429,8 @@ public class AdminController {
             model.addAttribute("products", productPage.items());
             model.addAttribute("rules", rules);
             model.addAttribute("configuredProductIds", configuredProductIds(rules));
+            model.addAttribute("configuredFieldProductIds", personalizationAdminService.configuredFieldProductIds(store.getStoreId()));
+            model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
             model.addAttribute("usage", planLimitService.usage(store, 0));
             model.addAttribute("error", messages.get("flash.product.limit"));
             return "admin/products";
@@ -503,5 +536,23 @@ public class AdminController {
         return java.util.stream.StreamSupport.stream(rules.spliterator(), false)
                 .map(PersonalizationRule::getProductId)
                 .collect(Collectors.toSet());
+    }
+
+    private boolean reconcilePendingEfi(Long storeId, boolean respectCooldown) {
+        var subscription = paymentSubscriptionService.find(storeId).orElse(null);
+        if (subscription == null || subscription.getProvider() != PaymentProviderType.EFI
+                || subscription.getStatus() != PaymentSubscriptionStatus.PENDING
+                || subscription.getProviderSubscriptionId() == null) return false;
+        if (respectCooldown && subscription.getLastSyncedAt() != null
+                && Duration.between(subscription.getLastSyncedAt(), Instant.now()).compareTo(Duration.ofSeconds(30)) < 0) {
+            return false;
+        }
+        try {
+            paymentSubscriptionService.reconcile(storeId);
+            return true;
+        } catch (RuntimeException ex) {
+            LOGGER.warn("payments.efi.reconcile_failed store_id={} type={}", storeId, ex.getClass().getSimpleName());
+            return false;
+        }
     }
 }

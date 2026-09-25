@@ -35,6 +35,10 @@ public class PersonalizationAdminService {
         return fieldRepository.countByStoreId(storeId);
     }
 
+    public List<Long> configuredFieldProductIds(Long storeId) {
+        return fieldRepository.findConfiguredProductIdsByStoreId(storeId);
+    }
+
     public boolean hasRule(Long storeId, Long productId) {
         return ruleRepository.findByStoreIdAndProductId(storeId, productId).isPresent();
     }

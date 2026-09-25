@@ -141,6 +141,17 @@ public class BackofficeController {
         return "redirect:/backoffice/stores/{storeId}";
     }
 
+    @PostMapping("/backoffice/stores/{storeId}/payment/cancel")
+    public String cancelPayment(@PathVariable Long storeId, RedirectAttributes redirectAttributes) {
+        try {
+            paymentSubscriptionService.cancel(storeId);
+            redirectAttributes.addFlashAttribute("message", "Cancelamento solicitado ao gateway. Confira o status da assinatura.");
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("error", "Falha ao cancelar assinatura: " + ex.getMessage());
+        }
+        return "redirect:/backoffice/stores/{storeId}";
+    }
+
     @GetMapping("/backoffice/stores/{storeId}/scripts")
     public String scripts(@PathVariable Long storeId, Model model) {
         LOGGER.info("backoffice.scripts.open store_id={}", storeId);

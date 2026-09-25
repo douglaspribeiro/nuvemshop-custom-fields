@@ -46,9 +46,13 @@
                 <span th:text="#{admin.billing.subscription.status}">Status da assinatura:</span>
                 <strong th:with="statusName=#{'payment.status.' + ${paymentSubscription.status.name()}}" th:text="${statusName}">Pendente</strong>
             </p>
-            <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.nextPaymentAt != null}">
+            <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING'}"
+               th:text="#{merchant.billing.efi.pending}">Estamos aguardando a confirmação da primeira cobrança pela Efí.</p>
+            <a class="button small" th:if="${paymentSubscription != null and paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING'}"
+               th:href="@{/admin/billing/processing}" th:text="#{merchant.billing.efi.follow}">Acompanhar confirmação</a>
+            <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.nextPaymentAt != null}">
                 <span th:text="#{admin.billing.next}">Próxima cobrança:</span>
-                <span th:text="${paymentSubscription.nextPaymentAt}">2026-06-16</span>
+                <span th:text="${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">24/10/2026</span>
             </p>
         </div>
     </section>
@@ -79,7 +83,7 @@
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and !store.courtesyPremium}" th:with="planName=#{plan.PREMIUM}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
-            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or !paymentSubscription.accessActive)}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
+            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM">
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM'}"
                         th:with="planName=#{plan.PREMIUM}" th:text="#{admin.billing.subscribe.plan(${planName})}">
@@ -101,7 +105,7 @@
                 <li th:text="#{admin.billing.premiumplus.feature.reports}">Relatorios operacionais</li>
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
-            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or !paymentSubscription.accessActive)}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
+            <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM_PLUS'}"
                         th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{admin.billing.subscribe.plan(${planName})}">

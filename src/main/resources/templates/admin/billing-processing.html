@@ -1,0 +1,60 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{merchant.payment.wait.title} + ' - ' + #{common.app.name}">Confirmando pagamento</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+</head>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('billing')}"></th:block>
+<main class="shell merchant-payment-wait">
+    <section class="panel merchant-payment-status" aria-live="polite">
+        <div id="payment-pending">
+            <span class="merchant-payment-spinner" aria-hidden="true"></span>
+            <p class="eyebrow" th:text="#{merchant.payment.wait.eyebrow}">Pagamento enviado</p>
+            <h1 th:text="#{merchant.payment.wait.title}">Estamos confirmando seu pagamento</h1>
+            <p th:text="#{admin.billing.processing}">O plano será liberado após a confirmação do provedor.</p>
+            <p class="muted" th:text="#{merchant.payment.wait.detail}">Esta página atualiza o status automaticamente.</p>
+            <a id="payment-slow-link" class="merchant-payment-slow" th:href="@{/admin/billing}" hidden
+               th:text="#{merchant.payment.wait.slow}">Está demorando? Voltar aos planos</a>
+            <noscript><a th:href="@{/admin/billing}" th:text="#{merchant.payment.wait.slow}">Voltar aos planos</a></noscript>
+        </div>
+        <div id="payment-active" hidden>
+            <span class="merchant-payment-icon is-success" aria-hidden="true">✓</span>
+            <h1 th:text="#{merchant.payment.active.title}">Plano ativado</h1>
+            <p th:text="#{merchant.payment.active.detail}">Pagamento confirmado. Seu plano já está disponível.</p>
+            <a class="button primary" th:href="@{/admin}" th:text="#{merchant.payment.active.cta}">Ir para o painel</a>
+        </div>
+        <div id="payment-failed" hidden>
+            <span class="merchant-payment-icon is-failed" aria-hidden="true">!</span>
+            <h1 th:text="#{merchant.payment.failed.title}">Não foi possível confirmar o pagamento</h1>
+            <p th:text="#{merchant.payment.failed.detail}">Confira o status na página de planos antes de tentar novamente.</p>
+            <a class="button" th:href="@{/admin/billing}" th:text="#{merchant.payment.failed.cta}">Ver planos e cobrança</a>
+        </div>
+    </section>
+</main>
+<th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
+<script th:inline="javascript">
+    const paymentStatusUrl = /*[[@{/admin/billing/status}]]*/ '/admin/billing/status';
+    const slowLink = document.getElementById('payment-slow-link');
+    setTimeout(() => { slowLink.hidden = false; }, 45000);
+    async function checkPaymentStatus() {
+        try {
+            const response = await fetch(paymentStatusUrl, {credentials: 'same-origin', cache: 'no-store'});
+            if (!response.ok) throw new Error('status unavailable');
+            const {state} = await response.json();
+            if (state === 'active' || state === 'failed') {
+                document.getElementById('payment-pending').hidden = true;
+                document.getElementById('payment-' + state).hidden = false;
+                return;
+            }
+        } catch (_) {
+            // A conexão pode oscilar; o próximo ciclo tentará novamente.
+        }
+        setTimeout(checkPaymentStatus, document.hidden ? 15000 : 5000);
+    }
+    checkPaymentStatus();
+</script>
+</body>
+</html>

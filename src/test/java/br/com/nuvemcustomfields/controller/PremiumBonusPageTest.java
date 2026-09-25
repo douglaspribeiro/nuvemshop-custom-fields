@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -41,6 +42,94 @@ class PremiumBonusPageTest {
     @Autowired PersonalizationRuleRepository rules;
     @Autowired PersonalizationFieldRepository fields;
     @MockitoBean NuvemshopBillingService billing;
+
+    @Test
+    void guidesFirstProductUntilFirstFieldIsCreated() throws Exception {
+        Store store = new Store();
+        store.setStoreId(7654330L);
+        store.setAccessToken("test");
+        stores.save(store);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
+
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Passo 1 de 2")))
+                .andExpect(content().string(containsString("Configurar produto")));
+
+        PersonalizationRule rule = new PersonalizationRule();
+        rule.setStoreId(store.getStoreId());
+        rule.setProductId(9300L);
+        rule.setProductName("Caneca personalizada");
+        rules.save(rule);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Passo 2 de 2")))
+                .andExpect(content().string(containsString("Criar primeiro campo")))
+                .andExpect(content().string(containsString("/admin/products/9300/fields")));
+        mvc.perform(get("/admin/products/9300/fields").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Dê um nome ao campo")));
+
+        PersonalizationField field = new PersonalizationField();
+        field.setRule(rule);
+        field.setLabel("Nome");
+        fields.save(field);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Confira na loja")))
+                .andExpect(content().string(not(containsString("Passo 2 de 2"))));
+    }
+
+    @Test
+    void processingPagePollsPendingPaymentAndShowsConfirmedState() throws Exception {
+        Store store = new Store();
+        store.setStoreId(7654331L);
+        store.setAccessToken("test");
+        stores.save(store);
+        PaymentSubscription subscription = new PaymentSubscription();
+        subscription.setStoreId(store.getStoreId());
+        subscription.setProvider(PaymentProviderType.MERCADO_PAGO);
+        subscription.setExternalReference("store-7654331-premium");
+        subscription.setPlan(PlanType.PREMIUM);
+        subscription.setCurrency("BRL");
+        subscription.setAmountValue(new BigDecimal("19.99"));
+        paymentSubscriptions.save(subscription);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
+
+        mvc.perform(get("/admin/billing/processing").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Estamos confirmando seu pagamento")));
+        mvc.perform(get("/admin/billing/status").session(session)).andExpect(status().isOk())
+                .andExpect(content().json("{\"state\":\"pending\"}"));
+
+        subscription.setStatus(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.ACTIVE);
+        subscription.setAccessActive(true);
+        paymentSubscriptions.saveAndFlush(subscription);
+        mvc.perform(get("/admin/billing/status").session(session)).andExpect(status().isOk())
+                .andExpect(content().json("{\"state\":\"active\"}"));
+    }
+
+    @Test
+    void pendingEfiDoesNotLookLikeAnActivePlanOrOfferAnotherPayment() throws Exception {
+        Store store = new Store();
+        store.setStoreId(7654332L);
+        store.setAccessToken("test");
+        stores.save(store);
+        PaymentSubscription subscription = new PaymentSubscription();
+        subscription.setStoreId(store.getStoreId());
+        subscription.setProvider(PaymentProviderType.EFI);
+        subscription.setExternalReference("store-7654332-premium");
+        subscription.setPlan(PlanType.PREMIUM);
+        subscription.setCurrency("BRL");
+        subscription.setAmountValue(new BigDecimal("19.99"));
+        subscription.setNextPaymentAt(Instant.parse("2026-10-24T03:00:00Z"));
+        paymentSubscriptions.save(subscription);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
+
+        mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("primeira cobrança ainda não foi confirmada")))
+                .andExpect(content().string(containsString("Acompanhar confirmação")))
+                .andExpect(content().string(not(containsString("Próxima cobrança:"))))
+                .andExpect(content().string(not(containsString("Assinar Essencial"))));
+    }
 
     @Test
     void freePlanStillAllowsEditingExistingFieldAtLimit() throws Exception {

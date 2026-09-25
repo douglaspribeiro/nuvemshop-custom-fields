@@ -109,11 +109,19 @@
             <p>Plano e valor: <span th:text="${paymentSubscription.plan.displayName}">Essencial</span>
                 — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
             <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
+            <p>Última cobrança: <span th:text="${paymentSubscription.lastPaymentId ?: '-'}">-</span>
+                / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
+            <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
             <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
             <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.lastError)}" th:text="${paymentSubscription.lastError}">Erro</p>
             <form th:if="${paymentSubscription.providerSubscriptionId != null}"
                   th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
                 <button class="button" type="submit">Reconciliar agora</button>
+            </form>
+            <form th:if="${paymentSubscription.providerSubscriptionId != null and paymentSubscription.status.name() != 'CANCELED'}"
+                  th:action="@{/backoffice/stores/{storeId}/payment/cancel(storeId=${store.storeId})}" method="post"
+                  onsubmit="return confirm('Cancelar esta assinatura no gateway? Esta ação não pode ser desfeita.');">
+                <button class="button danger" type="submit">Cancelar assinatura no gateway</button>
             </form>
         </div>
     </section>

@@ -4,6 +4,7 @@ import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
+import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,8 +19,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -40,6 +44,9 @@ class BackofficeScriptsPageTest {
 
     @MockitoBean
     private NuvemshopApiClient apiClient;
+
+    @MockitoBean
+    private PaymentSubscriptionService paymentSubscriptionService;
 
     private MockHttpSession session;
 
@@ -86,5 +93,19 @@ class BackofficeScriptsPageTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("401 Unauthorized")))
                 .andExpect(content().string(not(containsString("Tudo associado"))));
+    }
+
+    @Test
+    void backofficeCanRequestGatewayCancellation() throws Exception {
+        mockMvc.perform(post("/backoffice/stores/{storeId}/payment/cancel", STORE_ID).session(session))
+                .andExpect(redirectedUrl("/backoffice/stores/" + STORE_ID));
+        verify(paymentSubscriptionService).cancel(STORE_ID);
+    }
+
+    @Test
+    void cancellationRequiresBackofficeSession() throws Exception {
+        mockMvc.perform(post("/backoffice/stores/{storeId}/payment/cancel", STORE_ID))
+                .andExpect(redirectedUrl("/backoffice/login"));
+        org.mockito.Mockito.verifyNoInteractions(paymentSubscriptionService);
     }
 }

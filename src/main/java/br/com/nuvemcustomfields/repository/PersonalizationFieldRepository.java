@@ -17,6 +17,9 @@ public interface PersonalizationFieldRepository extends JpaRepository<Personaliz
     @Query("select count(field) from PersonalizationField field where field.rule.storeId = :storeId")
     long countByStoreId(@Param("storeId") Long storeId);
 
+    @Query("select distinct field.rule.productId from PersonalizationField field where field.rule.storeId = :storeId")
+    List<Long> findConfiguredProductIdsByStoreId(@Param("storeId") Long storeId);
+
     @Modifying
     @Query("""
             delete from PersonalizationField field

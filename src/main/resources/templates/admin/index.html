@@ -35,7 +35,11 @@
             <p th:if="${configuredFields > 0}" th:text="#{merchant.overview.ready.description}">Os campos já podem aparecer na loja.</p>
             <p th:if="${configuredFields == 0 and usage.productsUsed > 0}" th:text="#{merchant.overview.addfield.description}">Defina os dados que o cliente vai preencher.</p>
             <p th:if="${configuredFields == 0 and usage.productsUsed == 0}" th:text="#{merchant.overview.start.description}">Configure um produto.</p>
-            <a class="button" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
+            <a class="button" th:if="${configuredFields == 0 and setupRule != null}"
+               th:href="@{/admin/products/{productId}/fields(productId=${setupRule.productId})}"
+               th:text="#{merchant.ftue.create.cta}">Criar primeiro campo</a>
+            <a class="button" th:unless="${configuredFields == 0 and setupRule != null}"
+               th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
         </div>
         <div class="panel merchant-health">
             <span class="health-label" th:text="#{merchant.overview.health}">Estado da integração</span>
@@ -50,18 +54,42 @@
     </section>
     <section class="panel merchant-upgrade">
         <div><span class="eyebrow" th:text="#{merchant.upgrade.eyebrow}">Seu plano</span>
-            <h2 th:text="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full} : #{merchant.upgrade.available}">Veja o que seu plano permite</h2>
-            <p th:text="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full.detail} : #{merchant.upgrade.available.detail}">Consulte os limites e compare planos.</p>
+            <h2 th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full} : #{merchant.upgrade.available}">Veja o que seu plano permite</h2>
+            <p th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full.detail} : #{merchant.upgrade.available.detail}">Consulte os limites e compare planos.</p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}" th:text="${usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.cta} : #{merchant.upgrade.view}">Ver planos</a>
+        <a class="button primary" th:href="@{/admin/billing}" th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.cta} : #{merchant.upgrade.view}">Ver planos</a>
     </section>
     <section class="merchant-section-grid">
-        <div class="panel"><h2 th:text="#{merchant.overview.next}">Próximos passos</h2>
-            <ol class="merchant-steps">
-                <li><span class="merchant-step-number">1</span><div><strong th:text="#{merchant.overview.step.product}">Configure seus produtos</strong><p th:text="#{merchant.overview.step.product.detail}">Escolha produtos.</p><a th:href="@{/admin/products}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
-                <li><span class="merchant-step-number">2</span><div><strong th:text="#{merchant.overview.step.appearance}">Revise a aparência</strong><p th:text="#{merchant.overview.step.appearance.detail}">Ajuste as cores.</p><a th:href="@{/admin/settings/style}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
-                <li><span class="merchant-step-number">3</span><div><strong th:text="#{merchant.overview.step.orders}">Acompanhe os pedidos</strong><p th:text="#{merchant.overview.step.orders.detail}">Confira os dados.</p><a th:href="@{/admin/dashboard}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
-            </ol>
+        <div class="panel">
+            <div th:if="${configuredFields == 0}" class="merchant-ftue">
+                <p class="eyebrow" th:text="#{merchant.ftue.eyebrow}">Primeiros passos</p>
+                <h2 th:text="#{merchant.ftue.title}">Configure seu primeiro produto</h2>
+                <p class="muted" th:text="${setupRule == null} ? #{merchant.ftue.progress.none} : #{merchant.ftue.progress.selected}">Passo 1 de 2</p>
+                <ol class="merchant-steps">
+                    <li th:classappend="${setupRule == null} ? ' is-current' : ' is-done'">
+                        <span class="merchant-step-number" aria-hidden="true" th:text="${setupRule == null} ? '1' : '✓'">1</span>
+                        <div><strong th:text="#{merchant.ftue.select}">Escolha um produto</strong><p th:text="#{merchant.ftue.select.detail}">Selecione o produto que receberá o campo.</p>
+                            <a th:if="${setupRule == null}" th:href="@{/admin/products}" th:text="#{merchant.ftue.select.cta}">Escolher produto</a>
+                            <span th:unless="${setupRule == null}" class="merchant-ftue-complete" th:text="${#strings.isEmpty(setupRule.productName) ? #messages.msg('merchant.ftue.selected') : setupRule.productName}">Produto selecionado</span>
+                        </div>
+                    </li>
+                    <li th:classappend="${setupRule != null} ? ' is-current'">
+                        <span class="merchant-step-number" aria-hidden="true">2</span>
+                        <div><strong th:text="#{merchant.ftue.create}">Crie o primeiro campo</strong><p th:text="#{merchant.ftue.create.detail}">Defina o que o cliente deve informar.</p>
+                            <a th:if="${setupRule != null}" th:href="@{/admin/products/{productId}/fields(productId=${setupRule.productId})}" th:text="#{merchant.ftue.create.cta}">Criar primeiro campo</a>
+                        </div>
+                    </li>
+                </ol>
+                <p class="merchant-ftue-note" th:text="#{merchant.ftue.note}">Você poderá editar tudo depois.</p>
+            </div>
+            <div th:unless="${configuredFields == 0}">
+                <h2 th:text="#{merchant.overview.next}">Próximos passos</h2>
+                <ol class="merchant-steps">
+                    <li><span class="merchant-step-number">1</span><div><strong th:text="#{merchant.ftue.verify}">Confira na loja</strong><p th:text="#{merchant.ftue.verify.detail}">Abra a página do produto e verifique o campo.</p><a th:href="@{/admin/products}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
+                    <li><span class="merchant-step-number">2</span><div><strong th:text="#{merchant.overview.step.appearance}">Revise a aparência</strong><p th:text="#{merchant.overview.step.appearance.detail}">Ajuste as cores.</p><a th:href="@{/admin/settings/style}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
+                    <li><span class="merchant-step-number">3</span><div><strong th:text="#{merchant.overview.step.orders}">Acompanhe os pedidos</strong><p th:text="#{merchant.overview.step.orders.detail}">Confira os dados.</p><a th:href="@{/admin/dashboard}" th:text="#{merchant.overview.open}">Abrir</a></div></li>
+                </ol>
+            </div>
         </div>
         <div class="panel"><h2 th:text="#{merchant.overview.shortcuts}">Acesso rápido</h2>
             <div class="merchant-quicklinks">

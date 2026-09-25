@@ -67,6 +67,27 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-steps strong,.merchant-steps span { display:block; }
 .merchant-steps p { margin:3px 0 0; color:var(--merchant-muted); font-size:.85rem; line-height:1.5; }
 .merchant-steps a { color:var(--merchant-green-dark); font-size:.84rem; font-weight:750; }
+.merchant-ftue > .muted { margin:5px 0 15px; font-size:.84rem; }
+.merchant-ftue .merchant-steps li.is-current { border-left:3px solid var(--merchant-green); padding-left:12px; background:#f7fbf8; }
+.merchant-ftue .merchant-steps li.is-done .merchant-step-number { background:var(--merchant-green); color:#fff; }
+.merchant-ftue-complete { margin-top:7px; color:var(--merchant-green-dark); font-size:.82rem; font-weight:700; }
+.merchant-ftue-note { margin:15px 0 0; color:var(--merchant-muted); font-size:.8rem; }
+.merchant-ftue-banner { display:flex; align-items:flex-start; gap:13px; margin-bottom:20px; background:#f7fbf8; border-color:#cbe3d2 !important; }
+.merchant-ftue-banner strong { display:block; margin:3px 0 5px; }
+.merchant-ftue-banner p { margin:0; color:var(--merchant-muted); font-size:.87rem; line-height:1.5; }
+.merchant-payment-wait { display:grid; place-items:center; min-height:65vh; }
+.merchant-payment-status { width:min(100%,580px); box-sizing:border-box; text-align:center; padding:48px 34px !important; }
+.merchant-payment-status h1 { margin:12px 0; }
+.merchant-payment-status p { line-height:1.6; }
+.merchant-payment-status .button { margin-top:18px; }
+.merchant-payment-status [hidden] { display:none !important; }
+.merchant-payment-spinner { display:block; width:42px; height:42px; margin:0 auto 22px; border:4px solid #dcebe2; border-top-color:var(--merchant-green); border-radius:50%; animation:merchant-payment-spin .9s linear infinite; }
+.merchant-payment-icon { display:grid; place-items:center; width:50px; height:50px; margin:0 auto 20px; border-radius:50%; font-size:1.7rem; font-weight:800; }
+.merchant-payment-icon.is-success { background:#e4f4e9; color:var(--merchant-green-dark); }
+.merchant-payment-icon.is-failed { background:#fff1e9; color:#a54b28; }
+.merchant-payment-slow { display:inline-block; margin-top:22px; color:var(--merchant-green-dark); font-size:.84rem; }
+@keyframes merchant-payment-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .merchant-payment-spinner { animation:none; } }
 .merchant-quicklinks { display:grid; gap:9px; margin-top:17px; }
 .merchant-quicklinks a { display:flex; justify-content:space-between; gap:12px; padding:13px 14px; border:1px solid var(--merchant-line); border-radius:9px; color:var(--merchant-ink); text-decoration:none; font-size:.87rem; font-weight:700; }
 .merchant-quicklinks a:hover { border-color:#9bc9ad; background:#f5faf6; }

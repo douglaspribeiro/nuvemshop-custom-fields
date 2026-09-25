@@ -100,6 +100,12 @@ public class PaymentSubscriptionService {
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
                 && hasText(local.getProviderSubscriptionId())) {
             router.require(local.getProvider()).cancel(local.getProviderSubscriptionId());
+        } else if (local != null && local.getStatus() == PaymentSubscriptionStatus.ERROR
+                && local.getProvider() == PaymentProviderType.EFI
+                && hasText(local.getProviderSubscriptionId())) {
+            // Uma cobrança recusada pode deixar a assinatura remota ativa; não a abandone
+            // antes de criar outra para a mesma loja.
+            efi.cancel(local.getProviderSubscriptionId());
         } else if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
                 && hasText(local.getProviderCheckoutId()) && local.getProvider() != PaymentProviderType.EFI) {
             if (router.configured(local.getProvider())) {
@@ -130,6 +136,8 @@ public class PaymentSubscriptionService {
         local.setStatus(PaymentSubscriptionStatus.PENDING);
         local.setProviderStatus("new");
         local.setCheckoutUrl(null);
+        local.setLastPaymentId(null);
+        local.setLastPaymentStatus(null);
         local.setLastError(null);
         subscriptions.saveAndFlush(local);
         try {
@@ -140,8 +148,15 @@ public class PaymentSubscriptionService {
             subscriptions.saveAndFlush(local);
             var paid = efi.pay(id, payer, paymentToken);
             var charge = paid == null ? null : paid.path("charge");
-            String chargeId = charge == null ? null : charge.path("id").asText(null);
-            String chargeStatus = charge == null ? null : charge.path("status").asText(null);
+            String chargeId = paid == null ? null : paid.path("charge_id").asText(null);
+            if (!hasText(chargeId) && charge != null) chargeId = charge.path("id").asText(null);
+            String chargeStatus = paid == null ? null : paid.path("status").asText(null);
+            if (!hasText(chargeStatus) && charge != null) chargeStatus = charge.path("status").asText(null);
+            if (hasText(chargeId)) {
+                local.setLastPaymentId(chargeId);
+                local.setLastPaymentStatus(chargeStatus);
+                subscriptions.saveAndFlush(local);
+            }
             GatewayInvoice invoice = hasText(chargeId) && hasText(chargeStatus)
                     ? new GatewayInvoice(chargeId, id, chargeId, chargeStatus) : null;
             GatewaySubscription remote;
@@ -280,7 +295,7 @@ public class PaymentSubscriptionService {
             subscriptions.saveAndFlush(local);
         }
         GatewaySubscription remote = gateway.getSubscription(local.getProviderSubscriptionId());
-        Optional<GatewayInvoice> invoice = gateway.getLatestInvoice(remote.id());
+        Optional<GatewayInvoice> invoice = latestInvoice(gateway, local, remote);
         return synchronize(local, remote, invoice.orElse(null), "PAYMENT_RECONCILE");
     }
 
@@ -289,7 +304,17 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
         PaymentSubscription local = locate(remote);
-        return synchronize(local, remote, gateway.getLatestInvoice(subscriptionId).orElse(null), "PAYMENT_WEBHOOK");
+        return synchronize(local, remote, latestInvoice(gateway, local, remote).orElse(null), "PAYMENT_WEBHOOK");
+    }
+
+    private Optional<GatewayInvoice> latestInvoice(PaymentGateway gateway, PaymentSubscription local,
+                                                    GatewaySubscription remote) {
+        Optional<GatewayInvoice> invoice = gateway.getLatestInvoice(remote.id());
+        if (invoice.isEmpty() && gateway instanceof EfiGateway efiGateway
+                && hasText(local.getLastPaymentId())) {
+            return Optional.of(efiGateway.getCharge(remote.id(), local.getLastPaymentId()));
+        }
+        return invoice;
     }
 
     @Transactional
@@ -371,7 +396,8 @@ public class PaymentSubscriptionService {
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
-        if (("authorized".equals(status) || "active".equals(status)) && invoice != null && invoice.approved()) {
+        if (("authorized".equals(status) || "active".equals(status) || "new_charge".equals(status))
+                && invoice != null && invoice.approved()) {
             local.setStatus(PaymentSubscriptionStatus.ACTIVE);
             local.setGraceUntil(null);
             local.setCancellationPending(false);
@@ -385,6 +411,9 @@ public class PaymentSubscriptionService {
             if (local.getNextPaymentAt() == null || !Instant.now().isBefore(local.getNextPaymentAt())) {
                 deactivate(local, store, source);
             }
+        } else if (local.getProvider() == PaymentProviderType.EFI && !local.isAccessActive()
+                && invoice != null && "unpaid".equalsIgnoreCase(invoice.paymentStatus())) {
+            local.setStatus(PaymentSubscriptionStatus.ERROR);
         } else if (local.isAccessActive() && invoice != null && !invoice.approved()) {
             local.setStatus(PaymentSubscriptionStatus.PAST_DUE);
             if (local.getGraceUntil() == null) {
@@ -393,6 +422,11 @@ public class PaymentSubscriptionService {
             if (!Instant.now().isBefore(local.getGraceUntil())) deactivate(local, store, source);
         } else {
             local.setStatus(PaymentSubscriptionStatus.PENDING);
+        }
+        if (local.getProvider() == PaymentProviderType.EFI) {
+            LOGGER.info("payments.efi.reconciled store_id={} provider_status={} charge_status={} local_status={} source={}",
+                    local.getStoreId(), remote.status(), invoice == null ? "missing" : invoice.paymentStatus(),
+                    local.getStatus(), source);
         }
         stores.save(store);
         return subscriptions.save(local);
