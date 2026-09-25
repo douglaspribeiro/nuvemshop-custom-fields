@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.8.0] - 2026-09-25
+
+### Features
+
+- notify confirmed payments and confirm subscription cancellation (`d912b72`)
+
+### Correções
+
+- reconcile pending payments safely and format BRL prices (`6134b83`)
+
 ## [1.7.3] - 2026-09-25
 
 ### Correções
