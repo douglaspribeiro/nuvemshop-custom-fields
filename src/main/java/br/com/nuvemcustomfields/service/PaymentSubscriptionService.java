@@ -139,14 +139,29 @@ public class PaymentSubscriptionService {
             local.setProviderCheckoutId(efi.planId(plan));
             subscriptions.saveAndFlush(local);
             var paid = efi.pay(id, payer, paymentToken);
-            String chargeId = paid.path("charge_id").asText(null);
-            String chargeStatus = paid.path("status").asText(null);
-            if (chargeId == null || chargeStatus == null) {
-                throw new PaymentGatewayException("A Efí não retornou o resultado da cobrança.");
+            var charge = paid == null ? null : paid.path("charge");
+            String chargeId = charge == null ? null : charge.path("id").asText(null);
+            String chargeStatus = charge == null ? null : charge.path("status").asText(null);
+            GatewayInvoice invoice = hasText(chargeId) && hasText(chargeStatus)
+                    ? new GatewayInvoice(chargeId, id, chargeId, chargeStatus) : null;
+            GatewaySubscription remote;
+            try {
+                remote = efi.getSubscription(id);
+            } catch (RuntimeException ex) {
+                // O POST de pagamento já foi aceito. Uma falha na consulta posterior
+                // não significa que o cartão falhou; o webhook/GET de cobrança conciliará.
+                LOGGER.warn("payments.efi.checkout_reconcile_deferred store_id={} subscription_id={} type={}",
+                        storeId, id, ex.getClass().getSimpleName());
+                return;
             }
-            GatewayInvoice invoice = new GatewayInvoice(chargeId, id, chargeId, chargeStatus);
-            synchronize(local, efi.getSubscription(id), invoice, "EFI_CHECKOUT");
-            if ("unpaid".equalsIgnoreCase(chargeStatus)) {
+            try {
+                invoice = efi.getLatestInvoice(id).orElse(invoice);
+            } catch (RuntimeException ex) {
+                LOGGER.warn("payments.efi.charge_lookup_deferred store_id={} subscription_id={} type={}",
+                        storeId, id, ex.getClass().getSimpleName());
+            }
+            synchronize(local, remote, invoice, "EFI_CHECKOUT");
+            if (invoice != null && "unpaid".equalsIgnoreCase(invoice.paymentStatus())) {
                 throw new PaymentGatewayException("O cartão não foi aprovado pela Efí. Confira os dados ou use outro cartão.");
             }
         } catch (RuntimeException ex) {

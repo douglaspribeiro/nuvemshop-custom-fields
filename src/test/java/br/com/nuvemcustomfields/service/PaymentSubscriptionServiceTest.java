@@ -98,10 +98,12 @@ class PaymentSubscriptionServiceTest {
         when(efi.planId(PlanType.PREMIUM)).thenReturn("72050");
         when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(), anyString())).thenReturn("sub-1");
         when(efi.pay(eq("sub-1"), any(), eq("12345678901234567890"))).thenReturn(
-                new ObjectMapper().readTree("{\"charge_id\":12345,\"status\":\"approved\"}"));
+                new ObjectMapper().readTree("{\"subscription_id\":\"sub-1\",\"status\":\"active\",\"charge\":{\"id\":12345,\"status\":\"waiting\"}}"));
         when(efi.getSubscription("sub-1")).thenAnswer(invocation ->
                 new GatewaySubscription("sub-1", "72050", saved.get().getExternalReference(),
                         "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400)));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("12345", "sub-1", "12345", "paid")));
 
         service.payWithEfi(123L, PlanType.PREMIUM,
                 new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
@@ -111,6 +113,76 @@ class PaymentSubscriptionServiceTest {
         assertThat(saved.get().getLastPaymentId()).isEqualTo("12345");
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         verify(events).save(any(PlanEvent.class));
+    }
+
+    @Test
+    void keepsCheckoutPendingWhenAcceptedPaymentHasNoChargeYet() throws Exception {
+        Store store = store();
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("loja@example.com");
+        AtomicReference<PaymentSubscription> saved = new AtomicReference<>();
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.saveAndFlush(any(PaymentSubscription.class))).thenAnswer(invocation -> {
+            PaymentSubscription subscription = invocation.getArgument(0);
+            saved.set(subscription);
+            return subscription;
+        });
+        when(subscriptions.save(any(PaymentSubscription.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(efi.configured()).thenReturn(true);
+        when(efi.supports(store)).thenReturn(true);
+        when(efi.amount(PlanType.PREMIUM)).thenReturn(new BigDecimal("19.99"));
+        when(efi.planId(PlanType.PREMIUM)).thenReturn("72050");
+        when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(), anyString())).thenReturn("sub-1");
+        when(efi.pay(eq("sub-1"), any(), eq("12345678901234567890"))).thenReturn(
+                new ObjectMapper().readTree("{\"subscription_id\":\"sub-1\",\"status\":\"active\"}"));
+        when(efi.getSubscription("sub-1")).thenAnswer(invocation ->
+                new GatewaySubscription("sub-1", "72050", saved.get().getExternalReference(),
+                        "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400)));
+        when(efi.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+
+        service.payWithEfi(123L, PlanType.PREMIUM,
+                new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
+                        "11999999999", "1990-01-01"), "12345678901234567890");
+
+        assertThat(saved.get().getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        assertThat(saved.get().getLastError()).isNull();
+        assertThat(saved.get().getProviderSubscriptionId()).isEqualTo("sub-1");
+        verify(efi, times(1)).pay(eq("sub-1"), any(), anyString());
+        verifyNoInteractions(events);
+    }
+
+    @Test
+    void doesNotReportCardFailureWhenReadAfterAcceptedPaymentFails() throws Exception {
+        Store store = store();
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("loja@example.com");
+        AtomicReference<PaymentSubscription> saved = new AtomicReference<>();
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.saveAndFlush(any(PaymentSubscription.class))).thenAnswer(invocation -> {
+            PaymentSubscription subscription = invocation.getArgument(0);
+            saved.set(subscription);
+            return subscription;
+        });
+        when(efi.configured()).thenReturn(true);
+        when(efi.supports(store)).thenReturn(true);
+        when(efi.amount(PlanType.PREMIUM)).thenReturn(new BigDecimal("19.99"));
+        when(efi.planId(PlanType.PREMIUM)).thenReturn("72050");
+        when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(), anyString())).thenReturn("sub-1");
+        when(efi.pay(eq("sub-1"), any(), eq("12345678901234567890"))).thenReturn(
+                new ObjectMapper().readTree("{\"subscription_id\":\"sub-1\",\"status\":\"active\",\"charge\":{\"id\":12345,\"status\":\"waiting\"}}"));
+        when(efi.getSubscription("sub-1")).thenThrow(new PaymentGatewayException("Consulta temporariamente indisponível"));
+
+        service.payWithEfi(123L, PlanType.PREMIUM,
+                new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
+                        "11999999999", "1990-01-01"), "12345678901234567890");
+
+        assertThat(saved.get().getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        assertThat(saved.get().getProviderSubscriptionId()).isEqualTo("sub-1");
+        assertThat(saved.get().getLastError()).isNull();
+        verify(efi, times(1)).pay(eq("sub-1"), any(), anyString());
     }
 
     @Test
