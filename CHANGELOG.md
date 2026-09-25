@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.5.2] - 2026-09-24
+
+### Correções
+
+- Pagamento Via Efi layout (`48623c3`)
+
 ## [1.5.1] - 2026-09-24
 
 ### Correções
