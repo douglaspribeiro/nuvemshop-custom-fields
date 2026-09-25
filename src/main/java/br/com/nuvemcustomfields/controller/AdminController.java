@@ -4,6 +4,8 @@ import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.FieldType;
+import br.com.nuvemcustomfields.entity.PaymentProviderType;
+import br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
@@ -170,6 +172,17 @@ public class AdminController {
     public String billing(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
         boolean available = paymentSubscriptionService.available(store);
+        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+        if (subscription != null && subscription.getProvider() == PaymentProviderType.EFI
+                && subscription.getStatus() == PaymentSubscriptionStatus.PENDING
+                && subscription.getProviderSubscriptionId() != null) {
+            try {
+                subscription = paymentSubscriptionService.reconcile(store.getStoreId());
+            } catch (RuntimeException ex) {
+                LOGGER.warn("payments.efi.billing_reconcile_failed store_id={} type={}",
+                        store.getStoreId(), ex.getClass().getSimpleName());
+            }
+        }
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("billingEnabled", paymentSubscriptionService.efiEnabled() || paymentSubscriptionService.mercadoPagoEnabled());
@@ -177,7 +190,7 @@ public class AdminController {
         model.addAttribute("billingCurrency", available ? paymentSubscriptionService.currency(store) : "");
         model.addAttribute("premiumAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM));
         model.addAttribute("premiumPlusAmount", paymentSubscriptionService.amount(store, PlanType.PREMIUM_PLUS));
-        model.addAttribute("paymentSubscription", paymentSubscriptionService.find(store.getStoreId()).orElse(null));
+        model.addAttribute("paymentSubscription", subscription);
         return "admin/billing";
     }
 

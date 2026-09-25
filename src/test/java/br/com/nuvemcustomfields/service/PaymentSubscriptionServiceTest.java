@@ -7,11 +7,13 @@ import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -71,6 +73,42 @@ class PaymentSubscriptionServiceTest {
         service.synchronizeFromSubscription(PaymentProviderType.EFI, "sub-1");
 
         assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        verify(events).save(any(PlanEvent.class));
+    }
+
+    @Test
+    void activatesEfiPlanFromDocumentedPaymentResponse() throws Exception {
+        Store store = store();
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("loja@example.com");
+        AtomicReference<PaymentSubscription> saved = new AtomicReference<>();
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.saveAndFlush(any(PaymentSubscription.class))).thenAnswer(invocation -> {
+            PaymentSubscription subscription = invocation.getArgument(0);
+            saved.set(subscription);
+            return subscription;
+        });
+        when(subscriptions.save(any(PaymentSubscription.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(efi.configured()).thenReturn(true);
+        when(efi.supports(store)).thenReturn(true);
+        when(efi.amount(PlanType.PREMIUM)).thenReturn(new BigDecimal("19.99"));
+        when(efi.planId(PlanType.PREMIUM)).thenReturn("72050");
+        when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(), anyString())).thenReturn("sub-1");
+        when(efi.pay(eq("sub-1"), any(), eq("12345678901234567890"))).thenReturn(
+                new ObjectMapper().readTree("{\"charge_id\":12345,\"status\":\"approved\"}"));
+        when(efi.getSubscription("sub-1")).thenAnswer(invocation ->
+                new GatewaySubscription("sub-1", "72050", saved.get().getExternalReference(),
+                        "active", "BRL", new BigDecimal("19.99"), Instant.now().plusSeconds(86400)));
+
+        service.payWithEfi(123L, PlanType.PREMIUM,
+                new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
+                        "11999999999", "1990-01-01"), "12345678901234567890");
+
+        assertThat(saved.get().getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(saved.get().getLastPaymentId()).isEqualTo("12345");
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         verify(events).save(any(PlanEvent.class));
     }

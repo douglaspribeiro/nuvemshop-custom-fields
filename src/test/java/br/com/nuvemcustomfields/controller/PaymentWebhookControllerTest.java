@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.controller;
 import br.com.nuvemcustomfields.payment.PaymentGatewayException;
 import br.com.nuvemcustomfields.service.PaymentWebhookService;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -48,11 +49,23 @@ class PaymentWebhookControllerTest {
         PaymentWebhookService service = mock(PaymentWebhookService.class);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new PaymentWebhookController(service)).build();
 
-        mvc.perform(post("/prod/webhooks/efi3").param("notification", "efi-notification-token"))
-                .andExpect(status().isNoContent());
+        mvc.perform(post("/prod/webhooks/efi3")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .content("notification=efi-notification-token"))
+                .andExpect(status().isOk());
         mvc.perform(post("/webhooks/efi3").param("notification", "efi-notification-token"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
 
         verify(service, times(2)).receiveEfi("efi-notification-token");
+    }
+
+    @Test
+    void rejectsEfiNotificationWithoutToken() throws Exception {
+        PaymentWebhookService service = mock(PaymentWebhookService.class);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PaymentWebhookController(service)).build();
+
+        mvc.perform(post("/prod/webhooks/efi3")).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
     }
 }

@@ -41,8 +41,11 @@ continuam disponíveis para assinaturas já criadas.
 O backend cria uma assinatura Efí vinculada ao plano, depois define cartão e
 pagador com `payment_token`. A assinatura local permanece pendente até que a
 primeira cobrança seja aprovada. O callback recebe apenas um token de
-notificação; o app consulta esse token na SDK e reconcilia a assinatura. Há
-também conciliação periódica. Em produção, testar aprovação, recusa,
+notificação; o app consulta esse token na SDK, reconcilia a assinatura e
+responde HTTP 200 à Efí. A consulta ao token é necessária para que a Efí
+considere a notificação recebida. Há também conciliação periódica e uma
+conferência ao abrir o painel de planos quando a assinatura Efí está pendente.
+Em produção, testar aprovação, recusa,
 notificação duplicada, renovação não paga e cancelamento.
 
 Se houver assinaturas ativas no Mercado Pago, manter suas credenciais e webhook

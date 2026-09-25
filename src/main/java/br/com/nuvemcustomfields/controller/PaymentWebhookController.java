@@ -41,6 +41,6 @@ public class PaymentWebhookController {
     public ResponseEntity<Void> efi(@RequestParam(name = "notification", required = false) String notification) {
         if (notification == null || notification.isBlank()) return ResponseEntity.badRequest().build();
         service.receiveEfi(notification);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }

@@ -139,9 +139,8 @@ public class PaymentSubscriptionService {
             local.setProviderCheckoutId(efi.planId(plan));
             subscriptions.saveAndFlush(local);
             var paid = efi.pay(id, payer, paymentToken);
-            var charge = paid.path("charge");
-            String chargeId = charge.path("id").asText(null);
-            String chargeStatus = charge.path("status").asText(null);
+            String chargeId = paid.path("charge_id").asText(null);
+            String chargeStatus = paid.path("status").asText(null);
             if (chargeId == null || chargeStatus == null) {
                 throw new PaymentGatewayException("A Efí não retornou o resultado da cobrança.");
             }

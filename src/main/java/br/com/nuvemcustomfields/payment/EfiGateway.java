@@ -83,8 +83,9 @@ public class EfiGateway implements PaymentGateway {
             JsonNode entry = history.get(index);
             String chargeId = entry.path("charge_id").asText("");
             if (!chargeId.isBlank() && !"null".equals(chargeId)) {
+                JsonNode charge = call("detailCharge", Map.of("id", chargeId), Map.of()).path("data");
                 return Optional.of(new GatewayInvoice(chargeId, subscriptionId, chargeId,
-                        entry.path("status").asText()));
+                        required(charge, "status")));
             }
         }
         return Optional.empty();
