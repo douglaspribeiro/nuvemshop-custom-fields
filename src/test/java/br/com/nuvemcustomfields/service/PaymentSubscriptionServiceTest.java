@@ -26,11 +26,12 @@ class PaymentSubscriptionServiceTest {
     private final PaymentGatewayRouter router = mock(PaymentGatewayRouter.class);
     private final PaymentGateway gateway = mock(PaymentGateway.class);
     private final EfiGateway efi = mock(EfiGateway.class);
+    private final PaymentNotificationService paymentNotifications = mock(PaymentNotificationService.class);
     private final NuvemshopProperties nuvemshopProperties = mock(NuvemshopProperties.class);
     private final PaymentSubscriptionService service = new PaymentSubscriptionService(
             stores, subscriptions, events, router, mock(NuvemshopApiClient.class), nuvemshopProperties,
             new MercadoPagoProperties(true, "https://api.example.com", "token", "secret", 3,
-            new BigDecimal("19.99"), new BigDecimal("29.99")), efi
+            new BigDecimal("19.99"), new BigDecimal("29.99")), efi, paymentNotifications
     );
 
     @Test
@@ -52,6 +53,7 @@ class PaymentSubscriptionServiceTest {
         assertThat(local.isAccessActive()).isTrue();
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         verify(events).save(any(PlanEvent.class));
+        verify(paymentNotifications).enqueue(eq(local), argThat(invoice -> "payment-1".equals(invoice.paymentId())));
     }
 
     @Test
@@ -195,6 +197,53 @@ class PaymentSubscriptionServiceTest {
         verify(efi).cancel("sub-1");
         assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
         assertThat(local.isCancellationPending()).isTrue();
+    }
+
+    @Test
+    void selfServiceCancellationKeepsPaidAccessUntilNextBillingDate() {
+        PaymentSubscription local = local();
+        local.setStatus(PaymentSubscriptionStatus.ACTIVE);
+        local.setAccessActive(true);
+        Instant paidUntil = Instant.now().plusSeconds(86400);
+        local.setNextPaymentAt(paidUntil);
+        Store store = store();
+        store.setPlan(PlanType.PREMIUM);
+        GatewaySubscription active = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "active", "BRL", new BigDecimal("19.99"), paidUntil);
+        GatewaySubscription canceled = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref",
+                "canceled", "BRL", new BigDecimal("19.99"), null);
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(active, active, canceled);
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.cancel(123L);
+
+        verify(gateway).cancel("sub-1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.isAccessActive()).isTrue();
+        assertThat(local.getNextPaymentAt()).isEqualTo(paidUntil);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+    }
+
+    @Test
+    void canceledPlanExpiresLocallyAfterPaidPeriod() {
+        PaymentSubscription local = local();
+        local.setStatus(PaymentSubscriptionStatus.CANCELED);
+        local.setAccessActive(true);
+        local.setNextPaymentAt(Instant.now().minusSeconds(1));
+        Store store = store();
+        store.setPlan(PlanType.PREMIUM);
+        when(subscriptions.findByStatusAndAccessActiveTrueAndNextPaymentAtLessThanEqual(
+                eq(PaymentSubscriptionStatus.CANCELED), any(Instant.class))).thenReturn(java.util.List.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+
+        service.expireCanceledAccess();
+
+        assertThat(local.isAccessActive()).isFalse();
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+        verify(events).save(any(PlanEvent.class));
     }
 
     @Test

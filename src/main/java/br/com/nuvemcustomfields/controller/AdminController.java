@@ -308,9 +308,33 @@ public class AdminController {
         return "redirect:/admin/billing";
     }
 
-    @PostMapping("/admin/billing/cancel")
-    public String cancelSubscription(HttpSession session, RedirectAttributes redirectAttributes) {
+    @GetMapping("/admin/billing/cancel")
+    public String cancellationPage(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
+        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+        if (subscription == null || !subscription.isAccessActive()
+                || subscription.getStatus() == PaymentSubscriptionStatus.CANCELED
+                || subscription.isCancellationPending()) return "redirect:/admin/billing";
+        model.addAttribute("store", store);
+        model.addAttribute("paymentSubscription", subscription);
+        return "admin/billing-cancel";
+    }
+
+    @PostMapping("/admin/billing/cancel")
+    public String cancelSubscription(@RequestParam(defaultValue = "false") boolean confirm,
+                                     HttpSession session, RedirectAttributes redirectAttributes) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+        if (!confirm) {
+            redirectAttributes.addFlashAttribute("error", messages.get("admin.billing.cancel.confirm.required"));
+            return "redirect:/admin/billing";
+        }
+        if (subscription == null || !subscription.isAccessActive()
+                || subscription.getStatus() == PaymentSubscriptionStatus.CANCELED
+                || subscription.isCancellationPending()) {
+            redirectAttributes.addFlashAttribute("error", messages.get("admin.billing.cancel.unavailable"));
+            return "redirect:/admin/billing";
+        }
         try {
             paymentSubscriptionService.cancel(store.getStoreId());
             redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.cancelled"));

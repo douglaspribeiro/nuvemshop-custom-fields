@@ -113,6 +113,10 @@ payments:
     premium-amount: ${MERCADO_PAGO_PREMIUM_AMOUNT:19.99}
     premium-plus-amount: ${MERCADO_PAGO_PREMIUM_PLUS_AMOUNT:29.99}
 
+notifications:
+  discord:
+    payment-webhook-url: ${DISCORD_PAYMENT_WEBHOOK_URL:}
+
 logging:
   file:
     name: logs/application.log

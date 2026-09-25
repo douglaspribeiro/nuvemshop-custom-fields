@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 import java.util.List;
+import java.time.Instant;
+import br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus;
 
 public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubscription, Long> {
     Optional<PaymentSubscription> findByStoreId(Long storeId);
@@ -15,4 +17,6 @@ public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubs
             br.com.nuvemcustomfields.entity.PaymentProviderType provider,
             java.util.Collection<br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus> statuses
     );
+    List<PaymentSubscription> findByStatusAndAccessActiveTrueAndNextPaymentAtLessThanEqual(
+            PaymentSubscriptionStatus status, Instant nextPaymentAt);
 }

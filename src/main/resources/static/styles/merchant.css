@@ -35,6 +35,16 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-page .chip { background:#f1f6f2; color:#34584a; border-color:#dce8de; }
 .merchant-page .empty { padding:24px; border-style:dashed; text-align:center; }
 .merchant-page .plan-strip { background:#f9fcfa; }
+.merchant-billing-manage { margin-top:24px; padding-top:15px; border-top:1px solid var(--merchant-line); color:var(--merchant-muted); font-size:.82rem; }
+.merchant-billing-manage summary { width:max-content; cursor:pointer; }
+.merchant-billing-manage a { display:inline-block; margin:12px 0 0 19px; color:var(--merchant-muted); text-decoration:underline; text-underline-offset:3px; }
+.merchant-billing-cancel { max-width:700px !important; }
+.merchant-cancel-back { display:inline-block; margin-bottom:20px; color:var(--merchant-green-dark); font-size:.85rem; }
+.merchant-billing-cancel .panel { padding:34px; }
+.merchant-billing-cancel .panel > p:not(.eyebrow) { color:var(--merchant-muted); line-height:1.6; }
+.merchant-cancel-confirm { display:flex; align-items:flex-start; gap:11px; margin:26px 0 22px; color:var(--merchant-ink); font-size:.9rem; font-weight:650; line-height:1.5; }
+.merchant-cancel-confirm input { flex:none; margin-top:4px; }
+.merchant-cancel-actions { display:flex; flex-wrap:wrap; gap:12px; }
 .merchant-page .panel-title { margin-bottom:15px; }
 .merchant-intro { color:var(--merchant-muted); max-width:670px; line-height:1.6; }
 .merchant-overview-hero { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(240px,.8fr); align-items:stretch; gap:20px; margin-bottom:20px; }

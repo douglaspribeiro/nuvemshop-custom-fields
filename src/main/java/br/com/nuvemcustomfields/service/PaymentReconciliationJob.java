@@ -45,4 +45,9 @@ public class PaymentReconciliationJob {
             }
         }
     }
+
+    @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")
+    public void expireCanceledAccess() {
+        service.expireCanceledAccess();
+    }
 }

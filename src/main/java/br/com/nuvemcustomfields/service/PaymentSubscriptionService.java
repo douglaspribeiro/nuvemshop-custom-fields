@@ -41,6 +41,7 @@ public class PaymentSubscriptionService {
     private final NuvemshopProperties nuvemshopProperties;
     private final MercadoPagoProperties mercadoPagoProperties;
     private final EfiGateway efi;
+    private final PaymentNotificationService paymentNotifications;
 
     public PaymentSubscriptionService(
             StoreRepository stores,
@@ -50,7 +51,8 @@ public class PaymentSubscriptionService {
             NuvemshopApiClient nuvemshopApi,
             NuvemshopProperties nuvemshopProperties,
             MercadoPagoProperties mercadoPagoProperties,
-            EfiGateway efi
+            EfiGateway efi,
+            PaymentNotificationService paymentNotifications
     ) {
         this.stores = stores;
         this.subscriptions = subscriptions;
@@ -60,6 +62,7 @@ public class PaymentSubscriptionService {
         this.nuvemshopProperties = nuvemshopProperties;
         this.mercadoPagoProperties = mercadoPagoProperties;
         this.efi = efi;
+        this.paymentNotifications = paymentNotifications;
     }
 
     public boolean available(Store store) {
@@ -301,7 +304,8 @@ public class PaymentSubscriptionService {
                 throw new PaymentGatewayException("Aguardando a confirmação do cancelamento pelo provedor.");
             }
         }
-        Optional<GatewayInvoice> invoice = latestInvoice(gateway, local, remote);
+        Optional<GatewayInvoice> invoice = canceled(remote.status())
+                ? Optional.empty() : latestInvoice(gateway, local, remote);
         return synchronize(local, remote, invoice.orElse(null), "PAYMENT_RECONCILE");
     }
 
@@ -336,26 +340,44 @@ public class PaymentSubscriptionService {
     public void cancel(Long storeId) {
         PaymentSubscription local = subscriptions.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura nao encontrada."));
+        if (local.getStatus() == PaymentSubscriptionStatus.CANCELED) return;
+        PaymentGateway gateway = router.require(local.getProvider());
+        if (local.isAccessActive() && hasText(local.getProviderSubscriptionId())) {
+            GatewaySubscription remote = gateway.getSubscription(local.getProviderSubscriptionId());
+            validateRemote(local, remote);
+            if (remote.nextPaymentAt() != null) local.setNextPaymentAt(remote.nextPaymentAt());
+            if (local.getNextPaymentAt() == null) {
+                throw new IllegalStateException("Não foi possível confirmar o fim do período pago. Contate o suporte antes de cancelar.");
+            }
+        }
         local.setCancellationPending(true);
         subscriptions.saveAndFlush(local);
         try {
-            PaymentGateway gateway = router.require(local.getProvider());
             if (hasText(local.getProviderSubscriptionId())) {
-                gateway.cancel(local.getProviderSubscriptionId());
+                reconcile(storeId);
             } else if (hasText(local.getProviderCheckoutId())) {
                 gateway.cancelCheckout(local.getProviderCheckoutId());
                 local.setStatus(PaymentSubscriptionStatus.CANCELED);
                 local.setProviderStatus("canceled");
+                local.setCancellationPending(false);
+                subscriptions.saveAndFlush(local);
             } else {
                 throw new IllegalArgumentException("Assinatura ainda nao foi criada no provedor.");
             }
-            local.setCancellationPending(false);
-            subscriptions.saveAndFlush(local);
-            if (hasText(local.getProviderSubscriptionId())) reconcile(storeId);
         } catch (RuntimeException ex) {
             local.setLastError(truncate(ex.getMessage()));
             subscriptions.save(local);
             throw ex;
+        }
+    }
+
+    @Transactional
+    public void expireCanceledAccess() {
+        for (PaymentSubscription local : subscriptions.findByStatusAndAccessActiveTrueAndNextPaymentAtLessThanEqual(
+                PaymentSubscriptionStatus.CANCELED, Instant.now())) {
+            Store store = stores.findByStoreId(local.getStoreId()).orElse(null);
+            deactivate(local, store, "PAID_PERIOD_ENDED");
+            subscriptions.save(local);
         }
     }
 
@@ -408,6 +430,7 @@ public class PaymentSubscriptionService {
             local.setGraceUntil(null);
             local.setCancellationPending(false);
             activate(local, store, source);
+            paymentNotifications.enqueue(local, invoice);
         } else if ("paused".equals(status)) {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
             deactivate(local, store, source);

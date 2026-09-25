@@ -140,6 +140,49 @@ class PremiumBonusPageTest {
     }
 
     @Test
+    void cancellationRequiresConfirmationAndShowsPaidThroughDate() throws Exception {
+        Store store = new Store();
+        store.setStoreId(7654340L);
+        store.setAccessToken("test");
+        store.setPlan(PlanType.PREMIUM);
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("store@example.com");
+        stores.save(store);
+        PaymentSubscription subscription = new PaymentSubscription();
+        subscription.setStoreId(store.getStoreId());
+        subscription.setProvider(PaymentProviderType.EFI);
+        subscription.setExternalReference("store-7654340-premium");
+        subscription.setPlan(PlanType.PREMIUM);
+        subscription.setCurrency("BRL");
+        subscription.setAmountValue(new BigDecimal("19.99"));
+        subscription.setStatus(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.ACTIVE);
+        subscription.setAccessActive(true);
+        subscription.setNextPaymentAt(Instant.parse("2026-10-24T03:00:00Z"));
+        paymentSubscriptions.save(subscription);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
+
+        mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Gerenciar assinatura")))
+                .andExpect(content().string(not(containsString("action=\"/admin/billing/cancel\""))));
+        mvc.perform(get("/admin/billing/cancel").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Tem certeza de que deseja cancelar")))
+                .andExpect(content().string(containsString("24/10/2026")));
+        mvc.perform(post("/admin/billing/cancel").session(session)).andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/billing"));
+        assertThat(paymentSubscriptions.findByStoreId(store.getStoreId()).orElseThrow().getStatus())
+                .isEqualTo(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.ACTIVE);
+
+        subscription.setStatus(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.CANCELED);
+        paymentSubscriptions.saveAndFlush(subscription);
+        mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Acesso até:")))
+                .andExpect(content().string(not(containsString("Próxima cobrança:"))))
+                .andExpect(content().string(not(containsString("Gerenciar assinatura"))));
+    }
+
+    @Test
     void freePlanStillAllowsEditingExistingFieldAtLimit() throws Exception {
         Store store = new Store();
         store.setStoreId(7654399L);

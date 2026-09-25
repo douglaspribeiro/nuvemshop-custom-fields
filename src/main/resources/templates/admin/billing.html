@@ -51,9 +51,14 @@
             <a class="button small" th:if="${paymentSubscription != null and paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING'}"
                th:href="@{/admin/billing/processing}" th:text="#{merchant.billing.efi.follow}">Acompanhar confirmação</a>
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.nextPaymentAt != null}">
-                <span th:text="#{admin.billing.next}">Próxima cobrança:</span>
+                <span th:if="${paymentSubscription.status.name() != 'CANCELED'}" th:text="#{admin.billing.next}">Próxima cobrança:</span>
+                <span th:if="${paymentSubscription.status.name() == 'CANCELED'}" th:text="#{admin.billing.access.until}">Acesso até:</span>
                 <span th:text="${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">24/10/2026</span>
             </p>
+            <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.status.name() == 'CANCELED' and paymentSubscription.accessActive}"
+               th:text="#{admin.billing.cancel.access.notice}">A assinatura foi cancelada. Você mantém o acesso até o fim do período pago.</p>
+            <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.cancellationPending}"
+               th:text="#{admin.billing.cancel.awaiting}">Estamos aguardando a confirmação do cancelamento pelo provedor.</p>
         </div>
     </section>
 
@@ -122,9 +127,10 @@
     <p class="notice" th:if="${billingEnabled and store.courtesyPremium}" th:text="#{admin.billing.courtesy.blocked}">
         Premium Cortesia nao gera cobranca automatica.
     </p>
-    <form th:if="${paymentSubscription != null and paymentSubscription.accessActive}" th:action="@{/admin/billing/cancel}" method="post">
-        <button class="button" type="submit" th:text="#{admin.billing.cancel}">Cancelar assinatura</button>
-    </form>
+    <details class="merchant-billing-manage" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.status.name() != 'CANCELED' and !paymentSubscription.cancellationPending}">
+        <summary th:text="#{admin.billing.manage}">Gerenciar assinatura</summary>
+        <a th:href="@{/admin/billing/cancel}" th:text="#{admin.billing.cancel}">Cancelar assinatura</a>
+    </details>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
 </body>
