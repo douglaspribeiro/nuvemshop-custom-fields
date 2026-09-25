@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.9.0] - 2026-09-25
+
+### Features
+
+- adiciona site institucional e visão operacional (`d6b48bb`)
+
 ## [1.8.2] - 2026-09-25
 
 ### Correções
