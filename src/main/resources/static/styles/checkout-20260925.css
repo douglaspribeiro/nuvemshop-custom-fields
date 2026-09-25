@@ -1,0 +1,77 @@
+.payment-page {
+    background: #f7f8fa;
+    color: #1c2935;
+}
+
+.payment-shell { max-width: 1090px; padding: 0 24px 76px; }
+.payment-header { min-height: 72px; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid #e4e8ec; }
+.payment-brand { color: #172b3b; font-size: 1.04rem; font-weight: 800; letter-spacing: -.035em; text-decoration: none; }
+.payment-secure-label { display: inline-flex; align-items: center; gap: 8px; color: #60717f; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.payment-secure-label svg { width: 16px; height: 16px; }
+.payment-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: clamp(28px, 5vw, 64px); align-items: start; padding-top: 36px; }
+.payment-main { min-width: 0; }
+.payment-back { display: inline-block; margin-bottom: 24px; color: #566a79; font-size: .82rem; font-weight: 600; text-decoration: none; }
+.payment-back:hover { text-decoration: underline; }
+.payment-heading { margin-bottom: 28px; }
+.payment-heading h1 { color: #172b3b; font-size: clamp(1.7rem, 3vw, 2.1rem); letter-spacing: -.04em; }
+.payment-heading p { margin: 9px 0 0; color: #687783; font-size: .92rem; line-height: 1.5; }
+.payment-mobile-price { display: none; }
+.payment-flash,
+.payment-sandbox { margin: 0 0 18px; }
+.payment-panel,
+.payment-summary { background: #fff; border: 1px solid #e1e6eb; border-radius: 12px; box-shadow: 0 8px 24px rgba(25, 42, 57, .035); }
+.payment-panel { overflow: hidden; }
+#efi-payment-form { padding: 30px 34px 28px; }
+.payment-fieldset { margin: 0; padding: 0 0 32px; border: 0; min-width: 0; }
+.payment-fieldset + .payment-fieldset { padding-top: 29px; border-top: 1px solid #e9edf0; }
+.payment-fieldset legend { float: left; width: 100%; box-sizing: border-box; color: #1b2e3b; font-size: 1.05rem; font-weight: 750; letter-spacing: -.015em; }
+.payment-fieldset-hint { clear: both; margin: 32px 0 21px; color: #74818b; font-size: .83rem; line-height: 1.5; }
+.payment-card-section { padding-bottom: 18px; }
+.payment-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19px 16px; }
+.payment-fields label { display: grid; gap: 8px; color: #304352; font-size: .8rem; font-weight: 650; }
+.payment-fields input { width: 100%; min-width: 0; min-height: 46px; padding: 10px 13px; border: 1px solid #cbd4dc; border-radius: 7px; background: white; color: #1c2935; font: inherit; font-size: .91rem; font-weight: 500; transition: border-color .15s, box-shadow .15s; }
+.payment-fields input::placeholder { color: #9aa7b0; }
+.payment-fields input:hover { border-color: #889ba9; }
+.payment-fields input:focus-visible { outline: none; border-color: #3a7387; box-shadow: 0 0 0 3px rgba(58, 115, 135, .13); }
+.payment-full { grid-column: 1 / -1; }
+#payment-error:not([hidden]) { margin-top: 16px; }
+.payment-submit.button.primary { width: 100%; min-height: 50px; margin-top: 8px; padding: 0 17px; justify-content: space-between; border-color: #173b4c; border-radius: 7px; background: #173b4c; font-size: .94rem; }
+.payment-submit.button.primary:hover { background: #102e3c; }
+.payment-submit.button.primary:focus-visible { outline: 3px solid #a5cad7; outline-offset: 2px; }
+.payment-submit.button.primary span:last-child { font-size: 1.24rem; font-weight: 400; }
+.payment-submit-note { margin: 14px 0 0; color: #7b8790; font-size: .75rem; line-height: 1.55; }
+.payment-trust { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 34px; border-top: 1px solid #e9edf0; background: #fbfcfd; color: #75838d; font-size: .75rem; }
+.payment-processor { display: flex; align-items: center; gap: 8px; }
+.payment-processor img { width: 38px; height: 34px; object-fit: contain; }
+.payment-trust-copy { text-align: right; }
+.payment-summary { position: sticky; top: 26px; padding: 27px 26px; }
+.payment-summary-label { margin: 0 0 26px; color: #6c7d89; font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.payment-summary h2 { color: #1b2e3b; font-size: 1.2rem; font-weight: 750; letter-spacing: -.02em; }
+.payment-summary-description { margin: 7px 0 24px; color: #75848f; font-size: .83rem; }
+.payment-summary-price { margin-bottom: 26px; color: #1b2e3b; }
+.payment-summary-price strong { font-size: 2rem; letter-spacing: -.055em; }
+.payment-summary-price span { color: #788791; font-size: .87rem; }
+.payment-summary-divider { height: 1px; margin-bottom: 9px; background: #e7ebef; }
+.payment-summary-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 11px 0; color: #657581; font-size: .82rem; }
+.payment-summary-line strong { color: #2a3b49; font-weight: 650; white-space: nowrap; }
+.payment-summary-total { margin-top: 6px; padding-top: 17px; border-top: 1px solid #e7ebef; color: #1b2e3b; font-weight: 700; }
+.payment-summary-total strong { font-weight: 800; }
+.payment-summary-caption { margin: 17px 0 0; color: #788791; font-size: .76rem; line-height: 1.6; }
+@media (max-width: 840px) { .payment-layout { grid-template-columns: 1fr; gap: 28px; } .payment-summary { position: static; } }
+@media (max-width: 620px) {
+    .payment-shell { padding: 0 16px 48px; }
+    .payment-header { min-height: 64px; }
+    .payment-brand { font-size: .92rem; }
+    .payment-secure-label { font-size: 0; }
+    .payment-secure-label svg { width: 18px; height: 18px; }
+    .payment-layout { padding-top: 24px; }
+    .payment-back { margin-bottom: 19px; }
+    .payment-heading { margin-bottom: 23px; }
+    .payment-heading h1 { font-size: 1.72rem; }
+    .payment-heading .payment-mobile-price { display: block; margin-top: 18px; padding: 13px 15px; border: 1px solid #e1e6eb; border-radius: 8px; background: #fff; color: #536473; font-size: .85rem; }
+    .payment-mobile-price strong { margin-left: 5px; color: #1b2e3b; font-size: .95rem; }
+    #efi-payment-form { padding: 25px 20px; }
+    .payment-fields { grid-template-columns: 1fr; gap: 16px; }
+    .payment-trust { padding: 14px 20px; align-items: flex-start; }
+    .payment-trust-copy { max-width: 125px; line-height: 1.4; }
+}
