@@ -4,50 +4,101 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pagamento seguro - Campos Personalizados</title>
-    <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <link rel="stylesheet" href="../../static/styles/app.css" th:href="@{/styles/app.css}">
     <script defer src="https://cdn.jsdelivr.net/gh/efipay/js-payment-token-efi@3.4.1/dist/payment-token-efi-umd.min.js"></script>
 </head>
-<body>
+<body class="payment-page">
 <main class="shell payment-shell">
-    <header class="page-header">
-        <div><p class="eyebrow">Assinatura</p><h1>Conclua seu plano</h1></div>
-        <a class="button" th:href="@{/admin/billing}">Voltar aos planos</a>
+    <div class="payment-topbar">
+        <a class="payment-brand" th:href="@{/admin/billing}" aria-label="Campos Personalizados — voltar aos planos">
+            <span class="payment-brand-mark" aria-hidden="true">C<span>+</span></span>
+            <span>Campos <strong>Personalizados</strong></span>
+        </a>
+        <span class="payment-secure-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            Pagamento protegido
+        </span>
+    </div>
+
+    <header class="payment-heading">
+        <a class="payment-back" th:href="@{/admin/billing}">← Voltar e escolher outro plano</a>
+        <p class="payment-kicker">FINALIZAR ASSINATURA <span>·</span> ETAPA ÚNICA</p>
+        <h1>Seu próximo passo começa aqui.</h1>
+        <p>Confira seu plano e preencha os dados abaixo para ativar sua assinatura.</p>
     </header>
-    <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+
+    <p class="notice warning payment-sandbox" th:if="${efiEnvironment == 'sandbox'}">Ambiente de homologação: este é um teste e não gera cobrança real.</p>
+    <p class="notice error payment-flash" th:if="${error}" th:text="${error}">Erro</p>
+
     <div class="payment-layout">
-        <section class="panel payment-panel">
-            <h2>Dados do pagador e cartão</h2>
-            <p class="muted">A cobrança é mensal e pode ser cancelada quando você quiser.</p>
+        <section class="payment-panel" aria-labelledby="payment-form-title">
+            <div class="payment-panel-heading">
+                <div>
+                    <p class="payment-section-overline">CHECKOUT</p>
+                    <h2 id="payment-form-title">Dados para pagamento</h2>
+                </div>
+                <span class="payment-step-count">01 / 02</span>
+            </div>
             <form id="efi-payment-form" th:action="@{/admin/billing/pay}" method="post"
                   th:attr="data-payee-code=${payeeCode},data-environment=${efiEnvironment}">
                 <input type="hidden" name="plan" th:value="${plan.name()}">
                 <input type="hidden" name="paymentToken" id="payment-token">
-                <div class="payment-fields">
-                    <label>Nome completo<input required name="payerName" id="payer-name" autocomplete="name" maxlength="120"></label>
-                    <label>CPF<input required name="cpf" id="payer-cpf" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label>
-                    <label>E-mail<input required name="payerEmail" type="email" autocomplete="email" th:value="${store.storeEmail}"></label>
-                    <label>Telefone<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(00) 00000-0000"></label>
-                    <label>Data de nascimento<input required name="birth" type="date" autocomplete="bday"></label>
-                    <label class="payment-full">Número do cartão<input required id="card-number" inputmode="numeric" autocomplete="cc-number" maxlength="23"></label>
-                    <label class="payment-full">Nome impresso no cartão<input required id="card-holder" autocomplete="cc-name" maxlength="120"></label>
-                    <label>Validade (MM/AAAA)<input required id="card-expiration" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AAAA" maxlength="7"></label>
-                    <label>Código de segurança<input required id="card-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" type="password"></label>
-                </div>
-                <p id="payment-error" class="notice error" role="alert" hidden></p>
-                <button class="button primary payment-submit" id="payment-submit" type="submit">Assinar e pagar</button>
+
+                <fieldset class="payment-fieldset">
+                    <legend><span class="payment-step-dot">1</span> Dados do titular</legend>
+                    <p class="payment-fieldset-hint">Informe os dados da pessoa responsável pela assinatura.</p>
+                    <div class="payment-fields">
+                        <label class="payment-full">Nome completo<input required name="payerName" id="payer-name" autocomplete="name" maxlength="120" placeholder="Como aparece no seu documento"></label>
+                        <label>CPF<input required name="cpf" id="payer-cpf" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label>
+                        <label>Data de nascimento<input required name="birth" type="date" autocomplete="bday"></label>
+                        <label>E-mail<input required name="payerEmail" type="email" autocomplete="email" th:value="${store.storeEmail}" placeholder="voce@empresa.com.br"></label>
+                        <label>Telefone<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(00) 00000-0000"></label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="payment-fieldset payment-card-section">
+                    <legend><span class="payment-step-dot">2</span> Cartão de crédito</legend>
+                    <p class="payment-fieldset-hint">Os dados do cartão são tokenizados pela Efí no seu navegador.</p>
+                    <div class="payment-fields">
+                        <label class="payment-full">Número do cartão<input required id="card-number" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="0000 0000 0000 0000"></label>
+                        <label class="payment-full">Nome impresso no cartão<input required id="card-holder" autocomplete="cc-name" maxlength="120" placeholder="Nome como está no cartão"></label>
+                        <label>Validade<input required id="card-expiration" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AAAA" maxlength="7"></label>
+                        <label>Código de segurança<input required id="card-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" type="password" placeholder="CVV"></label>
+                    </div>
+                </fieldset>
+
+                <p id="payment-error" class="notice error" role="alert" tabindex="-1" hidden></p>
+                <button class="button primary payment-submit" id="payment-submit" type="submit">
+                    <span>Assinar e pagar</span><span aria-hidden="true">→</span>
+                </button>
+                <p class="payment-submit-note">Ao confirmar, você autoriza a cobrança mensal do valor exibido no resumo. Cancele quando quiser pelo painel.</p>
             </form>
             <div class="payment-trust">
-                <span>Pagamento processado por</span>
-                <img th:src="@{/images/efi-bank-logo.svg}" alt="Efí Bank" width="64" height="56">
-                <span>Os dados do cartão são tokenizados pela Efí no navegador.</span>
+                <div class="payment-processor">
+                    <span>Pagamento processado por</span>
+                    <img src="../../static/images/efi-bank-logo.svg" th:src="@{/images/efi-bank-logo.svg}" alt="Efí Bank" width="56" height="49">
+                </div>
+                <span class="payment-trust-copy">Número e CVV não são enviados ao nosso servidor.</span>
             </div>
         </section>
-        <aside class="panel payment-summary">
-            <p class="eyebrow">Resumo da assinatura</p>
-            <h2 th:text="${plan.displayName}">Essencial</h2>
-            <p class="price">R$ <span th:text="${amount}">19,99</span> / mês</p>
-            <p class="muted">O acesso ao plano será liberado após a confirmação da primeira cobrança.</p>
-            <p class="payment-security">Conexão segura. Dados do cartão enviados diretamente para tokenização pela Efí.</p>
+
+        <aside class="payment-summary" aria-labelledby="payment-summary-title">
+            <div class="payment-summary-top">
+                <span class="payment-summary-icon" aria-hidden="true">C<span>+</span></span>
+                <span>Campos Personalizados</span>
+            </div>
+            <div class="payment-summary-body">
+                <p class="payment-section-overline">RESUMO DO PEDIDO</p>
+                <h2 id="payment-summary-title" th:text="${plan.displayName}">Essencial</h2>
+                <p class="payment-summary-description">Assinatura para sua loja, com cobrança recorrente mensal.</p>
+                <div class="payment-summary-line"><span>Plano mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
+                <div class="payment-summary-line payment-summary-total"><span>Total por mês</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
+                <p class="payment-summary-caption">O acesso é liberado após a confirmação do primeiro pagamento.</p>
+            </div>
+            <div class="payment-summary-footer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 2 8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+                <span>Checkout protegido por conexão HTTPS e tokenização de cartão.</span>
+            </div>
         </aside>
     </div>
 </main>
@@ -60,7 +111,7 @@ document.getElementById('efi-payment-form').addEventListener('submit', async fun
     error.hidden = true;
     if (!form.reportValidity()) return;
     button.disabled = true;
-    button.textContent = 'Processando...';
+    button.querySelector('span').textContent = 'Processando pagamento...';
     try {
         if (!window.EfiPay || await EfiPay.CreditCard.isScriptBlocked()) {
             throw new Error('Não foi possível carregar a proteção do cartão. Desative bloqueadores para esta página e tente novamente.');
@@ -90,8 +141,9 @@ document.getElementById('efi-payment-form').addEventListener('submit', async fun
     } catch (failure) {
         error.textContent = failure.message || 'Não foi possível validar o cartão. Confira os dados e tente novamente.';
         error.hidden = false;
+        error.focus();
         button.disabled = false;
-        button.textContent = 'Assinar e pagar';
+        button.querySelector('span').textContent = 'Assinar e pagar';
     }
 });
 </script>

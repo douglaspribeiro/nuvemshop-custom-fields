@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -211,6 +213,8 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("plan", plan);
         model.addAttribute("amount", paymentSubscriptionService.amount(store, plan));
+        model.addAttribute("formattedAmount", NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
+                .format(paymentSubscriptionService.amount(store, plan)));
         model.addAttribute("payeeCode", paymentSubscriptionService.efiPayeeCode());
         model.addAttribute("efiEnvironment", paymentSubscriptionService.efiSandbox() ? "sandbox" : "production");
         return "admin/billing-payment";

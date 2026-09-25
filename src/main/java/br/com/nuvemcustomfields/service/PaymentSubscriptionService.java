@@ -91,6 +91,9 @@ public class PaymentSubscriptionService {
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
                 && hasText(local.getProviderSubscriptionId())) {
+            if (!router.configured(local.getProvider())) {
+                throw new IllegalStateException("Existe uma assinatura pendente no provedor anterior. Contate o suporte antes de tentar outro pagamento.");
+            }
             local = reconcile(storeId);
         }
         if (local != null && local.isAccessActive()) throw new IllegalArgumentException("A loja já possui uma assinatura ativa.");
@@ -99,7 +102,17 @@ public class PaymentSubscriptionService {
             router.require(local.getProvider()).cancel(local.getProviderSubscriptionId());
         } else if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
                 && hasText(local.getProviderCheckoutId()) && local.getProvider() != PaymentProviderType.EFI) {
-            router.require(local.getProvider()).cancelCheckout(local.getProviderCheckoutId());
+            if (router.configured(local.getProvider())) {
+                router.require(local.getProvider()).cancelCheckout(local.getProviderCheckoutId());
+            } else if (local.getProvider() == PaymentProviderType.MERCADO_PAGO) {
+                // Sem subscription_id local não há assinatura conhecida para cancelar. Sem
+                // as credenciais antigas, substituímos só o checkout local e preservamos o
+                // identificador do plano remoto no log para conferência e auditoria.
+                LOGGER.warn("payments.checkout.orphaned store_id={} provider={} checkout_id={}",
+                        storeId, local.getProvider(), local.getProviderCheckoutId());
+            } else {
+                throw new IllegalStateException("Checkout pendente em provedor indisponível. Contate o suporte.");
+            }
         }
         if (local == null) {
             local = new PaymentSubscription();

@@ -50,6 +50,13 @@ até o cancelamento dessas assinaturas. Os cartões não são transferíveis; o
 lojista precisa assinar novamente na Efí. A preferência por Efí vale para
 novas assinaturas quando a configuração estiver completa.
 
+Na migração, um checkout Mercado Pago que ficou pendente apenas com o ID do
+plano (sem ID de assinatura) pode ser substituído localmente por uma nova
+tentativa na Efí mesmo com o gateway antigo desabilitado. O plano remoto antigo
+não é cancelado nesse caso; o ID é registrado no log para auditoria. Se já
+existir ID de assinatura Mercado Pago, a migração é bloqueada até conferência
+e cancelamento no provedor para evitar cobrança duplicada.
+
 ## Referências
 
 - [Assinaturas Efí](https://dev.efipay.com.br/docs/api-cobrancas/assinatura/)

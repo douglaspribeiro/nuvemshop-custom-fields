@@ -100,6 +100,60 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
+    void replacesPendingMercadoPagoCheckoutWhenLegacyGatewayIsDisabled() {
+        Store store = store();
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("loja@example.com");
+        PaymentSubscription pending = local();
+        pending.setProviderSubscriptionId(null);
+        pending.setProviderCheckoutId("old-mp-plan");
+        pending.setStatus(PaymentSubscriptionStatus.PENDING);
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(pending));
+        when(efi.configured()).thenReturn(true);
+        when(efi.supports(store)).thenReturn(true);
+        when(efi.amount(PlanType.PREMIUM)).thenReturn(new BigDecimal("19.99"));
+        when(nuvemshopProperties.appBaseUrl()).thenReturn("https://app.example.com");
+        when(efi.createSubscription(eq(PlanType.PREMIUM), anyString(),
+                eq("https://app.example.com/prod/webhooks/efi3")))
+                .thenThrow(new PaymentGatewayException("Falha simulada da Efí"));
+
+        assertThatThrownBy(() -> service.payWithEfi(123L, PlanType.PREMIUM,
+                new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
+                        "11999999999", "1990-01-01"), "12345678901234567890"))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessage("Falha simulada da Efí");
+
+        assertThat(pending.getProvider()).isEqualTo(PaymentProviderType.EFI);
+        assertThat(pending.getProviderCheckoutId()).isNull();
+        verify(router, never()).require(PaymentProviderType.MERCADO_PAGO);
+        verify(efi).createSubscription(eq(PlanType.PREMIUM), anyString(), anyString());
+    }
+
+    @Test
+    void blocksMigrationWhenPendingMercadoPagoSubscriptionCannotBeChecked() {
+        Store store = store();
+        store.setStoreCountryCode("BR");
+        store.setStoreCurrency("BRL");
+        store.setStoreEmail("loja@example.com");
+        PaymentSubscription pending = local();
+        pending.setStatus(PaymentSubscriptionStatus.PENDING);
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(pending));
+        when(efi.configured()).thenReturn(true);
+        when(efi.supports(store)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.payWithEfi(123L, PlanType.PREMIUM,
+                new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
+                        "11999999999", "1990-01-01"), "12345678901234567890"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("assinatura pendente no provedor anterior");
+
+        verify(efi, never()).createSubscription(any(), anyString(), anyString());
+    }
+
+    @Test
     void keepsFreePlanWhileFirstPaymentIsPending() {
         PaymentSubscription local = local();
         Store store = store();
