@@ -7,9 +7,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -31,11 +31,12 @@ class NuvemshopCustomFieldsApplicationTest {
     }
 
     @Test
-    void rootRedirectUsesRelativeLocation() throws Exception {
+    void rootShowsPublicLandingWithoutStartingInstallation() throws Exception {
         mockMvc.perform(get("/")
                         .header("Host", "campos-personalizados.wzhub.pro"))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", "/admin/embedded"));
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Personalizações que vendem junto com o produto")))
+                .andExpect(content().string(containsString("Instalar na Nuvemshop")));
     }
 
     @Test
@@ -66,6 +67,19 @@ class NuvemshopCustomFieldsApplicationTest {
         mockMvc.perform(get("/support/"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Suporte")));
+    }
+
+    @Test
+    void publicMarketingPagesAreAvailableWithoutSession() throws Exception {
+        mockMvc.perform(get("/precos/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("R$ 19,99")));
+        mockMvc.perform(get("/termos/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Termos de Uso")));
+        mockMvc.perform(get("/contato/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Como podemos ajudar?")));
     }
 
     @Test

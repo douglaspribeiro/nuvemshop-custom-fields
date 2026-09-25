@@ -5,11 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 import java.util.List;
+import java.util.Collection;
 import java.time.Instant;
 import br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus;
 
 public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubscription, Long> {
     Optional<PaymentSubscription> findByStoreId(Long storeId);
+    List<PaymentSubscription> findByStoreIdIn(Collection<Long> storeIds);
     Optional<PaymentSubscription> findByProviderSubscriptionId(String providerSubscriptionId);
     Optional<PaymentSubscription> findByProviderCheckoutId(String providerCheckoutId);
     Optional<PaymentSubscription> findByExternalReference(String externalReference);

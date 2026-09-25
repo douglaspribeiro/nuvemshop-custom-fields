@@ -1,48 +1,21 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Backoffice</title>
-    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-</head>
-<body>
-<main class="shell">
-    <section class="page-header">
-        <div>
-            <p class="eyebrow">Backoffice</p>
-            <h1>Operacao</h1>
-        </div>
-        <nav class="row-actions">
-            <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
-            <a class="button" th:href="@{/backoffice/flags}">Flags</a>
-            <a class="button" th:href="@{/backoffice/reports}">Relatorios</a>
-            <a class="button" th:href="@{/backoffice/support}">Suporte</a>
-        </nav>
+    <title>Operação · Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}"></head>
+<body class="backoffice-page"><main class="backoffice-shell">
+    <header class="backoffice-header"><div><p class="eyebrow">Campos Personalizados · Backoffice</p><h1>Visão da operação</h1><p>Instalações, planos e situações que pedem atenção.</p></div>
+        <nav class="backoffice-nav"><a class="is-current" th:href="@{/backoffice}">Visão geral</a><a th:href="@{/backoffice/stores}">Lojas</a><a th:href="@{/backoffice/support}">Suporte <span th:if="${openTickets > 0}" th:text="${openTickets}">0</span></a><a th:href="@{/backoffice/flags}">Flags</a><a th:href="@{/backoffice/reports}">Relatórios</a></nav></header>
+
+    <section class="backoffice-primary-metrics"><article><span>Instalações</span><strong th:text="${installations}">0</strong><small><b th:text="${activeInstallations}">0</b> ativas <span th:if="${inactiveInstallations > 0}">· <span th:text="${inactiveInstallations}">0</span> desinstaladas</span></small></article><article><span>Produtos com campos</span><strong th:text="${rules}">0</strong><small>Produtos personalizados configurados</small></article><article><span>Suporte</span><strong th:text="${openTickets}">0</strong><small>Chamados abertos</small></article></section>
+
+    <section class="backoffice-section-head"><div><p class="eyebrow">Base ativa</p><h2>Distribuição por plano</h2></div><a class="button" th:href="@{/backoffice/reports}">Ver relatórios</a></section>
+    <section class="backoffice-plan-metrics"><a th:href="@{/backoffice/stores}"><span class="plan-dot free"></span><div><small>Free</small><strong th:text="${freeInstallations}">0</strong></div></a><a th:href="@{/backoffice/stores}"><span class="plan-dot courtesy"></span><div><small>Cortesia</small><strong th:text="${courtesyInstallations}">0</strong></div></a><a th:href="@{/backoffice/stores}"><span class="plan-dot essential"></span><div><small>Essencial</small><strong th:text="${essentialInstallations}">0</strong></div></a><a th:href="@{/backoffice/stores}"><span class="plan-dot pro"></span><div><small>Pro</small><strong th:text="${proInstallations}">0</strong></div></a></section>
+
+    <section class="backoffice-directory"><div class="backoffice-section-head"><div><p class="eyebrow">Gerenciar lojas</p><h2>Encontre uma loja rapidamente</h2></div><a class="button" th:href="@{/backoffice/stores}">Abrir diretório completo</a></div>
+        <form class="backoffice-search" method="get" th:action="@{/backoffice}"><label for="store-search">Buscar por nome, Store ID ou país</label><div><input id="store-search" type="search" name="q" th:value="${query}" placeholder="Ex.: Minha Loja ou 123456"><button class="button primary" type="submit">Buscar</button></div></form>
+        <div class="backoffice-empty" th:if="${#lists.isEmpty(stores)}">Nenhuma loja encontrada para esta busca.</div>
+        <div class="backoffice-store-list" th:if="${!#lists.isEmpty(stores)}"><article th:each="store : ${stores}"><div class="store-identity"><span class="store-avatar" th:text="${#strings.substring((store.storeName ?: 'L'), 0, 1)}">L</span><div><a th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}" th:text="${store.storeName ?: 'Loja sem nome'}">Loja</a><small><span th:text="${store.storeId}">0</span> · <span th:text="${store.storeCountryCode ?: '-'}">BR</span> / <span th:text="${store.storeCurrency ?: '-'}">BRL</span></small></div></div><div class="store-plan"><span th:text="${store.effectivePlan.displayName}">FREE</span><small th:if="${store.courtesyPremium}">Cortesia</small></div><div class="store-payment"><span th:if="${subscriptionsByStoreId[store.storeId] == null}" class="status-muted">Sem assinatura</span><span th:if="${subscriptionsByStoreId[store.storeId] != null}" th:text="${subscriptionsByStoreId[store.storeId].status}" th:classappend="' payment-' + ${#strings.toLowerCase(subscriptionsByStoreId[store.storeId].status.name())}">ACTIVE</span></div><div class="store-actions"><form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post"><button class="button small primary" type="submit">Abrir como loja</button></form><a class="button small" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Gerenciar</a></div></article></div>
     </section>
-    <section class="details metrics">
-        <div>
-            <dt>Lojas</dt>
-            <dd th:text="${stores}">0</dd>
-        </div>
-        <div>
-            <dt>Lojas ativas</dt>
-            <dd th:text="${activeStores}">0</dd>
-        </div>
-        <div>
-            <dt>Campos configurados</dt>
-            <dd th:text="${rules}">0</dd>
-        </div>
-        <div>
-            <dt>Feature flags</dt>
-            <dd th:text="${flags}">0</dd>
-        </div>
-        <div>
-            <dt>Chamados abertos</dt>
-            <dd th:text="${openTickets}">0</dd>
-        </div>
-    </section>
-</main>
-</body>
-</html>
+</main></body></html>

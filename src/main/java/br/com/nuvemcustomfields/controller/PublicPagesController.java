@@ -42,6 +42,24 @@ public class PublicPagesController {
         return "public/privacy";
     }
 
+    @GetMapping("/precos")
+    public String pricingAlias() { return "redirect:/precos/"; }
+
+    @GetMapping("/precos/")
+    public String pricing() { return "public/pricing"; }
+
+    @GetMapping("/termos")
+    public String termsAlias() { return "redirect:/termos/"; }
+
+    @GetMapping("/termos/")
+    public String terms() { return "public/terms"; }
+
+    @GetMapping("/contato")
+    public String contactAlias() { return "redirect:/contato/"; }
+
+    @GetMapping("/contato/")
+    public String contact() { return "public/contact"; }
+
     @GetMapping("/support")
     public String supportAlias() {
         return "redirect:/support/";

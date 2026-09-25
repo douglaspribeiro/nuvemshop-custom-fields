@@ -29,9 +29,9 @@ public class AuthController {
     }
 
     @GetMapping("/")
-    public RedirectView root() {
-        LOGGER.info("auth.root.redirect_admin_embedded");
-        return new RedirectView("/admin/embedded");
+    public String root() {
+        LOGGER.info("public.landing.open");
+        return "public/landing";
     }
 
     @GetMapping("/install")

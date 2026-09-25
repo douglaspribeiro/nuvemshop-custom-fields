@@ -107,7 +107,6 @@
             <ul class="feature-list">
                 <li th:text="#{admin.billing.premiumplus.feature.products}">50 produtos personalizados</li>
                 <li th:text="#{admin.billing.premiumplus.feature.fields}">Campos ilimitados</li>
-                <li th:text="#{admin.billing.premiumplus.feature.reports}">Relatorios operacionais</li>
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">

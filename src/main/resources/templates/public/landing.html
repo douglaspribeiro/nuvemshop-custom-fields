@@ -1,0 +1,88 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" th:content="#{landing.description}">
+    <title th:text="#{common.app.name} + ' · ' + #{landing.title}">Campos Personalizados</title>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/landing.css(v=${assetVersion})}">
+</head>
+<body class="landing-page">
+<header class="landing-header">
+    <a class="landing-brand" th:href="@{/}" aria-label="Campos Personalizados">
+        <span class="landing-brand-mark" aria-hidden="true">✦</span>
+        <span th:text="#{common.app.name}">Campos Personalizados</span>
+    </a>
+    <nav class="landing-nav" th:aria-label="#{landing.nav.label}">
+        <a th:href="@{/precos/}">Preços</a>
+        <a th:href="@{/support/}" th:text="#{common.support}">Suporte</a>
+        <a class="button small" th:href="@{/install}" th:text="#{landing.install}">Instalar na Nuvemshop</a>
+    </nav>
+</header>
+
+<main>
+    <section class="landing-hero">
+        <div class="landing-hero-copy">
+            <p class="landing-kicker" th:text="#{landing.kicker}">Para lojas Nuvemshop</p>
+            <h1 th:text="#{landing.heading}">Personalizações que vendem junto com o produto.</h1>
+            <p class="landing-lead" th:text="#{landing.lead}">Crie campos claros e flexíveis nas páginas dos seus produtos para receber pedidos do jeito certo.</p>
+            <div class="landing-actions">
+                <a class="landing-cta" th:href="@{/install}">
+                    <span th:text="#{landing.install}">Instalar na Nuvemshop</span><span aria-hidden="true">→</span>
+                </a>
+                <a class="landing-secondary" href="#como-funciona" th:text="#{landing.how.cta}">Como funciona</a>
+            </div>
+            <p class="landing-note" th:text="#{landing.install.note}">A instalação só começa ao clicar no botão.</p>
+        </div>
+        <div class="landing-preview" aria-hidden="true">
+            <div class="landing-browser">
+                <div class="landing-browser-bar"><i></i><i></i><i></i><span></span></div>
+                <div class="landing-product">
+                    <div class="landing-product-image"></div>
+                    <div class="landing-product-info">
+                        <span class="landing-product-category"></span>
+                        <strong>Produto especial</strong>
+                        <b>R$ 89,90</b>
+                        <div class="landing-form-field"><small>Nome para personalização</small><span>Ex.: Ana</span></div>
+                        <div class="landing-form-field"><small>Mensagem</small><span>Escreva sua mensagem</span></div>
+                        <div class="landing-add">Adicionar ao carrinho</div>
+                    </div>
+                </div>
+            </div>
+            <div class="landing-float-card"><span>✓</span><p><b>Pronto para vender</b><br>Campos exibidos no produto</p></div>
+        </div>
+    </section>
+
+    <section id="como-funciona" class="landing-section landing-steps">
+        <div class="landing-section-intro">
+            <p class="landing-kicker" th:text="#{landing.how.eyebrow}">Simples de configurar</p>
+            <h2 th:text="#{landing.how.title}">Da configuração ao pedido, sem complicação.</h2>
+        </div>
+        <div class="landing-step-grid">
+            <article><span>01</span><h3 th:text="#{landing.step.one.title}">Escolha o produto</h3><p th:text="#{landing.step.one.detail}">Defina quais produtos precisam receber informações personalizadas.</p></article>
+            <article><span>02</span><h3 th:text="#{landing.step.two.title}">Crie os campos</h3><p th:text="#{landing.step.two.detail}">Adicione textos, seleções ou instruções para o seu cliente preencher.</p></article>
+            <article><span>03</span><h3 th:text="#{landing.step.three.title}">Receba pedidos completos</h3><p th:text="#{landing.step.three.detail}">As informações acompanham o pedido para sua operação trabalhar com clareza.</p></article>
+        </div>
+    </section>
+
+    <section class="landing-section landing-benefits">
+        <div><p class="landing-kicker" th:text="#{landing.benefits.eyebrow}">Feito para a operação</p><h2 th:text="#{landing.benefits.title}">Uma experiência melhor para quem compra e para quem prepara.</h2></div>
+        <ul>
+            <li><span>✓</span><div><b th:text="#{landing.benefit.one.title}">Campos no lugar certo</b><p th:text="#{landing.benefit.one.detail}">O cliente informa o que você precisa antes de adicionar ao carrinho.</p></div></li>
+            <li><span>✓</span><div><b th:text="#{landing.benefit.two.title}">Visual alinhado à sua loja</b><p th:text="#{landing.benefit.two.detail}">Ajuste a aparência para manter a experiência consistente.</p></div></li>
+            <li><span>✓</span><div><b th:text="#{landing.benefit.three.title}">Cresce com sua operação</b><p th:text="#{landing.benefit.three.detail}">Comece simples e amplie produtos e campos quando precisar.</p></div></li>
+        </ul>
+    </section>
+
+    <section class="landing-section landing-price-callout">
+        <div><p class="landing-kicker">Planos transparentes</p><h2>Comece no seu ritmo.</h2><p>Assinaturas mensais para lojas que precisam vender produtos personalizados com clareza.</p></div>
+        <div class="landing-price-summary"><span>Essencial</span><strong>R$ 19,99 <small>/mês</small></strong><p>10 produtos personalizados · 3 campos por produto</p><a class="landing-secondary" th:href="@{/precos/}">Ver todos os planos →</a></div>
+    </section>
+
+    <section class="landing-final"><p th:text="#{landing.final.eyebrow}">Campos Personalizados para Nuvemshop</p><h2 th:text="#{landing.final.title}">Deixe cada pedido pronto para produzir.</h2><a class="landing-cta light" th:href="@{/install}"><span th:text="#{landing.install}">Instalar na Nuvemshop</span><span aria-hidden="true">→</span></a></section>
+</main>
+<footer class="landing-footer"><span>© <span th:text="${#dates.year(#dates.createNow())}">2026</span> <span th:text="#{common.app.name}">Campos Personalizados</span></span><span th:if="${!#strings.isEmpty(companyLegalName)}">Responsável pelo serviço: <span th:text="${companyLegalName}">Nome completo</span></span><a th:href="@{/precos/}">Preços</a><a th:href="@{/termos/}">Termos</a><a th:href="@{/privacy/}" th:text="#{landing.privacy}">Privacidade</a><a th:href="@{/contato/}">Contato</a></footer>
+</body>
+</html>

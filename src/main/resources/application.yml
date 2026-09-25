@@ -27,6 +27,11 @@ analytics:
   ga4:
     measurement-id: ${GA4_MEASUREMENT_ID:G-RM8VWNPDT8}
 
+legal:
+  operator-name: ${LEGAL_OPERATOR_NAME:}
+  document: ${LEGAL_DOCUMENT:}
+  support-email: ${SUPPORT_EMAIL:contato@wzhub.com.br}
+
 server:
   forward-headers-strategy: framework
   servlet:

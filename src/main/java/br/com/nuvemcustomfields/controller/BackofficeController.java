@@ -27,6 +27,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Controller
 public class BackofficeController {
 
@@ -94,26 +101,24 @@ public class BackofficeController {
     }
 
     @GetMapping("/backoffice")
-    public String index(Model model) {
+    public String index(@RequestParam(required = false, defaultValue = "") String q, Model model) {
         LOGGER.info("backoffice.index.open");
-        long stores = storeRepository.count();
-        long activeStores = backofficeService.activeStores();
+        var stores = storeRepository.findAll();
+        populateStoreDirectory(model, stores, q);
         long rules = backofficeService.fields();
         long flags = featureFlagRepository.count();
-        model.addAttribute("stores", stores);
-        model.addAttribute("activeStores", activeStores);
         model.addAttribute("rules", rules);
         model.addAttribute("flags", flags);
         model.addAttribute("openTickets", supportService.openTickets());
-        LOGGER.info("backoffice.index.loaded stores={} active_stores={} rules={} flags={} open_tickets={}", stores, activeStores, rules, flags, supportService.openTickets());
+        LOGGER.info("backoffice.index.loaded stores={} rules={} flags={} open_tickets={}", stores.size(), rules, flags, supportService.openTickets());
         return "backoffice/index";
     }
 
     @GetMapping("/backoffice/stores")
-    public String stores(Model model) {
+    public String stores(@RequestParam(required = false, defaultValue = "") String q, Model model) {
         LOGGER.info("backoffice.stores.open");
         var stores = storeRepository.findAll();
-        model.addAttribute("stores", stores);
+        populateStoreDirectory(model, stores, q);
         LOGGER.info("backoffice.stores.loaded stores_count={}", stores.size());
         return "backoffice/stores";
     }
@@ -285,6 +290,40 @@ public class BackofficeController {
         model.addAttribute("messages", supportService.messages(ticketId));
         model.addAttribute("statuses", SupportTicketStatus.values());
         return "backoffice/support-ticket";
+    }
+
+    private void populateStoreDirectory(Model model, List<br.com.nuvemcustomfields.entity.Store> allStores, String query) {
+        String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        List<br.com.nuvemcustomfields.entity.Store> stores = allStores.stream()
+                .filter(store -> normalizedQuery.isEmpty() || matches(store, normalizedQuery))
+                .sorted(Comparator.comparing(br.com.nuvemcustomfields.entity.Store::isActive).reversed()
+                        .thenComparing(br.com.nuvemcustomfields.entity.Store::getInstalledAt, Comparator.reverseOrder()))
+                .toList();
+        Map<Long, br.com.nuvemcustomfields.entity.PaymentSubscription> subscriptions = stores.isEmpty() ? Map.of()
+                : paymentSubscriptionRepository.findByStoreIdIn(stores.stream()
+                        .map(br.com.nuvemcustomfields.entity.Store::getStoreId).toList())
+                .stream().collect(Collectors.toMap(br.com.nuvemcustomfields.entity.PaymentSubscription::getStoreId,
+                        Function.identity()));
+        var active = allStores.stream().filter(br.com.nuvemcustomfields.entity.Store::isActive).toList();
+        model.addAttribute("stores", stores);
+        model.addAttribute("subscriptionsByStoreId", subscriptions);
+        model.addAttribute("query", query == null ? "" : query.trim());
+        model.addAttribute("installations", allStores.size());
+        model.addAttribute("activeInstallations", active.size());
+        model.addAttribute("inactiveInstallations", allStores.size() - active.size());
+        model.addAttribute("freeInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
+                && (store.getEffectivePlan() == PlanType.FREE || store.getEffectivePlan() == PlanType.FREE_GRATIS)).count());
+        model.addAttribute("courtesyInstallations", active.stream().filter(br.com.nuvemcustomfields.entity.Store::isCourtesyPremium).count());
+        model.addAttribute("essentialInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
+                && store.getEffectivePlan() == PlanType.PREMIUM).count());
+        model.addAttribute("proInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
+                && store.getEffectivePlan() == PlanType.PREMIUM_PLUS).count());
+    }
+
+    private static boolean matches(br.com.nuvemcustomfields.entity.Store store, String query) {
+        return Long.toString(store.getStoreId()).contains(query)
+                || (store.getStoreName() != null && store.getStoreName().toLowerCase(Locale.ROOT).contains(query))
+                || (store.getStoreCountryCode() != null && store.getStoreCountryCode().toLowerCase(Locale.ROOT).contains(query));
     }
 
     @PostMapping("/backoffice/support/{ticketId}/messages")
