@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
 
 @Service
 public class PaymentWebhookService {
@@ -107,6 +109,59 @@ public class PaymentWebhookService {
                     notification.provider(), notification.type(), notification.resourceId(), ex.getMessage());
             throw ex;
         }
+    }
+
+    public void receivePaddle(String body, String signature) {
+        GatewayNotification notification = router.require(PaymentProviderType.PADDLE)
+                .verifyNotification(body, signature, null, null);
+        PaymentWebhookEvent event = events.findByEventKey(notification.eventKey()).orElseGet(() -> {
+            PaymentWebhookEvent created = new PaymentWebhookEvent();
+            created.setProvider(notification.provider());
+            created.setProviderEnvironment(notification.environment());
+            created.setEventKey(notification.eventKey());
+            created.setNotificationId(notification.notificationId());
+            created.setEventType(notification.type());
+            created.setOccurredAt(notification.occurredAt());
+            created.setProviderResourceId(notification.resourceId());
+            created.setPayloadJson(notification.payload());
+            return events.save(created);
+        });
+        LOGGER.info("payments.webhook.received provider=PADDLE event_key={} status={}", event.getEventKey(), event.getStatus());
+    }
+
+    public void processPendingPaddle() {
+        var due = events.findTop50ByStatusInAndNextAttemptAtLessThanEqualOrderByReceivedAtAsc(
+                EnumSet.of(PaymentWebhookStatus.RECEIVED, PaymentWebhookStatus.FAILED), Instant.now());
+        for (PaymentWebhookEvent event : due) processPaddle(event);
+    }
+
+    private void processPaddle(PaymentWebhookEvent event) {
+        if (event.getStatus() == PaymentWebhookStatus.PROCESSED || event.getStatus() == PaymentWebhookStatus.IGNORED) return;
+        if (events.claim(event.getId(), Instant.now()) != 1) return;
+        event.setStatus(PaymentWebhookStatus.PROCESSING);
+        event.setProcessingAttempts(event.getProcessingAttempts() + 1);
+        try {
+            PaymentSubscription subscription = switch (event.getEventType()) {
+                case "transaction.completed", "transaction.payment_failed", "transaction.past_due", "transaction.canceled" ->
+                        subscriptions.synchronizeFromPaddleTransaction(event.getProviderResourceId());
+                case "subscription.created", "subscription.updated", "subscription.activated", "subscription.past_due",
+                     "subscription.paused", "subscription.resumed", "subscription.canceled" ->
+                        subscriptions.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.PADDLE, event.getProviderResourceId());
+                default -> null;
+            };
+            event.setStatus(subscription == null ? PaymentWebhookStatus.IGNORED : PaymentWebhookStatus.PROCESSED);
+            if (subscription != null) event.setStoreId(subscription.getStoreId());
+            event.setProcessedAt(Instant.now());
+            event.setLastError(null);
+        } catch (RuntimeException ex) {
+            event.setStatus(PaymentWebhookStatus.FAILED);
+            event.setLastError(truncate(ex.getMessage()));
+            long delay = Math.min(3600, 1L << Math.min(11, event.getProcessingAttempts()));
+            event.setNextAttemptAt(Instant.now().plus(delay, ChronoUnit.SECONDS));
+            LOGGER.warn("payments.webhook.deferred provider=PADDLE event_key={} attempt={} type={}",
+                    event.getEventKey(), event.getProcessingAttempts(), ex.getClass().getSimpleName());
+        }
+        events.save(event);
     }
 
     private static String truncate(String value) {

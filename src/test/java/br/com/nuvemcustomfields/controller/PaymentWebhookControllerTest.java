@@ -68,4 +68,15 @@ class PaymentWebhookControllerTest {
 
         verifyNoInteractions(service);
     }
+
+    @Test
+    void acceptsAuthenticatedPaddleWebhookOnBothPaths() throws Exception {
+        PaymentWebhookService service = mock(PaymentWebhookService.class);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PaymentWebhookController(service)).build();
+        mvc.perform(post("/prod/webhooks/paddle7").header("Paddle-Signature", "valid")
+                .contentType(MediaType.APPLICATION_JSON).content("{}" )).andExpect(status().isOk());
+        mvc.perform(post("/webhooks/paddle7").header("Paddle-Signature", "valid")
+                .contentType(MediaType.APPLICATION_JSON).content("{}" )).andExpect(status().isOk());
+        verify(service, times(2)).receivePaddle("{}", "valid");
+    }
 }

@@ -6,7 +6,7 @@
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}"></head>
 <body class="backoffice-page"><main class="backoffice-shell">
     <header class="backoffice-header"><div><p class="eyebrow">Campos Personalizados · Backoffice</p><h1>Visão da operação</h1><p>Instalações, planos e situações que pedem atenção.</p></div>
-        <nav class="backoffice-nav"><a class="is-current" th:href="@{/backoffice}">Visão geral</a><a th:href="@{/backoffice/stores}">Lojas</a><a th:href="@{/backoffice/support}">Suporte <span th:if="${openTickets > 0}" th:text="${openTickets}">0</span></a><a th:href="@{/backoffice/flags}">Flags</a><a th:href="@{/backoffice/reports}">Relatórios</a></nav></header>
+        <nav class="backoffice-nav"><a class="is-current" th:href="@{/backoffice}">Visão geral</a><a th:href="@{/backoffice/stores}">Lojas</a><a th:href="@{/backoffice/payments}">Pagamentos</a><a th:href="@{/backoffice/support}">Suporte <span th:if="${openTickets > 0}" th:text="${openTickets}">0</span></a><a th:href="@{/backoffice/flags}">Flags</a><a th:href="@{/backoffice/reports}">Relatórios</a></nav></header>
 
     <section class="backoffice-primary-metrics"><article><span>Instalações</span><strong th:text="${installations}">0</strong><small><b th:text="${activeInstallations}">0</b> ativas <span th:if="${inactiveInstallations > 0}">· <span th:text="${inactiveInstallations}">0</span> desinstaladas</span></small></article><article><span>Produtos com campos</span><strong th:text="${rules}">0</strong><small>Produtos personalizados configurados</small></article><article><span>Suporte</span><strong th:text="${openTickets}">0</strong><small>Chamados abertos</small></article></section>
 

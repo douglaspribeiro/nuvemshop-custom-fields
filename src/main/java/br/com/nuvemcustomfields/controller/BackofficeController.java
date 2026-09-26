@@ -3,6 +3,8 @@ package br.com.nuvemcustomfields.controller;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.entity.PaymentProviderType;
+import br.com.nuvemcustomfields.entity.PaymentEnvironment;
 import br.com.nuvemcustomfields.entity.SupportTicketStatus;
 import br.com.nuvemcustomfields.properties.BackofficeProperties;
 import br.com.nuvemcustomfields.repository.FeatureFlagRepository;
@@ -15,6 +17,7 @@ import br.com.nuvemcustomfields.service.ManagementReportService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
 import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
+import br.com.nuvemcustomfields.service.PaymentConfigurationService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Controller
 public class BackofficeController {
@@ -50,6 +54,7 @@ public class BackofficeController {
     private final ScriptInstallService scriptInstallService;
     private final PaymentSubscriptionRepository paymentSubscriptionRepository;
     private final PaymentSubscriptionService paymentSubscriptionService;
+    private final PaymentConfigurationService paymentConfigurationService;
     private final String appVersion;
 
     public BackofficeController(
@@ -64,6 +69,7 @@ public class BackofficeController {
             ScriptInstallService scriptInstallService,
             PaymentSubscriptionRepository paymentSubscriptionRepository,
             PaymentSubscriptionService paymentSubscriptionService,
+            PaymentConfigurationService paymentConfigurationService,
             @Value("${APP_VERSION:dev}") String appVersion
     ) {
         this.properties = properties;
@@ -77,6 +83,7 @@ public class BackofficeController {
         this.scriptInstallService = scriptInstallService;
         this.paymentSubscriptionRepository = paymentSubscriptionRepository;
         this.paymentSubscriptionService = paymentSubscriptionService;
+        this.paymentConfigurationService = paymentConfigurationService;
         this.appVersion = appVersion;
     }
 
@@ -273,6 +280,39 @@ public class BackofficeController {
         LOGGER.info("backoffice.reports.open");
         model.addAttribute("report", managementReportService.report());
         return "backoffice/reports";
+    }
+
+    @GetMapping("/backoffice/payments")
+    public String payments(Model model) {
+        model.addAttribute("routingRules", paymentConfigurationService.rules());
+        model.addAttribute("catalogPrices", paymentConfigurationService.catalog());
+        model.addAttribute("routingHistory", paymentConfigurationService.history());
+        model.addAttribute("providers", PaymentProviderType.values());
+        model.addAttribute("environments", PaymentEnvironment.values());
+        model.addAttribute("paymentConfiguration", paymentConfigurationService);
+        return "backoffice/payments";
+    }
+
+    @PostMapping("/backoffice/payments/routes")
+    public String savePaymentRoute(@RequestParam String countryCode, @RequestParam PaymentProviderType provider,
+            @RequestParam PaymentEnvironment environment, @RequestParam(defaultValue="false") boolean enabled,
+            RedirectAttributes redirectAttributes) {
+        try {
+            paymentConfigurationService.saveRoute(countryCode, provider, environment, enabled, properties.username());
+            redirectAttributes.addFlashAttribute("message", "Rota de pagamento atualizada.");
+        } catch (RuntimeException ex) { redirectAttributes.addFlashAttribute("error", ex.getMessage()); }
+        return "redirect:/backoffice/payments";
+    }
+
+    @PostMapping("/backoffice/payments/catalog/{id}")
+    public String savePaymentPrice(@PathVariable Long id, @RequestParam String currency,
+            @RequestParam BigDecimal amount, @RequestParam(required=false) String providerPriceId,
+            @RequestParam(defaultValue="false") boolean enabled, RedirectAttributes redirectAttributes) {
+        try {
+            paymentConfigurationService.savePrice(id,currency,amount,providerPriceId,enabled);
+            redirectAttributes.addFlashAttribute("message", "Preço validado e atualizado.");
+        } catch (RuntimeException ex) { redirectAttributes.addFlashAttribute("error", ex.getMessage()); }
+        return "redirect:/backoffice/payments";
     }
 
     @GetMapping("/backoffice/support")

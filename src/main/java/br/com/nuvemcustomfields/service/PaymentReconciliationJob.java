@@ -18,13 +18,16 @@ public class PaymentReconciliationJob {
     private final PaymentSubscriptionRepository repository;
     private final PaymentSubscriptionService service;
     private final PaymentGatewayRouter router;
+    private final PaymentWebhookService webhooks;
 
     public PaymentReconciliationJob(PaymentSubscriptionRepository repository,
                                     PaymentSubscriptionService service,
-                                    PaymentGatewayRouter router) {
+                                    PaymentGatewayRouter router,
+                                    PaymentWebhookService webhooks) {
         this.repository = repository;
         this.service = service;
         this.router = router;
+        this.webhooks = webhooks;
     }
 
     @Scheduled(fixedDelayString = "${payments.reconciliation-delay-ms:3600000}")
@@ -32,7 +35,7 @@ public class PaymentReconciliationJob {
         var statuses = EnumSet.of(PaymentSubscriptionStatus.PENDING, PaymentSubscriptionStatus.ACTIVE,
                 PaymentSubscriptionStatus.PAST_DUE, PaymentSubscriptionStatus.PAUSED,
                 PaymentSubscriptionStatus.CANCELED);
-        for (PaymentProviderType provider : new PaymentProviderType[]{PaymentProviderType.MERCADO_PAGO, PaymentProviderType.EFI}) {
+        for (PaymentProviderType provider : PaymentProviderType.values()) {
             if (!router.configured(provider)) continue;
             for (var subscription : repository.findByProviderAndStatusIn(provider, statuses)) {
                 try {
@@ -46,6 +49,11 @@ public class PaymentReconciliationJob {
                 }
             }
         }
+    }
+
+    @Scheduled(fixedDelayString = "${payments.webhook-processing-delay-ms:5000}")
+    public void processPaddleWebhooks() {
+        if (router.configured(PaymentProviderType.PADDLE)) webhooks.processPendingPaddle();
     }
 
     @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")

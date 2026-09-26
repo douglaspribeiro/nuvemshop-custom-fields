@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.payment;
 
 import br.com.efi.efisdk.EfiPay;
 import br.com.nuvemcustomfields.entity.PaymentProviderType;
+import br.com.nuvemcustomfields.entity.PaymentEnvironment;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.EfiProperties;
@@ -28,6 +29,7 @@ public class EfiGateway implements PaymentGateway {
     }
 
     @Override public PaymentProviderType provider() { return PaymentProviderType.EFI; }
+    @Override public PaymentEnvironment environment() { return properties.sandbox() ? PaymentEnvironment.SANDBOX : PaymentEnvironment.PRODUCTION; }
     @Override public boolean configured() { return properties.configured(); }
     @Override public boolean supports(Store store) {
         return store != null && "BR".equalsIgnoreCase(store.getStoreCountryCode())

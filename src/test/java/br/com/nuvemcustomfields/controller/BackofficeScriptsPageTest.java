@@ -108,4 +108,13 @@ class BackofficeScriptsPageTest {
                 .andExpect(redirectedUrl("/backoffice/login"));
         org.mockito.Mockito.verifyNoInteractions(paymentSubscriptionService);
     }
+
+    @Test
+    void rendersPaymentRoutingAndCatalogPage() throws Exception {
+        mockMvc.perform(get("/backoffice/payments").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Rotas por país")))
+                .andExpect(content().string(containsString("Catálogo")))
+                .andExpect(content().string(containsString("PADDLE")));
+    }
 }

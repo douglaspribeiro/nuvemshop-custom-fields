@@ -189,7 +189,7 @@ public class AdminController {
         var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
-        model.addAttribute("billingEnabled", paymentSubscriptionService.efiEnabled() || paymentSubscriptionService.mercadoPagoEnabled());
+        model.addAttribute("billingEnabled", paymentSubscriptionService.anyGatewayEnabled());
         model.addAttribute("billingAvailable", available);
         String billingCurrency = available ? paymentSubscriptionService.currency(store) : "";
         model.addAttribute("premiumPrice", formatBillingPrice(billingCurrency,
@@ -205,13 +205,13 @@ public class AdminController {
                             HttpSession session, RedirectAttributes redirectAttributes) {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
-            if (!paymentSubscriptionService.efiEnabled() && !paymentSubscriptionService.mercadoPagoEnabled()) {
+            if (!paymentSubscriptionService.anyGatewayEnabled()) {
                 throw new IllegalStateException(messages.get("admin.billing.paused"));
             }
             if (!paymentSubscriptionService.available(store)) {
                 throw new IllegalStateException(messages.get("admin.billing.unavailable"));
             }
-            if (paymentSubscriptionService.efiEnabled()) {
+            if (paymentSubscriptionService.provider(store).orElse(null) == PaymentProviderType.EFI) {
                 return "redirect:/admin/billing/pay?plan=" + plan.name();
             }
             return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
@@ -226,7 +226,8 @@ public class AdminController {
     public String efiPaymentPage(@RequestParam PlanType plan, HttpSession session, Model model,
                                  HttpServletResponse response) {
         Store store = adminStoreService.requireCurrentStore(session);
-        if (!paymentSubscriptionService.efiEnabled() || !paymentSubscriptionService.available(store)
+        if (paymentSubscriptionService.provider(store).orElse(null) != PaymentProviderType.EFI
+                || !paymentSubscriptionService.available(store)
                 || plan == null || !plan.isBillable()) return "redirect:/admin/billing";
         response.setHeader("Cache-Control", "no-store");
         model.addAttribute("store", store);

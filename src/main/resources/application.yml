@@ -128,6 +128,17 @@ payments:
     grace-days: ${MERCADO_PAGO_GRACE_DAYS:3}
     premium-amount: ${MERCADO_PAGO_PREMIUM_AMOUNT:19.99}
     premium-plus-amount: ${MERCADO_PAGO_PREMIUM_PLUS_AMOUNT:29.99}
+  paddle:
+    enabled: ${PADDLE_ENABLED:false}
+    sandbox: ${PADDLE_SANDBOX:true}
+    api-base-url: ${PADDLE_API_BASE_URL:https://sandbox-api.paddle.com}
+    api-key: ${PADDLE_API_KEY:}
+    client-side-token: ${PADDLE_CLIENT_SIDE_TOKEN:}
+    webhook-secret: ${PADDLE_WEBHOOK_SECRET:}
+    api-version: ${PADDLE_API_VERSION:1}
+    grace-days: ${PADDLE_GRACE_DAYS:3}
+    webhook-tolerance-seconds: ${PADDLE_WEBHOOK_TOLERANCE_SECONDS:300}
+    checkout-token-minutes: ${PADDLE_CHECKOUT_TOKEN_MINUTES:30}
 
 notifications:
   discord:

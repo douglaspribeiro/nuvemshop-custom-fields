@@ -37,6 +37,7 @@ public class StoreDataErasureService {
         jdbcTemplate.update("delete from plan_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_webhook_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_notification_outbox where store_id = ?", storeId);
+        jdbcTemplate.update("delete from payment_attempts where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_subscriptions where store_id = ?", storeId);
         int storesDeleted = jdbcTemplate.update("delete from stores where store_id = ?", storeId);
 

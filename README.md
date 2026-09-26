@@ -13,6 +13,7 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - `/home/dribeiro/meudev/work-p/roadmap/produtos/nuvem-custom-fields/roadmap.md`
 - `docs/nuvemshop-homologacao/` contem os artefatos separados para homologacao e publicacao Nuvemshop: diagrama/escopos, roteiro de video, assinatura de planos pagos, FAQs/guia de instalacao e checklist do perfil do app.
 - `docs/pagamentos-v1-e-roadmap.md` descreve Mercado Pago para lojas BR e a arquitetura preparada para um segundo gateway internacional, inicialmente Paddle.
+- `docs/plano-paddle-multigateway.md` detalha a implementação da Paddle, o roteamento configurável por país e a convivência entre assinaturas de providers diferentes.
 
 ## Stack
 

@@ -43,4 +43,20 @@ public class PaymentWebhookController {
         service.receiveEfi(notification);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping({
+            "/prod/webhooks/paddle7", "/webhooks/paddle7",
+            "/prod/webhooks/paddle", "/webhooks/paddle"
+    })
+    public ResponseEntity<Void> paddle(
+            @RequestHeader(name = "Paddle-Signature", required = false) String signature,
+            @RequestBody(required = false) String body
+    ) {
+        try {
+            service.receivePaddle(body == null ? "" : body, signature);
+            return ResponseEntity.ok().build();
+        } catch (PaymentGatewayException | IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
 }

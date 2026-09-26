@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pagamento seguro · Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+</head>
+<body class="public-page">
+<main class="public-shell" style="max-width:720px;margin:48px auto;padding:24px">
+    <p class="eyebrow">Pagamento seguro</p>
+    <h1 th:text="'Plano ' + ${checkout.planName}">Plano</h1>
+    <p>O checkout é processado pela Paddle. Impostos aplicáveis já estão incluídos no preço exibido.</p>
+    <div id="paddle-status" role="status">Abrindo o checkout…</div>
+    <button id="paddle-open" class="button primary" type="button" hidden>Abrir checkout novamente</button>
+</main>
+<script th:inline="javascript">
+const transactionId = /*[[${checkout.transactionId}]]*/ '';
+const token = /*[[${checkout.clientSideToken}]]*/ '';
+const sandbox = /*[[${checkout.sandbox}]]*/ true;
+const status = document.getElementById('paddle-status');
+const button = document.getElementById('paddle-open');
+if (sandbox) Paddle.Environment.set('sandbox');
+Paddle.Initialize({token, eventCallback: event => {
+    if (event.name === 'checkout.completed') {
+        status.textContent = 'Pagamento recebido. A confirmação está sendo processada; você já pode fechar esta página.';
+        button.hidden = true;
+    } else if (event.name === 'checkout.closed') {
+        status.textContent = 'Checkout fechado. Você pode reabri-lo enquanto esta tentativa estiver válida.';
+        button.hidden = false;
+    }
+}});
+function openCheckout() {
+    status.textContent = 'Abrindo o checkout…';
+    Paddle.Checkout.open({transactionId, settings: {displayMode: 'overlay', theme: 'light', locale: 'pt'}});
+}
+button.addEventListener('click', openCheckout);
+openCheckout();
+</script>
+</body></html>

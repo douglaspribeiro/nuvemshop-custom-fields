@@ -10,6 +10,16 @@ public record GatewaySubscription(
         String status,
         String currency,
         BigDecimal amount,
-        Instant nextPaymentAt
+        Instant nextPaymentAt,
+        String customerId,
+        String priceId,
+        Instant currentPeriodStart,
+        Instant currentPeriodEnd,
+        Instant cancellationEffectiveAt
 ) {
+    public GatewaySubscription(String id, String checkoutResourceId, String externalReference, String status,
+                               String currency, BigDecimal amount, Instant nextPaymentAt) {
+        this(id, checkoutResourceId, externalReference, status, currency, amount, nextPaymentAt,
+                null, null, null, null, null);
+    }
 }
