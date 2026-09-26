@@ -104,6 +104,65 @@ Principais camadas do codigo:
 
 O enforcement fica em `PlanLimitService` e e aplicado no editor do admin e no endpoint publico do storefront.
 
+## Reconquista apos desinstalacao
+
+O evento `app/uninstalled` deve permanecer curto e confiavel: apos validar o HMAC, o
+aplicativo registra a desinstalacao e publica uma mensagem idempotente no Amazon SQS. A
+mensagem usa o maior atraso nativo permitido pelo SQS, **15 minutos** (`DelaySeconds=900`).
+O webhook nao gera cupom nem envia e-mail diretamente.
+
+Depois do atraso, o consumidor verifica se a mesma `store_id` continua desinstalada. Se a
+loja tiver reinstalado, a mensagem e descartada. Caso contrario, o consumidor registra a
+campanha no banco, gera ou recupera o cupom elegivel e envia a comunicacao pelo Amazon SES.
+Falhas no SES mantem a mensagem para nova tentativa; todo processamento deve ser idempotente
+para impedir cupons e e-mails duplicados.
+
+O backoffice deve expor o funil completo: desinstalacao, motivo, resposta, cupom, tentativas
+de e-mail, reinstalacao, abertura de checkout e conversao em pagamento. Os motivos e regras
+iniciais sao:
+
+| Motivo informado | Acao apos 15 minutos |
+| --- | --- |
+| Preco | E-mail de reconquista com cupom de 50% no primeiro mes. |
+| Dificuldade de configuracao | Pergunta qual etapa foi dificil; o cupom de 50% e enviado apos a resposta. |
+| Nao preciso mais | E-mail de retorno com cupom de 50% no primeiro mes. |
+| Outro motivo | Pergunta breve e cupom de 50% no primeiro mes. |
+| Nao encontrei a funcionalidade que preciso | E-mail com formulario curto, de um campo de texto. Depois da resposta, cupom de 50% valido por 30 dias e mensagem de que a necessidade sera avaliada. |
+
+As solicitacoes de funcionalidade devem ser acompanhadas no backoffice com os status `NOVA`,
+`EM_ANALISE`, `PLANEJADA`, `ENTREGUE` e `NAO_PREVISTA`. Quando uma funcionalidade for
+entregue, as lojas que a solicitaram poderao receber uma comunicacao especifica.
+
+Para evitar abuso, o cupom automatico de 50% pertence a uma unica `store_id`, so e aplicavel
+apos a reinstalacao da mesma loja, expira conforme a campanha e e marcado como usado somente
+apos a confirmacao da primeira cobranca pela Efí. Reinstalacoes posteriores nao geram novo
+cupom. Lojas que ja tiveram uma assinatura paga seguem uma campanha de reconquista separada,
+sem cupom automatico; qualquer incentivo adicional depende de resposta ou aprovacao manual
+no backoffice.
+
+Os e-mails devem usar templates HTML responsivos e especificos por motivo, com marca,
+beneficio em destaque, um unico CTA, suporte/privacidade e opcao de nao receber novas
+comunicacoes. A condicao material da oferta deve aparecer claramente: o desconto vale apenas
+para o primeiro mes.
+
+### Precos internacionais
+
+A tabela abaixo e a referencia comercial inicial dos planos pagos. Os valores sao
+precos locais fixos, e nao conversoes exibidas em tempo real. A Argentina deve ser revisada
+periodicamente devido a volatilidade do ARS.
+
+| Pais | Moeda | Essencial / mes | Pro / mes |
+| --- | --- | ---: | ---: |
+| Brasil | BRL | R$ 19,99 | R$ 29,99 |
+| Estados Unidos | USD | US$ 4,99 | US$ 7,49 |
+| Mexico | MXN | MX$ 99 | MX$ 149 |
+| Chile | CLP | CLP$ 4.199 | CLP$ 6.299 |
+| Argentina | ARS | ARS$ 5.599 | ARS$ 8.399 |
+
+Esses valores foram registrados em `nuvemshop.billing.prices`. A cobranca por Efí permanece
+restrita ao Brasil; antes de habilitar cobranca recorrente nos demais paises, e necessario
+integrar um provedor que aceite a moeda e os meios de pagamento locais.
+
 ## Configuracao
 
 A configuracao padrao fica em `src/main/resources/application.yml`. As principais variaveis de ambiente sao:

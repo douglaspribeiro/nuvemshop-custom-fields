@@ -85,16 +85,20 @@ nuvemshop:
         premium-plus-amount: ${NUVEMSHOP_BILLING_BR_PREMIUM_PLUS_AMOUNT:${NUVEMSHOP_BILLING_PREMIUM_PLUS_AMOUNT:29.99}}
       AR:
         currency: ARS
-        premium-amount: ${NUVEMSHOP_BILLING_AR_PREMIUM_AMOUNT:5747}
-        premium-plus-amount: ${NUVEMSHOP_BILLING_AR_PREMIUM_PLUS_AMOUNT:8622}
+        premium-amount: ${NUVEMSHOP_BILLING_AR_PREMIUM_AMOUNT:5599}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_AR_PREMIUM_PLUS_AMOUNT:8399}
       CL:
         currency: CLP
-        premium-amount: ${NUVEMSHOP_BILLING_CL_PREMIUM_AMOUNT:3566}
-        premium-plus-amount: ${NUVEMSHOP_BILLING_CL_PREMIUM_PLUS_AMOUNT:5350}
+        premium-amount: ${NUVEMSHOP_BILLING_CL_PREMIUM_AMOUNT:4199}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_CL_PREMIUM_PLUS_AMOUNT:6299}
       MX:
         currency: MXN
-        premium-amount: ${NUVEMSHOP_BILLING_MX_PREMIUM_AMOUNT:67.49}
-        premium-plus-amount: ${NUVEMSHOP_BILLING_MX_PREMIUM_PLUS_AMOUNT:101.26}
+        premium-amount: ${NUVEMSHOP_BILLING_MX_PREMIUM_AMOUNT:99}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_MX_PREMIUM_PLUS_AMOUNT:149}
+      US:
+        currency: USD
+        premium-amount: ${NUVEMSHOP_BILLING_US_PREMIUM_AMOUNT:4.99}
+        premium-plus-amount: ${NUVEMSHOP_BILLING_US_PREMIUM_PLUS_AMOUNT:7.49}
       CO:
         currency: COP
         premium-amount: ${NUVEMSHOP_BILLING_CO_PREMIUM_AMOUNT:13146}
