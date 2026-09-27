@@ -75,7 +75,7 @@ class PaddleGatewayTest {
         PaymentCatalogPrice price=new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.PADDLE);
         price.setEnvironment(PaymentEnvironment.SANDBOX); price.setCountryCode(country); price.setPlan(PlanType.PREMIUM);
         price.setCurrency(currency); price.setAmountValue(new BigDecimal(amount)); price.setProviderPriceId(id);
-        price.setTaxMode("internal"); price.setRecurring(true); price.setEnabled(true); return price;
+        price.setTaxMode("internal"); price.setRecurring(true); price.setEnabled(true); price.setValidatedAt(Instant.now()); return price;
     }
     private static String transaction(String currency,String total) {
         return "{\"data\":{\"id\":\"txn_1\",\"status\":\"completed\",\"subscription_id\":null,"+
