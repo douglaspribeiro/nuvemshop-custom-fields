@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.11.0] - 2026-09-27
+
+### Features
+
+- save payment catalog prices without page reload (`f0e3d07`)
+
+### Correções
+
+- allow retry after Paddle checkout setup error (`460a175`)
+
 ## [1.10.3] - 2026-09-27
 
 ### Correções
