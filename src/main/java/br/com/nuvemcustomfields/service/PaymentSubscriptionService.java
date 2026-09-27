@@ -275,10 +275,17 @@ public class PaymentSubscriptionService {
             throw new IllegalArgumentException("A loja ja possui uma assinatura ativa.");
         }
         if (gateway.provider() == PaymentProviderType.PADDLE && attempts != null) {
-            attempts.findFirstByStoreIdAndStatusInOrderByCreatedAtDesc(storeId,
-                    java.util.EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN))
-                    .ifPresent(attempt -> { throw new IllegalStateException(
-                            "A criação anterior ainda precisa ser conciliada. Nenhuma nova cobrança foi iniciada."); });
+            Optional<PaymentAttempt> previousAttempt = attempts.findFirstByStoreIdAndStatusInOrderByCreatedAtDesc(storeId,
+                    java.util.EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN));
+            if (previousAttempt.isPresent()) {
+                PaymentAttempt attempt = previousAttempt.get();
+                if (defaultCheckoutUrlMissing(attempt.getLastError())) {
+                    attempt.setStatus(PaymentAttemptStatus.FAILED);
+                    attempts.save(attempt);
+                } else {
+                    throw new IllegalStateException("A criação anterior ainda precisa ser conciliada. Nenhuma nova cobrança foi iniciada.");
+                }
+            }
         }
         if (subscription != null && subscription.getStatus() == PaymentSubscriptionStatus.PENDING
                 && plan == subscription.getPlan()
@@ -366,7 +373,8 @@ public class PaymentSubscriptionService {
             subscription.setLastSyncedAt(Instant.now());
             subscriptions.save(subscription);
             if (attempt != null) {
-                attempt.setStatus(PaymentAttemptStatus.UNKNOWN);
+                attempt.setStatus(defaultCheckoutUrlMissing(ex.getMessage())
+                        ? PaymentAttemptStatus.FAILED : PaymentAttemptStatus.UNKNOWN);
                 attempt.setLastError(truncate(ex.getMessage()));
                 attempts.save(attempt);
             }
@@ -758,6 +766,9 @@ public class PaymentSubscriptionService {
     private static String truncate(String value) {
         if (value == null) return null;
         return value.length() <= 500 ? value : value.substring(0, 500);
+    }
+    private static boolean defaultCheckoutUrlMissing(String value) {
+        return value != null && value.contains("transaction_default_checkout_url_not_set");
     }
     private static boolean hasText(String value) { return value != null && !value.isBlank(); }
     private static boolean canceled(String status) {

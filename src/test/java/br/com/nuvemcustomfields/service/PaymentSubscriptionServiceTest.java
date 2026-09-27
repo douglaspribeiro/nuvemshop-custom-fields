@@ -5,6 +5,7 @@ import br.com.nuvemcustomfields.payment.*;
 import br.com.nuvemcustomfields.properties.MercadoPagoProperties;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
+import br.com.nuvemcustomfields.repository.PaymentAttemptRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 class PaymentSubscriptionServiceTest {
     private final StoreRepository stores = mock(StoreRepository.class);
@@ -609,6 +611,37 @@ class PaymentSubscriptionServiceTest {
         assertThat(pending.getProviderSubscriptionId()).isNull();
         assertThat(pending.getProviderCheckoutId()).isEqualTo("plan-2");
         verify(gateway).cancel("sub-1");
+    }
+
+    @Test
+    void marksPaddleAttemptFailedWhenDefaultCheckoutUrlIsMissing() {
+        PaymentAttemptRepository attempts = mock(PaymentAttemptRepository.class);
+        PaddleGateway paddle = mock(PaddleGateway.class);
+        PaymentSubscriptionService paddleService = new PaymentSubscriptionService(
+                stores, subscriptions, events, router, mock(NuvemshopApiClient.class), nuvemshopProperties,
+                new MercadoPagoProperties(true, "https://api.example.com", "token", "secret", 3,
+                        new BigDecimal("19.99"), new BigDecimal("29.99")), efi, paymentNotifications, attempts, paddle);
+        Store store = store();
+        store.setStoreCountryCode("AR"); store.setStoreCurrency("ARS"); store.setStoreEmail("store@example.com");
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(router.requireForStore(store)).thenReturn(gateway);
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.empty());
+        when(gateway.provider()).thenReturn(PaymentProviderType.PADDLE);
+        when(gateway.environment()).thenReturn(PaymentEnvironment.SANDBOX);
+        when(gateway.currency(store)).thenReturn("ARS");
+        when(gateway.amount(store, PlanType.PREMIUM)).thenReturn(new BigDecimal("5599"));
+        when(gateway.priceId(store, PlanType.PREMIUM)).thenReturn("pri_example");
+        when(paddle.checkoutTokenMinutes()).thenReturn(30L);
+        when(nuvemshopProperties.appBaseUrl()).thenReturn("https://app.test");
+        doThrow(new PaymentGatewayException("Paddle retornou erro: transaction_default_checkout_url_not_set"))
+                .when(gateway).createCheckout(any(), any(), anyString(), anyString());
+
+        assertThatThrownBy(() -> paddleService.startCheckout(123L, PlanType.PREMIUM))
+                .isInstanceOf(PaymentGatewayException.class);
+
+        ArgumentCaptor<PaymentAttempt> attempt = ArgumentCaptor.forClass(PaymentAttempt.class);
+        verify(attempts, atLeastOnce()).save(attempt.capture());
+        assertThat(attempt.getValue().getStatus()).isEqualTo(PaymentAttemptStatus.FAILED);
     }
 
     @Test
