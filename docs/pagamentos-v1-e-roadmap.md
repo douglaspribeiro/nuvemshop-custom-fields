@@ -37,7 +37,7 @@ Cliques repetidos reutilizam o checkout pendente. A cortesia temporaria bloqueia
 | `CANCELED` | Mantem ate a proxima data ja paga, quando conhecida, e depois volta ao Free. |
 | `ERROR` | Nao libera acesso e mostra o erro operacional. |
 
-Na desinstalacao, o acesso local e revogado e o app solicita cancelamento remoto sem depender do token Nuvemshop. Falhas ficam marcadas para operacao. A exclusao LGPD remove assinatura e eventos vinculados a loja.
+Na desinstalacao, o acesso local e revogado, mas o app nao solicita cancelamento remoto da assinatura. A exclusao LGPD remove assinatura e eventos vinculados a loja.
 
 ## Seguranca
 

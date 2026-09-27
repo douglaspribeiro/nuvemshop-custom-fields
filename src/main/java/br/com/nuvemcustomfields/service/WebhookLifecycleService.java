@@ -58,7 +58,7 @@ public class WebhookLifecycleService {
             LOGGER.warn("webhook.app_uninstalled.ignored reason=missing_store_id");
             return;
         }
-        paymentSubscriptionService.cancelAfterUninstall(storeId);
+        paymentSubscriptionService.revokeAccessAfterUninstall(storeId);
         storeRepository.findByStoreId(storeId).ifPresent(store -> {
             store.setUninstalledAt(Instant.now());
             store.setAccessToken(null);

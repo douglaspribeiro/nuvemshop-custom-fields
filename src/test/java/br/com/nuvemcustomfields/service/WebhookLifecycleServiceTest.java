@@ -44,7 +44,7 @@ class WebhookLifecycleServiceTest {
         assertThat(store.getScope()).isNull();
         assertThat(store.getPlan()).isEqualTo(br.com.nuvemcustomfields.entity.PlanType.FREE);
         verify(storeRepository).save(store);
-        verify(paymentSubscriptionService).cancelAfterUninstall(123L);
+        verify(paymentSubscriptionService).revokeAccessAfterUninstall(123L);
         verify(integrationLogService).info(
                 123L,
                 "webhook.app_uninstalled",

@@ -347,7 +347,7 @@ O backoffice interno permite acompanhar lojas instaladas, status, eventos de pla
 
 Webhooks registrados:
 
-- `app/uninstalled`: marca a loja como desinstalada, apaga token e escopos, limpa a assinatura local e volta o plano para `FREE`. Scripts e webhooks do app sao removidos automaticamente pela Nuvemshop.
+- `app/uninstalled`: marca a loja como desinstalada, apaga token e escopos, revoga o acesso local e volta o plano para `FREE`, sem solicitar cancelamento da assinatura no gateway. Scripts e webhooks do app sao removidos automaticamente pela Nuvemshop.
 - `store/redact`: exclui de forma idempotente loja, configuracoes, campos, logs, eventos de plano e chamados vinculados.
 - `product/deleted`: remove as regras de personalizacao do produto removido.
 

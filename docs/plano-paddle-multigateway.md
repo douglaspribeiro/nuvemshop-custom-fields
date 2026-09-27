@@ -149,7 +149,7 @@ cartão e CVV nunca passam pelo backend nem são persistidos.
 - `GET /subscriptions/{subscription_id}` consulta o contrato remoto.
 - O cancelamento normal usa `POST /subscriptions/{id}/cancel` com
   `effective_from=next_billing_period` e mantém o acesso até o período pago.
-- A desinstalação solicita cancelamento imediato de cobranças futuras.
+- A desinstalação revoga somente o acesso local; não solicita cancelamento da assinatura no gateway.
 - A atualização do cartão usa a transação oficial de atualização de método.
 - Adotar inicialmente três dias de tolerância após falha de renovação,
   configuráveis por provider; depois disso, o acesso volta ao Free enquanto a
@@ -217,7 +217,7 @@ Cobrir com testes:
 - webhooks adulterados, duplicados, simultâneos e fora de ordem;
 - timeout de criação sem duplicação de cobrança;
 - renovação, inadimplência, recuperação e fim da tolerância;
-- cancelamento no fim do período, imediato e por desinstalação;
+- cancelamento no fim do período e imediato, sem cancelamento automático por desinstalação;
 - migrações sobre banco que já contém assinaturas Efí.
 
 Configuração mínima futura: ambiente Paddle, API key, client-side token,

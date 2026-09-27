@@ -603,25 +603,10 @@ public class PaymentSubscriptionService {
         }
     }
 
-    @Transactional(noRollbackFor = PaymentGatewayException.class)
-    public void cancelAfterUninstall(Long storeId) {
+    @Transactional
+    public void revokeAccessAfterUninstall(Long storeId) {
         subscriptions.findByStoreId(storeId).ifPresent(local -> {
             deactivate(local, stores.findByStoreId(storeId).orElse(null), "APP_UNINSTALLED");
-            if ((!hasText(local.getProviderSubscriptionId()) && !hasText(local.getProviderCheckoutId()))
-                    || local.getStatus() == PaymentSubscriptionStatus.CANCELED) return;
-            local.setCancellationPending(true);
-            try {
-                PaymentGateway gateway = router.require(local.getProvider());
-                if (hasText(local.getProviderSubscriptionId())) gateway.cancelImmediately(local.getProviderSubscriptionId());
-                else gateway.cancelCheckout(local.getProviderCheckoutId());
-                local.setCancellationPending(false);
-                local.setStatus(PaymentSubscriptionStatus.CANCELED);
-                local.setProviderStatus("canceled");
-                local.setLastError(null);
-            } catch (RuntimeException ex) {
-                local.setLastError(truncate(ex.getMessage()));
-                LOGGER.error("payments.uninstall.cancel_failed store_id={} message={}", storeId, ex.getMessage());
-            }
             subscriptions.save(local);
         });
     }
