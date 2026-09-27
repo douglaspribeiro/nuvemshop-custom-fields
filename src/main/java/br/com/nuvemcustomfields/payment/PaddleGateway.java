@@ -176,7 +176,7 @@ public class PaddleGateway implements PaymentGateway {
     }
     private Optional<PaymentCatalogPrice> catalog(String country, PlanType plan) {
         return catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(provider(), environment(), country, plan)
-                .filter(PaymentCatalogPrice::isEnabled).filter(PaymentCatalogPrice::isRecurring)
+                .filter(PaymentCatalogPrice::isEnabled).filter(PaymentCatalogPrice::isRecurring).filter(PaymentCatalogPrice::isValidated)
                 .filter(p -> "internal".equalsIgnoreCase(p.getTaxMode())).filter(p -> hasText(p.getProviderPriceId()));
     }
     private GatewayInvoice invoice(JsonNode data) {

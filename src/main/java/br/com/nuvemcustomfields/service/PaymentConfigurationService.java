@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
@@ -46,16 +47,27 @@ public class PaymentConfigurationService {
     }
 
     @Transactional
-    public void savePrice(Long id, String currency, BigDecimal amount, String providerPriceId,
-                          boolean enabled) {
+    public PriceSaveResult savePrice(Long id, String currency, BigDecimal amount, String providerPriceId,
+                                     boolean enabled) {
         PaymentCatalogPrice price=catalog.findById(id).orElseThrow(() -> new IllegalArgumentException("Preço não encontrado."));
         if (amount==null || amount.signum()<=0) throw new IllegalArgumentException("O valor deve ser positivo.");
         String normalizedCurrency=currency==null?"":currency.trim().toUpperCase(Locale.ROOT);
         if (!normalizedCurrency.matches("[A-Z]{3}")) throw new IllegalArgumentException("Moeda inválida.");
         price.setCurrency(normalizedCurrency); price.setAmountValue(amount);
         price.setProviderPriceId(blank(providerPriceId)?null:providerPriceId.trim()); price.setEnabled(enabled);
-        if (enabled && price.getProvider()==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
-        catalog.save(price);
+        if (!enabled) {
+            price.setValidationError(null); price.setValidatedAt(null); catalog.save(price);
+            return new PriceSaveResult(false, "Preço salvo, mas permanece desabilitado.");
+        }
+        try {
+            if (price.getProvider()==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
+            price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
+            return new PriceSaveResult(true, "Preço validado e habilitado.");
+        } catch (RuntimeException ex) {
+            String detail=truncate(ex.getMessage());
+            price.setEnabled(false); price.setValidationError(detail); price.setValidatedAt(null); catalog.save(price);
+            return new PriceSaveResult(false, detail);
+        }
     }
 
     private void validateMarket(String country, PaymentProviderType provider, PaymentEnvironment environment) {
@@ -63,7 +75,7 @@ public class PaymentConfigurationService {
         if (router.environment(provider)!=environment) throw new IllegalArgumentException("O ambiente da regra difere do gateway configurado.");
         List<PaymentCatalogPrice> prices=catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseOrderByPlan(provider,environment,country);
         for (PlanType plan : List.of(PlanType.PREMIUM,PlanType.PREMIUM_PLUS)) {
-            PaymentCatalogPrice price=prices.stream().filter(p->p.getPlan()==plan && p.isEnabled() && p.isRecurring()).findFirst()
+            PaymentCatalogPrice price=prices.stream().filter(p->p.getPlan()==plan && p.isEnabled() && p.isRecurring() && p.isValidated()).findFirst()
                     .orElseThrow(()->new IllegalArgumentException("Catálogo incompleto para "+plan.getDisplayName()+"."));
             if (provider==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
         }
@@ -73,4 +85,9 @@ public class PaymentConfigurationService {
         if (!code.matches("[A-Z]{2}")) throw new IllegalArgumentException("País inválido."); return code;
     }
     private static boolean blank(String value){return value==null||value.isBlank();}
+    private static String truncate(String value) {
+        if (value==null || value.isBlank()) return "Não foi possível validar o preço no Paddle.";
+        return value.length()<=500?value:value.substring(0,500);
+    }
+    public record PriceSaveResult(boolean validated, String message) { }
 }

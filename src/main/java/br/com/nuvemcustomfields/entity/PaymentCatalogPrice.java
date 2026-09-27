@@ -18,6 +18,8 @@ public class PaymentCatalogPrice {
     @Column(name="tax_mode",nullable=false,length=20) private String taxMode="internal";
     @Column(nullable=false) private boolean recurring=true;
     @Column(nullable=false) private boolean enabled=true;
+    @Column(name="validation_error",length=500) private String validationError;
+    @Column(name="validated_at") private Instant validatedAt;
     @Column(name="created_at",nullable=false,updatable=false) private Instant createdAt=Instant.now();
     @Column(name="updated_at",nullable=false) private Instant updatedAt=Instant.now();
     public Long getId(){return id;} public PaymentProviderType getProvider(){return provider;} public void setProvider(PaymentProviderType v){provider=v;}
@@ -30,5 +32,8 @@ public class PaymentCatalogPrice {
     public String getTaxMode(){return taxMode;} public void setTaxMode(String v){taxMode=v;touch();}
     public boolean isRecurring(){return recurring;} public void setRecurring(boolean v){recurring=v;touch();}
     public boolean isEnabled(){return enabled;} public void setEnabled(boolean v){enabled=v;touch();}
+    public String getValidationError(){return validationError;} public void setValidationError(String v){validationError=v;touch();}
+    public Instant getValidatedAt(){return validatedAt;} public void setValidatedAt(Instant v){validatedAt=v;touch();}
+    public boolean isValidated(){return providerPriceId!=null&&!providerPriceId.isBlank()&&validationError==null&&validatedAt!=null;}
     public Instant getCreatedAt(){return createdAt;} public Instant getUpdatedAt(){return updatedAt;} private void touch(){updatedAt=Instant.now();}
 }

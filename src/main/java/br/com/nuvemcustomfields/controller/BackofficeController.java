@@ -309,8 +309,9 @@ public class BackofficeController {
             @RequestParam BigDecimal amount, @RequestParam(required=false) String providerPriceId,
             @RequestParam(defaultValue="false") boolean enabled, RedirectAttributes redirectAttributes) {
         try {
-            paymentConfigurationService.savePrice(id,currency,amount,providerPriceId,enabled);
-            redirectAttributes.addFlashAttribute("message", "Preço validado e atualizado.");
+            var result=paymentConfigurationService.savePrice(id,currency,amount,providerPriceId,enabled);
+            if (result.validated()) redirectAttributes.addFlashAttribute("message", result.message());
+            else redirectAttributes.addFlashAttribute("error", "ID salvo, mas o preço não foi habilitado: "+result.message());
         } catch (RuntimeException ex) { redirectAttributes.addFlashAttribute("error", ex.getMessage()); }
         return "redirect:/backoffice/payments";
     }
