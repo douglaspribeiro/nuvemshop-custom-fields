@@ -21,4 +21,44 @@
 <div class="payment-config-grid"><form th:each="price:${catalogPrices}" method="post" th:action="@{/backoffice/payments/catalog/{id}(id=${price.id})}"><strong th:text="${price.countryCode}+' · '+${price.plan.displayName}+' · '+${price.provider}+' / '+${price.environment}">AR</strong><label>Moeda<input name="currency" maxlength="3" th:value="${price.currency}"></label><label>Valor<input name="amount" type="number" min="0.01" step="0.01" th:value="${price.amountValue}"></label><label>ID remoto<input name="providerPriceId" th:value="${price.providerPriceId}" placeholder="pri_..." autocomplete="off" spellcheck="false"></label><label class="check"><input type="checkbox" name="enabled" value="true" th:checked="${price.enabled}"> Habilitar após validação</label><small th:text="'Imposto '+${price.taxMode}+' · recorrente: '+${price.recurring}"></small><small class="status success" th:if="${price.validated}" th:text="'✓ Validado em '+${#temporals.format(price.validatedAt,'dd/MM/yyyy HH:mm')}">Validado</small><small class="status error" th:if="${price.validationError!=null}" th:text="'Validação pendente: '+${price.validationError}">Validação pendente</small><small class="status muted" th:if="${price.providerPriceId==null or #strings.isEmpty(price.providerPriceId)}">Informe um ID de preço `pri_...`.</small><small class="status muted" th:if="${!price.enabled and price.providerPriceId!=null and price.validationError==null}">Preço salvo, mas desabilitado.</small><button class="button primary" type="submit">Validar e salvar</button></form></div></section>
 
 <section class="backoffice-directory payment-section"><div class="backoffice-section-head"><div><p class="eyebrow">Auditoria</p><h2>Últimas mudanças de rota</h2></div></div><div class="payment-history"><p th:if="${#lists.isEmpty(routingHistory)}">Nenhuma mudança registrada.</p><article th:each="change:${routingHistory}"><strong th:text="${change.countryCode}+' · '+${change.operatorName}">AR</strong><span th:text="${change.oldProvider}+' / '+${change.oldEnvironment}+' / '+${change.oldEnabled}+' → '+${change.newProvider}+' / '+${change.newEnvironment}+' / '+${change.newEnabled}"></span><small th:text="${#temporals.format(change.changedAt,'dd/MM/yyyy HH:mm:ss')}"></small></article></div></section>
-</main></body></html>
+</main>
+<script>
+document.querySelectorAll('form[action*="/backoffice/payments/catalog/"]').forEach(form => {
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = form.querySelector('button[type="submit"]');
+        const checkbox = form.querySelector('input[name="enabled"]');
+        const previous = form.querySelector('.catalog-ajax-feedback');
+        if (previous) previous.remove();
+        button.disabled = true;
+        const originalLabel = button.textContent;
+        button.textContent = 'Salvando…';
+        try {
+            const url = new URL(form.action, window.location.origin);
+            url.searchParams.set('ajax', '1');
+            const response = await fetch(url, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            const result = await response.json();
+            if (checkbox) checkbox.checked = Boolean(result.enabled);
+            const feedback = document.createElement('small');
+            feedback.className = 'status catalog-ajax-feedback ' + (result.validated ? 'success' : 'error');
+            feedback.setAttribute('role', 'status');
+            feedback.textContent = result.validated ? '✓ ' + result.message : 'Validação pendente: ' + result.message;
+            button.before(feedback);
+        } catch (error) {
+            const feedback = document.createElement('small');
+            feedback.className = 'status error catalog-ajax-feedback';
+            feedback.setAttribute('role', 'alert');
+            feedback.textContent = 'Não foi possível salvar agora. Tente novamente.';
+            button.before(feedback);
+        } finally {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+    });
+});
+</script>
+</body></html>

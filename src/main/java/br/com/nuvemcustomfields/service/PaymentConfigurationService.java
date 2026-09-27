@@ -57,16 +57,16 @@ public class PaymentConfigurationService {
         price.setProviderPriceId(blank(providerPriceId)?null:providerPriceId.trim()); price.setEnabled(enabled);
         if (!enabled) {
             price.setValidationError(null); price.setValidatedAt(null); catalog.save(price);
-            return new PriceSaveResult(false, "Preço salvo, mas permanece desabilitado.");
+            return new PriceSaveResult(false, false, "Preço salvo, mas permanece desabilitado.");
         }
         try {
             if (price.getProvider()==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
             price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
-            return new PriceSaveResult(true, "Preço validado e habilitado.");
+            return new PriceSaveResult(true, true, "Preço validado e habilitado.");
         } catch (RuntimeException ex) {
             String detail=truncate(ex.getMessage());
             price.setEnabled(false); price.setValidationError(detail); price.setValidatedAt(null); catalog.save(price);
-            return new PriceSaveResult(false, detail);
+            return new PriceSaveResult(false, false, detail);
         }
     }
 
@@ -89,5 +89,5 @@ public class PaymentConfigurationService {
         if (value==null || value.isBlank()) return "Não foi possível validar o preço no Paddle.";
         return value.length()<=500?value:value.substring(0,500);
     }
-    public record PriceSaveResult(boolean validated, String message) { }
+    public record PriceSaveResult(boolean validated, boolean enabled, String message) { }
 }
