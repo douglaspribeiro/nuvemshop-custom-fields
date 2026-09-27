@@ -3,6 +3,10 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.10.2] - 2026-09-27
+
+_Sem commits com mudança de produto neste range._
+
 ## [1.10.1] - 2026-09-27
 
 ### Manutenção
