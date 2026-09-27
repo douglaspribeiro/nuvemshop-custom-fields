@@ -3,6 +3,19 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.10.0] - 2026-09-27
+
+### Features
+
+- add Paddle multigateway routing (`3401a2a`)
+
+### Manutenção
+
+- snadbox (`7f9d45b`)
+- paddle (`095e80b`)
+- adicionando passo passo (`80c3191`)
+- DOCS (`6b89a99`)
+
 ## [1.9.2] - 2026-09-25
 
 ### Correções
