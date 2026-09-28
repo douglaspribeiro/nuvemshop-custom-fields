@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.payment;
 
 import br.com.efi.efisdk.EfiPay;
 import br.com.nuvemcustomfields.properties.EfiProperties;
+import br.com.nuvemcustomfields.repository.PaymentCatalogPriceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
@@ -14,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class EfiGatewayTest {
@@ -21,7 +23,7 @@ class EfiGatewayTest {
     void consultsCurrentChargeStatusInsteadOfCreationHistoryStatus() throws Exception {
         EfiProperties properties = new EfiProperties(true, true, "client-id", "client-secret",
                 "payee-code", "72050", "72051", new BigDecimal("19.99"), new BigDecimal("29.99"));
-        EfiGateway gateway = new EfiGateway(properties, new ObjectMapper());
+        EfiGateway gateway = new EfiGateway(properties, new ObjectMapper(), mock(PaymentCatalogPriceRepository.class));
 
         try (MockedConstruction<EfiPay> ignored = mockConstruction(EfiPay.class, (api, context) ->
                 when(api.call(anyString(), anyMap(), anyMap())).thenAnswer(invocation -> {

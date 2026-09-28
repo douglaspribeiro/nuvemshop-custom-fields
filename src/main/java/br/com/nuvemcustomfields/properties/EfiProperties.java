@@ -10,8 +10,11 @@ public record EfiProperties(boolean enabled, boolean sandbox, String clientId, S
                             String payeeCode, String premiumPlanId, String premiumPlusPlanId,
                             BigDecimal premiumAmount, BigDecimal premiumPlusAmount) {
     public boolean configured() {
-        return enabled && filled(clientId) && filled(clientSecret) && filled(payeeCode)
-                && filled(premiumPlanId) && filled(premiumPlusPlanId);
+        return credentialsConfigured() && filled(premiumPlanId) && filled(premiumPlusPlanId);
+    }
+
+    public boolean credentialsConfigured() {
+        return enabled && filled(clientId) && filled(clientSecret) && filled(payeeCode);
     }
 
     public String planId(PlanType plan) {

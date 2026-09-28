@@ -3,9 +3,11 @@ package br.com.nuvemcustomfields.payment;
 import br.com.efi.efisdk.EfiPay;
 import br.com.nuvemcustomfields.entity.PaymentProviderType;
 import br.com.nuvemcustomfields.entity.PaymentEnvironment;
+import br.com.nuvemcustomfields.entity.PaymentCatalogPrice;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.EfiProperties;
+import br.com.nuvemcustomfields.repository.PaymentCatalogPriceRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -22,23 +24,28 @@ import java.util.Optional;
 public class EfiGateway implements PaymentGateway {
     private final EfiProperties properties;
     private final ObjectMapper mapper;
+    private final PaymentCatalogPriceRepository catalog;
 
-    public EfiGateway(EfiProperties properties, ObjectMapper mapper) {
+    public EfiGateway(EfiProperties properties, ObjectMapper mapper, PaymentCatalogPriceRepository catalog) {
         this.properties = properties;
         this.mapper = mapper;
+        this.catalog = catalog;
     }
 
     @Override public PaymentProviderType provider() { return PaymentProviderType.EFI; }
     @Override public PaymentEnvironment environment() { return properties.sandbox() ? PaymentEnvironment.SANDBOX : PaymentEnvironment.PRODUCTION; }
-    @Override public boolean configured() { return properties.configured(); }
+    @Override public boolean configured() {
+        return properties.credentialsConfigured()
+                && (properties.configured() || (catalog(PlanType.PREMIUM).isPresent() && catalog(PlanType.PREMIUM_PLUS).isPresent()));
+    }
     @Override public boolean supports(Store store) {
         return store != null && "BR".equalsIgnoreCase(store.getStoreCountryCode())
                 && (store.getStoreCurrency() == null || "BRL".equalsIgnoreCase(store.getStoreCurrency()));
     }
-    @Override public BigDecimal amount(PlanType plan) { return properties.amount(plan); }
+    @Override public BigDecimal amount(PlanType plan) { return catalog(plan).map(PaymentCatalogPrice::getAmountValue).orElseGet(() -> properties.amount(plan)); }
     public String payeeCode() { return properties.payeeCode(); }
     public boolean sandbox() { return properties.sandbox(); }
-    public String planId(PlanType plan) { return properties.planId(plan); }
+    public String planId(PlanType plan) { return catalog(plan).map(PaymentCatalogPrice::getProviderPriceId).orElseGet(() -> properties.planId(plan)); }
 
     // A Efí usa checkout transparente; esta operação é feita pelo formulário do app.
     @Override public GatewayCheckout createCheckout(Store store, PlanType plan, String reference, String returnUrl) {
@@ -118,6 +125,15 @@ public class EfiGateway implements PaymentGateway {
 
     public JsonNode notification(String token) {
         return call("getNotification", Map.of("token", token), Map.of()).path("data");
+    }
+
+    private Optional<PaymentCatalogPrice> catalog(PlanType plan) {
+        return catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(
+                        PaymentProviderType.EFI, environment(), "BR", plan)
+                .filter(PaymentCatalogPrice::isEnabled)
+                .filter(PaymentCatalogPrice::isRecurring)
+                .filter(PaymentCatalogPrice::isValidated)
+                .filter(price -> price.getProviderPriceId() != null && !price.getProviderPriceId().isBlank());
     }
 
     private JsonNode detail(String id) {
