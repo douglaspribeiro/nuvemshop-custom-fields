@@ -10,6 +10,7 @@ import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.payment.EfiGateway;
+import br.com.nuvemcustomfields.payment.PaymentGatewayException;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
@@ -220,7 +221,7 @@ public class AdminController {
             return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());
-            redirectAttributes.addFlashAttribute("error", paymentSubscriptionService.customerFacingError(ex.getMessage()));
+            redirectAttributes.addFlashAttribute("error", merchantError(ex));
             return "redirect:/admin/billing";
         }
     }
@@ -258,7 +259,7 @@ public class AdminController {
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.efi.failed store_id={} plan={} type={}", store.getStoreId(), plan,
                     ex.getClass().getSimpleName());
-            redirectAttributes.addFlashAttribute("error", paymentSubscriptionService.customerFacingError(ex.getMessage()));
+            redirectAttributes.addFlashAttribute("error", merchantError(ex));
             return "redirect:/admin/billing/pay?plan=" + plan.name();
         }
     }
@@ -597,6 +598,12 @@ public class AdminController {
                     storeId, ex.getClass().getSimpleName());
             return false;
         }
+    }
+
+    private String merchantError(RuntimeException exception) {
+        return exception instanceof PaymentGatewayException
+                ? paymentSubscriptionService.customerFacingError(exception.getMessage())
+                : exception.getMessage();
     }
 
     static String formatBillingPrice(String currency, java.math.BigDecimal amount) {
