@@ -46,7 +46,7 @@ public class PaddleGateway implements PaymentGateway {
     @Override public boolean supports(Store store) {
         if (store == null || !configured()) return false;
         String country = normalize(store.getStoreCountryCode());
-        if (!List.of("AR", "MX", "CL").contains(country)) return false;
+        if (!List.of("BR", "AR", "MX", "CL").contains(country)) return false;
         return catalog(country, PlanType.PREMIUM).isPresent() && catalog(country, PlanType.PREMIUM_PLUS).isPresent();
     }
     @Override public BigDecimal amount(PlanType plan) {

@@ -44,6 +44,21 @@ class PaddleGatewayTest {
         server.verify();
     }
 
+    @Test void supportsBrazilWhenBothValidatedPricesExist() {
+        PaymentCatalogPriceRepository catalog=mock(PaymentCatalogPriceRepository.class);
+        PaymentCatalogPrice premium=price("BR", "BRL", "19.99", "pri_br_premium");
+        PaymentCatalogPrice premiumPlus=price("BR", "BRL", "29.99", "pri_br_premium_plus");
+        premiumPlus.setPlan(PlanType.PREMIUM_PLUS);
+        when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(
+                PaymentProviderType.PADDLE, PaymentEnvironment.SANDBOX, "BR", PlanType.PREMIUM)).thenReturn(Optional.of(premium));
+        when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(
+                PaymentProviderType.PADDLE, PaymentEnvironment.SANDBOX, "BR", PlanType.PREMIUM_PLUS)).thenReturn(Optional.of(premiumPlus));
+
+        Store store=new Store(); store.setStoreCountryCode("BR");
+
+        assertThat(gateway(RestClient.builder(), catalog).supports(store)).isTrue();
+    }
+
     @Test void convertsMinorUnitsForTwoAndZeroDecimalCurrencies() {
         RestClient.Builder builder=RestClient.builder(); MockRestServiceServer server=MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("https://sandbox-api.paddle.test/transactions/txn_mx")).andRespond(withSuccess(transaction("MXN","9900"),MediaType.APPLICATION_JSON));

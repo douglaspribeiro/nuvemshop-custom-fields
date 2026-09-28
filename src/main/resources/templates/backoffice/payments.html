@@ -41,7 +41,14 @@ document.querySelectorAll('form[action*="/backoffice/payments/catalog/"]').forEa
                 body: new FormData(form),
                 headers: {'X-Requested-With': 'XMLHttpRequest'}
             });
-            const result = await response.json();
+            if (response.redirected || response.status === 401 || response.status === 403) {
+                throw new Error('Sua sessão expirou. Faça login novamente para salvar.');
+            }
+            const contentType = response.headers.get('content-type') || '';
+            const result = contentType.includes('application/json') ? await response.json() : null;
+            if (!result || typeof result.message !== 'string') {
+                throw new Error('O servidor retornou uma resposta inválida ao salvar o preço.');
+            }
             if (checkbox) checkbox.checked = Boolean(result.enabled);
             const feedback = document.createElement('small');
             feedback.className = 'status catalog-ajax-feedback ' + (result.validated ? 'success' : 'error');
@@ -52,7 +59,7 @@ document.querySelectorAll('form[action*="/backoffice/payments/catalog/"]').forEa
             const feedback = document.createElement('small');
             feedback.className = 'status error catalog-ajax-feedback';
             feedback.setAttribute('role', 'alert');
-            feedback.textContent = 'Não foi possível salvar agora. Tente novamente.';
+            feedback.textContent = error.message || 'Não foi possível salvar agora. Tente novamente.';
             button.before(feedback);
         } finally {
             button.disabled = false;
