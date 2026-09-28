@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.11.1] - 2026-09-27
+
+### Correções
+
+- enable Paddle catalog setup for Brazil (`c11f549`)
+
 ## [1.11.0] - 2026-09-27
 
 ### Features
