@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.12.1] - 2026-09-27
+
+### Correções
+
+- preserve localized billing availability messages (`5e14554`)
+- hide payment integration errors from merchants (`0fe6a80`)
+
 ## [1.12.0] - 2026-09-27
 
 ### Features
