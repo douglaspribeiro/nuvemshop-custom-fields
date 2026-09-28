@@ -688,4 +688,10 @@ class PaymentSubscriptionServiceTest {
         return new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref", "authorized", "BRL",
                 new BigDecimal("19.99"), Instant.now().plusSeconds(86400));
     }
+
+    @Test
+    void turnsPaddleCheckoutActivationErrorIntoCustomerFriendlyMessage() {
+        assertThat(service.customerFacingError("Paddle retornou erro: transaction_checkout_not_enabled"))
+                .isEqualTo("Os pagamentos estão sendo ativados para esta loja. Tente novamente em alguns minutos ou contate o suporte.");
+    }
 }

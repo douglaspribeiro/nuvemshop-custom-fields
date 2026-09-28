@@ -113,7 +113,7 @@
                 / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
             <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
             <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
-            <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.lastError)}" th:text="${paymentSubscription.lastError}">Erro</p>
+            <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.technicalError ?: paymentSubscription.lastError)}" th:text="${paymentSubscription.technicalError ?: paymentSubscription.lastError}">Erro técnico</p>
             <form th:if="${paymentSubscription.providerSubscriptionId != null}"
                   th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
                 <button class="button" type="submit">Reconciliar agora</button>

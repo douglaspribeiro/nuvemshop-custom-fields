@@ -113,6 +113,16 @@ public class PaymentSubscriptionService {
     public String efiPayeeCode() { return efi.payeeCode(); }
     public boolean efiSandbox() { return efi.sandbox(); }
 
+    public String customerFacingError(String technicalDetail) {
+        if (technicalDetail != null && technicalDetail.contains("transaction_checkout_not_enabled")) {
+            return "Os pagamentos estão sendo ativados para esta loja. Tente novamente em alguns minutos ou contate o suporte.";
+        }
+        if (technicalDetail != null && technicalDetail.contains("transaction_default_checkout_url_not_set")) {
+            return "O checkout está sendo configurado. Tente novamente em alguns minutos ou contate o suporte.";
+        }
+        return "Não foi possível iniciar o pagamento agora. Tente novamente ou contate o suporte.";
+    }
+
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void payWithEfi(Long storeId, PlanType plan, EfiGateway.EfiPayer payer, String paymentToken) {
         if (plan == null || !plan.isBillable()) throw new IllegalArgumentException("Selecione um plano pago.");
@@ -346,6 +356,7 @@ public class PaymentSubscriptionService {
         subscription.setProviderStatus("pending");
         subscription.setCheckoutUrl(null);
         subscription.setLastError(null);
+        subscription.setTechnicalError(null);
         subscriptions.saveAndFlush(subscription);
 
         try {
@@ -369,7 +380,8 @@ public class PaymentSubscriptionService {
             return checkoutUrl;
         } catch (RuntimeException ex) {
             subscription.setStatus(attempt == null ? PaymentSubscriptionStatus.ERROR : PaymentSubscriptionStatus.PENDING);
-            subscription.setLastError(truncate(ex.getMessage()));
+            subscription.setLastError(customerFacingError(ex.getMessage()));
+            subscription.setTechnicalError(truncate(ex.getMessage()));
             subscription.setLastSyncedAt(Instant.now());
             subscriptions.save(subscription);
             if (attempt != null) {

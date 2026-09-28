@@ -197,6 +197,9 @@ public class AdminController {
         model.addAttribute("premiumPlusPrice", formatBillingPrice(billingCurrency,
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM_PLUS)));
         model.addAttribute("paymentSubscription", subscription);
+        model.addAttribute("billingError", subscription == null || subscription.getLastError() == null ? null
+                : paymentSubscriptionService.customerFacingError(subscription.getTechnicalError() == null
+                ? subscription.getLastError() : subscription.getTechnicalError()));
         return "admin/billing";
     }
 
@@ -217,7 +220,7 @@ public class AdminController {
             return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());
-            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            redirectAttributes.addFlashAttribute("error", paymentSubscriptionService.customerFacingError(ex.getMessage()));
             return "redirect:/admin/billing";
         }
     }
@@ -255,7 +258,7 @@ public class AdminController {
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.efi.failed store_id={} plan={} type={}", store.getStoreId(), plan,
                     ex.getClass().getSimpleName());
-            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            redirectAttributes.addFlashAttribute("error", paymentSubscriptionService.customerFacingError(ex.getMessage()));
             return "redirect:/admin/billing/pay?plan=" + plan.name();
         }
     }

@@ -81,6 +81,8 @@ public class PaymentSubscription {
     private Instant pendingStartedAt;
     @Column(name = "last_error", length = 500)
     private String lastError;
+    @Column(name = "technical_error", length = 500)
+    private String technicalError;
     @Version
     private long version;
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -147,6 +149,8 @@ public class PaymentSubscription {
     public void setPendingStartedAt(Instant value) { pendingStartedAt = value; touch(); }
     public String getLastError() { return lastError; }
     public void setLastError(String value) { lastError = value; touch(); }
+    public String getTechnicalError() { return technicalError; }
+    public void setTechnicalError(String value) { technicalError = value; touch(); }
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
