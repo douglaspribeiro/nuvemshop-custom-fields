@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.12.0] - 2026-09-27
+
+### Features
+
+- manage Efi plan IDs from payment catalog (`676a025`)
+
 ## [1.11.1] - 2026-09-27
 
 ### Correções
