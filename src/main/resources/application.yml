@@ -44,6 +44,7 @@ server:
     use-relative-redirects: true
 
 management:
+  # Este endpoint deve ficar acessivel somente ao Prometheus (rede interna/proxy).
   endpoints:
     web:
       exposure:
