@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.16.0] - 2026-09-29
+
+### Features
+
+- show sales values and sort configured products (`7892efa`)
+
 ## [1.15.2] - 2026-09-29
 
 ### Correções
