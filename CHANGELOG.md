@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.13.0] - 2026-09-29
+
+### Features
+
+- add storefront Grafana traffic metrics (`28a475c`)
+
+### Outros
+
+- investigação patagonia (`1e6d335`)
+
 ## [1.12.3] - 2026-09-28
 
 ### Correções
