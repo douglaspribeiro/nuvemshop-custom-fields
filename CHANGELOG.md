@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.15.0] - 2026-09-29
+
+### Features
+
+- prioritize configured products and track sold items (`c67cb48`)
+
 ## [1.14.0] - 2026-09-29
 
 ### Features
