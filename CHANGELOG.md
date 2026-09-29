@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.15.1] - 2026-09-29
+
+### Correções
+
+- assign unique Flyway version to sales migration (`3f9e6f5`)
+
 ## [1.15.0] - 2026-09-29
 
 ### Features
