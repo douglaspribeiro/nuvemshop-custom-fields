@@ -6,6 +6,7 @@ import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.PaymentProviderType;
 import br.com.nuvemcustomfields.entity.PaymentEnvironment;
 import br.com.nuvemcustomfields.entity.SupportTicketStatus;
+import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.properties.BackofficeProperties;
 import br.com.nuvemcustomfields.repository.FeatureFlagRepository;
 import br.com.nuvemcustomfields.repository.IntegrationLogRepository;
@@ -124,10 +125,13 @@ public class BackofficeController {
     }
 
     @GetMapping("/backoffice/stores")
-    public String stores(@RequestParam(required = false, defaultValue = "") String q, Model model) {
+    public String stores(@RequestParam(required = false, defaultValue = "") String q,
+                         @RequestParam(required = false, defaultValue = "") String status, Model model) {
         LOGGER.info("backoffice.stores.open");
         var stores = storeRepository.findAll();
-        populateStoreDirectory(model, stores, q);
+        boolean uninstalledOnly = "uninstalled".equals(status);
+        populateStoreDirectory(model, stores, q, uninstalledOnly);
+        model.addAttribute("uninstalledOnly", uninstalledOnly);
         LOGGER.info("backoffice.stores.loaded stores_count={}", stores.size());
         return "backoffice/stores";
     }
@@ -349,12 +353,20 @@ public class BackofficeController {
         return "backoffice/support-ticket";
     }
 
-    private void populateStoreDirectory(Model model, List<br.com.nuvemcustomfields.entity.Store> allStores, String query) {
+    private void populateStoreDirectory(Model model, List<Store> allStores, String query) {
+        populateStoreDirectory(model, allStores, query, false);
+    }
+
+    private void populateStoreDirectory(Model model, List<Store> allStores, String query, boolean uninstalledOnly) {
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        List<br.com.nuvemcustomfields.entity.Store> stores = allStores.stream()
+        Comparator<Store> ordering = uninstalledOnly
+                ? Comparator.comparing(Store::getUninstalledAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                : Comparator.comparing(Store::isActive).reversed()
+                        .thenComparing(Store::getInstalledAt, Comparator.reverseOrder());
+        List<Store> stores = allStores.stream()
+                .filter(store -> !uninstalledOnly || !store.isActive())
                 .filter(store -> normalizedQuery.isEmpty() || matches(store, normalizedQuery))
-                .sorted(Comparator.comparing(br.com.nuvemcustomfields.entity.Store::isActive).reversed()
-                        .thenComparing(br.com.nuvemcustomfields.entity.Store::getInstalledAt, Comparator.reverseOrder()))
+                .sorted(ordering)
                 .toList();
         Map<Long, br.com.nuvemcustomfields.entity.PaymentSubscription> subscriptions = stores.isEmpty() ? Map.of()
                 : paymentSubscriptionRepository.findByStoreIdIn(stores.stream()

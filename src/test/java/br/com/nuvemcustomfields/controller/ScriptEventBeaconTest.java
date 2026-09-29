@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.controller;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.IntegrationLogRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,9 @@ class ScriptEventBeaconTest {
 
     @Autowired
     private IntegrationLogRepository integrationLogRepository;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
@@ -75,6 +79,11 @@ class ScriptEventBeaconTest {
 
     @Test
     void doesNotPersistUnknownEventNames() throws Exception {
+        var before = meterRegistry.find("ncf.storefront.http.requests")
+                .tags("kind", "storefront_script_beacon", "store_id", String.valueOf(STORE_ID))
+                .counter();
+        double previousCount = before == null ? 0 : before.count();
+
         mockMvc.perform(get("/public/script-events")
                         .param("event", "qualquer_outra_coisa")
                         .param("storeId", String.valueOf(STORE_ID))
@@ -82,5 +91,35 @@ class ScriptEventBeaconTest {
                 .andExpect(status().isOk());
 
         assertThat(integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(STORE_ID)).isEmpty();
+        assertThat(meterRegistry.get("ncf.storefront.http.requests")
+                .tags("kind", "storefront_script_beacon", "store_id", String.valueOf(STORE_ID))
+                .counter().count()).isEqualTo(previousCount + 1);
+    }
+
+    @Test
+    void personalizationWithoutProductStillCountsForActiveStore() throws Exception {
+        var before = meterRegistry.find("ncf.storefront.http.requests")
+                .tags("kind", "storefront_personalization", "store_id", String.valueOf(STORE_ID))
+                .counter();
+        double previousCount = before == null ? 0 : before.count();
+
+        mockMvc.perform(get("/public/stores/{storeId}/personalization", STORE_ID))
+                .andExpect(status().isOk());
+
+        assertThat(meterRegistry.get("ncf.storefront.http.requests")
+                .tags("kind", "storefront_personalization", "store_id", String.valueOf(STORE_ID))
+                .counter().count()).isEqualTo(previousCount + 1);
+    }
+
+    @Test
+    void unknownStoreDoesNotCreateStoreIdMetricTag() throws Exception {
+        mockMvc.perform(get("/public/script-events")
+                        .param("event", "loaded")
+                        .param("storeId", "999999999999"))
+                .andExpect(status().isOk());
+
+        assertThat(meterRegistry.find("ncf.storefront.http.requests")
+                .tags("kind", "storefront_script_beacon", "store_id", "999999999999")
+                .counter()).isNull();
     }
 }

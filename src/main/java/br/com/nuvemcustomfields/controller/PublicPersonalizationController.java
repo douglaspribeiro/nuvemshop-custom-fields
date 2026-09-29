@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.controller;
 
+import br.com.nuvemcustomfields.config.StorefrontTrafficMetricsFilter;
 import br.com.nuvemcustomfields.dto.FieldResponse;
 import br.com.nuvemcustomfields.dto.PersonalizationResponse;
 import br.com.nuvemcustomfields.i18n.StoreLocale;
@@ -10,6 +11,7 @@ import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.PlanLimitService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -45,15 +47,19 @@ public class PublicPersonalizationController {
     public PersonalizationResponse getFields(
             @PathVariable Long storeId,
             @RequestParam(required = false) Long productId,
-            @RequestParam(required = false) String path
+            @RequestParam(required = false) String path,
+            HttpServletRequest request
     ) {
         LOGGER.info("public.personalization.open store_id={} product_id={} path={}", storeId, productId, path);
+        Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
+        if (store != null) {
+            request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
+        }
         if (productId == null) {
             LOGGER.warn("public.personalization.disabled store_id={} reason=missing_product_id path={}", storeId, path);
             return PersonalizationResponse.disabled();
         }
 
-        Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
         if (store == null) {
             LOGGER.warn("public.personalization.disabled store_id={} product_id={} reason=store_not_active", storeId, productId);
             return PersonalizationResponse.disabled();
@@ -88,12 +94,13 @@ public class PublicPersonalizationController {
     }
 
     @GetMapping("/public/stores/{storeId}/style")
-    public PersonalizationStyleResponse getStyle(@PathVariable Long storeId) {
+    public PersonalizationStyleResponse getStyle(@PathVariable Long storeId, HttpServletRequest request) {
         Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
         if (store == null) {
             LOGGER.warn("public.style.disabled store_id={} reason=store_not_active", storeId);
             return PersonalizationStyleResponse.empty();
         }
+        request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
         LOGGER.info(
                 "public.style.enabled store_id={} country={} locale={}",
                 storeId,
@@ -110,7 +117,8 @@ public class PublicPersonalizationController {
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String reason,
             @RequestParam(required = false) String path,
-            @RequestParam(required = false) String scriptSrc
+            @RequestParam(required = false) String scriptSrc,
+            HttpServletRequest request
     ) {
         LOGGER.info(
                 "public.script.event event={} store_id={} product_id={} reason={} path={} script_src={}",
@@ -121,7 +129,11 @@ public class PublicPersonalizationController {
                 path,
                 scriptSrc
         );
-        persistStorefrontSdkEvent(event, storeId, productId, reason, path);
+        boolean activeStore = storeId != null && storeRepository.existsByStoreIdAndUninstalledAtIsNull(storeId);
+        if (activeStore) {
+            request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
+        }
+        persistStorefrontSdkEvent(event, storeId, productId, reason, path, activeStore);
     }
 
     /**
@@ -129,11 +141,12 @@ public class PublicPersonalizationController {
      * Restrito ao evento storefront_sdk de loja ativa: o endpoint e publico e sem auth,
      * entao gravar qualquer coisa aqui seria vetor de flood.
      */
-    private void persistStorefrontSdkEvent(String event, Long storeId, Long productId, String reason, String path) {
+    private void persistStorefrontSdkEvent(String event, Long storeId, Long productId, String reason, String path,
+                                          boolean activeStore) {
         if (!"storefront_sdk".equals(event) || storeId == null) {
             return;
         }
-        if (storeRepository.findActiveByStoreId(storeId).isEmpty()) {
+        if (!activeStore) {
             LOGGER.warn("public.script.event.not_persisted store_id={} reason=store_not_active", storeId);
             return;
         }

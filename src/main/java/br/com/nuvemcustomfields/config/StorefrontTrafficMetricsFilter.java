@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.config;
 
+import br.com.nuvemcustomfields.repository.StoreRepository;
+import org.springframework.dao.DataAccessException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
@@ -14,16 +16,20 @@ import java.io.IOException;
 /**
  * Conta somente trafego originado pela vitrine/checkout das lojas.
  *
- * Store, produto, URL completa, IP e parametros nao entram como tags: sao valores
- * controlados por uma entrada publica e criariam series ilimitadas no Prometheus.
+ * Apenas IDs de lojas ativas entram como tag: valores recebidos em rotas publicas
+ * nao podem criar series arbitrarias no Prometheus.
  */
 @Component
 public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
 
-    private final MeterRegistry meterRegistry;
+    public static final String ACTIVE_STORE_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".activeStoreId";
 
-    public StorefrontTrafficMetricsFilter(MeterRegistry meterRegistry) {
+    private final MeterRegistry meterRegistry;
+    private final StoreRepository storeRepository;
+
+    public StorefrontTrafficMetricsFilter(MeterRegistry meterRegistry, StoreRepository storeRepository) {
         this.meterRegistry = meterRegistry;
+        this.storeRepository = storeRepository;
     }
 
     @Override
@@ -38,13 +44,33 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
+            String storeId = activeStoreId(request);
             Counter.builder("ncf.storefront.http.requests")
                     .description("HTTP requests made by storefront and checkout scripts")
                     .tag("kind", kind)
                     .tag("method", request.getMethod())
                     .tag("status", Integer.toString(response.getStatus()))
+                    .tag("store_id", storeId)
                     .register(meterRegistry)
                     .increment();
+        }
+    }
+
+    private String activeStoreId(HttpServletRequest request) {
+        Object validated = request.getAttribute(ACTIVE_STORE_ID_ATTRIBUTE);
+        if (validated instanceof Long id) {
+            return id.toString();
+        }
+        // O download do script legado nao passa por controller e traz a loja na query.
+        if (!"/assets/nuvemshop-personalizer.js".equals(request.getRequestURI())) {
+            return "unknown";
+        }
+        try {
+            long id = Long.parseLong(request.getParameter("store"));
+            return id > 0 && storeRepository.existsByStoreIdAndUninstalledAtIsNull(id)
+                    ? Long.toString(id) : "unknown";
+        } catch (NumberFormatException | DataAccessException ignored) {
+            return "unknown";
         }
     }
 
