@@ -129,6 +129,13 @@ public class BackofficeController {
         return "backoffice/index";
     }
 
+    @GetMapping("/backoffice/sales")
+    public String sales(@RequestParam(defaultValue = "1") int page, Model model) {
+        model.addAttribute("sales", backofficeSalesService.summary());
+        model.addAttribute("salesPage", backofficeSalesService.salesPage(page));
+        return "backoffice/sales";
+    }
+
     @GetMapping("/backoffice/stores")
     public String stores(@RequestParam(required = false, defaultValue = "") String q,
                          @RequestParam(required = false, defaultValue = "") String status, Model model) {

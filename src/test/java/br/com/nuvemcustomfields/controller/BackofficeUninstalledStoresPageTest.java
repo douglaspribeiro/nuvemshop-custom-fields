@@ -18,6 +18,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -53,6 +54,7 @@ class BackofficeUninstalledStoresPageTest {
         Store active = new Store();
         active.setStoreId(ACTIVE_ID);
         active.setStoreName("Teste Menu Ativa");
+        active.setStoreCurrency("BRL");
         stores.save(active);
 
         Store uninstalled = new Store();
@@ -118,5 +120,31 @@ class BackofficeUninstalledStoresPageTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("<strong>5</strong>")))
                 .andExpect(content().string(containsString("<strong>3</strong>")));
+    }
+
+    @Test
+    void salesPageShowsStoreAndProductValueOnlyForActiveSyncedOrders() throws Exception {
+        orderSales.save(new StoreOrderSales(ACTIVE_ID, 101L, 3, 2,
+                Instant.parse("2026-09-28T12:00:00Z"), new BigDecimal("37.50")));
+        orderSales.save(new StoreOrderSales(UNINSTALLED_ID, 102L, 4, 0,
+                Instant.parse("2026-09-27T12:00:00Z"), new BigDecimal("99.00")));
+        StoreSalesSync active = new StoreSalesSync(ACTIVE_ID);
+        active.setComplete(true);
+        active.setProductValueBackfilled(true);
+        syncStates.save(active);
+        StoreSalesSync uninstalled = new StoreSalesSync(UNINSTALLED_ID);
+        uninstalled.setComplete(true);
+        syncStates.save(uninstalled);
+
+        mockMvc.perform(get("/backoffice").session(session))
+                .andExpect(content().string(containsString("href=\"/backoffice/sales\"")));
+        mockMvc.perform(get("/backoffice/sales").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Teste Menu Ativa")))
+                .andExpect(content().string(containsString("BRL")))
+                .andExpect(content().string(containsString("37,50")))
+                .andExpect(content().string(not(containsString("Teste Menu Desinstalada"))));
+        mockMvc.perform(get("/backoffice/sales"))
+                .andExpect(redirectedUrl("/backoffice/login"));
     }
 }

@@ -17,6 +17,9 @@ public class StoreSalesSync {
     @Column(nullable = false)
     private boolean complete;
 
+    @Column(nullable = false)
+    private boolean productValueBackfilled;
+
     private Instant lastAttemptAt;
     private Instant lastSyncedAt;
 
@@ -40,6 +43,14 @@ public class StoreSalesSync {
 
     public void setComplete(boolean complete) {
         this.complete = complete;
+    }
+
+    public boolean isProductValueBackfilled() {
+        return productValueBackfilled;
+    }
+
+    public void setProductValueBackfilled(boolean productValueBackfilled) {
+        this.productValueBackfilled = productValueBackfilled;
     }
 
     public Instant getLastAttemptAt() {

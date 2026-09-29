@@ -37,6 +37,21 @@ class AdminProductOrderingTest {
                 .containsExactly(2L, 1L);
     }
 
+    @Test
+    void sortsConfiguredAndOtherProductsAlphabetically() {
+        ProductPage page = new ProductPage(List.of(
+                new ProductSummary(1L, "Zebra"),
+                new ProductSummary(2L, "Álbum"),
+                new ProductSummary(3L, "Caneca"),
+                new ProductSummary(4L, "Abajur")
+        ), 1, 50, 4, false, null);
+
+        assertThat(AdminController.prioritizedProducts(page,
+                List.of(rule(3L, "Caneca"), rule(2L, "Álbum")), List.of(2L, 3L)))
+                .extracting(ProductSummary::id)
+                .containsExactly(2L, 3L, 4L, 1L);
+    }
+
     private PersonalizationRule rule(Long id, String name) {
         PersonalizationRule rule = new PersonalizationRule();
         rule.setProductId(id);

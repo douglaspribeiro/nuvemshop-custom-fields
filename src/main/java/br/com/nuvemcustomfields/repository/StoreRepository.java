@@ -8,10 +8,14 @@ import org.springframework.data.jpa.repository.Query;
 import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
     Optional<Store> findByStoreId(Long storeId);
+
+    List<Store> findByStoreIdIn(Collection<Long> storeIds);
 
     boolean existsByStoreIdAndUninstalledAtIsNull(Long storeId);
 

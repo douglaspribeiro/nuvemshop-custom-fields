@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <title>Vendas · Backoffice</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">
+</head>
+<body class="backoffice-page"><main class="backoffice-shell">
+    <header class="backoffice-header compact"><div><p class="eyebrow">Backoffice</p><h1>Vendas</h1><p>Pedidos pagos das lojas ativas, sem frete ou descontos no valor dos produtos.</p></div>
+        <nav class="backoffice-nav"><a th:href="@{/backoffice}">Visão geral</a><a class="is-current" th:href="@{/backoffice/sales}">Vendas</a><a th:href="@{/backoffice/stores}">Lojas</a><a th:href="@{/backoffice/payments}">Pagamentos</a></nav></header>
+    <p class="muted" th:if="${!sales.complete()}" th:text="|Histórico sincronizado para ${sales.syncedStores} de ${sales.activeStores} lojas ativas. A lista ainda pode estar incompleta.|">Sincronização em andamento.</p>
+    <p class="muted" th:if="${sales.valueBackfilledStores < sales.activeStores}" th:text="|Valores dos produtos atualizados para ${sales.valueBackfilledStores} de ${sales.activeStores} lojas ativas. Os demais valores serão preenchidos automaticamente.|">Atualização de valores em andamento.</p>
+    <section class="backoffice-directory">
+        <div class="backoffice-section-head"><div><p class="eyebrow">Histórico</p><h2>Lista de vendas</h2></div><span class="muted" th:text="|${salesPage.totalElements} pedidos|">0 pedidos</span></div>
+        <div class="backoffice-empty" th:if="${salesPage.empty}">Nenhuma venda sincronizada até agora.</div>
+        <div class="backoffice-sales-table-wrap" th:unless="${salesPage.empty}"><table class="backoffice-sales-table"><thead><tr><th>Loja</th><th>Pedido</th><th>Data</th><th>Itens</th><th>Personalizados</th><th>Valor dos produtos</th></tr></thead>
+            <tbody><tr th:each="sale : ${salesPage.content}">
+                <td><a th:href="@{/backoffice/stores/{storeId}(storeId=${sale.storeId})}" th:text="${sale.storeName}">Loja</a><small th:text="${sale.storeId}">123</small></td>
+                <td th:text="|#${sale.orderId}|">#123</td>
+                <td th:text="${sale.createdAt != null ? #temporals.format(sale.createdAt, 'dd/MM/yyyy HH:mm') : '—'}">—</td>
+                <td th:text="${sale.totalItems}">0</td><td th:text="${sale.personalizedItems}">0</td>
+                <td><span th:if="${sale.productValue != null}"><span th:text="${sale.currency ?: ''}">BRL</span> <span th:text="${#numbers.formatDecimal(sale.productValue, 1, 2)}">0,00</span></span><span th:unless="${sale.productValue != null}">—</span></td>
+            </tr></tbody></table></div>
+        <p class="muted backoffice-sales-note">Valor dos produtos = preço unitário × quantidade. “—” indica preço não informado pela API ou pedido ainda não atualizado.</p>
+        <nav class="backoffice-sales-pagination" th:if="${salesPage.totalPages > 1}" aria-label="Páginas de vendas"><a class="button small" th:if="${salesPage.hasPrevious()}" th:href="@{/backoffice/sales(page=${salesPage.number})}">Anterior</a><span th:text="|Página ${salesPage.number + 1} de ${salesPage.totalPages}|"></span><a class="button small" th:if="${salesPage.hasNext()}" th:href="@{/backoffice/sales(page=${salesPage.number + 2})}">Próxima</a></nav>
+    </section>
+</main></body></html>

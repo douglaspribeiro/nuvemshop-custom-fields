@@ -5,6 +5,9 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+
 @Entity
 @Table(name = "store_order_sales")
 public class StoreOrderSales {
@@ -18,13 +21,34 @@ public class StoreOrderSales {
     @Column(nullable = false)
     private long personalizedItems;
 
+    private Instant createdAt;
+
+    @Column(precision = 20, scale = 2)
+    private BigDecimal productValue;
+
+    @Column(length = 3)
+    private String currency;
+
     protected StoreOrderSales() {
     }
 
     public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems) {
+        this(storeId, orderId, totalItems, personalizedItems, null, null, null);
+    }
+
+    public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems,
+                           Instant createdAt, BigDecimal productValue) {
+        this(storeId, orderId, totalItems, personalizedItems, createdAt, productValue, null);
+    }
+
+    public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems,
+                           Instant createdAt, BigDecimal productValue, String currency) {
         this.id = new StoreOrderSalesId(storeId, orderId);
         this.totalItems = totalItems;
         this.personalizedItems = personalizedItems;
+        this.createdAt = createdAt;
+        this.productValue = productValue;
+        this.currency = currency;
     }
 
     public StoreOrderSalesId getId() {
@@ -37,5 +61,17 @@ public class StoreOrderSales {
 
     public long getPersonalizedItems() {
         return personalizedItems;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public BigDecimal getProductValue() {
+        return productValue;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 }

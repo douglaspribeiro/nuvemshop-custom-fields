@@ -44,6 +44,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -582,10 +583,16 @@ public class AdminController {
     static List<ProductSummary> prioritizedProducts(ProductPage page, List<PersonalizationRule> rules,
                                                      List<Long> configuredFieldProductIds) {
         Set<Long> configured = Set.copyOf(configuredFieldProductIds);
+        Collator names = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
+        names.setStrength(Collator.PRIMARY);
+        Comparator<ProductSummary> alphabetical = Comparator
+                .comparing(ProductSummary::name, names)
+                .thenComparing(ProductSummary::id);
         if (page.query() != null) {
             // A busca pertence a API: apenas reorganiza seus resultados, sem exibir produtos fora da busca.
             return page.items().stream()
-                    .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id())))
+                    .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id()))
+                            .thenComparing(alphabetical))
                     .toList();
         }
         List<ProductSummary> products = new ArrayList<>();
@@ -606,7 +613,10 @@ public class AdminController {
             }
         }
         page.items().stream().filter(product -> !configured.contains(product.id())).forEach(products::add);
-        return products;
+        return products.stream()
+                .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id()))
+                        .thenComparing(alphabetical))
+                .toList();
     }
 
     private boolean reconcilePendingEfi(Long storeId, boolean respectCooldown) {
