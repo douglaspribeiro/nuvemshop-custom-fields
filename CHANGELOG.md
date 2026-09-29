@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.14.0] - 2026-09-29
+
+### Features
+
+- rank storefront traffic by store and list uninstalled stores (`09807fc`)
+
 ## [1.13.0] - 2026-09-29
 
 ### Features
