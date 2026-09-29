@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.12.3] - 2026-09-28
+
+### Correções
+
+- sandbox patagonia (`83cf5ce`)
+
 ## [1.12.2] - 2026-09-28
 
 ### Correções
