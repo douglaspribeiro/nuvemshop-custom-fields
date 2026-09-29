@@ -59,7 +59,13 @@
     function initialize() {
         // Patagonia usa React sem form de compra e não fornece cart:before_update.
         // Não confundir seu formulário de frete com o formulário do produto.
-        if (isPatagoniaStorefront()) {
+        const patagonia = isPatagoniaStorefront();
+        if (patagonia === null) {
+            lastRetryReason = "waiting_storefront_theme";
+            retry();
+            return;
+        }
+        if (patagonia) {
             loadPatagoniaFallback();
             return;
         }
@@ -100,9 +106,20 @@
 
     function isPatagoniaStorefront() {
         const runtime = window.nubeSDK;
-        const theme = runtime && runtime.getState && runtime.getState().store;
-        return (theme && String(theme.theme).toLowerCase() === "patagonia")
-            || Array.from(document.scripts).some((item) => item.src.indexOf("https://lightspeed-cdn.mitiendanube.com/") === 0);
+        let theme;
+        try {
+            const store = runtime && runtime.getState && runtime.getState().store;
+            theme = store && store.theme;
+        } catch (ignored) {
+            // O runtime pode ainda não estar pronto; consulte também o tema exposto por LS.
+        }
+        theme = theme || (window.LS && window.LS.theme && window.LS.theme.code);
+        if (typeof theme === "string" && theme.trim()) {
+            return theme.trim().toLowerCase() === "patagonia";
+        }
+        // A CDN identifica Lightspeed, não um tema específico. Aguarde sua identificação.
+        return Array.from(document.scripts).some((item) => item.src.indexOf("https://lightspeed-cdn.mitiendanube.com/") === 0)
+            ? null : false;
     }
 
     function loadPatagoniaFallback() {
