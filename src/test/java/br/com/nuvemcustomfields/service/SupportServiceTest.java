@@ -10,6 +10,7 @@ import br.com.nuvemcustomfields.repository.SupportMessageRepository;
 import br.com.nuvemcustomfields.repository.SupportTicketRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -27,8 +28,27 @@ class SupportServiceTest {
     private final SupportMessageRepository messageRepository = mock(SupportMessageRepository.class);
     private final StoreRepository storeRepository = mock(StoreRepository.class);
     private final DiscordSupportWebhookClient discord = mock(DiscordSupportWebhookClient.class);
+    private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private final SupportService service = new SupportService(ticketRepository, messageRepository, storeRepository,
-            discord);
+            discord, events);
+
+    @Test
+    void supportReplyPublishesEmailWithStoreAddressAndNormalizedMessage() {
+        SupportTicket ticket = new SupportTicket();
+        org.springframework.test.util.ReflectionTestUtils.setField(ticket, "id", 10L);
+        ticket.setStoreId(123L);
+        ticket.setSubject("Ajuda");
+        ticket.setStatus(SupportTicketStatus.OPEN);
+        Store store = new Store();
+        store.setStoreEmail("loja@example.com");
+        when(ticketRepository.findById(10L)).thenReturn(Optional.of(ticket));
+        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+
+        service.replyFromSupport(10L, "  Resolvido  ");
+
+        verify(messageRepository).save(any(SupportMessage.class));
+        verify(events).publishEvent(new SupportReplyEvent(10L, "loja@example.com", "Ajuda", "Resolvido"));
+    }
 
     @Test
     void opensTicketWithNormalizedStoreMessage() {

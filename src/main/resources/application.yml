@@ -141,6 +141,13 @@ payments:
     checkout-token-minutes: ${PADDLE_CHECKOUT_TOKEN_MINUTES:30}
 
 notifications:
+  ses:
+    # AWS SES SMTP com STARTTLS. Configuração incompleta desativa o envio.
+    host: ${AWS_SES_SMTP_HOST:}
+    port: ${AWS_SES_SMTP_PORT:587}
+    username: ${AWS_SES_SMTP_USERNAME:}
+    password: ${AWS_SES_SMTP_PASSWORD:}
+    from: ${AWS_SES_FROM_EMAIL:}
   discord:
     payment-webhook-url: ${DISCORD_PAYMENT_WEBHOOK_URL:}
     support-webhook-url: ${DISCORD_SUPPORT_WEBHOOK_URL:${DISCORD_PAYMENT_WEBHOOK_URL:}}

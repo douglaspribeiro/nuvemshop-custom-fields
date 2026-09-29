@@ -26,6 +26,33 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - MySQL 8 em runtime
 - H2 para testes
 
+## E-mail de resposta do suporte (AWS SES)
+
+Ao responder um chamado pelo backoffice, o aplicativo envia a resposta para o
+`storeEmail` da loja após confirmar a transação no banco. Configure as propriedades
+`notifications.ses` por estas variáveis de ambiente:
+
+```dotenv
+AWS_SES_SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+AWS_SES_SMTP_PORT=587
+AWS_SES_SMTP_USERNAME=
+AWS_SES_SMTP_PASSWORD=
+AWS_SES_FROM_EMAIL=suporte@seu-dominio.com.br
+APP_BASE_URL=https://seu-app.example.com
+```
+
+Use o endpoint e as credenciais **SMTP** da mesma região do SES (não as chaves de
+acesso da API AWS). O remetente precisa estar verificado no SES; enquanto a conta
+estiver no sandbox, os destinatários também precisam estar verificados.
+O transporte exige STARTTLS; a porta padrão é 587.
+Consulte a [documentação do SES](https://docs.aws.amazon.com/ses/latest/dg/send-email-smtp.html).
+
+Sem host, usuário, senha ou remetente, nenhum e-mail é enviado e cada resposta gera
+o log `support.email_provider_not_configured` com “Provedor AWS SES não configurado”.
+Loja sem e-mail gera `support.email_recipient_missing`; falha de envio gera
+`support.email_failed`, sem desfazer a resposta salva. Não há retentativa automática.
+O e-mail contém a resposta e o link do chamado, que exige acesso pelo aplicativo.
+
 ## Funcionalidades Implementadas
 
 - Instalacao OAuth multi-tenant com isolamento por `store_id`.

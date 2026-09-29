@@ -16,7 +16,8 @@ const SLOT = "before_product_detail_add_to_cart";
 /**
  * Temas que ainda nao entregam `cart:before_update` (issue TiendaNube/nube-sdk#394).
  * Sem o gate nao ha como anexar `properties`, e renderizar os campos criaria um
- * formulario que nao envia nada. Melhor nao renderizar e deixar o script legado agir.
+ * formulario que nao envia nada. O script de transição carrega nuvemshop-patagonia.js,
+ * que intercepta o botão nativo no DOM e envia cart:add com properties.
  */
 const THEMES_WITHOUT_GATE = new Set(["patagonia"]);
 
@@ -92,7 +93,9 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 
 	if (THEMES_WITHOUT_GATE.has(String(state.store?.theme ?? "").toLowerCase())) {
 		clear(nube);
-		report(nextStore, nextProduct, "gate_unsupported_theme");
+		store = nextStore;
+		outcome = "patagonia_requires_transition_script";
+		report(nextStore, nextProduct, outcome);
 		return;
 	}
 

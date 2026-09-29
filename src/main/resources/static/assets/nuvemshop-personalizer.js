@@ -57,6 +57,12 @@
     ready(initialize);
 
     function initialize() {
+        // Patagonia usa React sem form de compra e não fornece cart:before_update.
+        // Não confundir seu formulário de frete com o formulário do produto.
+        if (isPatagoniaStorefront()) {
+            loadPatagoniaFallback();
+            return;
+        }
         if (suppressedBySdk) {
             return;
         }
@@ -90,6 +96,22 @@
                 track("injected", { storeId: storeId, productId: productId });
             });
         });
+    }
+
+    function isPatagoniaStorefront() {
+        const runtime = window.nubeSDK;
+        const theme = runtime && runtime.getState && runtime.getState().store;
+        return (theme && String(theme.theme).toLowerCase() === "patagonia")
+            || Array.from(document.scripts).some((item) => item.src.indexOf("https://lightspeed-cdn.mitiendanube.com/") === 0);
+    }
+
+    function loadPatagoniaFallback() {
+        if (document.getElementById("ncf-patagonia-script")) return;
+        const fallback = document.createElement("script");
+        fallback.id = "ncf-patagonia-script";
+        fallback.src = apiOrigin + "/assets/nuvemshop-patagonia.js";
+        fallback.onerror = () => track("disabled", { storeId: storeId, reason: "patagonia_fallback_load_failed" });
+        document.head.appendChild(fallback);
     }
 
     /**

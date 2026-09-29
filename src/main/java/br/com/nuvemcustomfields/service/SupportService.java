@@ -9,6 +9,7 @@ import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.repository.SupportMessageRepository;
 import br.com.nuvemcustomfields.repository.SupportTicketRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,17 +28,20 @@ public class SupportService {
     private final SupportMessageRepository messageRepository;
     private final StoreRepository storeRepository;
     private final DiscordSupportWebhookClient discord;
+    private final ApplicationEventPublisher events;
 
     public SupportService(
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             StoreRepository storeRepository,
-            DiscordSupportWebhookClient discord
+            DiscordSupportWebhookClient discord,
+            ApplicationEventPublisher events
     ) {
         this.ticketRepository = ticketRepository;
         this.messageRepository = messageRepository;
         this.storeRepository = storeRepository;
         this.discord = discord;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +126,9 @@ public class SupportService {
     public void replyFromSupport(Long ticketId, String message) {
         SupportTicket ticket = requireTicket(ticketId);
         addReply(ticket, SupportMessageAuthor.SUPPORT, message);
+        String recipient = storeRepository.findByStoreId(ticket.getStoreId())
+                .map(Store::getStoreEmail).orElse(null);
+        events.publishEvent(new SupportReplyEvent(ticket.getId(), recipient, ticket.getSubject(), message.strip()));
     }
 
     @Transactional

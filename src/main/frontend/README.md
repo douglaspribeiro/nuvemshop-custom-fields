@@ -8,9 +8,10 @@ Bundles NubeSDK do app, compilados com o toolchain oficial (`tsup`).
 | --- | --- | --- | --- |
 | `nuvemshop-storefront-sdk.js` | `src/storefront/main.tsx` | `before_product_detail_add_to_cart` | `store` |
 | `nuvemshop-checkout-sdk.js` | `src/checkout/main.tsx` | `after_line_items` | `checkout` |
+| `nuvemshop-patagonia.js` | `src/storefront/patagonia-entry.ts` | DOM da página de produto | Carregado pelo script de transição |
 
 O script legado `../resources/static/assets/nuvemshop-personalizer.js` (DOM, sem SDK)
-**continua registrado** e não é gerado aqui. É exigência da homologação Nuvemshop:
+**deve permanecer registrado** e não é gerado aqui. É exigência da homologação Nuvemshop:
 
 > "Para aplicativos que possuem um JavaScript instalado no storefront da loja, é necessário
 > manter ambos os scripts configurados simultaneamente — o script legado (sem o SDK) e o novo
@@ -99,8 +100,47 @@ nativo, fechado com "use `cart:before_update`").
 - **Produto já no carrinho**: o bridge resolve o `cart:add` como bump de quantidade via
   `LS.changeQuantity` e **descarta `properties`**. Não há contorno pelo SDK; o caso é
   reportado em `/public/script-events` com `reason=reissue_properties_dropped_item_in_cart`.
-- **Tema patagonia**: não recebe `cart:before_update` ([#394]). O script não renderiza
-  nada nesse tema — um formulário que não envia nada é pior que nenhum formulário.
+- **Tema patagonia**: não recebe `cart:before_update` ([#394]). O Worker deixa a
+  renderização para o script de transição, descrito abaixo.
+
+### Compatibilidade com Patagonia
+
+O script legado reconhece o runtime/tema Patagonia e carrega
+`/assets/nuvemshop-patagonia.js`, empacotado pelo Maven junto aos outros bundles.
+O adaptador lê a configuração pública, desenha os campos junto ao botão nativo,
+valida os valores e intercepta o clique antes do React. Envia `cart:add` pelo
+barramento do runtime com `variant_id`, quantidade escolhida e `properties`.
+Não usa o formulário de frete nem depende da existência de um slot SDK vazio.
+
+A compra expressa fica oculta somente no trecho do produto com personalização,
+para não desviar da validação. O comprador adiciona ao carrinho pelo botão normal.
+Valores são preservados em falhas e remontagens do React; navegação para outro
+produto descarta a configuração anterior. A variante precisa ser identificada
+pelo estado/evento do tema ou pela URL: uma variante desconhecida não é escolhida
+automaticamente. Timeout não faz retentativa de compra.
+
+Para ativar em produção:
+
+1. Publicar a aplicação com build do frontend habilitado, incluindo o novo asset.
+2. Atualizar/publicar o **script de transição (sem Uses Nube SDK)** no Partner Portal
+   com `src/main/resources/static/assets/nuvemshop-personalizer.js`.
+3. Configurar `NUVEMSHOP_SCRIPT_ID` com o ID desse script, manter os IDs SDK e usar
+   **Reinstalar scripts** no backoffice da loja. Atualizar só o bundle SDK não basta.
+
+Na Store by Pauli (`7278258`), a inspeção pública de 28/09/2026 identificou o SDK do
+app, mas não o script de transição. Não foi alterada a instalação da loja nesta correção.
+
+Eventos esperados: `storefront.sdk.patagonia_transition_rendered`,
+`patagonia_transition_add`, `patagonia_transition_success` ou `patagonia_transition_failed`
+(todos com prefixo `storefront.sdk.`). O Worker registra
+`patagonia_requires_transition_script`; esse evento sozinho não comprova que o adaptador carregou.
+
+Validação: testes DOM cobrem campos obrigatórios, variante, quantidade, duplicidade,
+falha, timeout e navegação. Uma execução local em Chromium sobre uma página pública
+da Store by Pauli confirmou o campo visível e uma única requisição do tema com
+`[variant_id, quantidade, {"Nombre":"Pauli prueba local"}]`. Foram usadas configuração
+de teste e interceptação de rede: nenhum item foi efetivamente adicionado, e a
+persistência em pedido real ainda exige validação após instalação.
 
 ## Comandos
 

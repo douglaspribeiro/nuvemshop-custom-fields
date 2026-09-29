@@ -4,7 +4,7 @@ import { defineConfig } from "tsup";
 // saber onde buscar a config. Sem isso o bundle de staging aponta para producao.
 const APP_ORIGIN = process.env.APP_BASE_URL ?? "https://campos-personalizados.wzhub.pro";
 
-export default defineConfig({
+const sdk = {
   entry: {
     "nuvemshop-storefront-sdk": "src/storefront/main.tsx",
     // Nome novo de proposito: nao colide com /assets/nuvemshop-checkout.js, que esta
@@ -13,7 +13,7 @@ export default defineConfig({
   },
   format: ["esm"],
   target: "esnext",
-  clean: true,
+  clean: false,
   minify: true,
   bundle: true,
   sourcemap: false,
@@ -29,4 +29,10 @@ export default defineConfig({
   },
   // Nome estavel: a URL do script fica cadastrada no Partner Portal.
   outExtension: () => ({ js: ".js" }),
-});
+};
+
+export default defineConfig([sdk, {
+  ...sdk,
+  entry: { "nuvemshop-patagonia": "src/storefront/patagonia-entry.ts" },
+  format: ["iife"],
+}]);
