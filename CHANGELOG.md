@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.15.2] - 2026-09-29
+
+### Correções
+
+- treat empty order ranges as no sales (`c431cdc`)
+
 ## [1.15.1] - 2026-09-29
 
 ### Correções
