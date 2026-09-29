@@ -19,6 +19,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.math.BigDecimal;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -101,7 +104,7 @@ class BackofficeUninstalledStoresPageTest {
     void backofficeDashboardShowsSalesSynchronizationCoverage() throws Exception {
         mockMvc.perform(get("/backoffice").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Itens vendidos")))
+                .andExpect(content().string(containsString("Vendas com personalização")))
                 .andExpect(content().string(containsString("Itens personalizados vendidos")))
                 .andExpect(content().string(containsString("Os totais exibidos são parciais")));
     }
@@ -109,6 +112,7 @@ class BackofficeUninstalledStoresPageTest {
     @Test
     void dashboardSumsOnlyCompletedActiveStores() throws Exception {
         orderSales.save(new StoreOrderSales(ACTIVE_ID, 101L, 5, 3));
+        orderSales.save(new StoreOrderSales(ACTIVE_ID, 103L, 6, 0));
         orderSales.save(new StoreOrderSales(UNINSTALLED_ID, 102L, 20, 10));
         StoreSalesSync active = new StoreSalesSync(ACTIVE_ID);
         active.setComplete(true);
@@ -119,7 +123,7 @@ class BackofficeUninstalledStoresPageTest {
 
         mockMvc.perform(get("/backoffice").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("<strong>5</strong>")))
+                .andExpect(content().string(containsString("Vendas com personalização</span><strong>1</strong>")))
                 .andExpect(content().string(containsString("<strong>3</strong>")));
     }
 
@@ -151,5 +155,15 @@ class BackofficeUninstalledStoresPageTest {
                 .andExpect(content().string(not(containsString("Teste Menu Desinstalada"))));
         mockMvc.perform(get("/backoffice/sales"))
                 .andExpect(redirectedUrl("/backoffice/login"));
+    }
+
+    @Test
+    void removesUnpersonalizedOrdersByCompositeId() {
+        StoreOrderSalesId id = new StoreOrderSalesId(ACTIVE_ID, 103L);
+        orderSales.save(new StoreOrderSales(ACTIVE_ID, 103L, 4, 0));
+
+        orderSales.deleteAllByIdInBatch(List.of(id));
+
+        assertThat(orderSales.existsById(id)).isFalse();
     }
 }

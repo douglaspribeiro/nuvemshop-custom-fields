@@ -20,10 +20,11 @@ public interface StoreOrderSalesRepository extends JpaRepository<StoreOrderSales
                     + "and r.id.storeId in (select sync.storeId from StoreSalesSync sync where sync.complete = true)")
     Page<StoreOrderSales> findSales(Pageable pageable);
 
-    @Query("select coalesce(sum(r.totalItems), 0) from StoreOrderSales r "
-            + "where r.id.storeId in (select s.storeId from Store s where s.uninstalledAt is null) "
+    @Query("select count(r) from StoreOrderSales r "
+            + "where r.personalizedItems > 0 "
+            + "and r.id.storeId in (select s.storeId from Store s where s.uninstalledAt is null) "
             + "and r.id.storeId in (select sync.storeId from StoreSalesSync sync where sync.complete = true)")
-    long totalItemsFromSyncedActiveStores();
+    long personalizedOrdersFromSyncedActiveStores();
 
     @Query("select coalesce(sum(r.personalizedItems), 0) from StoreOrderSales r "
             + "where r.id.storeId in (select s.storeId from Store s where s.uninstalledAt is null) "

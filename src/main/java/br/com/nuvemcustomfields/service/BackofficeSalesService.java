@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.entity.StoreOrderSales;
+import br.com.nuvemcustomfields.entity.StoreOrderSalesId;
 import br.com.nuvemcustomfields.entity.StoreSalesSync;
 import br.com.nuvemcustomfields.repository.StoreOrderSalesRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
@@ -63,7 +64,7 @@ public class BackofficeSalesService {
             StoreSalesSync state = states.get(store.getStoreId());
             return state != null && state.isPersonalizedValueBackfilled();
         }).count();
-        return new SalesSummary(orderSales.totalItemsFromSyncedActiveStores(),
+        return new SalesSummary(orderSales.personalizedOrdersFromSyncedActiveStores(),
                 orderSales.personalizedItemsFromSyncedActiveStores(), synced, personalizedValueBackfilled, active.size());
     }
 
@@ -160,12 +161,19 @@ public class BackofficeSalesService {
                 throw new IllegalStateException("Resposta de pedidos invalida");
             }
             List<StoreOrderSales> batch = new ArrayList<>();
+            List<StoreOrderSalesId> irrelevantOrders = new ArrayList<>();
             for (JsonNode order : orders) {
                 long orderId = order.path("id").asLong();
                 if (orderId <= 0) continue;
-                batch.add(summarizeOrder(store.getStoreId(), order));
+                StoreOrderSales sale = summarizeOrder(store.getStoreId(), order);
+                if (sale.getPersonalizedItems() > 0) {
+                    batch.add(sale);
+                } else {
+                    irrelevantOrders.add(sale.getId());
+                }
             }
-            orderSales.saveAll(batch);
+            if (!batch.isEmpty()) orderSales.saveAll(batch);
+            if (!irrelevantOrders.isEmpty()) orderSales.deleteAllByIdInBatch(irrelevantOrders);
             if (orders.size() < PAGE_SIZE) return;
             if (page == MAX_PAGES_PER_RANGE) {
                 Instant rangeMin = createdMin != null ? createdMin : updatedMin;
@@ -239,7 +247,7 @@ public class BackofficeSalesService {
         return false;
     }
 
-    public record SalesSummary(long totalItems, long personalizedItems, long syncedStores,
+    public record SalesSummary(long personalizedOrders, long personalizedItems, long syncedStores,
                                long personalizedValueBackfilledStores, long activeStores) {
         public boolean complete() {
             return syncedStores == activeStores;

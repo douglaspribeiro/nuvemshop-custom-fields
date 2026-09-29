@@ -141,4 +141,43 @@ class BackofficeSalesServiceTest {
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull());
         assertThat(existing.isPersonalizedValueBackfilled()).isTrue();
     }
+
+    @Test
+    void retainsOnlyOrdersWithPersonalizedItems() throws Exception {
+        StoreRepository stores = mock(StoreRepository.class);
+        StoreOrderSalesRepository sales = mock(StoreOrderSalesRepository.class);
+        StoreSalesSyncRepository states = mock(StoreSalesSyncRepository.class);
+        NuvemshopApiClient api = mock(NuvemshopApiClient.class);
+        Store store = new Store();
+        store.setStoreId(123L);
+        store.setAccessToken("token");
+        store.setScope("read_orders");
+        when(stores.findAll()).thenReturn(List.of(store));
+        when(states.findAll()).thenReturn(List.of());
+        when(api.listOrdersForSales(any(), anyInt(), anyInt(), any(), any(),
+                org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull()))
+                .thenReturn(json.readTree("""
+                        [
+                          {"id": 1, "payment_status": "paid", "products": [
+                            {"quantity": 1, "price": "10.00", "properties": [{"name": "Texto"}]}]},
+                          {"id": 2, "payment_status": "paid", "products": [
+                            {"quantity": 1, "price": "20.00", "properties": []}]}
+                        ]
+                        """));
+
+        new BackofficeSalesService(stores, sales, states, api).syncOnePendingStore();
+
+        verify(sales, atLeastOnce()).saveAll(org.mockito.ArgumentMatchers.argThat(rows -> {
+            for (StoreOrderSales row : rows) {
+                if (row.getId().getOrderId() != 1L) return false;
+            }
+            return true;
+        }));
+        verify(sales, atLeastOnce()).deleteAllByIdInBatch(org.mockito.ArgumentMatchers.argThat(ids -> {
+            for (var id : ids) {
+                if (id.getOrderId() == 2L) return true;
+            }
+            return false;
+        }));
+    }
 }
