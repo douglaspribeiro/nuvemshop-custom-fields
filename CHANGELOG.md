@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.16.1] - 2026-09-29
+
+### Correções
+
+- limit sales report to personalized products (`c70b5f7`)
+
 ## [1.16.0] - 2026-09-29
 
 ### Features
