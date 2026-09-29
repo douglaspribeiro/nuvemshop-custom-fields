@@ -372,6 +372,14 @@ ao vivo.
 
 O backoffice interno permite acompanhar lojas instaladas, status, eventos de plano, logs recentes, feature flags e relatorios gerenciais. As credenciais sao configuradas por `BACKOFFICE_USERNAME` e `BACKOFFICE_PASSWORD`.
 
+O painel soma unidades de pedidos pagos das lojas ativas: todas as unidades e as que possuem
+`products[].properties` de personalizacao. A sincronizacao historica consulta a API de pedidos
+em segundo plano, uma loja por vez, e armazena apenas IDs de pedido e contagens, sem dados do
+comprador. O painel mostra a cobertura da sincronizacao e marca os totais como parciais enquanto
+faltarem lojas; lojas sem `read_orders` nao entram ate recuperarem esse escopo. Por padrao, a
+primeira sincronizacao comeca apos 2 minutos e os ciclos seguintes ocorrem a cada 2 minutos;
+`analytics.sales-sync-initial-delay-ms` e `analytics.sales-sync-delay-ms` permitem ajustar isso.
+
 Webhooks registrados:
 
 - `app/uninstalled`: marca a loja como desinstalada, apaga token e escopos, revoga o acesso local e volta o plano para `FREE`, sem solicitar cancelamento da assinatura no gateway. Scripts e webhooks do app sao removidos automaticamente pela Nuvemshop.

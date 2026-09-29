@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -212,6 +213,27 @@ public class NuvemshopApiClient {
             logRestFailure("nuvemshop.api.list_recent_orders.error", store.getStoreId(), ex);
             throw ex;
         }
+    }
+
+    /** Pagina pedidos para a sincronizacao historica, sem manter dados pessoais no app. */
+    public JsonNode listOrdersForSales(Store store, int page, int perPage, Instant createdMin,
+                                       Instant createdMax, Instant updatedMin, Instant updatedMax) {
+        URI uri = UriComponentsBuilder.fromUriString(properties.apiBaseUrl())
+                .path("/v1/{storeId}/orders")
+                .queryParam("page", page)
+                .queryParam("per_page", perPage)
+                .queryParamIfPresent("created_at_min", Optional.ofNullable(createdMin))
+                .queryParamIfPresent("created_at_max", Optional.ofNullable(createdMax))
+                .queryParamIfPresent("updated_at_min", Optional.ofNullable(updatedMin))
+                .queryParamIfPresent("updated_at_max", Optional.ofNullable(updatedMax))
+                .encode()
+                .buildAndExpand(store.getStoreId())
+                .toUri();
+        return restClient.get()
+                .uri(uri)
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve()
+                .body(JsonNode.class);
     }
 
     /**

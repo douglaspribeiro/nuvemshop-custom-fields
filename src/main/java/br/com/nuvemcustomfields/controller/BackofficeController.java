@@ -14,6 +14,7 @@ import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
+import br.com.nuvemcustomfields.service.BackofficeSalesService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
@@ -52,6 +53,7 @@ public class BackofficeController {
     private final FeatureFlagRepository featureFlagRepository;
     private final IntegrationLogRepository integrationLogRepository;
     private final BackofficeService backofficeService;
+    private final BackofficeSalesService backofficeSalesService;
     private final ManagementReportService managementReportService;
     private final SupportService supportService;
     private final ScriptInstallService scriptInstallService;
@@ -67,6 +69,7 @@ public class BackofficeController {
             FeatureFlagRepository featureFlagRepository,
             IntegrationLogRepository integrationLogRepository,
             BackofficeService backofficeService,
+            BackofficeSalesService backofficeSalesService,
             ManagementReportService managementReportService,
             SupportService supportService,
             ScriptInstallService scriptInstallService,
@@ -81,6 +84,7 @@ public class BackofficeController {
         this.featureFlagRepository = featureFlagRepository;
         this.integrationLogRepository = integrationLogRepository;
         this.backofficeService = backofficeService;
+        this.backofficeSalesService = backofficeSalesService;
         this.managementReportService = managementReportService;
         this.supportService = supportService;
         this.scriptInstallService = scriptInstallService;
@@ -119,6 +123,7 @@ public class BackofficeController {
         long flags = featureFlagRepository.count();
         model.addAttribute("rules", rules);
         model.addAttribute("flags", flags);
+        model.addAttribute("sales", backofficeSalesService.summary());
         model.addAttribute("openTickets", supportService.openTickets());
         LOGGER.info("backoffice.index.loaded stores={} rules={} flags={} open_tickets={}", stores.size(), rules, flags, supportService.openTickets());
         return "backoffice/index";

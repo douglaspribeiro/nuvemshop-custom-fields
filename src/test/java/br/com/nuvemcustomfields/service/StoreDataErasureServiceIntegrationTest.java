@@ -62,6 +62,14 @@ class StoreDataErasureServiceIntegrationTest {
                 "insert into support_messages (ticket_id, author_type, message, created_at) values (?, ?, ?, ?)",
                 ticketId, "STORE", "test", now
         );
+        jdbcTemplate.update(
+                "insert into store_order_sales (store_id, order_id, total_items, personalized_items) values (?, ?, ?, ?)",
+                STORE_ID, 999L, 3L, 2L
+        );
+        jdbcTemplate.update(
+                "insert into store_sales_sync (store_id, complete, last_synced_at) values (?, ?, ?)",
+                STORE_ID, true, now
+        );
 
         service.erase(STORE_ID);
         service.erase(STORE_ID);
@@ -73,6 +81,8 @@ class StoreDataErasureServiceIntegrationTest {
         assertThat(count("plan_events", "store_id", STORE_ID)).isZero();
         assertThat(count("support_tickets", "store_id", STORE_ID)).isZero();
         assertThat(count("support_messages", "ticket_id", ticketId)).isZero();
+        assertThat(count("store_order_sales", "store_id", STORE_ID)).isZero();
+        assertThat(count("store_sales_sync", "store_id", STORE_ID)).isZero();
     }
 
     private long count(String table, String column, Long id) {

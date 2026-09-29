@@ -1,6 +1,8 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.dto.FieldForm;
+import br.com.nuvemcustomfields.dto.ProductPage;
+import br.com.nuvemcustomfields.dto.ProductSummary;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.FieldType;
@@ -42,6 +44,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -363,12 +368,13 @@ public class AdminController {
         LOGGER.info("admin.products.open store_id={} page={}", store.getStoreId(), page);
         var productPage = apiClient.listProducts(store, page, NuvemshopApiClient.DEFAULT_PER_PAGE, q);
         var rules = personalizationAdminService.listRules(store.getStoreId());
+        var configuredFieldProductIds = personalizationAdminService.configuredFieldProductIds(store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("productPage", productPage);
-        model.addAttribute("products", productPage.items());
+        model.addAttribute("products", prioritizedProducts(productPage, rules, configuredFieldProductIds));
         model.addAttribute("rules", rules);
         model.addAttribute("configuredProductIds", configuredProductIds(rules));
-        model.addAttribute("configuredFieldProductIds", personalizationAdminService.configuredFieldProductIds(store.getStoreId()));
+        model.addAttribute("configuredFieldProductIds", configuredFieldProductIds);
         model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         LOGGER.info(
@@ -458,12 +464,13 @@ public class AdminController {
             LOGGER.warn("admin.fields.open.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
             var rules = personalizationAdminService.listRules(store.getStoreId());
             var productPage = apiClient.listProducts(store, 1, NuvemshopApiClient.DEFAULT_PER_PAGE, null);
+            var configuredFieldProductIds = personalizationAdminService.configuredFieldProductIds(store.getStoreId());
             model.addAttribute("store", store);
             model.addAttribute("productPage", productPage);
-            model.addAttribute("products", productPage.items());
+            model.addAttribute("products", prioritizedProducts(productPage, rules, configuredFieldProductIds));
             model.addAttribute("rules", rules);
             model.addAttribute("configuredProductIds", configuredProductIds(rules));
-            model.addAttribute("configuredFieldProductIds", personalizationAdminService.configuredFieldProductIds(store.getStoreId()));
+            model.addAttribute("configuredFieldProductIds", configuredFieldProductIds);
             model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
             model.addAttribute("usage", planLimitService.usage(store, 0));
             model.addAttribute("error", messages.get("flash.product.limit"));
@@ -570,6 +577,36 @@ public class AdminController {
         return java.util.stream.StreamSupport.stream(rules.spliterator(), false)
                 .map(PersonalizationRule::getProductId)
                 .collect(Collectors.toSet());
+    }
+
+    static List<ProductSummary> prioritizedProducts(ProductPage page, List<PersonalizationRule> rules,
+                                                     List<Long> configuredFieldProductIds) {
+        Set<Long> configured = Set.copyOf(configuredFieldProductIds);
+        if (page.query() != null) {
+            // A busca pertence a API: apenas reorganiza seus resultados, sem exibir produtos fora da busca.
+            return page.items().stream()
+                    .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id())))
+                    .toList();
+        }
+        List<ProductSummary> products = new ArrayList<>();
+        if (page.page() == 1) {
+            // Regras locais permitem mostrar todos os configurados antes da primeira pagina da API.
+            for (PersonalizationRule rule : rules) {
+                if (!configured.contains(rule.getProductId())) {
+                    continue;
+                }
+                String name = rule.getProductName();
+                if (name == null || name.isBlank()) {
+                    name = page.items().stream()
+                            .filter(product -> product.id().equals(rule.getProductId()))
+                            .map(ProductSummary::name)
+                            .findFirst().orElse(Long.toString(rule.getProductId()));
+                }
+                products.add(new ProductSummary(rule.getProductId(), name));
+            }
+        }
+        page.items().stream().filter(product -> !configured.contains(product.id())).forEach(products::add);
+        return products;
     }
 
     private boolean reconcilePendingEfi(Long storeId, boolean respectCooldown) {

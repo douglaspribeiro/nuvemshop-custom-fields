@@ -2,7 +2,12 @@ package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.config.BackofficeSessionInterceptor;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.entity.StoreOrderSales;
+import br.com.nuvemcustomfields.entity.StoreOrderSalesId;
+import br.com.nuvemcustomfields.entity.StoreSalesSync;
+import br.com.nuvemcustomfields.repository.StoreOrderSalesRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.repository.StoreSalesSyncRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +39,12 @@ class BackofficeUninstalledStoresPageTest {
     @Autowired
     private StoreRepository stores;
 
+    @Autowired
+    private StoreOrderSalesRepository orderSales;
+
+    @Autowired
+    private StoreSalesSyncRepository syncStates;
+
     private MockHttpSession session;
 
     @BeforeEach
@@ -56,6 +67,10 @@ class BackofficeUninstalledStoresPageTest {
 
     @AfterEach
     void cleanUp() {
+        orderSales.deleteById(new StoreOrderSalesId(ACTIVE_ID, 101L));
+        orderSales.deleteById(new StoreOrderSalesId(UNINSTALLED_ID, 102L));
+        syncStates.deleteById(ACTIVE_ID);
+        syncStates.deleteById(UNINSTALLED_ID);
         stores.findByStoreId(ACTIVE_ID).ifPresent(stores::delete);
         stores.findByStoreId(UNINSTALLED_ID).ifPresent(stores::delete);
     }
@@ -77,5 +92,31 @@ class BackofficeUninstalledStoresPageTest {
     void menuRequiresBackofficeSession() throws Exception {
         mockMvc.perform(get("/backoffice/stores").param("status", "uninstalled"))
                 .andExpect(redirectedUrl("/backoffice/login"));
+    }
+
+    @Test
+    void backofficeDashboardShowsSalesSynchronizationCoverage() throws Exception {
+        mockMvc.perform(get("/backoffice").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Itens vendidos")))
+                .andExpect(content().string(containsString("Itens personalizados vendidos")))
+                .andExpect(content().string(containsString("Os totais exibidos são parciais")));
+    }
+
+    @Test
+    void dashboardSumsOnlyCompletedActiveStores() throws Exception {
+        orderSales.save(new StoreOrderSales(ACTIVE_ID, 101L, 5, 3));
+        orderSales.save(new StoreOrderSales(UNINSTALLED_ID, 102L, 20, 10));
+        StoreSalesSync active = new StoreSalesSync(ACTIVE_ID);
+        active.setComplete(true);
+        syncStates.save(active);
+        StoreSalesSync uninstalled = new StoreSalesSync(UNINSTALLED_ID);
+        uninstalled.setComplete(true);
+        syncStates.save(uninstalled);
+
+        mockMvc.perform(get("/backoffice").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<strong>5</strong>")))
+                .andExpect(content().string(containsString("<strong>3</strong>")));
     }
 }

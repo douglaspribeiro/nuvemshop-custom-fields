@@ -39,6 +39,8 @@ public class StoreDataErasureService {
         jdbcTemplate.update("delete from payment_notification_outbox where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_attempts where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_subscriptions where store_id = ?", storeId);
+        jdbcTemplate.update("delete from store_order_sales where store_id = ?", storeId);
+        jdbcTemplate.update("delete from store_sales_sync where store_id = ?", storeId);
         int storesDeleted = jdbcTemplate.update("delete from stores where store_id = ?", storeId);
 
         LOGGER.info("lgpd.store_redact.completed store_id={} store_record_deleted={}", storeId, storesDeleted > 0);
