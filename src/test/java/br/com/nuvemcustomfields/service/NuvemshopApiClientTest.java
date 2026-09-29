@@ -6,18 +6,54 @@ import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class NuvemshopApiClientTest {
+
+    @Test
+    void emptyOrdersRangeIsReturnedAsEmptyArray() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        NuvemshopApiClient client = new NuvemshopApiClient(properties(), builder);
+
+        server.expect(requestTo("https://api.example.com/v1/123/orders?page=1&per_page=200"))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":404,\"description\":\"Last page is 0\"}"));
+
+        assertThat(client.listOrdersForSales(store(), 1, 200, null, null, null, null))
+                .isEmpty();
+        server.verify();
+    }
+
+    @Test
+    void otherOrdersNotFoundErrorsArePropagated() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        NuvemshopApiClient client = new NuvemshopApiClient(properties(), builder);
+
+        server.expect(requestTo("https://api.example.com/v1/123/orders?page=1&per_page=200"))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":404,\"description\":\"Store not found\"}"));
+
+        assertThatThrownBy(() -> client.listOrdersForSales(store(), 1, 200, null, null, null, null))
+                .isInstanceOf(HttpClientErrorException.NotFound.class);
+        server.verify();
+    }
 
     @Test
     void readsStoreProfileCountryAndCurrency() {

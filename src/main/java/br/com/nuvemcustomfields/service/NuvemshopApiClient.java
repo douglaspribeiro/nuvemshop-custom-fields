@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -229,11 +230,27 @@ public class NuvemshopApiClient {
                 .encode()
                 .buildAndExpand(store.getStoreId())
                 .toUri();
-        return restClient.get()
-                .uri(uri)
-                .header("Authentication", "bearer " + store.getAccessToken())
-                .retrieve()
-                .body(JsonNode.class);
+        try {
+            return restClient.get()
+                    .uri(uri)
+                    .header("Authentication", "bearer " + store.getAccessToken())
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (HttpClientErrorException.NotFound ex) {
+            // A API responde 404 quando a primeira pagina de um intervalo nao tem pedidos.
+            // Outros 404 continuam sendo erros reais e precisam ser propagados.
+            if (page == 1) {
+                try {
+                    JsonNode error = ex.getResponseBodyAs(JsonNode.class);
+                    if (error != null && "Last page is 0".equals(error.path("description").asText())) {
+                        return JsonNodeFactory.instance.arrayNode();
+                    }
+                } catch (RuntimeException ignored) {
+                    // Preserve o 404 original se a resposta nao for JSON valido.
+                }
+            }
+            throw ex;
+        }
     }
 
     /**
