@@ -59,12 +59,12 @@ public class BackofficeSalesService {
             StoreSalesSync state = states.get(store.getStoreId());
             return state != null && state.isComplete();
         }).count();
-        long valueBackfilled = active.stream().filter(store -> {
+        long personalizedValueBackfilled = active.stream().filter(store -> {
             StoreSalesSync state = states.get(store.getStoreId());
-            return state != null && state.isProductValueBackfilled();
+            return state != null && state.isPersonalizedValueBackfilled();
         }).count();
         return new SalesSummary(orderSales.totalItemsFromSyncedActiveStores(),
-                orderSales.personalizedItemsFromSyncedActiveStores(), synced, valueBackfilled, active.size());
+                orderSales.personalizedItemsFromSyncedActiveStores(), synced, personalizedValueBackfilled, active.size());
     }
 
     public Page<SalesRow> salesPage(int page) {
@@ -80,7 +80,7 @@ public class BackofficeSalesService {
                     store == null || store.getStoreName() == null || store.getStoreName().isBlank()
                             ? "Loja sem nome" : store.getStoreName(),
                     currency, sale.getId().getOrderId(),
-                    sale.getCreatedAt(), sale.getTotalItems(), sale.getPersonalizedItems(), sale.getProductValue());
+                    sale.getCreatedAt(), sale.getPersonalizedItems(), sale.getPersonalizedProductValue());
         });
     }
 
@@ -115,7 +115,7 @@ public class BackofficeSalesService {
                     if (state == null) return true;
                     if (state.getLastError() != null && state.getLastAttemptAt() != null
                             && state.getLastAttemptAt().isAfter(now.minus(Duration.ofHours(1)))) return false;
-                    return !state.isComplete() || !state.isProductValueBackfilled() || state.getLastSyncedAt() == null
+                    return !state.isComplete() || !state.isPersonalizedValueBackfilled() || state.getLastSyncedAt() == null
                             || state.getLastSyncedAt().isBefore(now.minus(Duration.ofHours(24)));
                 })
                 .min(Comparator.comparing(candidate -> {
@@ -130,7 +130,7 @@ public class BackofficeSalesService {
         state.setLastError(null);
         syncStates.save(state);
         try {
-            if (state.isComplete() && state.isProductValueBackfilled() && state.getLastSyncedAt() != null) {
+            if (state.isComplete() && state.isPersonalizedValueBackfilled() && state.getLastSyncedAt() != null) {
                 importRange(store, null, null, state.getLastSyncedAt().minus(Duration.ofHours(1)), now);
             } else {
                 for (int year = 2000; LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant().isBefore(now); year += 5) {
@@ -140,7 +140,7 @@ public class BackofficeSalesService {
                 }
             }
             state.setComplete(true);
-            state.setProductValueBackfilled(true);
+            state.setPersonalizedValueBackfilled(true);
             state.setLastSyncedAt(now);
             syncStates.save(state);
             LOGGER.info("backoffice.sales_sync.done store_id={}", store.getStoreId());
@@ -190,24 +190,24 @@ public class BackofficeSalesService {
     static StoreOrderSales summarizeOrder(Long storeId, JsonNode order) {
         long total = 0;
         long personalized = 0;
-        BigDecimal productValue = BigDecimal.ZERO;
+        BigDecimal personalizedProductValue = BigDecimal.ZERO;
         boolean missingPrice = false;
         if ("paid".equalsIgnoreCase(order.path("payment_status").asText())
                 && !"cancelled".equalsIgnoreCase(order.path("status").asText())) {
             for (JsonNode product : order.path("products")) {
                 long quantity = Math.max(0, product.path("quantity").asLong());
                 total += quantity;
-                if (quantity > 0) {
-                    try {
-                        BigDecimal price = new BigDecimal(product.path("price").asText());
-                        productValue = productValue.add(price.multiply(BigDecimal.valueOf(quantity)));
-                    } catch (NumberFormatException ex) {
-                        missingPrice = true;
-                    }
-                }
                 JsonNode properties = product.path("properties");
                 if ((properties.isArray() || properties.isObject()) && !properties.isEmpty()) {
                     personalized += quantity;
+                    if (quantity > 0) {
+                        try {
+                            BigDecimal price = new BigDecimal(product.path("price").asText());
+                            personalizedProductValue = personalizedProductValue.add(price.multiply(BigDecimal.valueOf(quantity)));
+                        } catch (NumberFormatException ex) {
+                            missingPrice = true;
+                        }
+                    }
                 }
             }
         }
@@ -228,7 +228,7 @@ public class BackofficeSalesService {
         if (currency != null && currency.length() == 3) currency = currency.toUpperCase(java.util.Locale.ROOT);
         else currency = null;
         return new StoreOrderSales(storeId, order.path("id").asLong(), total, personalized, createdAt,
-                missingPrice ? null : productValue.setScale(2, RoundingMode.HALF_UP), currency);
+                missingPrice ? null : personalizedProductValue.setScale(2, RoundingMode.HALF_UP), currency);
     }
 
     private static boolean hasReadOrdersScope(String scopes) {
@@ -240,13 +240,13 @@ public class BackofficeSalesService {
     }
 
     public record SalesSummary(long totalItems, long personalizedItems, long syncedStores,
-                               long valueBackfilledStores, long activeStores) {
+                               long personalizedValueBackfilledStores, long activeStores) {
         public boolean complete() {
             return syncedStores == activeStores;
         }
     }
 
     public record SalesRow(Long storeId, String storeName, String currency, Long orderId,
-                           Instant createdAt, long totalItems, long personalizedItems, BigDecimal productValue) {
+                           Instant createdAt, long personalizedItems, BigDecimal personalizedProductValue) {
     }
 }

@@ -24,7 +24,7 @@ public class StoreOrderSales {
     private Instant createdAt;
 
     @Column(precision = 20, scale = 2)
-    private BigDecimal productValue;
+    private BigDecimal personalizedProductValue;
 
     @Column(length = 3)
     private String currency;
@@ -37,17 +37,17 @@ public class StoreOrderSales {
     }
 
     public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems,
-                           Instant createdAt, BigDecimal productValue) {
-        this(storeId, orderId, totalItems, personalizedItems, createdAt, productValue, null);
+                           Instant createdAt, BigDecimal personalizedProductValue) {
+        this(storeId, orderId, totalItems, personalizedItems, createdAt, personalizedProductValue, null);
     }
 
     public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems,
-                           Instant createdAt, BigDecimal productValue, String currency) {
+                           Instant createdAt, BigDecimal personalizedProductValue, String currency) {
         this.id = new StoreOrderSalesId(storeId, orderId);
         this.totalItems = totalItems;
         this.personalizedItems = personalizedItems;
         this.createdAt = createdAt;
-        this.productValue = productValue;
+        this.personalizedProductValue = personalizedProductValue;
         this.currency = currency;
     }
 
@@ -67,8 +67,8 @@ public class StoreOrderSales {
         return createdAt;
     }
 
-    public BigDecimal getProductValue() {
-        return productValue;
+    public BigDecimal getPersonalizedProductValue() {
+        return personalizedProductValue;
     }
 
     public String getCurrency() {

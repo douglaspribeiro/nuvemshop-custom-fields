@@ -70,6 +70,7 @@ class BackofficeUninstalledStoresPageTest {
     @AfterEach
     void cleanUp() {
         orderSales.deleteById(new StoreOrderSalesId(ACTIVE_ID, 101L));
+        orderSales.deleteById(new StoreOrderSalesId(ACTIVE_ID, 103L));
         orderSales.deleteById(new StoreOrderSalesId(UNINSTALLED_ID, 102L));
         syncStates.deleteById(ACTIVE_ID);
         syncStates.deleteById(UNINSTALLED_ID);
@@ -126,11 +127,13 @@ class BackofficeUninstalledStoresPageTest {
     void salesPageShowsStoreAndProductValueOnlyForActiveSyncedOrders() throws Exception {
         orderSales.save(new StoreOrderSales(ACTIVE_ID, 101L, 3, 2,
                 Instant.parse("2026-09-28T12:00:00Z"), new BigDecimal("37.50")));
+        orderSales.save(new StoreOrderSales(ACTIVE_ID, 103L, 4, 0,
+                Instant.parse("2026-09-29T12:00:00Z"), new BigDecimal("99.00")));
         orderSales.save(new StoreOrderSales(UNINSTALLED_ID, 102L, 4, 0,
                 Instant.parse("2026-09-27T12:00:00Z"), new BigDecimal("99.00")));
         StoreSalesSync active = new StoreSalesSync(ACTIVE_ID);
         active.setComplete(true);
-        active.setProductValueBackfilled(true);
+        active.setPersonalizedValueBackfilled(true);
         syncStates.save(active);
         StoreSalesSync uninstalled = new StoreSalesSync(UNINSTALLED_ID);
         uninstalled.setComplete(true);
@@ -143,6 +146,8 @@ class BackofficeUninstalledStoresPageTest {
                 .andExpect(content().string(containsString("Teste Menu Ativa")))
                 .andExpect(content().string(containsString("BRL")))
                 .andExpect(content().string(containsString("37,50")))
+                .andExpect(content().string(not(containsString("#103"))))
+                .andExpect(content().string(not(containsString("99,00"))))
                 .andExpect(content().string(not(containsString("Teste Menu Desinstalada"))));
         mockMvc.perform(get("/backoffice/sales"))
                 .andExpect(redirectedUrl("/backoffice/login"));

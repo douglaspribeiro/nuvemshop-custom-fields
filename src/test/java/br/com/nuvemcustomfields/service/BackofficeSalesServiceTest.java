@@ -38,7 +38,7 @@ class BackofficeSalesServiceTest {
 
         assertThat(result.getTotalItems()).isEqualTo(5);
         assertThat(result.getPersonalizedItems()).isEqualTo(3);
-        assertThat(result.getProductValue()).isEqualByComparingTo("51.50");
+        assertThat(result.getPersonalizedProductValue()).isEqualByComparingTo("37.50");
         assertThat(result.getCurrency()).isEqualTo("BRL");
         assertThat(result.getCreatedAt()).isEqualTo(java.time.Instant.parse("2026-09-29T13:30:00Z"));
         assertThat(result.getId().getStoreId()).isEqualTo(123L);
@@ -59,12 +59,25 @@ class BackofficeSalesServiceTest {
     }
 
     @Test
-    void leavesProductValueUnknownWhenApiOmitsPrice() throws Exception {
+    void leavesPersonalizedValueUnknownWhenApiOmitsItsPrice() throws Exception {
         var order = json.readTree("""
-                {"id": 91, "payment_status": "paid", "products": [{"quantity": 2}]}
+                {"id": 91, "payment_status": "paid", "products": [{"quantity": 2, "properties": [{"name": "Nome"}]}]}
                 """);
 
-        assertThat(BackofficeSalesService.summarizeOrder(123L, order).getProductValue()).isNull();
+        assertThat(BackofficeSalesService.summarizeOrder(123L, order).getPersonalizedProductValue()).isNull();
+    }
+
+    @Test
+    void ignoresMissingPriceOnUnpersonalizedProducts() throws Exception {
+        var order = json.readTree("""
+                {"id": 91, "payment_status": "paid", "products": [
+                  {"quantity": 2, "properties": [{"name": "Nome"}], "price": "12.50"},
+                  {"quantity": 1, "properties": []}
+                ]}
+                """);
+
+        assertThat(BackofficeSalesService.summarizeOrder(123L, order).getPersonalizedProductValue())
+                .isEqualByComparingTo("25.00");
     }
 
     @Test
@@ -99,7 +112,7 @@ class BackofficeSalesServiceTest {
         ArgumentCaptor<StoreSalesSync> state = ArgumentCaptor.forClass(StoreSalesSync.class);
         verify(states, org.mockito.Mockito.atLeastOnce()).save(state.capture());
         assertThat(state.getValue().isComplete()).isTrue();
-        assertThat(state.getValue().isProductValueBackfilled()).isTrue();
+        assertThat(state.getValue().isPersonalizedValueBackfilled()).isTrue();
         assertThat(state.getValue().getLastSyncedAt()).isNotNull();
     }
 
@@ -126,6 +139,6 @@ class BackofficeSalesServiceTest {
 
         verify(api, atLeastOnce()).listOrdersForSales(any(), anyInt(), anyInt(), any(), any(),
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull());
-        assertThat(existing.isProductValueBackfilled()).isTrue();
+        assertThat(existing.isPersonalizedValueBackfilled()).isTrue();
     }
 }
