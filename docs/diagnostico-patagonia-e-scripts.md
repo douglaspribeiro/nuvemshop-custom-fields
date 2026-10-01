@@ -27,8 +27,29 @@ a solução SDK não o carrega nem depende dele.
 
 ## Publicação e validação pendentes
 
-A alteração local precisa ser compilada e publicada como nova versão do script
-SDK `9319` no Partner Portal. Reinstalar associações não publica o bundle novo.
+### Alterações realizadas no código
+
+- Removemos a dependência do `9344` quando o tema é Patagonia; a ausência do
+  legado nesse tema é comportamento esperado da plataforma.
+- O SDK renderiza os campos no slot `before_product_detail_add_to_cart`.
+- O SDK valida campos obrigatórios e reenvia `cart:add` com propriedades, variante
+  e quantidade do evento nativo.
+- O fluxo usa eventos do NubeSDK e não acessa `window`, `document` nem injeta DOM
+  no Worker. O asset histórico `nuvemshop-patagonia.js` não é carregado.
+
+### O que fazer no Partner Portal
+
+1. Gerar o bundle de produção do frontend e conferir o arquivo antes do upload.
+2. Criar uma nova versão do script **Storefront SDK `9319`**, preservando o
+   identificador e as permissões/configuração atuais.
+3. Publicar a nova versão e associá-la a uma loja de teste Patagonia.
+4. Reinstalar/atualizar o script na loja de teste para receber a versão publicada.
+
+Não é necessário publicar uma nova versão do legado `9344` para o Patagonia: a
+plataforma não executa os dois scripts simultaneamente. Mantenha o `9344` para os
+demais temas. O checkout `7145` permanece inalterado.
+
+Reinstalar associações sem publicar uma nova versão não atualiza o bundle entregue.
 O checkout `7145` e o legado `9344` continuam cadastrados conforme o suporte.
 
 Antes de liberar o bundle na loja:

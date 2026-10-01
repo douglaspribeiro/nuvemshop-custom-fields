@@ -14,7 +14,7 @@ desligadas por padrão.
 | E-mails de reconquista | Coleta do motivo e seguimento implementados, usando o mesmo remetente e SMTP do suporte. Nenhum envio real realizado nesta implementação. |
 | Lista no backoffice | Lista, filtros e detalhe implementados: desinstalação, resposta, eventos de e-mail, reinstalação, cupom e conversão. |
 | Abertura e clique | Consumidor SES implementado; falta configurar a fila de eventos e o Configuration Set. Abertura detectada não comprova leitura. |
-| Incentivo BR/Efí | Cupom de 50% na primeira mensalidade implementado para lojas elegíveis sem pagamento anterior. Reutiliza o plano existente e restaura o preço integral após aprovação da primeira cobrança. |
+| Incentivo BR/Efí | Cupom de 50% na primeira mensalidade implementado e validado na Efí sandbox para lojas elegíveis sem pagamento anterior. |
 | Outros países/gateways e lojas com histórico pago | Comunicação sem desconto automático. Aprovação manual de incentivo ainda não implementada. |
 | Funcionalidade solicitada | Registro, estados no backoffice e aviso quando marcada como entregue implementados. |
 | Exclusão de dados | Campanhas, e-mails, eventos e cupons removidos junto à loja; apenas totais anônimos permanecem. |
@@ -28,28 +28,31 @@ desligadas por padrão.
 - Recuperação de totais: 3 testes Python aprovados.
 - Verificação de alterações com `git diff --check` sem problemas.
 
-Os testes de integração usam H2 e serviços externos simulados. Não comprovam a
-execução das migrações em MySQL, a entrega real SES/SQS ou a cobrança real da Efí.
-Nenhuma migração, SQL de recuperação, publicação SDK, envio real ou cobrança real
-foi executado como parte deste desenvolvimento.
+Os testes de integração usam H2 e serviços externos simulados. A cobrança Efí
+também foi validada no sandbox; ainda falta validar as migrações em MySQL e a
+entrega real SES/SQS.
+Nenhuma migração, SQL de recuperação, publicação SDK ou envio real foi executado
+como parte deste desenvolvimento. A cobrança Efí foi validada em sandbox.
 
 ### Pendências para concluir e ativar
 
-1. Informar URL e região da fila de eventos SES, nome do Configuration Set e
-   disponibilizar acesso AWS para a aplicação. A fila de desinstalações já foi informada.
+1. Configurar a fila de eventos SES, o Configuration Set e as permissões AWS,
+   seguindo [configuração das filas](configuracao-sqs-reconquista.md). A fila de
+   desinstalações já foi criada e informada.
 2. Aplicar e validar as migrações V30–V33 em MySQL de homologação, respeitando a
    sequência completa de migrações do repositório.
 3. Validar o fluxo real de desinstalação, envio, resposta, abertura/clique,
    reinstalação e exclusão em homologação.
-4. Validar no sandbox Efí a primeira cobrança com 50%, a renovação integral,
+4. Efí sandbox validada: primeira cobrança com desconto, renovação integral,
    recusa, resposta perdida e recuperação de falha ao restaurar o preço.
 5. Conferir e recuperar os totais antigos usando os logs completos.
 6. Publicar a aplicação e ativar as flags conforme as integrações forem validadas.
    Desconto em produção exige também `WINBACK_DISCOUNT_ALLOW_PRODUCTION=true`.
 7. Validar o Patagonia em loja de teste e publicar o novo bundle SDK `9319`.
 
-Ainda faltam ações no backoffice para reenvio manual de e-mails com confirmação
-SMTP incerta e aprovação de incentivo para lojas que já pagaram. A expressão
+As ações no backoffice para reenvio manual de e-mails com confirmação SMTP incerta
+e aprovação de incentivo para lojas que já pagaram ficam para uma etapa posterior.
+A expressão
 “usou o ticket” aguarda definição: uso de cupom já é acompanhado; chamados de
 suporte aparecem como contexto, sem atribuição automática à campanha.
 
@@ -297,9 +300,9 @@ da primeira cobrança, o preço do segundo ciclo, recusa, resposta perdida,
 reinstalação, exclusão e falha de restauração. Os testes locais usam H2 e simulam
 SDK, SMTP e SQS; não validam a migração em MySQL nem a semântica real da Efí.
 
-Pendências operacionais: dados e validação da fila SES, acesso AWS, migrações em
-homologação, sandbox Efí, publicação e ativação. Ainda não existe ação de reenvio
-manual para SMTP incerto nem aprovação de incentivo extra para quem já pagou.
+Pendências operacionais: configurar e validar a fila SES, aplicar migrações em
+homologação, publicar e ativar. Reenvio manual para SMTP incerto e aprovação de
+incentivo extra para quem já pagou ficam para decisão posterior.
 A definição de “ticket” continua aguardando confirmação.
 Referência financeira: [assinaturas Efí](https://dev.efipay.com.br/docs/api-cobrancas/assinatura/).
 Referências: [eventos SES](https://docs.aws.amazon.com/ses/latest/dg/monitor-using-event-publishing.html),
