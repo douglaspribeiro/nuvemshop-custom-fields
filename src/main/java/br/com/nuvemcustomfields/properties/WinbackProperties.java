@@ -4,10 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "winback")
 public record WinbackProperties(boolean enabled, String queueUrl, String region, String allowedStoreIds) {
-    public WinbackProperties(boolean enabled, String queueUrl, String region) {
-        this(enabled, queueUrl, region, "0");
-    }
-
     /** 0 (or blank) disables the allow-list and permits every store. */
     public boolean accepts(Long storeId) {
         if (storeId == null || allowedStoreIds == null || allowedStoreIds.isBlank()

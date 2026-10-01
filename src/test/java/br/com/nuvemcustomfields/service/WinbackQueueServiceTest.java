@@ -41,7 +41,8 @@ class WinbackQueueServiceTest {
         sqs = mock(SqsClient.class);
         ObjectProvider<SqsClient> provider = mock(ObjectProvider.class);
         when(provider.getObject()).thenReturn(sqs);
-        queue = new WinbackQueueService(outbox, stores, new WinbackProperties(true, URL, "us-east-2"), provider, json, tracking);
+        queue = new WinbackQueueService(outbox, stores,
+                new WinbackProperties(true, URL, "us-east-2", "0"), provider, json, tracking);
         store = new Store();
         store.setStoreId(ID);
         store.setStoreName("Nome privado");
