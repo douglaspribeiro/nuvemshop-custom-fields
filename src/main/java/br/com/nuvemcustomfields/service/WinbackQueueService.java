@@ -58,6 +58,11 @@ public class WinbackQueueService {
         Store store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         WinbackOutbox event = outbox.findForUpdate(id).orElse(null);
         if (event == null || event.getPublishedAt() != null || event.getNextAttemptAt().isAfter(Instant.now())) return;
+        if (!properties.accepts(storeId)) {
+            LOGGER.info("winback.queue.skipped event_id={} store_id={} reason=disabled_by_allow_list", id, storeId);
+            outbox.delete(event);
+            return;
+        }
         if (store == null || store.isActive() || !store.getUninstalledAt().equals(event.getUninstalledAt())) {
             outbox.delete(event);
             return;
