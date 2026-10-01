@@ -142,6 +142,18 @@ public class Store {
     @Column(name = "uninstalled_at")
     private Instant uninstalledAt;
 
+    @Column(name = "departure_counted", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean departureCounted;
+
+    public boolean isDepartureCounted() {
+        return departureCounted;
+    }
+
+    public void setDepartureCounted(boolean departureCounted) {
+        this.departureCounted = departureCounted;
+    }
+
     public Long getId() {
         return id;
     }
@@ -338,7 +350,9 @@ public class Store {
     }
 
     public void setUninstalledAt(Instant uninstalledAt) {
-        this.uninstalledAt = uninstalledAt;
+        // Match TIMESTAMP(6) before queries and deduplication, including webhook retries.
+        this.uninstalledAt = uninstalledAt == null ? null
+                : uninstalledAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     }
 
     public boolean isActive() {

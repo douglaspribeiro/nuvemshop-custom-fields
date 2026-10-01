@@ -134,6 +134,23 @@ O enforcement fica em `PlanLimitService` e e aplicado no editor do admin e no en
 
 ## Reconquista apos desinstalacao
 
+**Estado atual:** a publicacao SQS esta implementada com outbox transacional,
+atraso de 15 minutos e novas tentativas. A lista de campanhas, os eventos SES,
+o consumidor do primeiro e-mail e o formulario de motivos estao implementados.
+Os e-mails de oferta por motivo, o cupom da primeira mensalidade na Efi,
+a restauracao do preco integral e a conversao por pagamento confirmado estao
+implementados localmente, com validacao real de homologacao ainda pendente.
+`WINBACK_ENABLED`, `WINBACK_MAIL_ENABLED` e `AWS_SES_EVENTS_ENABLED` permanecem `false`
+ate a configuracao de acesso e a validacao dos disparos. `WINBACK_DISCOUNT_ENABLED`
+e `WINBACK_DISCOUNT_ALLOW_PRODUCTION` tambem permanecem `false`.
+
+A fila configurada e `eventosDesistalacao`, em `us-east-2`:
+`https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao`.
+O acesso usa a cadeia padrao de credenciais do SDK AWS (role ou
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, com `AWS_SESSION_TOKEN` quando aplicavel).
+As credenciais SMTP do SES nao autenticam chamadas SQS.
+Veja [configuracao da fila e historico de saidas](docs/desinstalacoes-e-sqs.md).
+
 O evento `app/uninstalled` deve permanecer curto e confiavel: apos validar o HMAC, o
 aplicativo registra a desinstalacao e publica uma mensagem idempotente no Amazon SQS. A
 mensagem usa o maior atraso nativo permitido pelo SQS, **15 minutos** (`DelaySeconds=900`).
@@ -141,12 +158,18 @@ O webhook nao gera cupom nem envia e-mail diretamente.
 
 Depois do atraso, o consumidor verifica se a mesma `store_id` continua desinstalada. Se a
 loja tiver reinstalado, a mensagem e descartada. Caso contrario, o consumidor registra a
-campanha no banco, gera ou recupera o cupom elegivel e envia a comunicacao pelo Amazon SES.
-Falhas no SES mantem a mensagem para nova tentativa; todo processamento deve ser idempotente
-para impedir cupons e e-mails duplicados.
+campanha no banco e envia o primeiro formulario de motivos pelo Amazon SES.
+A resposta prepara o seguimento e gera ou recupera o cupom elegivel quando o desconto
+esta habilitado. SMTP sem confirmacao fica para conciliacao pelos eventos SES e
+conferencia operacional; nao ha reenvio automatico de mensagens de aceite incerto.
 
-O backoffice deve expor o funil completo: desinstalacao, motivo, resposta, cupom, tentativas
-de e-mail, reinstalacao, abertura de checkout e conversao em pagamento. Os motivos e regras
+O backoffice deve expor uma lista de desinstalacoes e o funil completo: desinstalacao,
+motivo, resposta, cupom, tentativas e entrega de e-mail, abertura detectada, clique,
+reinstalacao, abertura de checkout e conversao em pagamento. Entrega, abertura e clique
+serao correlacionados pela fila de eventos SES; abertura nao comprova leitura humana,
+e clique nao equivale a uso de cupom. O cupom so sera considerado usado apos pagamento
+confirmado. Veja o fluxo e a ativacao em [historico e eventos](docs/desinstalacoes-e-sqs.md).
+Os motivos e regras
 iniciais sao:
 
 | Motivo informado | Acao apos 15 minutos |

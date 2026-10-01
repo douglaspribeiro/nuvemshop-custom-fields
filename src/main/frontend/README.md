@@ -100,47 +100,29 @@ nativo, fechado com "use `cart:before_update`").
 - **Produto já no carrinho**: o bridge resolve o `cart:add` como bump de quantidade via
   `LS.changeQuantity` e **descarta `properties`**. Não há contorno pelo SDK; o caso é
   reportado em `/public/script-events` com `reason=reissue_properties_dropped_item_in_cart`.
-- **Tema patagonia**: não recebe `cart:before_update` ([#394]). O Worker deixa a
-  renderização para o script de transição, descrito abaixo.
+- **Patagonia**: recebe somente o script SDK segundo o retorno da Nuvemshop
+  de 29/09/2026. O SDK agora renderiza e processa a personalização sem depender
+  do legado. A entrega real de `cart:before_update` pelo botão nativo ainda
+  precisa ser validada na loja com o novo bundle.
 
 ### Compatibilidade com Patagonia
 
-O script legado reconhece o runtime/tema Patagonia e carrega
-`/assets/nuvemshop-patagonia.js`, empacotado pelo Maven junto aos outros bundles.
-O adaptador lê a configuração pública, desenha os campos junto ao botão nativo,
-valida os valores e intercepta o clique antes do React. Envia `cart:add` pelo
-barramento do runtime com `variant_id`, quantidade escolhida e `properties`.
-Não usa o formulário de frete nem depende da existência de um slot SDK vazio.
+O Worker usa o mesmo fluxo de campos, validação e `cart:add` dos demais temas.
+Foi removida a regra que limpava o slot e esperava pelo script de transição.
+O adaptador DOM `nuvemshop-patagonia.js` foi preservado como código histórico;
+ele não é importado ou carregado pelo SDK.
 
-A compra expressa fica oculta somente no trecho do produto com personalização,
-para não desviar da validação. O comprador adiciona ao carrinho pelo botão normal.
-Valores são preservados em falhas e remontagens do React; navegação para outro
-produto descarta a configuração anterior. A variante precisa ser identificada
-pelo estado/evento do tema ou pela URL: uma variante desconhecida não é escolhida
-automaticamente. Timeout não faz retentativa de compra.
+O suporte confirmou que manter os dois scripts cadastrados permite à plataforma
+selecionar o script adequado, não executá-los juntos. Publicar uma nova versão
+do SDK no Partner Portal é necessário; reinstalar os IDs não publica código.
 
-Para ativar em produção:
+Os testes do Worker cobrem renderização no Patagonia sem `window`/`document`,
+validação obrigatória, variante, quantidade, propriedades e prevenção de loop.
+A validação real do botão nativo e da persistência no pedido permanece pendente.
+O beacon `storefront.sdk.cart_before_update_received` registra a primeira
+interceptação nativa da sessão e permite confirmar essa etapa.
 
-1. Publicar a aplicação com build do frontend habilitado, incluindo o novo asset.
-2. Atualizar/publicar o **script de transição (sem Uses Nube SDK)** no Partner Portal
-   com `src/main/resources/static/assets/nuvemshop-personalizer.js`.
-3. Configurar `NUVEMSHOP_SCRIPT_ID` com o ID desse script, manter os IDs SDK e usar
-   **Reinstalar scripts** no backoffice da loja. Atualizar só o bundle SDK não basta.
-
-Na Store by Pauli (`7278258`), a inspeção pública de 28/09/2026 identificou o SDK do
-app, mas não o script de transição. Não foi alterada a instalação da loja nesta correção.
-
-Eventos esperados: `storefront.sdk.patagonia_transition_rendered`,
-`patagonia_transition_add`, `patagonia_transition_success` ou `patagonia_transition_failed`
-(todos com prefixo `storefront.sdk.`). O Worker registra
-`patagonia_requires_transition_script`; esse evento sozinho não comprova que o adaptador carregou.
-
-Validação: testes DOM cobrem campos obrigatórios, variante, quantidade, duplicidade,
-falha, timeout e navegação. Uma execução local em Chromium sobre uma página pública
-da Store by Pauli confirmou o campo visível e uma única requisição do tema com
-`[variant_id, quantidade, {"Nombre":"Pauli prueba local"}]`. Foram usadas configuração
-de teste e interceptação de rede: nenhum item foi efetivamente adicionado, e a
-persistência em pedido real ainda exige validação após instalação.
+Veja [diagnóstico e resposta preparada ao suporte](../../../docs/diagnostico-patagonia-e-scripts.md).
 
 ## Comandos
 

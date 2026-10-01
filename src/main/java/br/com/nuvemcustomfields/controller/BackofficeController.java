@@ -14,6 +14,7 @@ import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
+import br.com.nuvemcustomfields.service.StoreDepartureService;
 import br.com.nuvemcustomfields.service.BackofficeSalesService;
 import br.com.nuvemcustomfields.service.ManagementReportService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
@@ -61,6 +62,7 @@ public class BackofficeController {
     private final PaymentSubscriptionService paymentSubscriptionService;
     private final PaymentConfigurationService paymentConfigurationService;
     private final String appVersion;
+    private final StoreDepartureService departures;
 
     public BackofficeController(
             BackofficeProperties properties,
@@ -76,7 +78,8 @@ public class BackofficeController {
             PaymentSubscriptionRepository paymentSubscriptionRepository,
             PaymentSubscriptionService paymentSubscriptionService,
             PaymentConfigurationService paymentConfigurationService,
-            @Value("${APP_VERSION:dev}") String appVersion
+            @Value("${APP_VERSION:dev}") String appVersion,
+            StoreDepartureService departures
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -92,6 +95,7 @@ public class BackofficeController {
         this.paymentSubscriptionService = paymentSubscriptionService;
         this.paymentConfigurationService = paymentConfigurationService;
         this.appVersion = appVersion;
+        this.departures = departures;
     }
 
     @GetMapping("/backoffice/login")
@@ -385,6 +389,7 @@ public class BackofficeController {
         model.addAttribute("installations", allStores.size());
         model.addAttribute("activeInstallations", active.size());
         model.addAttribute("inactiveInstallations", allStores.size() - active.size());
+        model.addAttribute("departures", departures.summary());
         model.addAttribute("freeInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
                 && (store.getEffectivePlan() == PlanType.FREE || store.getEffectivePlan() == PlanType.FREE_GRATIS)).count());
         model.addAttribute("courtesyInstallations", active.stream().filter(br.com.nuvemcustomfields.entity.Store::isCourtesyPremium).count());

@@ -13,14 +13,6 @@ import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate
 
 const SLOT = "before_product_detail_add_to_cart";
 
-/**
- * Temas que ainda nao entregam `cart:before_update` (issue TiendaNube/nube-sdk#394).
- * Sem o gate nao ha como anexar `properties`, e renderizar os campos criaria um
- * formulario que nao envia nada. O script de transição carrega nuvemshop-patagonia.js,
- * que intercepta o botão nativo no DOM e envia cart:add com properties.
- */
-const THEMES_WITHOUT_GATE = new Set(["patagonia"]);
-
 type BeforeUpdatePayload = {
 	request_id?: string;
 	action?: "ADD" | "REMOVE";
@@ -42,6 +34,7 @@ let textColor: string | undefined;
 
 /** Contador de `cart:add` disparados por nos, para nao reprocessar o proprio evento. */
 let pendingSelfAdds = 0;
+let reportedNativeGate = false;
 
 let inFlightProduct: number | null = null;
 
@@ -88,14 +81,6 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	if (!nextStore || !nextProduct) {
 		outcome = !nextStore ? "no_store_id" : "no_product_id";
 		clear(nube);
-		return;
-	}
-
-	if (THEMES_WITHOUT_GATE.has(String(state.store?.theme ?? "").toLowerCase())) {
-		clear(nube);
-		store = nextStore;
-		outcome = "patagonia_requires_transition_script";
-		report(nextStore, nextProduct, outcome);
 		return;
 	}
 
@@ -173,6 +158,10 @@ function gate(nube: NubeSDK, state: NubeSDKState | null) {
 		pendingSelfAdds--;
 		respond(nube, requestId, true);
 		return;
+	}
+	if (!reportedNativeGate) {
+		reportedNativeGate = true;
+		report(store, productId, "cart_before_update_received");
 	}
 
 	if (payload?.action !== "ADD" || !config.enabled || config.fields.length === 0) {

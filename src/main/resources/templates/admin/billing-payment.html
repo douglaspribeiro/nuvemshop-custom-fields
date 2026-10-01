@@ -24,7 +24,7 @@
             <div class="payment-heading">
                 <h1>Finalizar assinatura</h1>
                 <p>Preencha seus dados para concluir o pagamento do plano.</p>
-                <p class="payment-mobile-price">Plano <span th:text="${plan.displayName}">Essencial</span> <strong th:text="${formattedAmount}">R$ 19,99</strong><span> / mês</span></p>
+                <p class="payment-mobile-price">Plano <span th:text="${plan.displayName}">Essencial</span> <strong th:text="${formattedAmount}">R$ 19,99</strong><span th:text="${discounted ? ' no primeiro mês' : ' / mês'}"> / mês</span></p>
             </div>
             <p class="notice warning payment-sandbox" th:if="${efiEnvironment == 'sandbox'}">Ambiente de homologação — nenhuma cobrança real será realizada.</p>
             <p class="notice error payment-flash" th:if="${error}" th:text="${error}">Erro</p>
@@ -34,6 +34,7 @@
                   th:attr="data-payee-code=${payeeCode},data-environment=${efiEnvironment}">
                 <input type="hidden" name="plan" th:value="${plan.name()}">
                 <input type="hidden" name="paymentToken" id="payment-token">
+                <input th:if="${discounted}" type="hidden" name="couponCode" th:value="${couponCode}">
 
                 <fieldset class="payment-fieldset">
                     <legend id="payment-form-title">Dados do titular</legend>
@@ -78,10 +79,12 @@
             <p class="payment-summary-label">Resumo da assinatura</p>
             <h2 id="payment-summary-title">Plano <span th:text="${plan.displayName}">Essencial</span></h2>
             <p class="payment-summary-description">Cobrança recorrente mensal</p>
-            <div class="payment-summary-price"><strong th:text="${formattedAmount}">R$ 19,99</strong><span> / mês</span></div>
+            <div class="payment-summary-price"><strong th:text="${formattedAmount}">R$ 19,99</strong><span th:text="${discounted ? ' no primeiro mês' : ' / mês'}"> / mês</span></div>
+            <p th:if="${discounted}">Cupom de reconquista: 50% de desconto apenas na primeira mensalidade.
+                A partir da segunda, <strong th:text="${formattedRegularAmount}"></strong> por mês.</p>
             <div class="payment-summary-divider"></div>
-            <div class="payment-summary-line"><span>Assinatura mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
-            <div class="payment-summary-line payment-summary-total"><span>Total mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
+            <div class="payment-summary-line"><span th:text="${discounted ? 'Primeiro mês (cupom)' : 'Assinatura mensal'}">Assinatura mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
+            <div class="payment-summary-line payment-summary-total"><span th:text="${discounted ? 'Primeira mensalidade' : 'Total mensal'}">Total mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
             <p class="payment-summary-caption">Seu plano será ativado após a confirmação do primeiro pagamento. Você pode cancelar a qualquer momento pelo painel.</p>
         </aside>
     </div>

@@ -1,89 +1,73 @@
 # Diagnóstico do tema Patagonia e scripts da Tiendanube
 
-Atualizado em 29/09/2026.
+Atualizado em 30/09/2026 após o retorno do suporte no chamado #8216779.
 
-## Contexto
+A loja Store by Pauli (`7278258`) usa o tema Patagonia. Em 29/09/2026,
+a Nuvemshop confirmou por e-mail que a plataforma escolhe um dos scripts:
+SDK no Patagonia e legado nos outros layouts. A associação dos dois scripts
+não significa execução simultânea. A orientação é manter ambos cadastrados
+e incorporar o comportamento de personalização ao SDK.
 
-A loja **Store by Pauli** (Store ID `7278258`) usa o tema **Patagonia**. O tema não entrega o evento `cart:before_update` usado pelo fluxo NubeSDK para interceptar o botão nativo e anexar `properties` ao carrinho.
+## Diagnóstico corrigido
 
-O SDK registra `storefront.sdk.patagonia_requires_transition_script` quando encontra o Patagonia. Esse evento é esperado e significa que o script legado/transição precisa assumir a exibição dos campos e o `cart:add` personalizado. O evento antigo `storefront.sdk.gate_unsupported_theme` indica bundle SDK antigo.
+A ausência do `Legado-js` (`9344`) no Patagonia é esperada, conforme o suporte.
+O diagnóstico anterior de falha de propagação estava incorreto.
 
-## Correção implementada
+Nosso Worker tinha uma regra específica que, ao encontrar Patagonia, limpava
+o slot e registrava `patagonia_requires_transition_script` sem buscar os campos.
+Como o legado não era executado, a loja ficava sem personalização.
+Essa regra foi removida: o SDK renderiza no slot
+`before_product_detail_add_to_cart`, valida os campos obrigatórios e reenvia
+`cart:add` com as propriedades, a variante e a quantidade do evento nativo.
 
-- `nuvemshop-personalizer.js` continua sendo o script de transição, sem NubeSDK.
-- Ao identificar explicitamente o tema Patagonia, ele carrega `/assets/nuvemshop-patagonia.js`.
-- O adaptador desenha os campos junto ao botão do produto, valida valores obrigatórios, variante e quantidade e envia `cart:add` com `properties`.
-- O botão de compra expressa é ocultado somente enquanto há personalização ativa, para não ignorar a validação.
-- Outros temas continuam no fluxo anterior.
-- O script `nuvemshop-patagonia.js` fica hospedado no servidor e não é cadastrado como um script separado no Partner Portal.
+Não foi importado o adaptador DOM para o Worker. O NubeSDK não disponibiliza
+`window`, `document` ou injeção de scripts externos dentro do Worker.
+O asset `nuvemshop-patagonia.js` permanece como código histórico de transição;
+a solução SDK não o carrega nem depende dele.
 
-Arquivos principais:
+## Publicação e validação pendentes
 
-- `src/main/resources/static/assets/nuvemshop-personalizer.js`
-- `src/main/frontend/src/storefront/patagonia.ts`
-- `src/main/frontend/src/storefront/patagonia-entry.ts`
-- `src/main/frontend/dist/nuvemshop-patagonia.js`
+A alteração local precisa ser compilada e publicada como nova versão do script
+SDK `9319` no Partner Portal. Reinstalar associações não publica o bundle novo.
+O checkout `7145` e o legado `9344` continuam cadastrados conforme o suporte.
 
-## Scripts no Partner Portal
+Antes de liberar o bundle na loja:
 
-Os scripts associados à loja são:
+1. Testar o SDK isolado na loja de teste com o tema Patagonia.
+2. Confirmar a exibição dos campos pelo slot do SDK, sem script legado.
+3. Clicar em adicionar ao carrinho com o campo obrigatório vazio e confirmar bloqueio.
+4. Confirmar o evento `cart:before_update` depois da interação com o botão nativo.
+   O app registra uma vez `storefront.sdk.cart_before_update_received`.
+   Sua ausência em um beacon anterior à interação não comprova incompatibilidade do tema.
+5. Testar variante, quantidade e envio de `properties` no carrinho.
+6. Confirmar as propriedades no pedido; incluir produto já presente no carrinho,
+   pois há uma limitação previamente observada no bridge ao aumentar a quantidade.
 
-| ID | Nome | Local | Evento | NubeSDK |
-|---:|---|---|---|---|
-| `9344` | Legado-js | `store` | `onfirstinteraction` | desativado |
-| `9319` | store-front-v5 | `store` | `onfirstinteraction` | ativado |
-| `7145` | checkout-v1 | `checkout` | `onload` | ativado |
+A remoção da regra resolve a dependência indevida do legado. A execução real do gate
+no Patagonia ainda precisa ser comprovada; os testes locais simulam o evento.
+Se o tema não entregar o evento, a plataforma precisa indicar o mecanismo SDK
+suportado antes de considerarmos a personalização validada em produção.
 
-O `Legado-js` recebeu uma nova versão ativa (versão 3). O Storefront SDK deve permanecer publicado separadamente. A ação **Reinstalar scripts** apenas associa os IDs à loja; ela não publica uma nova versão de arquivo.
+Referências oficiais:
 
-## Diagnóstico atual
+- [Arquitetura do NubeSDK](https://github.com/TiendaNube/nube-sdk).
+- [Eventos do carrinho](https://nuvemshop.dev/apps/nube-sdk/events/cart).
 
-Após a reinstalação, o painel mostrou os três scripts associados e ativos. Na inspeção pública da vitrine, o `store-front-v5` foi observado carregando, mas não apareceu uma requisição para `legado-js` nem para `nuvemshop-patagonia.js`.
+## Resposta preparada ao suporte (não enviada)
 
-Isso significa que o problema atual está na entrega/propagação do script legado pela Tiendanube, e não no cache do adaptador Patagonia ou na configuração do produto. Sem o `legado-js`, o SDK consegue apenas registrar `patagonia_requires_transition_script`; os campos não podem ser renderizados.
+Olá, Karol. Obrigado pelo esclarecimento sobre a seleção entre SDK e Legacy.
+Ajustamos o aplicativo para que a renderização e o envio da personalização fiquem
+no script SDK, sem depender da execução simultânea do legado.
 
-## Como validar quando a Tiendanube propagar o script
+Para validar a compra com campos obrigatórios, precisamos interceptar o botão
+nativo usando `config:set` com `handle_cart_before_update: true` e receber
+`cart:before_update`, conforme a documentação. Depois da validação, respondemos
+com `proceed: false` e reenviamos `cart:add` com `properties`, variante e quantidade.
 
-1. Abrir um produto da loja em janela anônima.
-2. Na aba Network, filtrar por `apps-scripts.tiendanube.com`.
-3. Confirmar as requisições para `store-front-v5` e para `legado-js`.
-4. Confirmar a requisição para `https://campos-personalizados.wzhub.pro/assets/nuvemshop-patagonia.js`.
-5. Verificar os eventos:
+Podem confirmar se esse fluxo é suportado no Patagonia da loja `7278258`?
+Se o evento não estiver disponível nesse tema, qual é o mecanismo oficial do SDK
+para validar campos obrigatórios e anexar as propriedades ao botão nativo?
+Precisamos também confirmar que esses dados chegam ao pedido quando o produto
+já existe no carrinho. O SDK roda em Worker e não permite usar nosso adaptador DOM.
 
-```text
-storefront.sdk.patagonia_transition_rendered
-storefront.sdk.patagonia_transition_add
-storefront.sdk.patagonia_transition_success
-```
-
-6. Testar campo obrigatório, variante, quantidade, carrinho e pedido.
-
-Se aparecer somente `patagonia_requires_transition_script`, o SDK carregou, mas o legado ainda não chegou à página. Se aparecer `patagonia_transition_rendered`, o adaptador foi iniciado.
-
-## Chamado enviado à Tiendanube
-
-O chamado foi enviado ao suporte para parceiros pelo Portal de Parceiros, com o assunto:
-
-```text
-Falha na entrega do script legado 9344 na loja 7278258 – tema Patagonia
-```
-
-O chamado informa que os scripts `9344`, `9319` e `7145` estão associados, que o `store-front-v5` carrega e que o `legado-js` não aparece na aba Network. A solicitação é verificar a instalação automática e a propagação do script `9344` para a loja `7278258`.
-
-## E-mail de suporte do aplicativo
-
-Respostas do backoffice geram e-mail depois do commit da transação quando o AWS SES está configurado. As propriedades são:
-
-```text
-AWS_SES_SMTP_HOST
-AWS_SES_SMTP_PORT
-AWS_SES_SMTP_USERNAME
-AWS_SES_SMTP_PASSWORD
-AWS_SES_FROM_EMAIL
-```
-
-Sem configuração completa, o log é `support.email_provider_not_configured`. A resposta do chamado permanece salva mesmo se o envio falhar.
-
-## Validação automatizada
-
-O frontend possui testes para Patagonia, roteamento do script legado, campos obrigatórios, variante, quantidade, falha, timeout e navegação. A suíte frontend validada contém 40 testes passando. O bundle também foi incluído no JAR publicado.
+Obrigado!

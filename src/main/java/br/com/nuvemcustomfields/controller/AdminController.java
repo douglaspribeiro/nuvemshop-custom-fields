@@ -46,6 +46,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.text.Collator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -241,9 +242,14 @@ public class AdminController {
         response.setHeader("Cache-Control", "no-store");
         model.addAttribute("store", store);
         model.addAttribute("plan", plan);
-        model.addAttribute("amount", paymentSubscriptionService.amount(store, plan));
+        var quote = paymentSubscriptionService.efiQuote(store, plan);
+        model.addAttribute("couponCode", quote.code());
+        model.addAttribute("discounted", quote.discounted());
+        model.addAttribute("amount", quote.firstAmount());
         model.addAttribute("formattedAmount", NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
-                .format(paymentSubscriptionService.amount(store, plan)));
+                .format(quote.firstAmount()));
+        model.addAttribute("formattedRegularAmount", NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
+                .format(quote.regularAmount()));
         model.addAttribute("payeeCode", paymentSubscriptionService.efiPayeeCode());
         model.addAttribute("efiEnvironment", paymentSubscriptionService.efiSandbox() ? "sandbox" : "production");
         return "admin/billing-payment";
@@ -254,12 +260,13 @@ public class AdminController {
                              @RequestParam String payerName, @RequestParam String cpf,
                              @RequestParam String payerEmail, @RequestParam String phone,
                              @RequestParam String birth, @RequestParam String paymentToken,
+                             @RequestParam(required = false) String couponCode,
                              HttpSession session, RedirectAttributes redirectAttributes) {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
             paymentSubscriptionService.payWithEfi(store.getStoreId(), plan,
                     new EfiGateway.EfiPayer(payerName, cpf.replaceAll("\\D", ""), payerEmail,
-                            normalizeEfiPhone(phone), birth), paymentToken);
+                            normalizeEfiPhone(phone), birth), paymentToken, couponCode);
             return "redirect:/admin/billing/processing";
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.efi.failed store_id={} plan={} type={}", store.getStoreId(), plan,
@@ -582,10 +589,16 @@ public class AdminController {
     static List<ProductSummary> prioritizedProducts(ProductPage page, List<PersonalizationRule> rules,
                                                      List<Long> configuredFieldProductIds) {
         Set<Long> configured = Set.copyOf(configuredFieldProductIds);
+        Collator names = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
+        names.setStrength(Collator.PRIMARY);
+        Comparator<ProductSummary> alphabetical = Comparator
+                .comparing(ProductSummary::name, names)
+                .thenComparing(ProductSummary::id);
         if (page.query() != null) {
             // A busca pertence a API: apenas reorganiza seus resultados, sem exibir produtos fora da busca.
             return page.items().stream()
-                    .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id())))
+                    .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id()))
+                            .thenComparing(alphabetical))
                     .toList();
         }
         List<ProductSummary> products = new ArrayList<>();
@@ -606,7 +619,10 @@ public class AdminController {
             }
         }
         page.items().stream().filter(product -> !configured.contains(product.id())).forEach(products::add);
-        return products;
+        return products.stream()
+                .sorted(Comparator.comparing((ProductSummary product) -> !configured.contains(product.id()))
+                        .thenComparing(alphabetical))
+                .toList();
     }
 
     private boolean reconcilePendingEfi(Long storeId, boolean respectCooldown) {

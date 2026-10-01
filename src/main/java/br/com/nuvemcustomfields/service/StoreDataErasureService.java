@@ -12,9 +12,18 @@ public class StoreDataErasureService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StoreDataErasureService.class);
 
     private final JdbcTemplate jdbcTemplate;
+    private final StoreDepartureService departures;
+    private final WinbackDiscountService discounts;
 
-    public StoreDataErasureService(JdbcTemplate jdbcTemplate) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public StoreDataErasureService(JdbcTemplate jdbcTemplate, StoreDepartureService departures,
+            WinbackDiscountService discounts) {
         this.jdbcTemplate = jdbcTemplate;
+        this.departures = departures;
+        this.discounts = discounts;
+    }
+    public StoreDataErasureService(JdbcTemplate jdbcTemplate, StoreDepartureService departures) {
+        this(jdbcTemplate, departures, null);
     }
 
     @Transactional
@@ -23,6 +32,10 @@ public class StoreDataErasureService {
             throw new IllegalArgumentException("Identificador da loja nao informado.");
         }
 
+        // Pode chegar antes de app/uninstalled. Conta uma saída por exclusão,
+        // separada de desinstalações confirmadas, antes de apagar o cadastro.
+        departures.record(storeId, true);
+        if (discounts != null) discounts.beforeErasure(storeId);
         jdbcTemplate.update(
                 "delete from support_messages where ticket_id in (select id from support_tickets where store_id = ?)",
                 storeId
@@ -37,6 +50,14 @@ public class StoreDataErasureService {
         jdbcTemplate.update("delete from plan_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_webhook_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_notification_outbox where store_id = ?", storeId);
+        jdbcTemplate.update("delete from winback_email_events where email_id in "
+                + "(select id from winback_emails where campaign_id in "
+                + "(select id from winback_campaigns where store_id = ?))", storeId);
+        jdbcTemplate.update("delete from winback_emails where campaign_id in "
+                + "(select id from winback_campaigns where store_id = ?)", storeId);
+        jdbcTemplate.update("delete from winback_coupons where store_id = ?", storeId);
+        jdbcTemplate.update("delete from winback_campaigns where store_id = ?", storeId);
+        jdbcTemplate.update("delete from winback_outbox where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_attempts where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_subscriptions where store_id = ?", storeId);
         jdbcTemplate.update("delete from store_order_sales where store_id = ?", storeId);

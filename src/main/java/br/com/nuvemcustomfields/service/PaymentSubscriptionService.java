@@ -56,6 +56,7 @@ public class PaymentSubscriptionService {
     private final PaymentNotificationService paymentNotifications;
     private final PaymentAttemptRepository attempts;
     private final PaddleGateway paddle;
+    private final WinbackDiscountService winbackDiscounts;
 
     @Autowired
     public PaymentSubscriptionService(
@@ -69,7 +70,8 @@ public class PaymentSubscriptionService {
             EfiGateway efi,
             PaymentNotificationService paymentNotifications,
             PaymentAttemptRepository attempts,
-            PaddleGateway paddle
+            PaddleGateway paddle,
+            WinbackDiscountService winbackDiscounts
     ) {
         this.stores = stores;
         this.subscriptions = subscriptions;
@@ -82,6 +84,15 @@ public class PaymentSubscriptionService {
         this.paymentNotifications = paymentNotifications;
         this.attempts = attempts;
         this.paddle = paddle;
+        this.winbackDiscounts = winbackDiscounts;
+    }
+
+    public PaymentSubscriptionService(StoreRepository stores, PaymentSubscriptionRepository subscriptions,
+            PlanEventRepository planEvents, PaymentGatewayRouter router, NuvemshopApiClient nuvemshopApi,
+            NuvemshopProperties nuvemshopProperties, MercadoPagoProperties mercadoPagoProperties, EfiGateway efi,
+            PaymentNotificationService paymentNotifications, PaymentAttemptRepository attempts, PaddleGateway paddle) {
+        this(stores, subscriptions, planEvents, router, nuvemshopApi, nuvemshopProperties, mercadoPagoProperties,
+                efi, paymentNotifications, attempts, paddle, null);
     }
 
     public PaymentSubscriptionService(StoreRepository stores, PaymentSubscriptionRepository subscriptions,
@@ -125,6 +136,11 @@ public class PaymentSubscriptionService {
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void payWithEfi(Long storeId, PlanType plan, EfiGateway.EfiPayer payer, String paymentToken) {
+        payWithEfi(storeId, plan, payer, paymentToken, null);
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void payWithEfi(Long storeId, PlanType plan, EfiGateway.EfiPayer payer, String paymentToken, String couponCode) {
         if (plan == null || !plan.isBillable()) throw new IllegalArgumentException("Selecione um plano pago.");
         if (payer == null || !validPayer(payer) || paymentToken == null || !paymentToken.matches("[a-zA-Z0-9]{20,120}")) {
             throw new IllegalArgumentException("Confira os dados do pagador e do cartão.");
@@ -154,6 +170,11 @@ public class PaymentSubscriptionService {
                 throw new IllegalStateException("Existe uma assinatura pendente no provedor anterior. Contate o suporte antes de tentar outro pagamento.");
             }
             local = reconcile(storeId);
+        }
+        if (local != null && local.isWinbackRestorePending()) {
+            restoreWinbackAmount(local);
+            if (local.isWinbackRestorePending())
+                throw new PaymentGatewayException("A assinatura anterior precisa ser conciliada antes de uma nova cobrança.");
         }
         if (local != null && local.isAccessActive()) throw new IllegalArgumentException("A loja já possui uma assinatura ativa.");
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
@@ -185,14 +206,22 @@ public class PaymentSubscriptionService {
             local.setStoreId(storeId);
         }
         String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
+        var quote = winbackDiscounts == null
+                ? new WinbackDiscountService.Quote(null, efi.amount(plan), efi.amount(plan))
+                : winbackDiscounts.reserve(store, plan, couponCode, reference);
+        if (winbackDiscounts == null && hasText(couponCode)) throw new IllegalArgumentException("Cupom indisponível.");
+        local.applyWinbackCoupon(quote.code(), quote.discounted() ? quote.regularAmount() : null,
+                quote.discounted() ? quote.firstAmount() : null);
         local.setProvider(PaymentProviderType.EFI);
+        local.setProviderEnvironment(efi.environment());
         local.setProviderSubscriptionId(null);
         local.setProviderCheckoutId(null);
+        local.setProviderPriceId(efi.planId(plan));
         local.setExternalReference(reference);
         local.setPayerEmail(payer.email());
         local.setPlan(plan);
         local.setCurrency("BRL");
-        local.setAmountValue(efi.amount(plan));
+        local.setAmountValue(quote.firstAmount());
         local.setStatus(PaymentSubscriptionStatus.PENDING);
         local.setPendingStartedAt(Instant.now());
         local.setProviderStatus("new");
@@ -202,10 +231,13 @@ public class PaymentSubscriptionService {
         local.setLastError(null);
         subscriptions.saveAndFlush(local);
         try {
-            String id = efi.createSubscription(plan, reference,
-                    nuvemshopProperties.appBaseUrl() + "/prod/webhooks/efi3");
+            String notificationUrl = nuvemshopProperties.appBaseUrl() + "/prod/webhooks/efi3";
+            String id = quote.discounted() ? efi.createSubscription(plan, reference, notificationUrl, quote.firstAmount())
+                    : efi.createSubscription(plan, reference, notificationUrl);
             local.setProviderSubscriptionId(id);
-            local.setProviderCheckoutId(efi.planId(plan));
+            // The plan is shared across stores; checkout IDs have a unique database constraint.
+            local.setProviderPriceId(efi.planId(plan));
+            if (winbackDiscounts != null) winbackDiscounts.bindSubscription(local);
             subscriptions.saveAndFlush(local);
             var paid = efi.pay(id, payer, paymentToken);
             var charge = paid == null ? null : paid.path("charge");
@@ -216,10 +248,15 @@ public class PaymentSubscriptionService {
             if (hasText(chargeId)) {
                 local.setLastPaymentId(chargeId);
                 local.setLastPaymentStatus(chargeStatus);
+                if (winbackDiscounts != null) winbackDiscounts.firstPayment(local, chargeId);
                 subscriptions.saveAndFlush(local);
             }
             GatewayInvoice invoice = hasText(chargeId) && hasText(chargeStatus)
                     ? new GatewayInvoice(chargeId, id, chargeId, chargeStatus) : null;
+            if (winbackDiscounts != null) {
+                winbackDiscounts.confirm(local, invoice);
+                restoreWinbackAmount(local);
+            }
             GatewaySubscription remote;
             try {
                 remote = efi.getSubscription(id);
@@ -281,6 +318,11 @@ public class PaymentSubscriptionService {
         }
         PaymentGateway gateway = router.requireForStore(store);
         PaymentSubscription subscription = subscriptions.findByStoreId(storeId).orElse(null);
+        if (subscription != null && subscription.isWinbackRestorePending()) {
+            restoreWinbackAmount(subscription);
+            if (subscription.isWinbackRestorePending())
+                throw new PaymentGatewayException("A assinatura anterior precisa ser conciliada antes de uma nova cobrança.");
+        }
         if (subscription != null && subscription.isAccessActive()) {
             throw new IllegalArgumentException("A loja ja possui uma assinatura ativa.");
         }
@@ -340,6 +382,7 @@ public class PaymentSubscriptionService {
             attempt.setExpiresAt(Instant.now().plus(paddle.checkoutTokenMinutes(), ChronoUnit.MINUTES));
             attempts.saveAndFlush(attempt);
         }
+        subscription.applyWinbackCoupon(null, null, null);
         subscription.setProvider(gateway.provider());
         subscription.setPayerEmail(null);
         subscription.setProviderSubscriptionId(null);
@@ -639,7 +682,12 @@ public class PaymentSubscriptionService {
     ) {
         validateRemote(local, remote);
         local.setProviderSubscriptionId(remote.id());
-        if (hasText(remote.checkoutResourceId()) && !hasText(local.getProviderCheckoutId())) local.setProviderCheckoutId(remote.checkoutResourceId());
+        if (local.getProvider() == PaymentProviderType.EFI && hasText(remote.checkoutResourceId())) {
+            local.setProviderPriceId(remote.checkoutResourceId());
+            local.setProviderCheckoutId(null);
+        } else if (hasText(remote.checkoutResourceId()) && !hasText(local.getProviderCheckoutId())) {
+            local.setProviderCheckoutId(remote.checkoutResourceId());
+        }
         if (hasText(remote.customerId())) local.setProviderCustomerId(remote.customerId());
         if (hasText(remote.priceId())) local.setProviderPriceId(remote.priceId());
         if (remote.currentPeriodStart() != null) local.setCurrentPeriodStart(remote.currentPeriodStart());
@@ -652,6 +700,10 @@ public class PaymentSubscriptionService {
         if (invoice != null) {
             local.setLastPaymentId(invoice.paymentId());
             local.setLastPaymentStatus(invoice.paymentStatus());
+            if (winbackDiscounts != null) {
+                winbackDiscounts.confirm(local, invoice);
+                restoreWinbackAmount(local);
+            }
         }
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
@@ -725,10 +777,28 @@ public class PaymentSubscriptionService {
                 && !Objects.equals(local.getExternalReference(), remote.externalReference())) {
             throw new IllegalArgumentException("Referencia externa da assinatura divergente.");
         }
+        boolean restoringFullPrice = local.isWinbackRestorePending() && local.getWinbackCouponCode() != null
+                && local.getWinbackRegularAmount() != null
+                && local.getWinbackRegularAmount().compareTo(remote.amount()) == 0;
         if (!local.getCurrency().equalsIgnoreCase(remote.currency())
-                || local.getAmountValue().compareTo(remote.amount()) != 0) {
+                || (local.getAmountValue().compareTo(remote.amount()) != 0 && !restoringFullPrice)) {
             throw new IllegalArgumentException("Valor ou moeda da assinatura divergente.");
         }
+    }
+
+    private void restoreWinbackAmount(PaymentSubscription local) {
+        if (!local.isWinbackRestorePending()) return;
+        try {
+            winbackDiscounts.restore(local);
+        } catch (RuntimeException ex) {
+            // The first charge can already be accepted; keep the durable restoration task.
+            LOGGER.warn("winback.discount.restore_deferred type={}", ex.getClass().getSimpleName());
+        }
+    }
+
+    public WinbackDiscountService.Quote efiQuote(Store store, PlanType plan) {
+        return winbackDiscounts == null ? new WinbackDiscountService.Quote(null, efi.amount(plan), efi.amount(plan))
+                : winbackDiscounts.quote(store, plan);
     }
 
     private void activate(PaymentSubscription local, Store store, String source) {

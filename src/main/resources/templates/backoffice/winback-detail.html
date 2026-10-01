@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Detalhes da reconquista</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head>
+<body><main class="shell">
+    <section class="page-header"><div><p class="eyebrow">Backoffice</p><h1>Detalhes da reconquista</h1>
+        <p th:text="${detail.store != null ? detail.store.storeName : detail.campaign.storeId}"></p></div>
+        <a class="button" th:href="@{/backoffice/winback}">Voltar</a></section>
+    <section class="panel"><h2>Campanha</h2>
+        <p>Desinstalação: <span th:text="${#temporals.format(detail.campaign.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+        <p>Reinstalação: <span th:text="${detail.campaign.reinstalledAt != null ? #temporals.format(detail.campaign.reinstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo') : 'Ainda não registrada'}"></span></p>
+        <p>Motivo: <span th:text="${detail.campaign.reasonLabel}"></span></p>
+        <p th:if="${detail.campaign.response != null}" th:text="${detail.campaign.response}"></p>
+        <p th:if="${detail.campaign.optedOutAt != null}">Novas comunicações interrompidas.</p>
+        <p>Histórico anterior: <span th:text="${detail.campaign.paidBeforeDeparture ? 'Já teve pagamento confirmado; incentivo sujeito a análise' : 'Sem pagamento confirmado no histórico retido'}"></span></p>
+        <p th:if="${detail.campaign.convertedAt != null}">Pagamento com cupom confirmado em
+            <span th:text="${#temporals.format(detail.campaign.convertedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span>.</p>
+        <div th:if="${detail.coupon != null}"><h3>Cupom</h3><p th:text="${detail.coupon.code}"></p>
+            <p th:text="${detail.coupon.statusLabel}"></p><p>Validade:
+                <span th:text="${#temporals.format(detail.coupon.expiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+            <p th:if="${detail.coupon.checkoutAt != null}">Aplicado no checkout:
+                <span th:text="${#temporals.format(detail.coupon.checkoutAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+            <p th:if="${detail.coupon.firstAmount != null}">Primeira mensalidade: <span th:text="${detail.coupon.firstAmount}"></span> BRL.
+                Recorrência: <span th:text="${detail.coupon.regularAmount}"></span> BRL.</p>
+            <p th:if="${detail.coupon.subscriptionId != null}" th:text="${detail.coupon.recurrenceStoppedAt != null ? 'Recorrência encerrada' : (detail.coupon.priceRestoredAt != null ? 'Valor integral das próximas mensalidades confirmado' : 'Restauração do valor integral pendente de confirmação do pagamento ou do provedor')}"></p></div>
+        <p th:if="${detail.coupon == null}" class="muted">Nenhum cupom emitido.</p>
+        <form th:if="${detail.campaign.reason == 'MISSING_FEATURE'}" method="post"
+                th:action="@{/backoffice/winback/{id}/feature-status(id=${detail.campaign.id})}">
+            <label for="feature-status">Solicitação de funcionalidade</label><select id="feature-status" name="status">
+                <option th:each="s : ${ {'NOVA','EM_ANALISE','PLANEJADA','ENTREGUE','NAO_PREVISTA'} }"
+                    th:value="${s}" th:text="${s}" th:selected="${s == detail.campaign.featureStatus}"></option>
+            </select><button class="button" type="submit">Atualizar</button>
+            <p class="muted">Ao marcar como entregue, o aviso fica preparado para envio, respeitando as preferências de comunicação.</p>
+        </form>
+    </section>
+    <section class="panel"><h2>E-mails</h2><p th:if="${#lists.isEmpty(detail.emails)}">Nenhum envio registrado.</p>
+        <table class="table" th:if="${!#lists.isEmpty(detail.emails)}"><thead><tr><th>Etapa</th><th>Estado</th><th>Enviado</th></tr></thead>
+            <tbody><tr th:each="mail : ${detail.emails}"><td th:text="${mail.stepLabel}"></td><td th:text="${mail.statusLabel}"></td>
+                <td th:text="${mail.sentAt != null ? #temporals.format(mail.sentAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo') : 'Sem confirmação'}"></td></tr></tbody></table>
+    </section>
+    <section class="panel"><h2>Linha do tempo do e-mail</h2><p class="muted">Aberturas e cliques podem ser gerados por mecanismos automáticos dos provedores.</p>
+        <p th:if="${#lists.isEmpty(detail.events)}">Nenhum evento recebido.</p>
+        <table class="table" th:if="${!#lists.isEmpty(detail.events)}"><thead><tr><th>Data</th><th>Evento</th><th>Destino</th></tr></thead>
+            <tbody><tr th:each="event : ${detail.events}"><td th:text="${#temporals.format(event.occurredAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></td>
+                <td th:text="${event.label}"></td><td th:text="${event.target ?: '—'}"></td></tr></tbody></table>
+    </section>
+    <section class="panel"><h2>Chamados da loja</h2><p class="muted">Chamados associados à loja; a presença aqui não indica que foram abertos pelo e-mail de reconquista.</p>
+        <p th:if="${#lists.isEmpty(tickets)}">Nenhum chamado.</p><p th:each="ticket : ${tickets}">
+            <a th:href="@{/backoffice/support/{id}(id=${ticket.id})}" th:text="${'#' + ticket.id + ' — ' + ticket.subject}"></a>
+            <span th:text="${ticket.status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}"></span></p>
+    </section>
+</main></body></html>

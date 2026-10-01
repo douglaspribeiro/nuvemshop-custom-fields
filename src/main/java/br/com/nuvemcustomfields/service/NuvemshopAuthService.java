@@ -36,6 +36,7 @@ public class NuvemshopAuthService {
     private final ScriptInstallService scriptInstallService;
     private final IntegrationLogService integrationLogService;
     private final RestClient restClient;
+    private final WinbackTrackingService winbackTracking;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public NuvemshopAuthService(
@@ -45,7 +46,8 @@ public class NuvemshopAuthService {
             WebhookRegistrationService webhookRegistrationService,
             ScriptInstallService scriptInstallService,
             IntegrationLogService integrationLogService,
-            RestClient.Builder builder
+            RestClient.Builder builder,
+            WinbackTrackingService winbackTracking
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -54,6 +56,7 @@ public class NuvemshopAuthService {
         this.scriptInstallService = scriptInstallService;
         this.integrationLogService = integrationLogService;
         this.restClient = builder.defaultHeader("User-Agent", properties.userAgent()).build();
+        this.winbackTracking = winbackTracking;
     }
 
     public String buildAuthorizationUrl(String state) {
@@ -110,7 +113,7 @@ public class NuvemshopAuthService {
         }
 
         LOGGER.info("nuvemshop.oauth.exchange.done store_id={} scope={}", token.storeId(), token.scope());
-        Store store = storeRepository.findByStoreId(token.storeId()).orElseGet(Store::new);
+        Store store = storeRepository.findByStoreIdForUpdate(token.storeId()).orElseGet(Store::new);
         store.setStoreId(token.storeId());
         store.setAccessToken(token.accessToken());
         store.setScope(token.scope());
@@ -127,7 +130,9 @@ public class NuvemshopAuthService {
         }
         logStoreLocale(store, profileLoaded);
         store.setUninstalledAt(null);
+        store.setDepartureCounted(false);
         Store saved = storeRepository.save(store);
+        winbackTracking.reinstalled(saved.getStoreId());
         webhookRegistrationService.registerRequiredWebhooks(saved);
         try {
             scriptInstallService.installPersonalizerScript(saved);

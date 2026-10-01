@@ -3,4 +3,5 @@ target/
 *.iml
 .env
 logs/*.log
+__pycache__/
 *.gz

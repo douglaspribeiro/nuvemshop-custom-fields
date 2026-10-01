@@ -14,6 +14,7 @@ import java.util.List;
 
 public interface PaymentNotificationOutboxRepository extends JpaRepository<PaymentNotificationOutbox, Long> {
     boolean existsByProviderAndPaymentId(PaymentProviderType provider, String paymentId);
+    boolean existsByStoreId(Long storeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select notification from PaymentNotificationOutbox notification "

@@ -53,13 +53,28 @@ public class EfiGateway implements PaymentGateway {
     }
 
     public String createSubscription(PlanType plan, String reference, String notificationUrl) {
-        long cents = amount(plan).movePointRight(2).longValueExact();
+        return createSubscription(plan, reference, notificationUrl, amount(plan));
+    }
+
+    public String createSubscription(PlanType plan, String reference, String notificationUrl, BigDecimal initialAmount) {
+        long cents = initialAmount.movePointRight(2).longValueExact();
+        if (cents <= 0) throw new IllegalArgumentException("Valor da assinatura inválido.");
         Map<String, Object> body = Map.of(
                 "items", List.of(Map.of("name", "Campos Personalizados - " + plan.getDisplayName(),
                         "value", cents, "amount", 1)),
                 "metadata", Map.of("custom_id", reference, "notification_url", notificationUrl));
-        JsonNode data = call("createSubscription", Map.of("id", properties.planId(plan)), body).path("data");
+        JsonNode data = call("createSubscription", Map.of("id", planId(plan)), body).path("data");
         return required(data, "subscription_id");
+    }
+
+    public void updateRecurringAmount(String subscriptionId, PlanType plan, BigDecimal regularAmount) {
+        long cents = regularAmount.movePointRight(2).longValueExact();
+        if (cents <= 0) throw new IllegalArgumentException("Valor recorrente inválido.");
+        JsonNode data = call("updateSubscription", Map.of("id", subscriptionId), Map.of("items", List.of(
+                Map.of("name", "Campos Personalizados - " + plan.getDisplayName(), "value", cents, "amount", 1))))
+                .path("data");
+        if (!subscriptionId.equals(required(data, "subscription_id")) || data.path("value").asLong(-1) != cents)
+            throw new PaymentGatewayException("A Efí não confirmou a restauração do valor recorrente.");
     }
 
     public JsonNode pay(String subscriptionId, EfiPayer payer, String paymentToken) {
@@ -94,6 +109,16 @@ public class EfiGateway implements PaymentGateway {
             if (!chargeId.isBlank() && !"null".equals(chargeId)) {
                 return Optional.of(getCharge(subscriptionId, chargeId));
             }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<GatewayInvoice> getFirstInvoice(String subscriptionId) {
+        JsonNode history = detail(subscriptionId).path("history");
+        if (!history.isArray()) return Optional.empty();
+        for (JsonNode entry : history) {
+            String chargeId = entry.path("charge_id").asText("");
+            if (!chargeId.isBlank() && !"null".equals(chargeId)) return Optional.of(getCharge(subscriptionId, chargeId));
         }
         return Optional.empty();
     }

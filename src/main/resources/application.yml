@@ -142,6 +142,12 @@ payments:
     checkout-token-minutes: ${PADDLE_CHECKOUT_TOKEN_MINUTES:30}
 
 notifications:
+  ses-events:
+    enabled: ${AWS_SES_EVENTS_ENABLED:false}
+    queue-url: ${AWS_SES_EVENTS_QUEUE_URL:}
+    region: ${AWS_SES_EVENTS_REGION:us-east-1}
+    configuration-set: ${AWS_SES_CONFIGURATION_SET:}
+    poll-delay-ms: 10000
   ses:
     # AWS SES SMTP com STARTTLS. Configuração incompleta desativa o envio.
     host: ${AWS_SES_SMTP_HOST:}
@@ -152,6 +158,16 @@ notifications:
   discord:
     payment-webhook-url: ${DISCORD_PAYMENT_WEBHOOK_URL:}
     support-webhook-url: ${DISCORD_SUPPORT_WEBHOOK_URL:${DISCORD_PAYMENT_WEBHOOK_URL:}}
+
+winback:
+  discount:
+    enabled: ${WINBACK_DISCOUNT_ENABLED:false}
+    allow-production: ${WINBACK_DISCOUNT_ALLOW_PRODUCTION:false}
+  enabled: ${WINBACK_ENABLED:false}
+  mail-enabled: ${WINBACK_MAIL_ENABLED:false}
+  queue-url: ${WINBACK_SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao}
+  region: ${WINBACK_AWS_REGION:us-east-2}
+  publish-delay-ms: 30000
 
 logging:
   file:

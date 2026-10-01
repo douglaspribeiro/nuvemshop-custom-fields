@@ -9,17 +9,23 @@ import br.com.nuvemcustomfields.repository.StoreSalesSyncRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -57,6 +63,20 @@ public class BackofficeSalesService {
                 orderSales.personalizedItemsFromSyncedActiveStores(), synced, active.size());
     }
 
+    public Page<SalesRow> salesPage(int page) {
+        Page<StoreOrderSales> sales = orderSales.findSales(PageRequest.of(Math.max(0, page - 1), 50));
+        Set<Long> storeIds = sales.stream().map(sale -> sale.getId().getStoreId()).collect(Collectors.toSet());
+        Map<Long, Store> storesById = stores.findByStoreIdIn(storeIds).stream()
+                .collect(Collectors.toMap(Store::getStoreId, Function.identity()));
+        return sales.map(sale -> {
+            Store store = storesById.get(sale.getId().getStoreId());
+            return new SalesRow(sale.getId().getStoreId(),
+                    store == null || store.getStoreName() == null ? "Loja sem nome" : store.getStoreName(),
+                    store == null ? null : store.getStoreCurrency(), sale.getId().getOrderId(),
+                    sale.getCreatedAt(), sale.getTotalItems(), sale.getPersonalizedItems(), sale.getProductValue());
+        });
+    }
+
     @Scheduled(initialDelayString = "${analytics.sales-sync-initial-delay-ms:120000}",
                fixedDelayString = "${analytics.sales-sync-delay-ms:120000}")
     public void scheduleSync() {
@@ -88,7 +108,7 @@ public class BackofficeSalesService {
                     if (state == null) return true;
                     if (state.getLastError() != null && state.getLastAttemptAt() != null
                             && state.getLastAttemptAt().isAfter(now.minus(Duration.ofHours(1)))) return false;
-                    return !state.isComplete() || state.getLastSyncedAt() == null
+                    return !state.isComplete() || !state.isProductValueBackfilled() || state.getLastSyncedAt() == null
                             || state.getLastSyncedAt().isBefore(now.minus(Duration.ofHours(24)));
                 })
                 .min(Comparator.comparing(candidate -> {
@@ -103,7 +123,7 @@ public class BackofficeSalesService {
         state.setLastError(null);
         syncStates.save(state);
         try {
-            if (state.isComplete() && state.getLastSyncedAt() != null) {
+            if (state.isComplete() && state.isProductValueBackfilled() && state.getLastSyncedAt() != null) {
                 importRange(store, null, null, state.getLastSyncedAt().minus(Duration.ofHours(1)), now);
             } else {
                 for (int year = 2000; LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant().isBefore(now); year += 5) {
@@ -113,6 +133,7 @@ public class BackofficeSalesService {
                 }
             }
             state.setComplete(true);
+            state.setProductValueBackfilled(true);
             state.setLastSyncedAt(now);
             syncStates.save(state);
             LOGGER.info("backoffice.sales_sync.done store_id={}", store.getStoreId());
@@ -162,18 +183,37 @@ public class BackofficeSalesService {
     static StoreOrderSales summarizeOrder(Long storeId, JsonNode order) {
         long total = 0;
         long personalized = 0;
+        BigDecimal productValue = BigDecimal.ZERO;
+        boolean missingPrice = false;
         if ("paid".equalsIgnoreCase(order.path("payment_status").asText())
                 && !"cancelled".equalsIgnoreCase(order.path("status").asText())) {
             for (JsonNode product : order.path("products")) {
                 long quantity = Math.max(0, product.path("quantity").asLong());
                 total += quantity;
+                if (quantity > 0) {
+                    try {
+                        BigDecimal price = new BigDecimal(product.path("price").asText());
+                        productValue = productValue.add(price.multiply(BigDecimal.valueOf(quantity)));
+                    } catch (NumberFormatException ex) {
+                        missingPrice = true;
+                    }
+                }
                 JsonNode properties = product.path("properties");
                 if ((properties.isArray() || properties.isObject()) && !properties.isEmpty()) {
                     personalized += quantity;
                 }
             }
         }
-        return new StoreOrderSales(storeId, order.path("id").asLong(), total, personalized);
+        Instant createdAt = null;
+        try {
+            if (order.path("created_at").isTextual()) {
+                createdAt = OffsetDateTime.parse(order.path("created_at").asText()).toInstant();
+            }
+        } catch (RuntimeException ex) {
+            LOGGER.debug("backoffice.sales_sync.invalid_created_at order_id={}", order.path("id").asLong());
+        }
+        return new StoreOrderSales(storeId, order.path("id").asLong(), total, personalized, createdAt,
+                missingPrice ? null : productValue.setScale(2, RoundingMode.HALF_UP));
     }
 
     private static boolean hasReadOrdersScope(String scopes) {
@@ -188,5 +228,9 @@ public class BackofficeSalesService {
         public boolean complete() {
             return syncedStores == activeStores;
         }
+    }
+
+    public record SalesRow(Long storeId, String storeName, String currency, Long orderId,
+                           Instant createdAt, long totalItems, long personalizedItems, BigDecimal productValue) {
     }
 }

@@ -10,6 +10,7 @@ import java.time.Instant;
 import br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus;
 
 public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubscription, Long> {
+    List<PaymentSubscription> findByWinbackRestorePendingTrue();
     Optional<PaymentSubscription> findByStoreId(Long storeId);
     List<PaymentSubscription> findByStoreIdIn(Collection<Long> storeIds);
     Optional<PaymentSubscription> findByProviderSubscriptionId(String providerSubscriptionId);

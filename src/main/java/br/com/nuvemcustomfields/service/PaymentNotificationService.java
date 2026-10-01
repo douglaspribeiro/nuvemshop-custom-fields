@@ -36,7 +36,9 @@ public class PaymentNotificationService {
         notification.setStoreId(subscription.getStoreId());
         notification.setPlan(subscription.getPlan());
         notification.setCurrency(subscription.getCurrency());
-        notification.setAmountValue(subscription.getAmountValue());
+        notification.setAmountValue(subscription.getWinbackInitialAmount() != null
+                && invoice.paymentId().equals(subscription.getWinbackFirstPaymentId())
+                ? subscription.getWinbackInitialAmount() : subscription.getAmountValue());
         outbox.save(notification);
     }
 

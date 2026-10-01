@@ -52,7 +52,7 @@ class NuvemshopAuthServiceTest {
                 mock(WebhookRegistrationService.class),
                 mock(ScriptInstallService.class),
                 mock(IntegrationLogService.class),
-                RestClient.builder()
+                RestClient.builder(), mock(WinbackTrackingService.class)
         );
 
         assertThat(service.buildAuthorizationUrl("csrf-code"))
@@ -83,7 +83,7 @@ class NuvemshopAuthServiceTest {
         IntegrationLogService integrationLogService = mock(IntegrationLogService.class);
         NuvemshopApiClient apiClient = mock(NuvemshopApiClient.class);
 
-        when(storeRepository.findByStoreId(987L)).thenReturn(Optional.empty());
+        when(storeRepository.findByStoreIdForUpdate(987L)).thenReturn(Optional.empty());
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(apiClient.getStoreProfile(any(Store.class))).thenReturn(new StoreProfile("Loja Teste", "MX", "MXN", "owner@example.com"));
 
@@ -110,7 +110,7 @@ class NuvemshopAuthServiceTest {
                 webhookRegistrationService,
                 scriptInstallService,
                 integrationLogService,
-                builder
+                builder, mock(WinbackTrackingService.class)
         );
 
         Store store = service.exchangeCodeAndUpsertStore("oauth-code");
@@ -157,7 +157,7 @@ class NuvemshopAuthServiceTest {
         IntegrationLogService integrationLogService = mock(IntegrationLogService.class);
         NuvemshopApiClient apiClient = mock(NuvemshopApiClient.class);
 
-        when(storeRepository.findByStoreId(987L)).thenReturn(Optional.empty());
+        when(storeRepository.findByStoreIdForUpdate(987L)).thenReturn(Optional.empty());
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(apiClient.getStoreProfile(any(Store.class))).thenThrow(new IllegalStateException("503"));
 
@@ -175,7 +175,7 @@ class NuvemshopAuthServiceTest {
                 mock(WebhookRegistrationService.class),
                 mock(ScriptInstallService.class),
                 integrationLogService,
-                builder
+                builder, mock(WinbackTrackingService.class)
         );
 
         service.exchangeCodeAndUpsertStore("oauth-code");

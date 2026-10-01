@@ -42,7 +42,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                     "request.error request_id={} method={} uri={} status={} duration_ms={} message={}",
                     requestId,
                     request.getMethod(),
-                    request.getRequestURI(),
+                    safeUri(request),
                     response.getStatus(),
                     durationMs,
                     ex.getMessage(),
@@ -67,7 +67,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 "request.start request_id={} method={} uri={} remote_addr={} session_id={} store_id={} backoffice_authenticated={}",
                 requestId,
                 request.getMethod(),
-                request.getRequestURI(),
+                safeUri(request),
                 request.getRemoteAddr(),
                 session == null ? null : session.getId(),
                 storeId,
@@ -81,7 +81,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 "request.end request_id={} method={} uri={} status={} duration_ms={}",
                 requestId,
                 request.getMethod(),
-                request.getRequestURI(),
+                safeUri(request),
                 response.getStatus(),
                 durationMs
         );
@@ -97,6 +97,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             }
         }
         return UUID.randomUUID().toString();
+    }
+
+    private String safeUri(HttpServletRequest request) {
+        return request.getRequestURI().startsWith("/winback/") ? "/winback/[link]" : request.getRequestURI();
     }
 
     private void restorePreviousRequestId(String previousRequestId) {

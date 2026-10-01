@@ -1,0 +1,22 @@
+<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow"><title>Campos Personalizados</title>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head><body><main class="shell"><section class="panel">
+<h1>Como podemos melhorar? / ¿Cómo podemos mejorar?</h1>
+<p>Conte o motivo da saída. / Cuéntanos por qué desinstalaste la aplicación.</p>
+<div th:if="${coupon != null}"><h2>Seu cupom de retorno</h2><p><strong th:text="${coupon.code}"></strong></p>
+<p>50% apenas na primeira mensalidade, após reinstalar na mesma loja. As mensalidades seguintes terão o valor integral.
+Válido até <span th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
+<a class="button primary" th:href="@{/install}">Reinstalar e escolher um plano</a></div>
+<p th:if="${coupon == null}"><a class="button" th:href="@{/install}">Voltar ao aplicativo / Volver a la aplicación</a></p>
+<p th:if="${expired}">O prazo para responder terminou. / El plazo para responder terminó.</p>
+<form th:if="${!expired}" method="post" th:action="@{/winback/{id}(id=${emailId})}"><label for="reason">Motivo</label>
+<select id="reason" name="reason" required><option value="">Selecione / Selecciona</option>
+<option value="PRICE">Preço / Precio</option><option value="CONFIGURATION">Dificuldade de configuração / Dificultad de configuración</option>
+<option value="NO_LONGER_NEEDED">Não preciso mais / Ya no lo necesito</option>
+<option value="MISSING_FEATURE">Faltou uma funcionalidade / Falta una funcionalidad</option><option value="OTHER">Outro / Otro</option></select>
+<label for="response">O que podemos fazer por você? / ¿Cómo podemos ayudarte?</label><textarea id="response" name="response" maxlength="2000" rows="5"></textarea>
+<button class="button primary" type="submit">Enviar</button></form>
+<form method="post" th:action="@{/winback/{id}(id=${emailId})}"><input type="hidden" name="optOut" value="true">
+<button class="button" type="submit">Não receber novas mensagens / Dejar de recibir mensajes</button></form>
+</section></main></body></html>

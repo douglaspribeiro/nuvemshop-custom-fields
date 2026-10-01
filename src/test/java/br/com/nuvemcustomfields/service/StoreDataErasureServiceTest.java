@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 class StoreDataErasureServiceTest {
 
     private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-    private final StoreDataErasureService service = new StoreDataErasureService(jdbcTemplate);
+    private final StoreDataErasureService service = new StoreDataErasureService(jdbcTemplate, mock(StoreDepartureService.class));
 
     @Test
     void deletesEveryStoreOwnedRecordInForeignKeySafeOrder() {

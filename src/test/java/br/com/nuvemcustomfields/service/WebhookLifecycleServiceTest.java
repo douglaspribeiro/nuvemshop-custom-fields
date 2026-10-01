@@ -26,7 +26,9 @@ class WebhookLifecycleServiceTest {
             mock(PersonalizationRuleRepository.class),
             integrationLogService,
             billingService,
-            paymentSubscriptionService
+            paymentSubscriptionService,
+            mock(StoreDepartureService.class),
+            mock(WinbackQueueService.class)
     );
 
     @Test

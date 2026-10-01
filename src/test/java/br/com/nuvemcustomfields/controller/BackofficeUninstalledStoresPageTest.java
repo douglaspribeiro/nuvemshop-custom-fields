@@ -16,6 +16,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import br.com.nuvemcustomfields.service.StoreDataErasureService;
 
 import java.time.Instant;
 
@@ -44,6 +46,12 @@ class BackofficeUninstalledStoresPageTest {
 
     @Autowired
     private StoreSalesSyncRepository syncStates;
+
+    @Autowired
+    private StoreDataErasureService erasure;
+
+    @Autowired
+    private br.com.nuvemcustomfields.service.StoreDepartureService departures;
 
     private MockHttpSession session;
 
@@ -92,6 +100,21 @@ class BackofficeUninstalledStoresPageTest {
     void menuRequiresBackofficeSession() throws Exception {
         mockMvc.perform(get("/backoffice/stores").param("status", "uninstalled"))
                 .andExpect(redirectedUrl("/backoffice/login"));
+    }
+
+    @Test
+    @Transactional
+    void historicalTotalSurvivesErasureAndDoesNotExposeDeletedStore() throws Exception {
+        long before = departures.summary().getTotal();
+        erasure.erase(ACTIVE_ID);
+        mockMvc.perform(get("/backoffice/stores").param("status", "uninstalled").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("saídas no histórico")))
+                .andExpect(content().string(containsString("totais anônimos")))
+                .andExpect(content().string(not(containsString("Teste Menu Ativa"))))
+                .andExpect(result -> org.assertj.core.api.Assertions.assertThat(
+                        ((br.com.nuvemcustomfields.service.StoreDepartureService.Summary)
+                                result.getModelAndView().getModel().get("departures")).getTotal()).isEqualTo(before + 1));
     }
 
     @Test

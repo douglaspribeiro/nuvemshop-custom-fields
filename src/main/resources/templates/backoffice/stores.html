@@ -14,14 +14,16 @@
         <div>
             <p class="eyebrow">Backoffice</p>
             <h1 th:text="${uninstalledOnly} ? 'Lojas desinstaladas' : 'Diretório de lojas'">Diretório de lojas</h1>
-            <p th:if="${uninstalledOnly}"><span th:text="${inactiveInstallations}">0</span> lojas desinstaladas, ordenadas pela data de desinstalação.</p>
+            <p th:if="${uninstalledOnly}"><span th:text="${departures.total}">0</span> saídas no histórico · <span th:text="${departures.today}">0</span> hoje.</p>
+            <p th:if="${uninstalledOnly}"><span th:text="${departures.uninstalls}">0</span> desinstalações registradas · <span th:text="${departures.erasures}">0</span> exclusões recebidas antes da desinstalação.</p>
+            <p th:if="${uninstalledOnly}"><span th:text="${inactiveInstallations}">0</span> cadastros desinstalados disponíveis abaixo. Lojas com dados excluídos permanecem apenas nos totais anônimos.</p>
             <p th:unless="${uninstalledOnly}"><span th:text="${activeInstallations}">0</span> instalações ativas de <span th:text="${installations}">0</span> no total.</p>
         </div>
         <nav class="backoffice-nav">
             <a th:href="@{/backoffice}">Visão geral</a>
             <a th:classappend="${!uninstalledOnly} ? 'is-current'" th:href="@{/backoffice/stores}">Lojas</a>
             <a th:classappend="${uninstalledOnly} ? 'is-current'" th:href="@{/backoffice/stores(status='uninstalled')}">Desinstaladas</a>
-            <a th:href="@{/backoffice/payments}">Pagamentos</a>
+            <a th:href="@{/backoffice/winback}">Reconquistas</a><a th:href="@{/backoffice/payments}">Pagamentos</a>
             <a th:href="@{/backoffice/support}">Suporte</a>
         </nav>
     </header>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reconquistas</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head>
+<body><main class="shell">
+    <section class="page-header"><div><p class="eyebrow">Backoffice</p><h1>Reconquistas</h1>
+        <p class="muted">Desinstalações e acompanhamento dos e-mails. Abertura e clique são sinais detectados, sem confirmação de leitura humana.</p>
+        <p class="muted">Após exclusão dos dados, a loja sai desta lista e permanece apenas nos totais anônimos.</p>
+    </div><a class="button" th:href="@{/backoffice}">Voltar</a></section>
+    <section class="panel"><form method="get" th:action="@{/backoffice/winback}">
+        <label for="q">Loja ou ID</label><input id="q" name="q" th:value="${query}">
+        <label for="from">Desde</label><input id="from" name="from" type="date" th:value="${fromDate}">
+        <label for="to">Até</label><input id="to" name="to" type="date" th:value="${toDate}">
+        <label for="stage">Atividade</label><select id="stage" name="stage">
+            <option value="" th:selected="${stage == ''}">Todas</option>
+            <option value="open" th:selected="${stage == 'open'}">Abertura detectada</option>
+            <option value="click" th:selected="${stage == 'click'}">Clique detectado</option>
+            <option value="responded" th:selected="${stage == 'responded'}">Respondeu</option>
+            <option value="reinstalled" th:selected="${stage == 'reinstalled'}">Reinstalou</option>
+            <option value="coupon-used" th:selected="${stage == 'coupon-used'}">Usou cupom em pagamento confirmado</option>
+            <option value="converted" th:selected="${stage == 'converted'}">Pagamento com cupom confirmado</option>
+            <option value="paid-before" th:selected="${stage == 'paid-before'}">Já pagou anteriormente</option>
+            <option value="feature-request" th:selected="${stage == 'feature-request'}">Solicitou funcionalidade</option>
+            <option value="delivery-failed" th:selected="${stage == 'delivery-failed'}">Falha de entrega</option>
+            <option value="opted-out" th:selected="${stage == 'opted-out'}">Comunicação interrompida</option>
+        </select><button class="button" type="submit">Filtrar</button>
+    </form><p><span th:text="${page.totalElements}">0</span> desinstalações encontradas</p>
+        <p class="empty" th:if="${#lists.isEmpty(rows)}">Nenhuma desinstalação com cadastro disponível.</p>
+        <div style="overflow-x:auto" th:if="${!#lists.isEmpty(rows)}"><table class="table"><thead><tr>
+            <th>Loja</th><th>Desinstalação</th><th>E-mails</th><th>Entregue</th><th>Abertura detectada</th>
+            <th>Clique detectado</th><th>Reinstalou</th><th>Cupom</th><th>Comunicação</th><th></th>
+        </tr></thead><tbody><tr th:each="row : ${rows}">
+            <td><span th:text="${row.store != null ? row.store.storeName : row.campaign.storeId}">Loja</span>
+                <small th:text="${row.campaign.storeId}">ID</small></td>
+            <td th:text="${#temporals.format(row.campaign.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}">Data</td>
+            <td th:text="${#lists.size(row.emails)}">0</td>
+            <td th:text="${row.has('Delivery') ? 'Sim' : 'Sem evento'}"></td>
+            <td th:text="${row.has('Open') ? 'Sim' : 'Sem evento'}"></td>
+            <td th:text="${row.has('Click') ? 'Sim' : 'Sem evento'}"></td>
+            <td th:text="${row.campaign.reinstalledAt != null ? 'Sim' : 'Não'}"></td>
+            <td th:text="${row.coupon != null ? row.coupon.statusLabel : 'Sem cupom'}"></td>
+            <td th:text="${row.campaign.optedOutAt != null ? 'Interrompida' : 'Disponível'}"></td>
+            <td><a class="button small" th:href="@{/backoffice/winback/{id}(id=${row.campaign.id})}">Detalhes</a></td>
+        </tr></tbody></table></div>
+        <div class="actions"><a class="button" th:if="${page.hasPrevious()}" th:href="@{/backoffice/winback(page=${page.number - 1},q=${query},stage=${stage},from=${fromDate},to=${toDate})}">Anterior</a>
+            <a class="button" th:if="${page.hasNext()}" th:href="@{/backoffice/winback(page=${page.number + 1},q=${query},stage=${stage},from=${fromDate},to=${toDate})}">Próxima</a></div>
+    </section>
+</main></body></html>

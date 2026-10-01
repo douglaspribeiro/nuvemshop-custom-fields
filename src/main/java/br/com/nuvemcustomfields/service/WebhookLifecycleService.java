@@ -22,19 +22,25 @@ public class WebhookLifecycleService {
     private final IntegrationLogService integrationLogService;
     private final NuvemshopBillingService billingService;
     private final PaymentSubscriptionService paymentSubscriptionService;
+    private final StoreDepartureService departures;
+    private final WinbackQueueService winback;
 
     public WebhookLifecycleService(
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
             IntegrationLogService integrationLogService,
             NuvemshopBillingService billingService,
-            PaymentSubscriptionService paymentSubscriptionService
+            PaymentSubscriptionService paymentSubscriptionService,
+            StoreDepartureService departures,
+            WinbackQueueService winback
     ) {
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.integrationLogService = integrationLogService;
         this.billingService = billingService;
         this.paymentSubscriptionService = paymentSubscriptionService;
+        this.departures = departures;
+        this.winback = winback;
     }
 
     @Transactional
@@ -58,9 +64,10 @@ public class WebhookLifecycleService {
             LOGGER.warn("webhook.app_uninstalled.ignored reason=missing_store_id");
             return;
         }
+        departures.record(storeId, false);
         paymentSubscriptionService.revokeAccessAfterUninstall(storeId);
         storeRepository.findByStoreId(storeId).ifPresent(store -> {
-            store.setUninstalledAt(Instant.now());
+            if (store.getUninstalledAt() == null) store.setUninstalledAt(Instant.now());
             store.setAccessToken(null);
             store.setScope(null);
             store.setSubscriptionId(null);
@@ -74,6 +81,7 @@ public class WebhookLifecycleService {
             store.setBillingLastSyncedAt(Instant.now());
             store.setBillingLastError(null);
             storeRepository.save(store);
+            winback.enqueue(store);
             integrationLogService.info(
                     storeId,
                     "webhook.app_uninstalled",

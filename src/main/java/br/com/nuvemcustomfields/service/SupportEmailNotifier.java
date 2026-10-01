@@ -3,11 +3,9 @@ package br.com.nuvemcustomfields.service;
 import br.com.nuvemcustomfields.properties.SesProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -19,33 +17,11 @@ public class SupportEmailNotifier {
     private final JavaMailSender sender;
     private final String baseUrl;
 
-    @Autowired
-    public SupportEmailNotifier(SesProperties properties, @Value("${nuvemshop.app-base-url}") String baseUrl) {
-        this(properties, baseUrl, createSender(properties));
-    }
-
-    SupportEmailNotifier(SesProperties properties, String baseUrl, JavaMailSender sender) {
+    public SupportEmailNotifier(SesProperties properties,
+            @Value("${nuvemshop.app-base-url}") String baseUrl, JavaMailSender sender) {
         this.properties = properties;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.sender = sender;
-    }
-
-    private static JavaMailSender createSender(SesProperties properties) {
-        JavaMailSenderImpl sender = new JavaMailSenderImpl();
-        sender.setHost(properties.host());
-        sender.setPort(properties.port());
-        sender.setUsername(properties.username());
-        sender.setPassword(properties.password());
-        sender.setDefaultEncoding("UTF-8");
-        var smtp = sender.getJavaMailProperties();
-        smtp.setProperty("mail.smtp.auth", "true");
-        smtp.setProperty("mail.smtp.starttls.enable", "true");
-        smtp.setProperty("mail.smtp.starttls.required", "true");
-        smtp.setProperty("mail.smtp.ssl.checkserveridentity", "true");
-        smtp.setProperty("mail.smtp.connectiontimeout", "5000");
-        smtp.setProperty("mail.smtp.timeout", "10000");
-        smtp.setProperty("mail.smtp.writetimeout", "10000");
-        return sender;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

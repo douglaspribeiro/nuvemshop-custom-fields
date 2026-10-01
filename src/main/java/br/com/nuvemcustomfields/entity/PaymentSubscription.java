@@ -83,6 +83,13 @@ public class PaymentSubscription {
     private String lastError;
     @Column(name = "technical_error", length = 500)
     private String technicalError;
+    @Column(name = "winback_coupon_code", length = 36) private String winbackCouponCode;
+    @Column(name = "winback_regular_amount", precision = 12, scale = 2) private BigDecimal winbackRegularAmount;
+    @Column(name = "winback_initial_amount", precision = 12, scale = 2) private BigDecimal winbackInitialAmount;
+    @Column(name = "winback_first_payment_id", length = 120) private String winbackFirstPaymentId;
+    @Column(name = "winback_restore_pending", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean winbackRestorePending;
     @Version
     private long version;
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -91,6 +98,18 @@ public class PaymentSubscription {
     private Instant updatedAt = Instant.now();
 
     public Long getId() { return id; }
+    public String getWinbackCouponCode() { return winbackCouponCode; }
+    public BigDecimal getWinbackRegularAmount() { return winbackRegularAmount; }
+    public BigDecimal getWinbackInitialAmount() { return winbackInitialAmount; }
+    public String getWinbackFirstPaymentId() { return winbackFirstPaymentId; }
+    public boolean isWinbackRestorePending() { return winbackRestorePending; }
+    public void applyWinbackCoupon(String code, BigDecimal regular, BigDecimal first) {
+        winbackCouponCode = code; winbackRegularAmount = regular; winbackInitialAmount = first;
+        winbackFirstPaymentId = null; winbackRestorePending = code != null;
+    }
+    public void setWinbackFirstPaymentId(String id) { winbackFirstPaymentId = id; }
+    public void winbackRestored() { winbackRestorePending = false; setAmountValue(winbackRegularAmount); }
+    public void winbackRecurrenceStopped() { winbackRestorePending = false; }
     public Long getStoreId() { return storeId; }
     public void setStoreId(Long value) { storeId = value; }
     public PaymentProviderType getProvider() { return provider; }
