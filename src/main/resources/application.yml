@@ -167,6 +167,8 @@ winback:
   mail-enabled: ${WINBACK_MAIL_ENABLED:false}
   queue-url: ${WINBACK_SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao}
   region: ${WINBACK_AWS_REGION:us-east-2}
+  # Durante os testes, somente estas lojas entram na reconquista. Use 0 para todas.
+  allowed-store-ids: ${WINBACK_ALLOWED_STORE_IDS:8289259,8126986,7800303,7799255,5538394}
   publish-delay-ms: 30000
 
 logging:

@@ -103,7 +103,13 @@ O dia dos cadastros importados pela V30 usa o fuso da sessão SQL.
 WINBACK_SQS_QUEUE_URL=https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao
 WINBACK_AWS_REGION=us-east-2
 WINBACK_ENABLED=false
+WINBACK_ALLOWED_STORE_IDS=8289259,8126986,7800303,7799255,5538394
 ```
+
+Durante os testes, somente essas lojas entram na fila e na campanha de
+reconquista. As demais continuam registrando a desinstalação e gerando log, mas
+não criam campanha nem outbox. Para liberar todas as lojas, defina
+`WINBACK_ALLOWED_STORE_IDS=0` (valor vazio também desativa o filtro).
 
 A região da fila é independente da região SMTP do SES.
 

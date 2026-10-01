@@ -40,6 +40,10 @@ public class WinbackQueueService {
     @Transactional
     public void enqueue(Store store) {
         if (store.getUninstalledAt() == null) return;
+        if (!properties.accepts(store.getStoreId())) {
+            LOGGER.info("winback.uninstall_received store_id={} flow=disabled_by_allow_list", store.getStoreId());
+            return;
+        }
         tracking.record(store);
         if (!properties.enabled()) return;
         // Chamado sob o lock da loja, na mesma transação do webhook.
