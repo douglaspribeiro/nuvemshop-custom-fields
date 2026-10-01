@@ -3,6 +3,23 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.16.0] - 2026-10-01
+
+### Features
+
+- restrict winback flow during testing (`b3fcff2`)
+- preserve uninstall history and add winback flow (`add0e0f`)
+
+### Correções
+
+- keep winback properties bindable (`bed3bca`)
+- enforce winback allow list before publishing (`07b9256`)
+- treat empty order ranges as no sales (`c431cdc`)
+
+### Documentação
+
+- document SQS SES and Patagonia release steps (`6251864`)
+
 ## [1.15.1] - 2026-09-29
 
 ### Correções
