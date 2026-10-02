@@ -3,6 +3,17 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.18.0] - 2026-10-01
+
+### Features
+
+- show sales values and sort configured products (`7892efa`)
+
+### Correções
+
+- align backoffice sales count with personalized orders (`ac50d27`)
+- limit sales report to personalized products (`c70b5f7`)
+
 ## [1.17.2] - 2026-10-01
 
 ### Correções
