@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.17.1] - 2026-10-01
+
+### Correções
+
+- preserve applied Flyway migrations (`8526960`)
+
 ## [1.17.0] - 2026-10-01
 
 ### Features
