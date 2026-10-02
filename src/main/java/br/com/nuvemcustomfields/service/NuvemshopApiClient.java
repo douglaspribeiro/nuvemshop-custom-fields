@@ -63,6 +63,7 @@ public class NuvemshopApiClient {
                 .path("/v1/{storeId}/products")
                 .queryParam("page", safePage)
                 .queryParam("per_page", safePerPage)
+                .queryParam("sort_by", "name-ascending")
                 .queryParam("fields", "id,name")
                 .queryParamIfPresent("q", Optional.ofNullable(safeQuery))
                 .encode()

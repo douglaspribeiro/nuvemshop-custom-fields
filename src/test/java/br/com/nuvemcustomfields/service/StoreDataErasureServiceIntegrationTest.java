@@ -67,8 +67,8 @@ class StoreDataErasureServiceIntegrationTest {
                 STORE_ID, 999L, 3L, 2L
         );
         jdbcTemplate.update(
-                "insert into store_sales_sync (store_id, complete, product_value_backfilled, last_synced_at) values (?, ?, ?, ?)",
-                STORE_ID, true, false, now
+                "insert into store_sales_sync (store_id, complete, personalized_value_backfilled, last_synced_at) values (?, ?, ?, ?)",
+                STORE_ID, true, true, now
         );
 
         service.erase(STORE_ID);

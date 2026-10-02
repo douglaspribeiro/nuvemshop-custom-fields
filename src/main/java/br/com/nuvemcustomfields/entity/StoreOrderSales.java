@@ -24,22 +24,31 @@ public class StoreOrderSales {
     private Instant createdAt;
 
     @Column(precision = 20, scale = 2)
-    private BigDecimal productValue;
+    private BigDecimal personalizedProductValue;
+
+    @Column(length = 3)
+    private String currency;
 
     protected StoreOrderSales() {
     }
 
     public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems) {
-        this(storeId, orderId, totalItems, personalizedItems, null, null);
+        this(storeId, orderId, totalItems, personalizedItems, null, null, null);
     }
 
     public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems,
-                           Instant createdAt, BigDecimal productValue) {
+                           Instant createdAt, BigDecimal personalizedProductValue) {
+        this(storeId, orderId, totalItems, personalizedItems, createdAt, personalizedProductValue, null);
+    }
+
+    public StoreOrderSales(Long storeId, Long orderId, long totalItems, long personalizedItems,
+                           Instant createdAt, BigDecimal personalizedProductValue, String currency) {
         this.id = new StoreOrderSalesId(storeId, orderId);
         this.totalItems = totalItems;
         this.personalizedItems = personalizedItems;
         this.createdAt = createdAt;
-        this.productValue = productValue;
+        this.personalizedProductValue = personalizedProductValue;
+        this.currency = currency;
     }
 
     public StoreOrderSalesId getId() {
@@ -58,7 +67,11 @@ public class StoreOrderSales {
         return createdAt;
     }
 
-    public BigDecimal getProductValue() {
-        return productValue;
+    public BigDecimal getPersonalizedProductValue() {
+        return personalizedProductValue;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 }

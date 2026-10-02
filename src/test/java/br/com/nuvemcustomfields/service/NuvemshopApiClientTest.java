@@ -91,7 +91,7 @@ class NuvemshopApiClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         NuvemshopApiClient client = new NuvemshopApiClient(properties(), builder);
 
-        server.expect(requestTo("https://api.example.com/v1/123/products?page=2&per_page=50&fields=id,name"))
+        server.expect(requestTo("https://api.example.com/v1/123/products?page=2&per_page=50&sort_by=name-ascending&fields=id,name"))
                 .andExpect(method(GET))
                 .andExpect(header("Authentication", "bearer store-token"))
                 .andRespond(withSuccess("""
@@ -120,7 +120,7 @@ class NuvemshopApiClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         NuvemshopApiClient client = new NuvemshopApiClient(properties(), builder);
 
-        server.expect(requestTo("https://api.example.com/v1/123/products?page=1&per_page=50&fields=id,name&q=caneca%20azul"))
+        server.expect(requestTo("https://api.example.com/v1/123/products?page=1&per_page=50&sort_by=name-ascending&fields=id,name&q=caneca%20azul"))
                 .andExpect(method(GET))
                 .andRespond(withSuccess("[{ \"id\": 10, \"name\": \"Caneca azul\" }]", MediaType.APPLICATION_JSON)
                         .headers(headers("Link", "<https://api.example.com/v1/123/products?page=1>; rel=\"first\"")));
