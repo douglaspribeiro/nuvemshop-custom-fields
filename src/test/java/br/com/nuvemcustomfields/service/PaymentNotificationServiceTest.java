@@ -4,6 +4,8 @@ import br.com.nuvemcustomfields.entity.PaymentNotificationOutbox;
 import br.com.nuvemcustomfields.entity.PaymentProviderType;
 import br.com.nuvemcustomfields.entity.PaymentSubscription;
 import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.entity.UpgradeAdjustment;
 import br.com.nuvemcustomfields.payment.GatewayInvoice;
 import br.com.nuvemcustomfields.repository.PaymentNotificationOutboxRepository;
 import org.junit.jupiter.api.Test;
@@ -78,5 +80,20 @@ class PaymentNotificationServiceTest {
 
         assertThat(notification.getDeliveredAt()).isNotNull();
         verify(discord).send(notification);
+    }
+    @Test
+    void queuesOnlyCompletedUpgradeAndSnapshotsItsActualAdjustmentAmount() {
+        var store=new Store();store.setStoreId(7744400L);store.setStoreName("Dark Hunter");
+        var a=new UpgradeAdjustment();a.setSourcePlan(PlanType.PREMIUM_PLUS);a.setTargetPlan(PlanType.PREMIUM_ULTRA);
+        a.setDueAmount(new BigDecimal("8.97"));a.setRegularAmount(new BigDecimal("59.90"));a.setCouponCode("DARK");a.setSubscriptionId("123");
+        service.enqueueUpgrade(store,a);verifyNoInteractions(outbox);
+        a.setState(UpgradeAdjustment.State.COMPLETED);service.enqueueUpgrade(store,a);
+        var saved=ArgumentCaptor.forClass(PaymentNotificationOutbox.class);verify(outbox).save(saved.capture());
+        assertThat(saved.getValue().getStoreName()).isEqualTo("Dark Hunter");
+        assertThat(saved.getValue().getAmountValue()).isEqualByComparingTo("8.97");
+        assertThat(saved.getValue().getRecurringAmount()).isEqualByComparingTo("59.90");
+        assertThat(saved.getValue().getEventType()).isEqualTo(PaymentNotificationOutbox.EventType.UPGRADE);
+        when(outbox.existsByProviderAndPaymentId(PaymentProviderType.EFI,a.reference())).thenReturn(true);
+        service.enqueueUpgrade(store,a);verify(outbox,times(1)).save(any());
     }
 }

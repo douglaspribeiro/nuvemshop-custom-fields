@@ -32,6 +32,7 @@ class EfiUpgradeServiceTest {
     @Autowired StoreRepository stores;
     @Autowired UpgradeCouponRepository coupons;
     @Autowired UpgradeCouponUseRepository couponUses;
+    @Autowired PaymentNotificationOutboxRepository notificationOutbox;
     @Autowired ObjectMapper json;
     @Autowired MockMvc mvc;
     @MockitoSpyBean EfiGateway efi;
@@ -45,6 +46,7 @@ class EfiUpgradeServiceTest {
     final String token="testpaymenttoken12345678901234567890";
 
     @BeforeEach void setup(){
+        notificationOutbox.deleteAll(notificationOutbox.findAll().stream().filter(n->storeId.equals(n.getStoreId())).toList());
         couponUses.deleteAll(couponUses.findTop100ByOrderByCreatedAtDesc().stream().filter(u->u.getStoreId().equals(storeId)).toList());
         var coupon=coupons.findByCode("BRINDE").orElseGet(UpgradeCoupon::new);
         coupon.setCode("BRINDE");coupon.setDiscountPercent(new BigDecimal("30"));coupon.setEnvironment(PaymentEnvironment.PRODUCTION);
@@ -97,6 +99,16 @@ class EfiUpgradeServiceTest {
         verify(efi,times(1)).createUpgradeCharge(eq(quote.getDueAmount()),eq(quote.reference()),any(),contains("Ajuste proporcional"));
         verify(efi,times(1)).payUpgradeCharge(eq("778899"),eq(payer),eq(token));
         verify(efi,never()).cancel(any());verify(efi,never()).createSubscription(any(),any(),any());
+        var events=notificationOutbox.findAll().stream().filter(n->quote.reference().equals(n.getPaymentId())).toList();
+        assertThat(events).hasSize(1);
+        var notification=events.getFirst();
+        assertThat(notification.getEventType()).isEqualTo(PaymentNotificationOutbox.EventType.UPGRADE);
+        assertThat(notification.getSourcePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(notification.getPlan()).isEqualTo(PlanType.PREMIUM_ULTRA);
+        assertThat(notification.getAmountValue()).isEqualByComparingTo(quote.getDueAmount());
+        assertThat(notification.getCouponCode()).isEqualTo("BRINDE");
+        assertThat(notification.getSubscriptionId()).isEqualTo("991122");
+        assertThat(notification.getChargeId()).isEqualTo("778899");
         assertThat(coupons.findByCode("BRINDE").orElseThrow().getUsedCount()).isEqualTo(1);
         assertThat(couponUses.findByAdjustmentId(quote.getId()).orElseThrow().getStatus()).isEqualTo(UpgradeCouponUse.Status.USED);
     }
@@ -106,6 +118,7 @@ class EfiUpgradeServiceTest {
         assertThat(stores.findByStoreId(storeId).orElseThrow().getPlan()).isEqualTo(PlanType.PREMIUM_PLUS);
         assertThat(subscriptions.findByStoreId(storeId).orElseThrow().isUpgradePaymentPending()).isFalse();
         assertThat(coupons.findByCode("BRINDE").orElseThrow().getUsedCount()).isZero();
+        assertThat(notificationOutbox.existsByProviderAndPaymentId(PaymentProviderType.EFI,quote.reference())).isFalse();
         service.quote(storeId,PlanType.PREMIUM_ULTRA,null);
         verify(efi,never()).changeSubscriptionPlan(any(),anyString(),anyString(),any());
     }
@@ -158,6 +171,7 @@ class EfiUpgradeServiceTest {
     }
     @Test void backofficeShowsFinancialAttemptsButRequiresAuthentication() throws Exception{
         createQuote(null);paymentStatus.set("waiting");service.pay(storeId,quote.getId(),payer,token);
+        assertThat(notificationOutbox.existsByProviderAndPaymentId(PaymentProviderType.EFI,quote.reference())).isFalse();
         mvc.perform(get("/backoffice/payments/upgrades")).andExpect(redirectedUrl("/backoffice/login"));
         var operator=new MockHttpSession();operator.setAttribute(br.com.nuvemcustomfields.config.BackofficeSessionInterceptor.SESSION_KEY,true);
         String html=mvc.perform(get("/backoffice/payments/upgrades").session(operator)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
@@ -232,6 +246,7 @@ class EfiUpgradeServiceTest {
         service.pay(storeId,quote.getId(),null,null);
         assertThat(adjustments.findById(quote.getId()).orElseThrow().getState()).isEqualTo(UpgradeAdjustment.State.COMPLETED);
         assertThat(couponUses.findByAdjustmentId(quote.getId()).orElseThrow().getStatus()).isEqualTo(UpgradeCouponUse.Status.USED);
+        assertThat(notificationOutbox.existsByProviderAndPaymentId(PaymentProviderType.EFI,quote.reference())).isTrue();
         verify(efi,never()).createUpgradeCharge(any(),any(),any(),any());
         verify(efi,never()).payUpgradeCharge(any(),any(),any());
     }

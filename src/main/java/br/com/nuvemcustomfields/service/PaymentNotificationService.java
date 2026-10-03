@@ -2,6 +2,9 @@ package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.PaymentNotificationOutbox;
 import br.com.nuvemcustomfields.entity.PaymentSubscription;
+import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.entity.UpgradeAdjustment;
+import br.com.nuvemcustomfields.entity.PaymentProviderType;
 import br.com.nuvemcustomfields.payment.GatewayInvoice;
 import br.com.nuvemcustomfields.repository.PaymentNotificationOutboxRepository;
 import org.slf4j.Logger;
@@ -39,6 +42,29 @@ public class PaymentNotificationService {
         notification.setAmountValue(subscription.getWinbackInitialAmount() != null
                 && invoice.paymentId().equals(subscription.getWinbackFirstPaymentId())
                 ? subscription.getWinbackInitialAmount() : subscription.getAmountValue());
+        outbox.save(notification);
+    }
+
+    /** Evento independente da mensalidade: valor do ajuste e confirmação do novo plano. */
+    @Transactional
+    public void enqueueUpgrade(Store store, UpgradeAdjustment adjustment) {
+        if (adjustment.getState()!=UpgradeAdjustment.State.COMPLETED) return;
+        String eventId=adjustment.reference();
+        if (outbox.existsByProviderAndPaymentId(PaymentProviderType.EFI,eventId)) return;
+        var notification=new PaymentNotificationOutbox();
+        notification.setEventType(PaymentNotificationOutbox.EventType.UPGRADE);
+        notification.setProvider(PaymentProviderType.EFI);
+        notification.setPaymentId(eventId);
+        notification.setStoreId(store.getStoreId());
+        notification.setStoreName(store.getStoreName());
+        notification.setSourcePlan(adjustment.getSourcePlan());
+        notification.setPlan(adjustment.getTargetPlan());
+        notification.setCurrency("BRL");
+        notification.setAmountValue(adjustment.getDueAmount());
+        notification.setRecurringAmount(adjustment.getRegularAmount());
+        notification.setCouponCode(adjustment.getCouponCode());
+        notification.setSubscriptionId(adjustment.getSubscriptionId());
+        notification.setChargeId(adjustment.getChargeId());
         outbox.save(notification);
     }
 

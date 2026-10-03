@@ -17,6 +17,15 @@ import java.time.Instant;
 @Table(name = "payment_notification_outbox", uniqueConstraints =
         @UniqueConstraint(name = "uk_payment_notification_provider_payment", columnNames = {"provider", "payment_id"}))
 public class PaymentNotificationOutbox {
+    public enum EventType { PAYMENT, UPGRADE }
+    @Enumerated(EnumType.STRING) @Column(nullable=false,length=20)
+    private EventType eventType=EventType.PAYMENT;
+    @Column(length=255) private String storeName;
+    @Enumerated(EnumType.STRING) @Column(length=30) private PlanType sourcePlan;
+    @Column(length=36) private String couponCode;
+    @Column(length=120) private String subscriptionId;
+    @Column(length=120) private String chargeId;
+    @Column(precision=12,scale=2) private BigDecimal recurringAmount;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -44,6 +53,13 @@ public class PaymentNotificationOutbox {
     private Instant createdAt = Instant.now();
 
     public Long getId() { return id; }
+    public EventType getEventType(){return eventType;} public void setEventType(EventType v){eventType=v;}
+    public String getStoreName(){return storeName;} public void setStoreName(String v){storeName=v;}
+    public PlanType getSourcePlan(){return sourcePlan;} public void setSourcePlan(PlanType v){sourcePlan=v;}
+    public String getCouponCode(){return couponCode;} public void setCouponCode(String v){couponCode=v;}
+    public String getSubscriptionId(){return subscriptionId;} public void setSubscriptionId(String v){subscriptionId=v;}
+    public String getChargeId(){return chargeId;} public void setChargeId(String v){chargeId=v;}
+    public BigDecimal getRecurringAmount(){return recurringAmount;} public void setRecurringAmount(BigDecimal v){recurringAmount=v;}
     public PaymentProviderType getProvider() { return provider; }
     public void setProvider(PaymentProviderType value) { provider = value; }
     public String getPaymentId() { return paymentId; }

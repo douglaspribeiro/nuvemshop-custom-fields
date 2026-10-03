@@ -22,6 +22,12 @@ class UltraMigrationTest {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V41__feature_requests.sql"));
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V42__store_erasure_requests.sql"));
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V43__upgrade_coupon_catalog.sql"));
+            sql.execute("CREATE TABLE payment_notification_outbox (id BIGINT)");
+            sql.execute("INSERT INTO payment_notification_outbox VALUES (1)");
+            ScriptUtils.executeSqlScript(connection,new ClassPathResource("db/migration/V44__upgrade_discord_notifications.sql"));
+            try(var result=sql.executeQuery("SELECT event_type FROM payment_notification_outbox")){
+                assertThat(result.next()).isTrue();assertThat(result.getString(1)).isEqualTo("PAYMENT");
+            }
             try(var result=sql.executeQuery("SELECT COUNT(*) FROM upgrade_coupons")){
                 assertThat(result.next()).isTrue();assertThat(result.getInt(1)).isZero();
             }

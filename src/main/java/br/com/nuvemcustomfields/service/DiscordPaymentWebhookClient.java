@@ -30,19 +30,38 @@ public class DiscordPaymentWebhookClient {
 
     public void send(PaymentNotificationOutbox notification) {
         if (!configured()) throw new IllegalStateException("Webhook de pagamentos do Discord não configurado.");
+        client.post().uri(URI.create(webhookUri + "?wait=true")).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("content", content(notification), "allowed_mentions", Map.of("parse", new String[0])))
+                .retrieve().toBodilessEntity();
+    }
+
+    String content(PaymentNotificationOutbox notification) {
         String amount = "BRL".equals(notification.getCurrency())
                 ? NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(notification.getAmountValue())
                 : notification.getCurrency() + " " + notification.getAmountValue();
         String plan = notification.getPlan().getDisplayName();
-        String content = "✅ Pagamento confirmado\n"
+        if(notification.getEventType()==PaymentNotificationOutbox.EventType.UPGRADE){
+            String storeName=notification.getStoreName()==null || notification.getStoreName().isBlank()
+                    ? "Loja" : notification.getStoreName().replaceAll("[\\r\\n]", " ");
+            String monthly="BRL".equals(notification.getCurrency())
+                    ? NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(notification.getRecurringAmount())
+                    : notification.getCurrency()+" "+notification.getRecurringAmount();
+            return "🚀 Upgrade concluído\n"
+                    + "Loja: "+storeName+" · ID "+notification.getStoreId()+"\n"
+                    + "Planos: "+notification.getSourcePlan().getDisplayName()+" → "+plan+"\n"
+                    + "Ajuste único: "+amount+"\n"
+                    + "Cupom: "+(notification.getCouponCode()==null?"Não utilizado":notification.getCouponCode())+"\n"
+                    + "Nova mensalidade: "+monthly+"\n"
+                    + "Gateway: "+notification.getProvider()+"\n"
+                    + "Assinatura mantida: "+notification.getSubscriptionId()+"\n"
+                    + "Cobrança do ajuste: "+(notification.getChargeId()==null?"Sem cobrança (ajuste zerado)":notification.getChargeId());
+        }
+        return "✅ Pagamento confirmado\n"
                 + "Loja: " + notification.getStoreId() + "\n"
                 + "Plano: " + plan + "\n"
                 + "Valor: " + amount + "\n"
                 + "Gateway: " + notification.getProvider() + "\n"
                 + "Cobrança: " + notification.getPaymentId();
-        client.post().uri(URI.create(webhookUri + "?wait=true")).contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("content", content, "allowed_mentions", Map.of("parse", new String[0])))
-                .retrieve().toBodilessEntity();
     }
 
     private static URI validWebhookUri(String value) {

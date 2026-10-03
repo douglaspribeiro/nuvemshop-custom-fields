@@ -63,6 +63,18 @@ confirma a utilização. Cupons com histórico são apenas desativados ao exclui
 A exclusão definitiva da loja elimina suas utilizações identificáveis, mantendo o
 total agregado do cupom para não reabrir vagas de descontos já concedidos.
 
+### Aviso de upgrade no Discord
+
+Após confirmar o ajuste e a mudança da assinatura na Efí, o app grava **Upgrade concluído**
+na fila persistente do canal de pagamentos (`DISCORD_PAYMENT_WEBHOOK_URL`). A mensagem
+mostra nome/ID da loja, planos anterior/novo, ajuste efetivo, cupom, nova mensalidade e
+ID da mesma assinatura. Ajustes zerados também são notificados. Pendências, recusas e
+operações em revisão não disparam aviso de conclusão.
+O evento é identificado pelo ajuste, evitando novas entradas em reenvios de callbacks.
+O envio assíncrono usa as retentativas existentes (intervalo inicial de 30 segundos).
+Falhas no Discord não bloqueiam o upgrade. A migration V44 preserva as notificações
+de pagamentos anteriores; não há disparo retroativo de upgrades já concluídos.
+
 O ajuste cria uma transação avulsa (`createCharge` + `definePayMethod`), não uma
 assinatura. O cartão é tokenizado novamente apenas para esse ajuste e não substitui
 o cartão recorrente. Não são salvos números, CVV nem token. Depois de confirmar o

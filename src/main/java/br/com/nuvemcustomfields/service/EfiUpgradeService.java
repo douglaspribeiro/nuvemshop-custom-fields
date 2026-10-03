@@ -27,14 +27,16 @@ public class EfiUpgradeService {
     private final NuvemshopProperties properties;
     private final TransactionTemplate tx;
     private final UpgradeCouponService coupons;
+    private final PaymentNotificationService notifications;
     private static final ZoneId BR = ZoneId.of("America/Sao_Paulo");
 
     public EfiUpgradeService(UpgradeAdjustmentRepository adjustments, PaymentSubscriptionRepository subscriptions,
             StoreRepository stores, PaymentSubscriptionService payments, EfiGateway efi, NuvemshopProperties properties,
-            PlatformTransactionManager manager, UpgradeCouponService coupons) {
+            PlatformTransactionManager manager, UpgradeCouponService coupons, PaymentNotificationService notifications) {
         this.adjustments=adjustments; this.subscriptions=subscriptions; this.stores=stores;
         this.payments=payments; this.efi=efi; this.properties=properties;
         this.tx=new TransactionTemplate(manager); this.coupons=coupons;
+        this.notifications=notifications;
     }
 
     public UpgradeAdjustment quote(Long storeId, PlanType target, String coupon) {
@@ -224,7 +226,7 @@ public class EfiUpgradeService {
         }
         final UpgradeAdjustment snapshot=a;
         tx.executeWithoutResult(status->{
-            lockStore(snapshot.getStoreId()); var current=locked(id,snapshot.getStoreId());
+            Store store=lockStore(snapshot.getStoreId()); var current=locked(id,snapshot.getStoreId());
             if(current.getState()==State.COMPLETED || current.getState()==State.REVIEW) return;
             PaymentSubscription sub=payments.reconcile(snapshot.getStoreId());
             if(sub.getPlan()!=snapshot.getTargetPlan() || sub.getAmountValue().compareTo(snapshot.getRegularAmount())!=0
@@ -233,6 +235,7 @@ public class EfiUpgradeService {
             sub.setUpgradePaymentPending(false);subscriptions.save(sub);
             coupons.complete(current);
             current.setState(State.COMPLETED);current.setCompletedAt(Instant.now());current.setMessage(null);adjustments.save(current);
+            notifications.enqueueUpgrade(store,current);
         });
     }
 
