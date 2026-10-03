@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cupons de upgrade · Backoffice</title>
-<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}"></head>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
 <body class="backoffice-page"><main class="backoffice-shell">
 <header class="backoffice-header"><div><p class="eyebrow">Backoffice · Pagamentos</p><h1>Cupons de upgrade</h1><p>Controle os descontos e as utilizações possíveis, sem alterar a mensalidade recorrente.</p></div><nav class="backoffice-nav"><a th:href="@{/backoffice/payments}">Voltar aos pagamentos</a></nav></header>
 <div class="flash" th:if="${message}" th:text="${message}" role="status"></div><div class="flash error" th:if="${error}" th:text="${error}" role="alert"></div>
@@ -12,7 +13,7 @@
 <article class="coupon-entry" th:each="c:${coupons}"><div class="backoffice-section-head"><h3 th:text="${c.code}"></h3><span th:text="${c.usedCount}+' utilizações reservadas/confirmadas'"></span></div>
 <form th:replace="~{backoffice/upgrade-coupons :: couponForm(c=${c})}"></form>
 <form class="coupon-delete" method="post" th:action="@{/backoffice/payments/coupons/{id}/delete(id=${c.id})}"><input type="hidden" name="actionToken" th:value="${couponActionToken}"><label><input type="checkbox" name="confirmation" value="EXCLUIR" required> Confirmo excluir ou desativar este cupom</label><button class="button" type="submit">Excluir cupom</button></form></article></section>
-<section class="backoffice-directory"><h2>Últimas 100 utilizações</h2><div class="coupon-table"><table class="table"><thead><tr><th>Cupom</th><th>Loja (ID)</th><th>Ajuste</th><th>Status</th><th>Data</th></tr></thead><tbody><tr th:each="u:${couponUses}"><td th:text="${couponNames.get(u.couponId)==null?u.couponId:couponNames.get(u.couponId)}"></td><td th:text="${u.storeId}"></td><td><code th:text="${u.adjustmentId}"></code></td><td th:text="${u.status.name()=='RESERVED'?'Reservado':(u.status.name()=='USED'?'Confirmado':'Liberado')}"></td><td th:text="${#temporals.format(u.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></td></tr></tbody></table></div><p th:if="${#lists.isEmpty(couponUses)}">Nenhuma utilização registrada.</p></section>
+<section class="backoffice-directory"><h2>Últimas 100 utilizações</h2><div class="coupon-table"><table class="table"><thead><tr><th>Cupom</th><th>Loja (ID)</th><th>Ajuste</th><th>Status</th><th>Data</th></tr></thead><tbody><tr th:each="u:${couponUses}"><td th:text="${couponNames.get(u.couponId)==null?u.couponId:couponNames.get(u.couponId)}"></td><td th:text="${u.storeId}"></td><td><code th:text="${u.adjustmentId}"></code></td><td th:text="${u.status.name()=='RESERVED'?'Reservado':(u.status.name()=='USED'?'Confirmado':'Liberado')}"></td><td th:attr="data-local-time=${u.createdAt}" data-time-format="datetime" th:text="${#temporals.format(u.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></td></tr></tbody></table></div><p th:if="${#lists.isEmpty(couponUses)}">Nenhuma utilização registrada.</p></section>
 </main>
 <template><form th:fragment="couponForm(c)" class="coupon-form" method="post" th:action="@{/backoffice/payments/coupons}">
 <input type="hidden" name="actionToken" th:value="${couponActionToken}"><input th:if="${c!=null}" type="hidden" name="id" th:value="${c.id}">
@@ -20,6 +21,7 @@
 <label>Desconto (%)<input name="discountPercent" type="number" min="0.01" max="100" step="0.01" required th:value="${c==null?'':c.discountPercent}"></label>
 <label>Ambiente<select name="environment"><option th:each="e:${environments}" th:value="${e}" th:text="${e}" th:selected="${c!=null and c.environment==e}"></option></select></label>
 <label>Plano de destino<select name="targetPlan"><option th:each="p:${couponPlans}" th:value="${p}" th:text="${p.displayName}" th:selected="${c==null?p.name()=='PREMIUM_ULTRA':c.targetPlan==p}"></option></select></label>
+<p class="muted">As datas de validade deste formulário usam o horário de Brasília (UTC−3).</p>
 <label>Válido a partir de<input name="startsAt" type="datetime-local" th:value="${c==null or c.startsAt==null?'':#temporals.format(c.startsAt,'yyyy-MM-dd','America/Sao_Paulo')+'T'+#temporals.format(c.startsAt,'HH:mm','America/Sao_Paulo')}"></label>
 <label>Válido até<input name="endsAt" type="datetime-local" th:value="${c==null or c.endsAt==null?'':#temporals.format(c.endsAt,'yyyy-MM-dd','America/Sao_Paulo')+'T'+#temporals.format(c.endsAt,'HH:mm','America/Sao_Paulo')}"></label>
 <label>Máximo de utilizações<input name="maxUses" type="number" min="1" placeholder="Ilimitado" th:value="${c==null?'':c.maxUses}"></label>

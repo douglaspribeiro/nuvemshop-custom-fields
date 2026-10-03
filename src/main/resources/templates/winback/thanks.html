@@ -1,10 +1,11 @@
 <!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>Campos Personalizados</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head>
+<title>Campos Personalizados</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
 <body><main class="shell"><section class="panel"><h1 th:text="${optedOut ? 'Comunicações interrompidas / Comunicaciones desactivadas' : 'Obrigado pela resposta / Gracias por tu respuesta'}"></h1>
 <p th:if="${!optedOut}">Sua resposta foi registrada para nossa equipe. / Registramos tu respuesta para nuestro equipo.</p>
 <div th:if="${coupon != null}"><h2>Seu cupom de retorno</h2><p><strong th:text="${coupon.code}"></strong></p>
 <p>50% apenas na primeira mensalidade, após reinstalar na mesma loja. A partir da segunda, o valor integral do plano escolhido.
-Válido até <span th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
+Válido até <span th:attr="data-local-time=${coupon.expiresAt}" data-time-format="date" th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
 <a class="button primary" th:href="@{/install}">Reinstalar e escolher um plano</a></div>
 </section></main></body></html>

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../../static/styles/app.css" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" href="../../static/styles/checkout.css" th:href="@{/styles/checkout.css(v=${assetVersion})}">
     <script defer src="https://cdn.jsdelivr.net/gh/efipay/js-payment-token-efi@3.4.1/dist/payment-token-efi-umd.min.js"></script>
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="payment-page">
 <main class="shell payment-shell">
@@ -85,7 +86,7 @@
                 <div class="payment-summary-line"><span>Plano novo pelo período restante</span><strong th:text="${proratedPrice}"></strong></div>
                 <div class="payment-summary-line" th:if="${upgradeAdjustment.couponCode!=null}"><span th:text="'Cupom '+${upgradeAdjustment.couponCode}+' — '+${upgradeAdjustment.couponPercent.stripTrailingZeros().toPlainString()}+'%'"></span><strong th:text="'− '+${discountPrice}"></strong></div>
                 <div class="payment-summary-line"><span>Crédito do Pro/plano atual</span><strong th:text="'− '+${creditPrice}"></strong></div>
-                <p th:text="'Próxima mensalidade: '+${formattedRegularAmount}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></p>
+                <p th:attr="data-local-time=${upgradeAdjustment.periodEnd},data-time-fallback=${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}" data-time-format="date" th:text="'Próxima mensalidade: '+${formattedRegularAmount}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></p>
                 <p th:if="${upgradeAdjustment.couponCode!=null}">Cupom somente no ajuste deste ciclo, sem desconto nas renovações seguintes.</p>
                 <p>A mensalidade do novo plano substitui a anterior. Não haverá duas assinaturas nem mensalidades simultâneas de Pro e Ultra.</p>
             </th:block>

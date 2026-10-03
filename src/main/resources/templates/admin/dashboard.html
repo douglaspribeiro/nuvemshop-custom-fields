@@ -7,6 +7,7 @@
     <title th:text="#{admin.dashboard.title} + ' - ' + #{common.app.title}">Dashboard</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('orders')}"></th:block>
@@ -49,7 +50,7 @@
         </div>
         <div class="merchant-order-list" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}">
             <article class="merchant-order" th:each="order : ${summary.personalizedOrders}">
-                <div><strong th:text="#{merchant.orders.order(${order.number})}">Pedido #123</strong><small th:text="${order.createdAt}">2026-06-02</small></div>
+                <div><strong th:text="#{merchant.orders.order(${order.number})}">Pedido #123</strong><small th:attr="data-local-time=${order.createdAt}" th:text="${order.createdAt}">2026-06-02</small></div>
                 <div><span th:each="property : ${order.properties}" class="chip" th:text="${property}">Nome: Ana</span></div>
             </article>
         </div>

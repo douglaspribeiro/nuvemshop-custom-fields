@@ -7,6 +7,7 @@
     <title th:text="#{admin.billing.title} + ' - ' + #{common.app.title}">Planos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('billing')}"></th:block>
@@ -65,7 +66,7 @@
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.nextPaymentAt != null}">
                 <span th:if="${paymentSubscription.status.name() != 'CANCELED'}" th:text="#{admin.billing.next}">Próxima cobrança:</span>
                 <span th:if="${paymentSubscription.status.name() == 'CANCELED'}" th:text="#{admin.billing.access.until}">Acesso até:</span>
-                <span th:text="${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">24/10/2026</span>
+                <span th:attr="data-local-time=${paymentSubscription.nextPaymentAt}" data-time-format="date" th:text="${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">24/10/2026</span>
             </p>
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.status.name() == 'CANCELED' and paymentSubscription.accessActive}"
                th:text="#{admin.billing.cancel.access.notice}">A assinatura foi cancelada. Você mantém o acesso até o fim do período pago.</p>

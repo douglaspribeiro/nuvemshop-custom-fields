@@ -1,5 +1,6 @@
 <!doctype html><html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{suggestions.title}">Sugerir uma melhoria</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{suggestions.title}">Sugerir uma melhoria</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
 <body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('suggestions')}"></th:block><main class="shell">
 <section class="page-header"><div><h1 th:text="#{suggestions.title}"></h1><p th:text="#{suggestions.intro}"></p></div><a class="button" th:href="@{/admin}" th:text="#{merchant.nav.overview}">Visão geral</a></section>
 <p class="notice" th:if="${message}" th:text="${message}"></p><p class="notice error" th:if="${error}" th:text="${error}"></p>
@@ -21,7 +22,7 @@
 <aside class="merchant-suggestion-sidebar">
     <section class="panel"><a th:href="@{/support/}" th:text="#{suggestions.support}"></a></section>
     <section class="panel merchant-suggestion-history"><h2 th:text="#{suggestions.history}"></h2><p class="muted" th:if="${#lists.isEmpty(suggestions)}" th:text="#{suggestions.empty}"></p>
-        <article th:each="suggestion:${suggestions}"><h3 th:text="${suggestion.title}"></h3><p class="merchant-suggestion-description" th:text="${suggestion.description}"></p><small th:text="#{suggestions.received}"></small><time th:text="${#temporals.format(suggestion.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time></article>
+        <article th:each="suggestion:${suggestions}"><h3 th:text="${suggestion.title}"></h3><p class="merchant-suggestion-description" th:text="${suggestion.description}"></p><small th:text="#{suggestions.received}"></small><time th:attr="data-local-time=${suggestion.createdAt}" data-time-format="datetime" th:text="${#temporals.format(suggestion.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time></article>
     </section>
 </aside>
 </div>

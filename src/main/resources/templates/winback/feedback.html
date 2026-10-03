@@ -1,12 +1,13 @@
 <!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex,nofollow"><title>Campos Personalizados</title>
-<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head><body><main class="shell"><section class="panel">
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head><body><main class="shell"><section class="panel">
 <h1>Como podemos melhorar? / ¿Cómo podemos mejorar?</h1>
 <p>Conte o motivo da saída. / Cuéntanos por qué desinstalaste la aplicación.</p>
 <div th:if="${coupon != null}"><h2>Seu cupom de retorno</h2><p><strong th:text="${coupon.code}"></strong></p>
 <p>50% apenas na primeira mensalidade, após reinstalar na mesma loja. As mensalidades seguintes terão o valor integral.
-Válido até <span th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
+Válido até <span th:attr="data-local-time=${coupon.expiresAt}" data-time-format="date" th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
 <a class="button primary" th:href="@{/install}">Reinstalar e escolher um plano</a></div>
 <p th:if="${coupon == null}"><a class="button" th:href="@{/install}">Voltar ao aplicativo / Volver a la aplicación</a></p>
 <p th:if="${expired}">O prazo para responder terminou. / El plazo para responder terminó.</p>

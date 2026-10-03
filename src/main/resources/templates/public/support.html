@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{support.title} + ' - ' + #{common.app.name}">Suporte</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body>
 <main class="shell public-page">
@@ -52,7 +53,7 @@
                    th:href="@{/support/tickets/{id}(id=${ticket.id})}">
                     <span>
                         <strong th:text="${ticket.subject}">Assunto</strong>
-                        <small th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</small>
+                        <small th:attr="data-local-time=${ticket.lastMessageAt}" data-time-format="datetime" th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</small>
                     </span>
                     <span class="badge" th:text="${ticket.status.name() == 'OPEN'} ? #{support.ticket.open} : #{support.ticket.closed}">Aberto</span>
                 </a>

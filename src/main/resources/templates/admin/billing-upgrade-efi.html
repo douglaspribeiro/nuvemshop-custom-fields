@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmar upgrade</title>
-<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
 <body class="merchant-page"><main class="shell merchant-upgrade-page">
 <div class="flash error" th:if="${error}" th:text="${error}" role="alert"></div>
 <a class="merchant-cancel-back" th:href="@{/admin/billing}">← Voltar aos planos</a>
@@ -24,7 +25,7 @@
 <div th:if="${upgradeAdjustment.couponCode!=null}" class="is-credit"><dt th:text="'Cupom '+${upgradeAdjustment.couponCode}+' ('+${upgradeAdjustment.couponPercent.stripTrailingZeros().toPlainString()}+'%)'"></dt><dd th:text="'− '+${discountPrice}"></dd></div>
 <div class="is-credit"><dt>Crédito do plano já pago e não utilizado</dt><dd th:text="'− '+${creditPrice}"></dd></div></dl>
 <div class="merchant-upgrade-total"><span>Pagar hoje — ajuste único</span><strong th:text="${duePrice}"></strong><small>Somente para usar o novo plano até a renovação.</small></div>
-<div class="merchant-upgrade-renewal"><strong>Próxima mensalidade</strong><span th:text="${targetPrice}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></span><small>Uma única cobrança recorrente, sem o desconto do cupom.</small></div>
+<div class="merchant-upgrade-renewal"><strong>Próxima mensalidade</strong><span th:attr="data-local-time=${upgradeAdjustment.periodEnd},data-time-fallback=${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}" data-time-format="date" th:text="${targetPrice}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></span><small>Uma única cobrança recorrente, sem o desconto do cupom.</small></div>
 <a class="merchant-upgrade-coupon-link" href="#upgrade-coupon">Tenho um cupom</a>
 <a class="button primary" th:if="${upgradeAdjustment.dueAmount.signum()>0}" th:href="@{/admin/billing/upgrade/efi/pay(id=${upgradeAdjustment.id})}" th:text="'Continuar para pagar '+${duePrice}"></a>
 <form th:if="${upgradeAdjustment.dueAmount.signum()==0}" method="post" th:action="@{/admin/billing/upgrade/efi/pay}"><input type="hidden" name="adjustmentId" th:value="${upgradeAdjustment.id}"><button class="button primary" type="submit">Confirmar upgrade sem cobrança agora</button></form>

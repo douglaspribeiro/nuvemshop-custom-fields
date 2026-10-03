@@ -1,0 +1,8 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:fragment="script">
+        <script defer th:src="@{/assets/local-time.js(v=${assetVersion})}"></script>
+    </th:block>
+</head>
+</html>

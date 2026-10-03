@@ -239,7 +239,8 @@ class PremiumBonusPageTest {
         assertThat(saved.getPremiumBonusExpiresAt()).isNotNull();
         var originalExpiration = saved.getPremiumBonusExpiresAt();
         mvc.perform(get(path).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Brasilia")))
+                .andExpect(content().string(containsString("data-local-time=\"" + originalExpiration + "\"")))
+                .andExpect(content().string(containsString("/assets/local-time.js")))
                 .andExpect(content().string(containsString("Trocar para Pro (manter prazo)")))
                 .andExpect(content().string(not(containsString("Trocar para Essencial"))));
 

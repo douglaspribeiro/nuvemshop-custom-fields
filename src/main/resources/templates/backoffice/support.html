@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Backoffice - Suporte</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body>
 <main class="shell">
@@ -38,7 +39,7 @@
                 <td><strong th:if="${ticket.priority}">Prioritário · </strong><span th:text="${ticket.planAtOpen == null ? '-' : ticket.planAtOpen.displayName}">Free</span></td>
                 <td th:text="${ticket.subject}">Assunto</td>
                 <td th:text="${ticket.status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}">Aberto</td>
-                <td th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</td>
+                <td th:attr="data-local-time=${ticket.lastMessageAt}" data-time-format="datetime" th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</td>
                 <td><a class="button small" th:href="@{/backoffice/support/{id}(id=${ticket.id})}">Abrir</a></td>
             </tr>
             </tbody>

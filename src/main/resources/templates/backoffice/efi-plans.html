@@ -6,7 +6,7 @@
     <title>Planos da Efí — Backoffice</title>
     <link rel="stylesheet" th:href="@{/styles/app.css}">
     <style>.efi-table-wrap{overflow-x:auto}.efi-plans{width:100%;border-collapse:collapse}.efi-plans th,.efi-plans td{text-align:left;padding:12px;border-bottom:1px solid #dbe6e2}.efi-pagination{display:flex;gap:12px;margin-top:20px}</style>
-</head>
+<th:block th:replace="~{fragments/local-time :: script}"></th:block></head>
 <body class="backoffice-page"><main class="backoffice-shell">
     <header class="backoffice-header"><div><p class="eyebrow">Backoffice · Pagamentos</p><h1>Planos da Efí</h1><p th:text="'Ambiente consultado: '+${environment}"></p></div><nav class="backoffice-nav"><a th:href="@{/backoffice/payments}">Voltar para pagamentos</a><a th:href="@{/backoffice/payments/efi/plans(offset=${offset})}">Atualizar</a></nav></header>
     <div class="flash error" th:if="${error}" th:text="${error}" role="alert"></div>
@@ -16,7 +16,7 @@
         <p th:if="${error == null and #lists.isEmpty(plans)}">Nenhum plano retornado nesta página. Se um plano criado no painel não aparecer, confira com a Efí se ele está disponível na API para estas credenciais.</p>
         <div class="efi-table-wrap" th:if="${!#lists.isEmpty(plans)}"><table class="efi-plans">
             <thead><tr><th>ID do plano</th><th>Nome</th><th>Intervalo</th><th>Repetições</th><th>Criado em</th></tr></thead>
-            <tbody><tr th:each="plan:${plans}"><td><code th:text="${plan.id}"></code></td><td th:text="${plan.name}"></td><td th:text="${plan.interval}+' mês(es)'"></td><td th:text="${plan.repeats == null ? 'Ilimitadas' : plan.repeats}"></td><td th:text="${plan.createdAt}"></td></tr></tbody>
+            <tbody><tr th:each="plan:${plans}"><td><code th:text="${plan.id}"></code></td><td th:text="${plan.name}"></td><td th:text="${plan.interval}+' mês(es)'"></td><td th:text="${plan.repeats == null ? 'Ilimitadas' : plan.repeats}"></td><td th:attr="data-local-time=${plan.createdAt}" th:text="${plan.createdAt}"></td></tr></tbody>
         </table></div>
         <nav class="efi-pagination" aria-label="Páginas de planos"><a class="button" th:if="${offset > 0}" th:href="@{/backoffice/payments/efi/plans(offset=${T(java.lang.Math).max(0,offset-50)})}">Anterior</a><a class="button" th:if="${hasNext}" th:href="@{/backoffice/payments/efi/plans(offset=${offset+50})}">Próxima</a></nav>
     </section>

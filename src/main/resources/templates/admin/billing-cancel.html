@@ -7,6 +7,7 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('billing')}"></th:block>
@@ -18,7 +19,7 @@
         <p th:text="#{admin.billing.cancel.no.renewal}">Você não receberá uma nova cobrança após o cancelamento.</p>
         <p th:if="${paymentSubscription.nextPaymentAt != null}"
            th:with="endDate=${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"
-           th:text="#{admin.billing.cancel.period(${endDate})}">Seu plano continua disponível até 24/10/2026.</p>
+           th:attr="data-local-time=${paymentSubscription.nextPaymentAt},data-time-fallback=${endDate}" data-time-format="date" th:text="#{admin.billing.cancel.period(${endDate})}">Seu plano continua disponível até 24/10/2026.</p>
         <p th:unless="${paymentSubscription.nextPaymentAt != null}"
            th:text="#{admin.billing.cancel.period.unavailable}">Vamos confirmar o fim do período pago antes de cancelar.</p>
         <form th:action="@{/admin/billing/cancel}" method="post">

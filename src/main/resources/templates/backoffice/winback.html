@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reconquistas</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head>
+    <title>Reconquistas</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
 <body><main class="shell">
     <section class="page-header"><div><p class="eyebrow">Backoffice</p><h1>Reconquistas</h1>
         <p class="muted">Desinstalações e acompanhamento dos e-mails. Abertura e clique são sinais detectados, sem confirmação de leitura humana.</p>
@@ -32,7 +33,7 @@
         </tr></thead><tbody><tr th:each="row : ${rows}">
             <td><span th:text="${row.store != null ? row.store.storeName : row.campaign.storeId}">Loja</span>
                 <small th:text="${row.campaign.storeId}">ID</small></td>
-            <td th:text="${#temporals.format(row.campaign.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}">Data</td>
+            <td th:attr="data-local-time=${row.campaign.uninstalledAt}" data-time-format="datetime" th:text="${#temporals.format(row.campaign.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}">Data</td>
             <td th:text="${#lists.size(row.emails)}">0</td>
             <td th:text="${row.has('Delivery') ? 'Sim' : 'Sem evento'}"></td>
             <td th:text="${row.has('Open') ? 'Sim' : 'Sem evento'}"></td>

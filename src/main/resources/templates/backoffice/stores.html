@@ -7,6 +7,7 @@
     <title th:text="${uninstalledOnly} ? 'Lojas desinstaladas · Backoffice' : 'Lojas · Backoffice'">Lojas · Backoffice</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="backoffice-page">
 <main class="backoffice-shell">
@@ -58,7 +59,7 @@
                             <span th:text="${store.storeId}">0</span> ·
                             <span th:text="${store.storeCountryCode ?: '-'}">BR</span> /
                             <span th:text="${store.storeCurrency ?: '-'}">BRL</span> ·
-                            instalada em <span th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy')}">01/01/2026</span>
+                            instalada em <span th:attr="data-local-time=${store.installedAt}" data-time-format="date" th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy')}">01/01/2026</span>
                         </small>
                     </div>
                 </div>
@@ -69,7 +70,7 @@
                 <div class="store-payment">
                     <span th:if="${store.erasurePending}" class="status-muted">Exclusão pendente</span>
                     <span th:if="${!store.active and !store.erasurePending}" class="status-muted">Desinstalada<br>
-                        <small th:if="${store.uninstalledAt != null}" th:text="${#temporals.format(store.uninstalledAt, 'dd/MM/yyyy HH:mm')}">01/01/2026</small>
+                        <small th:if="${store.uninstalledAt != null}" th:attr="data-local-time=${store.uninstalledAt}" data-time-format="datetime" th:text="${#temporals.format(store.uninstalledAt, 'dd/MM/yyyy HH:mm')}">01/01/2026</small>
                     </span>
                     <span th:if="${store.active and subscriptionsByStoreId[store.storeId] == null}" class="status-muted">Sem assinatura</span>
                     <span th:if="${store.active and subscriptionsByStoreId[store.storeId] != null}"

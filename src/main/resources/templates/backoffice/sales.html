@@ -6,6 +6,7 @@
     <title>Vendas personalizadas · Backoffice</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="backoffice-page"><main class="backoffice-shell">
     <header class="backoffice-header compact"><div><p class="eyebrow">Backoffice</p><h1>Vendas com personalização</h1><p>Somente pedidos pagos com itens personalizados das lojas ativas.</p></div>
@@ -19,7 +20,7 @@
             <tbody><tr th:each="sale : ${salesPage.content}">
                 <td><a th:href="@{/backoffice/stores/{storeId}(storeId=${sale.storeId})}" th:text="${sale.storeName}">Loja</a><small th:text="${sale.storeId}">123</small></td>
                 <td th:text="|#${sale.orderId}|">#123</td>
-                <td th:text="${sale.createdAt != null ? #temporals.format(sale.createdAt, 'dd/MM/yyyy HH:mm') : '—'}">—</td>
+                <td th:attr="data-local-time=${sale.createdAt}" data-time-format="datetime" th:text="${sale.createdAt != null ? #temporals.format(sale.createdAt, 'dd/MM/yyyy HH:mm') : '—'}">—</td>
                 <td th:text="${sale.personalizedItems}">0</td>
                 <td><span th:if="${sale.personalizedProductValue != null}"><span th:text="${sale.currency ?: ''}">BRL</span> <span th:text="${#numbers.formatDecimal(sale.personalizedProductValue, 1, 2)}">0,00</span></span><span th:unless="${sale.personalizedProductValue != null}">—</span></td>
             </tr></tbody></table></div>

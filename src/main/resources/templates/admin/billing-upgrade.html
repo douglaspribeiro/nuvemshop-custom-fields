@@ -2,13 +2,14 @@
 <html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{admin.billing.upgrade.title}">Confirmar upgrade</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
 <body class="merchant-page"><main class="shell"><section class="panel"><p class="eyebrow">Upgrade de plano</p>
     <h1 th:text="#{admin.billing.upgrade.heading(${targetPlan.displayName})}">Trocar para Ultra</h1>
     <p th:text="#{admin.billing.upgrade.current(${store.plan.displayName}, ${currentPrice})}">Plano atual</p>
     <p th:text="#{admin.billing.upgrade.price(${targetPrice})}">Nova mensalidade</p>
     <p th:text="#{admin.billing.upgrade.detail}">Detalhes da alteração</p>
-    <p th:if="${nextPaymentAt != null}" th:text="#{admin.billing.upgrade.next(${#temporals.format(nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')})}">Próxima cobrança</p>
+    <p th:if="${nextPaymentAt != null}" th:attr="data-local-time=${nextPaymentAt},data-time-fallback=${#temporals.format(nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}" data-time-format="date" th:text="#{admin.billing.upgrade.next(${#temporals.format(nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')})}">Próxima cobrança</p>
     <form class="row-actions" method="post" th:action="@{/admin/billing/upgrade}"><input type="hidden" name="plan" th:value="${targetPlan.name()}">
         <input type="hidden" name="amount" th:value="${amount}">
         <button class="button primary" type="submit" th:text="#{admin.billing.upgrade.confirm}">Confirmar upgrade</button><a class="button" th:href="@{/admin/billing}" th:text="#{admin.billing.upgrade.back}">Voltar</a></form>

@@ -6,6 +6,7 @@
     <title th:text="#{merchant.nav.overview} + ' - ' + #{common.app.name}">Visão geral</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('overview')}"></th:block>
@@ -20,7 +21,7 @@
         <strong th:text="#{admin.index.bonus.active(${bonusPlanName})}">Plano Essencial por 30 dias.</strong>
         <span th:if="${store.premiumBonusDaysRemaining == 1}" th:text="#{admin.index.bonus.remaining.one}">Resta 1 dia.</span>
         <span th:if="${store.premiumBonusDaysRemaining != 1}" th:text="#{admin.index.bonus.remaining.many(${store.premiumBonusDaysRemaining})}">Restam 30 dias.</span>
-        <span th:text="#{admin.index.bonus.until(${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')})}">Disponível até 23/10/2026.</span>
+        <span th:attr="data-local-time=${store.premiumBonusExpiresAt},data-time-fallback=${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}" data-time-format="datetime" th:text="#{admin.index.bonus.until(${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')})}">Disponível até 23/10/2026.</span>
     </section>
     <section class="panel" th:if="${backofficeStoreMode}">
         <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2><p class="muted" th:text="#{admin.index.storemode.description}">As alterações serão aplicadas nesta loja.</p>

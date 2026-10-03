@@ -7,6 +7,7 @@
     <title th:text="#{admin.help.title} + ' - ' + #{common.app.title}">Ajuda</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('help')}"></th:block>
@@ -48,7 +49,7 @@
                 </thead>
                 <tbody>
                 <tr th:each="log : ${logs}">
-                    <td th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026 10:00</td>
+                    <td th:attr="data-local-time=${log.createdAt}" data-time-format="datetime" th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026 10:00</td>
                     <td th:text="${log.level}">INFO</td>
                     <td th:text="${log.eventType}">oauth.installed</td>
                     <td th:text="${log.message}">Mensagem</td>

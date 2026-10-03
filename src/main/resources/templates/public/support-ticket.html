@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{support.ticket.title} + ' - ' + #{common.app.name}">Chamado</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body>
 <main class="shell public-page">
@@ -23,7 +24,7 @@
                  th:classappend="${item.authorType.name() == 'STORE'} ? ' from-store' : ' from-support'">
             <div class="message-meta">
                 <strong th:text="${item.authorType.name() == 'STORE'} ? #{support.ticket.author.store} : #{support.ticket.author.support}">Autor</strong>
-                <span th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
+                <span th:attr="data-local-time=${item.createdAt}" data-time-format="datetime" th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
             </div>
             <p th:text="${item.message}">Mensagem</p>
         </article>

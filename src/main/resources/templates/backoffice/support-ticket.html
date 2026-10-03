@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Backoffice - Chamado</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body>
 <main class="shell">
@@ -32,7 +33,7 @@
                  th:classappend="${item.authorType.name() == 'SUPPORT'} ? ' from-support' : ' from-store'">
             <div class="message-meta">
                 <strong th:text="${item.authorType.name() == 'SUPPORT' ? 'Suporte' : (store.storeName ?: 'Loja')}">Autor</strong>
-                <span th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
+                <span th:attr="data-local-time=${item.createdAt}" data-time-format="datetime" th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
             </div>
             <p th:text="${item.message}">Mensagem</p>
         </article>

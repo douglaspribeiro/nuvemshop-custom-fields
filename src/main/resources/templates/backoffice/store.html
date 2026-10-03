@@ -6,6 +6,7 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title>Backoffice - Loja</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body>
 <main class="shell">
@@ -45,8 +46,8 @@
                 <p>Plano em uso: <strong th:text="${store.effectivePlan.displayName}">FREE</strong></p>
                 <p th:if="${store.premiumBonusStartedAt}">
                     Beneficio: <strong th:text="${store.premiumBonusPlan.displayName}">Essencial</strong><br>
-                    Inicio: <span th:text="${#temporals.format(store.premiumBonusStartedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span><br>
-                    Termino: <span th:text="${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span> (Brasilia)
+                    Inicio: <span th:attr="data-local-time=${store.premiumBonusStartedAt}" data-time-format="datetime" th:text="${#temporals.format(store.premiumBonusStartedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span><br>
+                    Termino: <span th:attr="data-local-time=${store.premiumBonusExpiresAt}" data-time-format="datetime" th:text="${#temporals.format(store.premiumBonusExpiresAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span>
                     <strong th:text="${store.premiumBonusActive ? ' — Ativa' : ' — Encerrada'}"></strong>
                 </p>
                 <div class="row-actions"
@@ -93,7 +94,7 @@
                 <tr th:each="event : ${events}">
                     <td th:text="${(event.fromPlan == null ? '-' : event.fromPlan.displayName) + ' -> ' + event.toPlan.displayName}">FREE -> PREMIUM</td>
                     <td th:text="${event.source}">OVERRIDE</td>
-                    <td th:text="${#temporals.format(event.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
+                    <td th:attr="data-local-time=${event.createdAt}" data-time-format="datetime" th:text="${#temporals.format(event.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
                 </tr>
                 </tbody>
             </table>
@@ -133,7 +134,7 @@
             <tr th:each="log : ${logs}">
                 <td th:text="${log.eventType}">event</td>
                 <td th:text="${log.message}">message</td>
-                <td th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
+                <td th:attr="data-local-time=${log.createdAt}" data-time-format="datetime" th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
             </tr>
             </tbody>
         </table>
