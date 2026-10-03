@@ -1,0 +1,14 @@
+<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Andamento do upgrade</title><link rel="stylesheet" th:href="@{/styles/app.css}"><link rel="stylesheet" th:href="@{/styles/merchant.css}"></head>
+<body class="merchant-page"><main class="shell"><section class="panel">
+<h1 th:text="${upgradeAdjustment.state.name()=='COMPLETED' ? 'Upgrade concluído!' : (upgradeAdjustment.state.name()=='FAILED' ? 'Pagamento não confirmado' : 'Confirmando seu upgrade')}"></h1>
+<p class="notice error" th:if="${error}" th:text="${error}"></p>
+<p th:if="${upgradeAdjustment.state.name()=='COMPLETED'}" th:text="'O ajuste de '+${duePrice}+' foi confirmado. Sua única assinatura agora é '+${upgradeAdjustment.targetPlan.displayName}+'.'"></p>
+<p th:if="${upgradeAdjustment.pending}">Estamos confirmando o ajuste e a alteração da sua assinatura. <strong>Não faça outro pagamento.</strong> Se o ajuste já foi aprovado, ele não será cobrado novamente.</p>
+<p th:if="${upgradeAdjustment.message!=null}" th:text="${upgradeAdjustment.message}"></p>
+<p th:if="${upgradeAdjustment.state.name()=='COMPLETED'}" th:text="'Próxima mensalidade: '+${targetPrice}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></p>
+<p th:text="'Referência do ajuste: '+${upgradeAdjustment.id}"></p>
+<a class="button" th:if="${upgradeAdjustment.pending}" th:href="@{/admin/billing/upgrade/efi/processing(id=${upgradeAdjustment.id})}">Consultar novamente</a>
+<a class="button" th:href="@{/admin/billing}">Voltar aos planos e histórico</a>
+<a class="button" th:if="${upgradeAdjustment.state.name()=='REVIEW'}" th:href="@{/admin/support}">Falar com o suporte</a>
+</section></main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

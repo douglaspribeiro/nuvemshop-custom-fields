@@ -15,6 +15,8 @@
             <p class="muted">
                 <span th:text="${store.storeName ?: 'Loja sem nome'}">Loja</span>
                 · Store ID <span th:text="${store.storeId}">0</span>
+                · Plano do chamado <strong th:text="${ticket.planAtOpen == null ? store.effectivePlan.displayName : ticket.planAtOpen.displayName}">Free</strong>
+                <strong th:if="${ticket.priority}"> · Prioritário</strong>
             </p>
         </div>
         <nav class="row-actions">

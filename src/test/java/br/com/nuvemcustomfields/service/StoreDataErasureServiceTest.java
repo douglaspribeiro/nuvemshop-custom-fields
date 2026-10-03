@@ -25,6 +25,7 @@ class StoreDataErasureServiceTest {
                 123L
         );
         deletion.verify(jdbcTemplate).update("delete from support_tickets where store_id = ?", 123L);
+        deletion.verify(jdbcTemplate).update("delete from feature_requests where store_id = ?",123L);
         deletion.verify(jdbcTemplate).update(
                 "delete from personalization_fields where rule_id in (select id from personalization_rules where store_id = ?)",
                 123L

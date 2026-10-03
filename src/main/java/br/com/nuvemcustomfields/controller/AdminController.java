@@ -1,4 +1,5 @@
 package br.com.nuvemcustomfields.controller;
+import java.math.BigDecimal;
 
 import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.dto.ProductPage;
@@ -195,6 +196,15 @@ public class AdminController {
             store = adminStoreService.requireCurrentStore(session);
         }
         var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+        if (subscription != null && subscription.getUpgradePlan() != null) {
+            try {
+                paymentSubscriptionService.reconcile(store.getStoreId());
+                store = adminStoreService.requireCurrentStore(session);
+                subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+            } catch (RuntimeException ex) {
+                LOGGER.warn("payments.upgrade.reconcile_pending store_id={} type={}", store.getStoreId(), ex.getClass().getSimpleName());
+            }
+        }
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("billingEnabled", paymentSubscriptionService.anyGatewayEnabled());
@@ -204,6 +214,15 @@ public class AdminController {
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM)));
         model.addAttribute("premiumPlusPrice", formatBillingPrice(billingCurrency,
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM_PLUS)));
+        boolean ultraAvailable = paymentSubscriptionService.planAvailable(store, PlanType.PREMIUM_ULTRA);
+        model.addAttribute("ultraAvailable", ultraAvailable);
+        model.addAttribute("premiumUltraPrice", ultraAvailable ? formatBillingPrice(billingCurrency,
+                paymentSubscriptionService.amount(store, PlanType.PREMIUM_ULTRA)) : "");
+        model.addAttribute("canUpgrade", subscription != null && subscription.isAccessActive()
+                && subscription.getStatus() == PaymentSubscriptionStatus.ACTIVE
+                && !subscription.isCancellationPending() && subscription.getCancellationEffectiveAt() == null
+                && !subscription.isWinbackRestorePending() && subscription.getUpgradePlan() == null
+                && !subscription.isUpgradePaymentPending() && !store.isCourtesyPremium());
         model.addAttribute("paymentSubscription", subscription);
         model.addAttribute("billingError", subscription == null || subscription.getLastError() == null ? null
                 : paymentSubscriptionService.customerFacingError(subscription.getTechnicalError() == null
@@ -222,12 +241,56 @@ public class AdminController {
             if (!paymentSubscriptionService.available(store)) {
                 throw new IllegalStateException(messages.get("admin.billing.unavailable"));
             }
+            var activeSubscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+            if (activeSubscription != null && activeSubscription.isAccessActive()) {
+                if (!plan.isUpgradeFrom(store.getPlan())) {
+                    throw new IllegalArgumentException("Selecione um plano superior ao plano atual.");
+                }
+                return "redirect:/admin/billing/upgrade?plan=" + plan.name();
+            }
             if (paymentSubscriptionService.provider(store).orElse(null) == PaymentProviderType.EFI) {
                 return "redirect:/admin/billing/pay?plan=" + plan.name();
             }
             return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());
+            redirectAttributes.addFlashAttribute("error", merchantError(ex));
+            return "redirect:/admin/billing";
+        }
+    }
+
+    @GetMapping("/admin/billing/upgrade")
+    public String upgradePage(@RequestParam PlanType plan, HttpSession session, Model model, HttpServletResponse response) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+        if (subscription == null || !subscription.isAccessActive() || !plan.isUpgradeFrom(subscription.getPlan())
+                || !paymentSubscriptionService.planAvailable(store, plan)) {
+            return "redirect:/admin/billing";
+        }
+        if (subscription.getProvider() == PaymentProviderType.EFI)
+            return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
+        model.addAttribute("store", store);
+        model.addAttribute("targetPlan", plan);
+        response.setHeader("Cache-Control", "no-store");
+        BigDecimal amount = paymentSubscriptionService.upgradeAmount(store, plan);
+        model.addAttribute("amount", amount);
+        model.addAttribute("targetPrice", formatBillingPrice(subscription.getCurrency(), amount));
+        model.addAttribute("currentPrice", formatBillingPrice(subscription.getCurrency(), subscription.getAmountValue()));
+        model.addAttribute("nextPaymentAt", subscription.getNextPaymentAt());
+        return "admin/billing-upgrade";
+    }
+
+    @PostMapping("/admin/billing/upgrade")
+    public String upgrade(@RequestParam PlanType plan, @RequestParam BigDecimal amount, HttpSession session, RedirectAttributes redirectAttributes) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            var subscription = paymentSubscriptionService.find(store.getStoreId()).orElseThrow();
+            if (subscription.getProvider() == PaymentProviderType.EFI)
+                return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
+            paymentSubscriptionService.upgrade(store.getStoreId(), plan, amount);
+            redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.upgrade.success"));
+            return "redirect:/admin/billing";
+        } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute("error", merchantError(ex));
             return "redirect:/admin/billing";
         }

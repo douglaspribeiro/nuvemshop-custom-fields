@@ -80,6 +80,7 @@ Se houver conta de teste, informar URL da loja, usuário, senha, restrições e 
 | FREE | R$ 0 | 1 produto personalizado e 1 campo por produto |
 | Essencial | R$ 19,99/mês | 10 produtos personalizados e 3 campos por produto |
 | Pro | R$ 29,99/mês | Até 50 produtos personalizados e campos ilimitados |
+| Ultra | R$ 59,90/mês | Produtos personalizados e campos ilimitados, com atendimento prioritário |
 
 O plano Pro também inclui templates por nicho e relatórios operacionais. Não existe cobrança adicional por campo ou opção personalizada. O aplicativo coleta e transmite as informações, mas não altera o preço do produto.
 

@@ -117,7 +117,7 @@ Principais camadas do codigo:
 | `GET /public/stores/{storeId}/personalization` | Configuracao consumida pelo script da vitrine. |
 | `POST /webhooks/nuvemshop` | Webhooks oficiais da Nuvemshop. |
 | `POST /prod/webhooks/mercado-pago2` | Webhooks assinados de assinaturas Mercado Pago. |
-| `POST /hook/store/redact` | Exclui definitivamente os dados da loja apos validar o HMAC. |
+| `POST /hook/store/redact` | Valida HMAC, registra recebimento e marca exclusao pendente, bloqueando acesso e contatos automaticos. Contato manual exige confirmacao por loja; exclusao definitiva exige revisao manual no backoffice. |
 | `POST /hook/customer/redact` | Registra a solicitacao sem copiar dados pessoais do payload; o app nao persiste dados de compradores. |
 | `POST /hook/customer/data` | Registra a solicitacao sem copiar dados pessoais do payload; o app nao persiste dados de compradores. |
 | `GET /backoffice` | Painel interno do operador. |
@@ -128,9 +128,30 @@ Principais camadas do codigo:
 | --- | ---: | ---: |
 | `FREE` | 1 | 1 |
 | `PREMIUM` | 10 | 3 |
-| `PREMIUM_PLUS` | ilimitado | ilimitado |
+| `PREMIUM_PLUS` | 50 | ilimitado |
+| `PREMIUM_ULTRA` | ilimitado | ilimitado |
 
 O enforcement fica em `PlanLimitService` e e aplicado no editor do admin e no endpoint publico do storefront.
+
+O Ultra custa R$ 59,90/mês no Brasil e inclui atendimento prioritário. Os chamados
+registram o plano efetivo no momento da abertura; chamados Ultra recebem destaque
+no Discord e na fila do backoffice, com prioridade entre os chamados abertos.
+
+O upgrade mantém a assinatura no mesmo gateway e ambiente. Na Efí, a tela calcula
+o valor do novo plano pelo restante do ciclo pago, desconta o crédito do plano
+atual e oferece BRINDE (30% somente sobre o restante deste ciclo, para Ultra).
+Uma cobrança avulsa paga o ajuste, sem criar outra assinatura. Só após confirmar
+pagamento e alteração na Efí os recursos superiores são liberados. A próxima
+mensalidade integral continua na data existente. Paddle e Mercado Pago mantêm
+o fluxo anterior sem ajuste imediato. A Efí brasileira usa
+`updateSubscription` (`PUT /v1/subscription/:id`), não o endpoint `change-plan/direct`
+do Efipay colombiano. Alterações com resposta incerta ficam pendentes e são
+conciliadas pela consulta da assinatura e pelos webhooks.
+
+As migrations V38, V39 e V40 criam o catálogo Ultra, o plano dos chamados, o estado
+de upgrade e o histórico de ajustes financeiros. Os preços Ultra do catálogo começam desabilitados: informe os IDs remotos
+e valide no Backoffice > Pagamentos antes de vender o plano. Preços internacionais
+Ultra são valores iniciais configuráveis; não alteram contratos existentes.
 
 ## Reconquista apos desinstalacao
 
@@ -287,9 +308,25 @@ Depois de subir a aplicacao:
 - `http://localhost:8080/install` inicia o fluxo de instalacao.
 - `http://localhost:8080/backoffice/login` abre o backoffice interno.
 
-### Docker local com ngrok
+### Docker local e homologação sem ngrok
 
-O launcher local configura automaticamente:
+Para testar sem OAuth/painel da Nuvemshop, consulte
+[Homologação local: loja fictícia, Efí sandbox e sugestões](docs/homologacao-local.md).
+O launcher aceita `--homolog-local`, com banco isolado e entrada protegida em
+`/local/homologacao`, inexistente no perfil normal de produção.
+Com `--homolog-local --infisical`, o launcher carrega as variáveis do Infisical
+(`stage`, pasta `/app_custom-fields`) antes de preparar o MySQL. Requer CLI
+instalado/autenticado. A homologação usa `http://localhost:8080` por padrão, sem ngrok. Veja o guia
+acima para a chave de entrada e as credenciais sandbox.
+
+Para abrir o painel com loja fictícia local, use:
+
+```bash
+./scripts/start-local-docker-and-spring.sh --homolog-local --infisical -- -DskipTests
+```
+
+O túnel HTTPS é opcional para receber callbacks externos ou testar OAuth real.
+No modo normal (sem `--homolog-local`), o launcher configura automaticamente:
 
 - `APP_BASE_URL=https://chlorine-mutate-preface.ngrok-free.dev`
 - `NUVEMSHOP_REDIRECT_URI=https://chlorine-mutate-preface.ngrok-free.dev/oauth/callback`
@@ -406,7 +443,7 @@ primeira sincronizacao comeca apos 2 minutos e os ciclos seguintes ocorrem a cad
 Webhooks registrados:
 
 - `app/uninstalled`: marca a loja como desinstalada, apaga token e escopos, revoga o acesso local e volta o plano para `FREE`, sem solicitar cancelamento da assinatura no gateway. Scripts e webhooks do app sao removidos automaticamente pela Nuvemshop.
-- `store/redact`: exclui de forma idempotente loja, configuracoes, campos, logs, eventos de plano e chamados vinculados.
+- `store/redact`: registra `erasure_requested_at`, preservando a primeira data em retentativas, e bloqueia acesso/contatos automaticos. O backoffice permite solicitar feedback manual mediante confirmacao explicita para a loja. Nesta versao, a exclusao definitiva ocorre manualmente, sem agendamento automatico. Consulte [exclusoes pendentes](docs/exclusoes-pendentes.md) para limites operacionais e a revisao de conformidade necessaria.
 - `product/deleted`: remove as regras de personalizacao do produto removido.
 
 ## Status do Produto

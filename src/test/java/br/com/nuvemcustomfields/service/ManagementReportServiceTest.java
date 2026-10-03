@@ -42,7 +42,7 @@ class ManagementReportServiceTest {
         assertThat(report.freeStores()).isEqualTo(1);
         assertThat(report.premiumStores()).isEqualTo(2);
         assertThat(report.premiumPlusStores()).isEqualTo(1);
-        assertThat(report.estimatedMrr()).isEqualByComparingTo(new BigDecimal("29.98"));
+        assertThat(report.estimatedMrr()).isEqualByComparingTo(new BigDecimal("49.98"));
     }
 
     private Store store(PlanType plan, boolean courtesyPremium) {

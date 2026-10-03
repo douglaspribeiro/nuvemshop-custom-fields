@@ -16,6 +16,26 @@ import java.time.Instant;
 @Entity
 @Table(name = "payment_subscriptions")
 public class PaymentSubscription {
+    @Column(name="upgrade_payment_pending",nullable=false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean upgradePaymentPending;
+    public boolean isUpgradePaymentPending(){return upgradePaymentPending;}
+    public void setUpgradePaymentPending(boolean value){upgradePaymentPending=value;}
+    @Enumerated(EnumType.STRING)
+    @Column(name = "upgrade_plan", length = 30)
+    private PlanType upgradePlan;
+    @Column(name = "upgrade_amount", precision = 12, scale = 2)
+    private BigDecimal upgradeAmount;
+    @Column(name = "upgrade_price_id", length = 120)
+    private String upgradePriceId;
+
+    public PlanType getUpgradePlan() { return upgradePlan; }
+    public BigDecimal getUpgradeAmount() { return upgradeAmount; }
+    public String getUpgradePriceId() { return upgradePriceId; }
+    public void requestUpgrade(PlanType plan, BigDecimal amount, String priceId) {
+        upgradePlan = plan; upgradeAmount = amount; upgradePriceId = priceId;
+    }
+    public void clearUpgrade() { upgradePlan = null; upgradeAmount = null; upgradePriceId = null; }
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -26,8 +26,8 @@
         <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2><p class="muted" th:text="#{admin.index.storemode.description}">As alterações serão aplicadas nesta loja.</p>
         <form th:action="@{/backoffice/store-mode/exit}" method="post"><button class="button" type="submit" th:text="#{admin.index.storemode.exit}">Voltar ao backoffice</button></form>
     </section>
-    <section class="merchant-overview-hero">
-        <div class="panel hero-primary">
+    <section class="merchant-overview-hero" th:classappend="${configuredFields > 0} ? ' is-configured'">
+        <div class="panel hero-primary" th:if="${configuredFields == 0}">
             <p class="eyebrow" th:text="#{merchant.overview.next}">Próximos passos</p>
             <h2 th:if="${configuredFields > 0}" th:text="#{merchant.overview.ready}">Sua loja está pronta para personalizar</h2>
             <h2 th:if="${configuredFields == 0 and usage.productsUsed > 0}" th:text="#{merchant.overview.addfield}">Adicione o primeiro campo</h2>
@@ -96,9 +96,14 @@
                 <a th:href="@{/admin/onboarding}"><span th:text="#{merchant.overview.templates}">Começar com um modelo</span><span aria-hidden="true">↗</span></a>
                 <a th:href="@{/admin/dashboard}"><span th:text="#{merchant.nav.orders}">Pedidos personalizados</span><span aria-hidden="true">↗</span></a>
                 <a th:href="@{/support/}"><span th:text="#{merchant.support}">Falar com o suporte</span><span aria-hidden="true">↗</span></a>
+                <a th:href="@{/admin/suggestions}"><span th:text="#{suggestions.title}">Sugerir uma melhoria</span><span aria-hidden="true">↗</span></a>
             </div>
             <details class="merchant-technical"><summary th:text="#{merchant.overview.technical}">Detalhes técnicos da loja</summary><p><span th:text="#{admin.index.store.id}">Store ID</span>: <span th:text="${store.storeId}">0</span></p></details>
         </div>
+    </section>
+    <section class="panel merchant-suggestion-callout">
+        <div><h2 th:text="#{suggestions.title}">Sugerir uma melhoria</h2><p th:text="#{suggestions.intro}"></p></div>
+        <a class="button" th:href="@{/admin/suggestions}" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

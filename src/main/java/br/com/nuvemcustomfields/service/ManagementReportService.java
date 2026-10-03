@@ -13,8 +13,9 @@ import java.math.BigDecimal;
 @Service
 public class ManagementReportService {
 
-    private static final BigDecimal PREMIUM_PRICE = new BigDecimal("9.99");
-    private static final BigDecimal PREMIUM_PLUS_PRICE = new BigDecimal("19.99");
+    private static final BigDecimal PREMIUM_PRICE = new BigDecimal("19.99");
+    private static final BigDecimal PREMIUM_PLUS_PRICE = new BigDecimal("29.99");
+    private static final BigDecimal ULTRA_PRICE = new BigDecimal("59.90");
 
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
@@ -38,6 +39,8 @@ public class ManagementReportService {
         long free = stores.stream().filter(store -> store.getPlan() == PlanType.FREE || store.getPlan() == PlanType.FREE_GRATIS).count();
         long premium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM).count();
         long premiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS).count();
+        long ultra = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_ULTRA).count();
+        long billableUltra = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_ULTRA && !store.isCourtesyPremium()).count();
         long billablePremium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM && !store.isCourtesyPremium()).count();
         long billablePremiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS && !store.isCourtesyPremium()).count();
         long fields = ruleRepository.findAll().stream().mapToLong(rule -> fieldRepository.countByRuleId(rule.getId())).sum();
@@ -45,7 +48,9 @@ public class ManagementReportService {
                 free,
                 premium,
                 premiumPlus,
-                PREMIUM_PRICE.multiply(BigDecimal.valueOf(billablePremium)).add(PREMIUM_PLUS_PRICE.multiply(BigDecimal.valueOf(billablePremiumPlus))),
+                ultra,
+                PREMIUM_PRICE.multiply(BigDecimal.valueOf(billablePremium)).add(PREMIUM_PLUS_PRICE.multiply(BigDecimal.valueOf(billablePremiumPlus)))
+                        .add(ULTRA_PRICE.multiply(BigDecimal.valueOf(billableUltra))),
                 planEventRepository.count(),
                 ruleRepository.count(),
                 fields

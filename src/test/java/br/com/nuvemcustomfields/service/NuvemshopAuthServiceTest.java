@@ -61,6 +61,15 @@ class NuvemshopAuthServiceTest {
 
     @Test
     void exchangesCodeUsingFormUrlEncodedPayload() {
+        exchangeAndVerify(false);
+    }
+
+    @Test
+    void reinstallationCancelsPendingErasureAndReactivatesTheExistingStore() {
+        exchangeAndVerify(true);
+    }
+
+    private void exchangeAndVerify(boolean pendingErasure) {
         NuvemshopProperties properties = new NuvemshopProperties(
                 "client-123",
                 "secret",
@@ -83,7 +92,13 @@ class NuvemshopAuthServiceTest {
         IntegrationLogService integrationLogService = mock(IntegrationLogService.class);
         NuvemshopApiClient apiClient = mock(NuvemshopApiClient.class);
 
-        when(storeRepository.findByStoreIdForUpdate(987L)).thenReturn(Optional.empty());
+        Store existing=new Store(); existing.setStoreId(987L);
+        if(pendingErasure) {
+            existing.setUninstalledAt(java.time.Instant.parse("2026-10-02T12:00:00Z"));
+            existing.setErasureRequestedAt(java.time.Instant.parse("2026-10-02T12:00:00Z"));
+            existing.setDepartureCounted(true); existing.setBillingSuspended(true);
+        }
+        when(storeRepository.findByStoreIdForUpdate(987L)).thenReturn(pendingErasure?Optional.of(existing):Optional.empty());
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(apiClient.getStoreProfile(any(Store.class))).thenReturn(new StoreProfile("Loja Teste", "MX", "MXN", "owner@example.com"));
 
@@ -120,6 +135,16 @@ class NuvemshopAuthServiceTest {
         assertThat(store.getStoreCountryCode()).isEqualTo("MX");
         assertThat(store.getStoreCurrency()).isEqualTo("MXN");
         assertThat(store.getAccessToken()).isEqualTo("token-123");
+        assertThat(store.isActive()).isTrue();
+        assertThat(store.getErasureRequestedAt()).isNull();
+        assertThat(store.getUninstalledAt()).isNull();
+        assertThat(store.isBillingSuspended()).isFalse();
+        assertThat(store.isDepartureCounted()).isFalse();
+        if(pendingErasure) {
+            assertThat(store).isSameAs(existing);
+            verify(integrationLogService).info(987L,"lgpd.erasure_cancelled_by_reinstallation",
+                    "Pendência de exclusão cancelada após nova autorização OAuth da loja.");
+        }
         verify(webhookRegistrationService).registerRequiredWebhooks(store);
         verify(scriptInstallService).installPersonalizerScript(store);
         verify(integrationLogService).info(987L, "oauth.installed", "Loja instalada ou reconectada via OAuth.");

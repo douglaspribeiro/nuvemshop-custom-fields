@@ -10,6 +10,13 @@
     "id": "21df2bdc-375c-46bf-b41e-b25349f040db",
     "code": "premium-plus-1999",
     "external_reference": "premium-plus-1999",
-    "description": "Produtos ilimitados com campos ilimitados",
+    "description": "Até 50 produtos com campos ilimitados",
+    "default": false
+}
+
+{
+    "code": "premium-ultra-5990",
+    "external_reference": "premium-ultra-5990",
+    "description": "Produtos ilimitados, campos ilimitados e atendimento prioritário",
     "default": false
 }

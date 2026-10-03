@@ -15,9 +15,18 @@ O contador `ncf_storefront_http_requests_total` inclui apenas requisições de v
 | `checkout_style` | Leitura de estilo pelo checkout |
 | `storefront_script_beacon` | Beacon emitido pelo JavaScript em execução |
 
-Os contadores não recebem `storeId`, produto, caminho da loja ou IP como rótulos. Esses valores
-vêm de endpoints públicos e fariam o Prometheus acumular séries sem limite. Para diagnóstico por
-loja, mantenha os `integration_logs` existentes; para volume agregado, use o Grafana.
+O rótulo `store_id` identifica somente lojas ativas validadas pelo backend; parâmetros públicos
+não validados ficam como `unknown`. Não são usados IP, e-mail ou caminho como rótulos.
+
+O contador `ncf_storefront_personalized_product_requests_total`, com `store_id` e `product_id`,
+registra apenas GETs bem-sucedidos da configuração de produtos habilitados com campos disponíveis.
+IDs enviados arbitrariamente pelo cliente não criam séries de produtos.
+
+Os nomes vêm do banco, em métricas separadas: `ncf_store_info` (`store_id`, `store_name`) e
+`ncf_personalized_product_info` (`store_id`, `product_id`, `store_name`, `product_name`). O catálogo
+é atualizado na inicialização e a cada 60 segundos. Produtos desabilitados, sem campos ou de lojas
+inativas deixam de aparecer no ranking. Renomear uma loja ou produto atualiza os metadados sem
+reiniciar seu contador. Essas métricas contêm nomes comerciais: mantenha o endpoint restrito.
 
 Exemplo de scrape no Prometheus:
 
@@ -46,6 +55,23 @@ sum(rate(ncf_storefront_http_requests_total{status=~"5.."}[$__rate_interval]))
 Tambem ha um dashboard pronto para importar em
 `grafana/storefront-traffic-dashboard.json`. No Grafana, abra **Dashboards → New → Import**,
 envie o arquivo e escolha o datasource Prometheus solicitado.
+
+Para atualizar um dashboard já importado, importe o JSON novamente mantendo seu UID
+`ncf-storefront-traffic` e confirme a substituição. O ranking de lojas mostra o nome cadastrado;
+a nova tabela mostra **Loja · Produto · Quantidade**, com os 20 produtos mais consultados no período.
+Publique também a aplicação desta versão: importar somente o JSON não cria as novas métricas.
+Não há preenchimento retroativo de consultas anteriores à implantação.
+
+“Quantidade” significa consultas à configuração de personalização, não visitantes únicos nem
+visualizações de qualquer produto da loja. Recargas, robôs e consultas repetidas podem incrementar
+o contador; respostas servidas por cache fora do app não entram. O Prometheus precisa observar
+amostras para calcular o aumento; `increase` usa extrapolação e o painel arredonda o resultado.
+O catálogo registra contadores zerados para os produtos configurados antes das primeiras consultas.
+
+O dashboard associa contadores e nomes por IDs usando
+[correspondência de vetores do Prometheus](https://prometheus.io/docs/prometheus/latest/querying/operators/).
+A tabela usa uma [consulta instantânea do Grafana](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/)
+que calcula o aumento em todo o período selecionado.
 
 O download do arquivo representa uma requisição que chegou à origem. Se uma CDN passar a servir
 o asset do cache, ela não chega ao app e deve ser acompanhada também pelas métricas da própria

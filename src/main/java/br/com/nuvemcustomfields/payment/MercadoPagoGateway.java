@@ -44,6 +44,11 @@ public class MercadoPagoGateway implements PaymentGateway {
                 && (store.getStoreCurrency() == null || "BRL".equalsIgnoreCase(store.getStoreCurrency()));
     }
     @Override public BigDecimal amount(PlanType plan) { return properties.amount(plan); }
+    @Override public void changeSubscriptionPlan(String subscriptionId, Store store, PlanType plan) {
+        put("/preapproval/" + subscriptionId, Map.of(
+                "reason", "Campos Personalizados - " + plan.getDisplayName(),
+                "auto_recurring", Map.of("transaction_amount", amount(plan), "currency_id", "BRL")));
+    }
 
     @Override
     public GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl) {

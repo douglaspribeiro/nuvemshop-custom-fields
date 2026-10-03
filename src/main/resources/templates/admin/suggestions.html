@@ -1,0 +1,28 @@
+<!doctype html><html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{suggestions.title}">Sugerir uma melhoria</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('suggestions')}"></th:block><main class="shell">
+<section class="page-header"><div><h1 th:text="#{suggestions.title}"></h1><p th:text="#{suggestions.intro}"></p></div><a class="button" th:href="@{/admin}" th:text="#{merchant.nav.overview}">Visão geral</a></section>
+<p class="notice" th:if="${message}" th:text="${message}"></p><p class="notice error" th:if="${error}" th:text="${error}"></p>
+<div class="merchant-suggestions-grid">
+<section class="panel"><p class="muted" th:text="#{suggestions.explanation}"></p>
+<form class="merchant-suggestion-form" method="post" th:action="@{/admin/suggestions}">
+    <input type="hidden" name="submissionToken" th:value="${submissionToken}">
+    <div class="merchant-suggestion-field">
+        <label for="suggestion-title" th:text="#{suggestions.subject}"></label>
+        <input id="suggestion-title" name="title" required maxlength="160" th:value="${draftTitle}" th:placeholder="#{suggestions.subject.placeholder}">
+    </div>
+    <div class="merchant-suggestion-field">
+        <label for="suggestion-description" th:text="#{suggestions.description}"></label>
+        <textarea id="suggestion-description" name="description" required maxlength="4000" rows="7" th:text="${draftDescription}" th:placeholder="#{suggestions.description.placeholder}" aria-describedby="suggestion-privacy"></textarea>
+    </div>
+    <p id="suggestion-privacy" class="merchant-suggestion-privacy" th:text="#{suggestions.privacy}"></p>
+    <div class="merchant-suggestion-actions"><button class="button primary" type="submit" th:text="#{suggestions.submit}"></button></div>
+</form></section>
+<aside class="merchant-suggestion-sidebar">
+    <section class="panel"><a th:href="@{/support/}" th:text="#{suggestions.support}"></a></section>
+    <section class="panel merchant-suggestion-history"><h2 th:text="#{suggestions.history}"></h2><p class="muted" th:if="${#lists.isEmpty(suggestions)}" th:text="#{suggestions.empty}"></p>
+        <article th:each="suggestion:${suggestions}"><h3 th:text="${suggestion.title}"></h3><p class="merchant-suggestion-description" th:text="${suggestion.description}"></p><small th:text="#{suggestions.received}"></small><time th:text="${#temporals.format(suggestion.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time></article>
+    </section>
+</aside>
+</div>
+</main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

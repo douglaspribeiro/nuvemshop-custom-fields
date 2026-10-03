@@ -39,7 +39,7 @@ public class WinbackQueueService {
 
     @Transactional
     public void enqueue(Store store) {
-        if (store.getUninstalledAt() == null) return;
+        if (store.getUninstalledAt() == null || store.isErasurePending()) return;
         if (!properties.accepts(store.getStoreId())) {
             LOGGER.info("winback.uninstall_received store_id={} flow=disabled_by_allow_list", store.getStoreId());
             return;
@@ -63,7 +63,7 @@ public class WinbackQueueService {
             outbox.delete(event);
             return;
         }
-        if (store == null || store.isActive() || !store.getUninstalledAt().equals(event.getUninstalledAt())) {
+        if (store == null || store.isActive() || store.isErasurePending() || !store.getUninstalledAt().equals(event.getUninstalledAt())) {
             outbox.delete(event);
             return;
         }

@@ -45,7 +45,38 @@ public class EfiGateway implements PaymentGateway {
     @Override public BigDecimal amount(PlanType plan) { return catalog(plan).map(PaymentCatalogPrice::getAmountValue).orElseGet(() -> properties.amount(plan)); }
     public String payeeCode() { return properties.payeeCode(); }
     public boolean sandbox() { return properties.sandbox(); }
+    public List<EfiPlan> listPlans(int offset) {
+        if (offset < 0) throw new IllegalArgumentException("Página inválida.");
+        // A consulta também funciona antes de configurar os IDs no catálogo local.
+        JsonNode data = callApi("listPlans", Map.of("limit", "50", "offset", Integer.toString(offset)), Map.of()).path("data");
+        if (!data.isArray()) throw new PaymentGatewayException("Resposta inválida ao consultar planos da Efí.");
+        var plans = new java.util.ArrayList<EfiPlan>();
+        for (JsonNode plan : data) {
+            plans.add(new EfiPlan(required(plan, "plan_id"), required(plan, "name"),
+                    plan.path("interval").asInt(), plan.path("repeats").isNull() || plan.path("repeats").isMissingNode()
+                    ? null : plan.path("repeats").asInt(), plan.path("created_at").asText("")));
+        }
+        return List.copyOf(plans);
+    }
     public String planId(PlanType plan) { return catalog(plan).map(PaymentCatalogPrice::getProviderPriceId).orElseGet(() -> properties.planId(plan)); }
+    @Override public String priceId(Store store, PlanType plan) { return planId(plan); }
+    @Override public boolean planAvailable(Store store, PlanType plan) {
+        String id = plan == null || !plan.isBillable() ? null : planId(plan);
+        return PaymentGateway.super.planAvailable(store, plan) && id != null && id.matches("\\d+");
+    }
+    @Override public void changeSubscriptionPlan(String subscriptionId, Store store, PlanType plan) {
+        if (!planAvailable(store, plan)) throw new IllegalArgumentException("Plano ainda não disponível para assinatura.");
+        changeSubscriptionPlan(subscriptionId, planId(plan), plan.getDisplayName(), amount(plan));
+    }
+
+    public void changeSubscriptionPlan(String subscriptionId, String planId, String name, BigDecimal amount) {
+        JsonNode data = call("updateSubscription", Map.of("id", subscriptionId), Map.of(
+                "plan_id", Long.parseLong(planId),
+                "items", List.of(Map.of("name", "Campos Personalizados - " + name,
+                        "value", amount.movePointRight(2).longValueExact(), "amount", 1)))).path("data");
+        if (!subscriptionId.equals(required(data, "subscription_id")))
+            throw new PaymentGatewayException("A Efí não confirmou a assinatura alterada.");
+    }
 
     // A Efí usa checkout transparente; esta operação é feita pelo formulário do app.
     @Override public GatewayCheckout createCheckout(Store store, PlanType plan, String reference, String returnUrl) {
@@ -152,6 +183,31 @@ public class EfiGateway implements PaymentGateway {
         return call("getNotification", Map.of("token", token), Map.of()).path("data");
     }
 
+    public JsonNode chargeDetail(String id) {
+        return call("detailCharge", Map.of("id", id), Map.of()).path("data");
+    }
+
+    public JsonNode subscriptionDetail(String id) { return detail(id); }
+
+    public String createUpgradeCharge(BigDecimal amount, String reference, String notificationUrl, String description) {
+        long cents = amount.movePointRight(2).longValueExact();
+        if (cents <= 0) throw new IllegalArgumentException("Valor do ajuste inválido.");
+        return required(call("createCharge", Map.of(), Map.of(
+                "items", List.of(Map.of("name", description, "value", cents, "amount", 1)),
+                "metadata", Map.of("custom_id", reference, "notification_url", notificationUrl))).path("data"), "charge_id");
+    }
+
+    public void payUpgradeCharge(String chargeId, EfiPayer payer, String token) {
+        Map<String, Object> customer = Map.of("name", payer.name(), "cpf", payer.cpf(), "email", payer.email(),
+                "phone_number", payer.phone(), "birth", payer.birth());
+        call("definePayMethod", Map.of("id", chargeId), Map.of("payment", Map.of("credit_card", Map.of(
+                "customer", customer, "payment_token", token, "installments", 1))));
+    }
+
+    public JsonNode findUpgradeCharges(String reference) {
+        return call("listCharges", Map.of("custom_id",reference,"limit","2"),Map.of()).path("data");
+    }
+
     private Optional<PaymentCatalogPrice> catalog(PlanType plan) {
         return catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(
                         PaymentProviderType.EFI, environment(), "BR", plan)
@@ -167,6 +223,11 @@ public class EfiGateway implements PaymentGateway {
 
     private JsonNode call(String method, Map<String, String> params, Map<String, Object> body) {
         if (!configured()) throw new PaymentGatewayException("Efí não configurada.");
+        return callApi(method, params, body);
+    }
+
+    private JsonNode callApi(String method, Map<String, String> params, Map<String, Object> body) {
+        if (!properties.credentialsConfigured()) throw new PaymentGatewayException("Configure as credenciais da Efí para consultar os planos.");
         try {
             Map<String, Object> options = Map.of("client_id", properties.clientId(),
                     "client_secret", properties.clientSecret(), "sandbox", properties.sandbox());
@@ -186,4 +247,5 @@ public class EfiGateway implements PaymentGateway {
     }
 
     public record EfiPayer(String name, String cpf, String email, String phone, String birth) {}
+    public record EfiPlan(String id, String name, int interval, Integer repeats, String createdAt) {}
 }

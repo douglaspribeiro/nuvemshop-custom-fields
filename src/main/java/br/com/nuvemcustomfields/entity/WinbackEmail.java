@@ -14,6 +14,7 @@ public class WinbackEmail {
     @Column(nullable = false, length = 40) private String status = "PREPARED";
     @Column(name = "created_at", nullable = false) private Instant createdAt = Instant.now();
     @Column(name = "sent_at") private Instant sentAt;
+    @Column(name = "erasure_contact_request_at") private Instant erasureContactRequestAt;
     @Column(name = "ses_message_id", length = 200) private String sesMessageId;
     protected WinbackEmail() { }
     public WinbackEmail(String campaignId, String step) { this.campaignId = campaignId; this.step = step; }
@@ -39,6 +40,8 @@ public class WinbackEmail {
     }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getSentAt() { return sentAt; }
+    public Instant getErasureContactRequestAt() { return erasureContactRequestAt; }
+    public void authorizeErasureContact(Instant requestAt) { erasureContactRequestAt = requestAt; }
     public String getSesMessageId() { return sesMessageId; }
     public void status(String status) { this.status = status; }
     public void sent() { status = "SENT"; sentAt = Instant.now(); }

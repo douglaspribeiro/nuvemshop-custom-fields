@@ -63,6 +63,7 @@ public class BackofficeController {
     private final PaymentConfigurationService paymentConfigurationService;
     private final String appVersion;
     private final StoreDepartureService departures;
+    private final br.com.nuvemcustomfields.repository.WinbackCampaignRepository winbackCampaigns;
 
     public BackofficeController(
             BackofficeProperties properties,
@@ -79,7 +80,8 @@ public class BackofficeController {
             PaymentSubscriptionService paymentSubscriptionService,
             PaymentConfigurationService paymentConfigurationService,
             @Value("${APP_VERSION:dev}") String appVersion,
-            StoreDepartureService departures
+            StoreDepartureService departures,
+            br.com.nuvemcustomfields.repository.WinbackCampaignRepository winbackCampaigns
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -96,6 +98,7 @@ public class BackofficeController {
         this.paymentConfigurationService = paymentConfigurationService;
         this.appVersion = appVersion;
         this.departures = departures;
+        this.winbackCampaigns = winbackCampaigns;
     }
 
     @GetMapping("/backoffice/login")
@@ -142,12 +145,18 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/stores")
     public String stores(@RequestParam(required = false, defaultValue = "") String q,
-                         @RequestParam(required = false, defaultValue = "") String status, Model model) {
+                         @RequestParam(required = false, defaultValue = "") String status, Model model, HttpSession session) {
         LOGGER.info("backoffice.stores.open");
         var stores = storeRepository.findAll();
         boolean uninstalledOnly = "uninstalled".equals(status);
         populateStoreDirectory(model, stores, q, uninstalledOnly);
         model.addAttribute("uninstalledOnly", uninstalledOnly);
+        model.addAttribute("departureActionToken", BackofficeStoreDepartureController.token(session));
+        Map<Long, Store> byId = stores.stream().collect(Collectors.toMap(Store::getStoreId, Function.identity()));
+        var reasons = stores.isEmpty() ? Map.of() : winbackCampaigns.findByStoreIdIn(byId.keySet()).stream()
+                .filter(c -> c.getUninstalledAt().equals(byId.get(c.getStoreId()).getUninstalledAt()))
+                .collect(Collectors.toMap(br.com.nuvemcustomfields.entity.WinbackCampaign::getStoreId, Function.identity()));
+        model.addAttribute("departureCampaigns", reasons);
         LOGGER.info("backoffice.stores.loaded stores_count={}", stores.size());
         return "backoffice/stores";
     }
@@ -404,6 +413,8 @@ public class BackofficeController {
                 && store.getEffectivePlan() == PlanType.PREMIUM).count());
         model.addAttribute("proInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
                 && store.getEffectivePlan() == PlanType.PREMIUM_PLUS).count());
+        model.addAttribute("ultraInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
+                && store.getEffectivePlan() == PlanType.PREMIUM_ULTRA).count());
     }
 
     private static boolean matches(br.com.nuvemcustomfields.entity.Store store, String query) {

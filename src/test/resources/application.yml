@@ -30,8 +30,10 @@ nuvemshop:
     currency: BRL
     premium-external-id: PREMIUM
     premium-plus-external-id: PREMIUM_PLUS
+    premium-ultra-external-id: PREMIUM_ULTRA
     premium-amount: 9.99
     premium-plus-amount: 19.99
+    premium-ultra-amount: 59.90
 
 backoffice:
   username: admin

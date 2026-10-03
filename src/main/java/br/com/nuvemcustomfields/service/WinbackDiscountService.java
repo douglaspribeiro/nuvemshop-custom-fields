@@ -35,7 +35,7 @@ public class WinbackDiscountService {
     }
 
     public boolean available(Store store) {
-        return properties.enabled() && (efi.sandbox() || properties.allowProduction())
+        return !store.isErasurePending() && properties.enabled() && (efi.sandbox() || properties.allowProduction())
                 && efi.configured() && efi.supports(store)
                 && router.forStore(store).map(g -> g.provider() == PaymentProviderType.EFI).orElse(false);
     }
@@ -44,7 +44,7 @@ public class WinbackDiscountService {
         return history.existsByStoreId(storeId) || subscriptions.findByStoreId(storeId)
                 .map(s -> new GatewayInvoice("", "", "", s.getLastPaymentStatus()).approved()).orElse(false)
                 || planEvents.existsByStoreIdAndToPlanInAndSourceIn(storeId,
-                    java.util.List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS),
+                    java.util.List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA),
                     java.util.List.of("EFI_CHECKOUT", "PAYMENT_WEBHOOK", "PAYMENT_RECONCILE", "PENDING_TIMEOUT_RECONCILE"));
     }
 

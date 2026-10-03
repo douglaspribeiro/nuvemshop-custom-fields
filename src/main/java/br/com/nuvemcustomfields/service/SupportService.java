@@ -51,7 +51,11 @@ public class SupportService {
 
     @Transactional(readOnly = true)
     public List<SupportTicket> allTickets() {
-        return ticketRepository.findAllByOrderByLastMessageAtDesc();
+        return ticketRepository.findAllByOrderByLastMessageAtDesc().stream()
+                .sorted(java.util.Comparator.comparing((SupportTicket ticket) -> ticket.getStatus() != SupportTicketStatus.OPEN)
+                        .thenComparing(ticket -> !ticket.isPriority())
+                        .thenComparing(SupportTicket::getLastMessageAt, java.util.Comparator.reverseOrder()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -84,7 +88,7 @@ public class SupportService {
 
     @Transactional
     public SupportTicket openTicket(Store store, String subject, String message) {
-        SupportTicket ticket = openTicket(store.getStoreId(), subject, message);
+        SupportTicket ticket = openTicket(store.getStoreId(), subject, message, store.getEffectivePlan());
         notifyDiscord(() -> discord.sendNewTicket(store, ticket), ticket.getId(), "new_ticket");
         return ticket;
     }
@@ -94,16 +98,18 @@ public class SupportService {
         if (storeId == null) {
             throw new IllegalArgumentException("Identificador da loja nao informado.");
         }
-        return openTicket(storeId, subject, message);
+        return openTicket(storeId, subject, message,
+                storeRepository.findByStoreId(storeId).map(Store::getEffectivePlan).orElse(null));
     }
 
-    private SupportTicket openTicket(Long storeId, String subject, String message) {
+    private SupportTicket openTicket(Long storeId, String subject, String message, br.com.nuvemcustomfields.entity.PlanType plan) {
         String normalizedSubject = normalize(subject, "Informe o assunto.", SUBJECT_MAX_LENGTH);
         String normalizedMessage = normalize(message, "Escreva uma mensagem.", MESSAGE_MAX_LENGTH);
         Instant now = Instant.now();
 
         SupportTicket ticket = new SupportTicket();
         ticket.setStoreId(storeId);
+        ticket.setPlanAtOpen(plan);
         ticket.setSubject(normalizedSubject);
         ticket.setStatus(SupportTicketStatus.OPEN);
         ticket.setUpdatedAt(now);

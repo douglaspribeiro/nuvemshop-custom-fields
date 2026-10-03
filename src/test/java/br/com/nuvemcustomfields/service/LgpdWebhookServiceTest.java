@@ -12,18 +12,18 @@ import static org.mockito.Mockito.verify;
 class LgpdWebhookServiceTest {
 
     private final SupportService supportService = mock(SupportService.class);
-    private final StoreDataErasureService storeDataErasureService = mock(StoreDataErasureService.class);
+    private final StoreErasureRequestService erasureRequests = mock(StoreErasureRequestService.class);
     private final LgpdWebhookService service = new LgpdWebhookService(
             new ObjectMapper(),
             supportService,
-            storeDataErasureService
+            erasureRequests
     );
 
     @Test
-    void erasesAllStoreDataForStoreRedact() throws Exception {
+    void recordsErasureRequestForManualReview() throws Exception {
         service.eraseStore("{\"store_id\":123}");
 
-        verify(storeDataErasureService).erase(123L);
+        verify(erasureRequests).receive(org.mockito.ArgumentMatchers.eq(123L), org.mockito.ArgumentMatchers.any(java.time.Instant.class));
     }
 
     @Test

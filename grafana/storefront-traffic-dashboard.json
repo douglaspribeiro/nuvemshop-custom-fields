@@ -95,16 +95,32 @@
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "description": "Top 10 IDs de lojas ativas por chamadas recebidas pelo servidor no período. Requisições sem loja validada e downloads servidos pela CDN da Nuvemshop não entram neste ranking.",
+      "description": "Top 10 lojas por chamadas recebidas no período. Os nomes vêm do cadastro, associados por store_id. Requisições sem loja validada e downloads servidos pela CDN não entram. Requer a métrica ncf_store_info da nova versão do app.",
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "decimals": 0, "unit": "short" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "id": 7,
       "options": { "displayMode": "gradient", "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }, "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showUnfilled": true, "sizing": "auto", "text": {}, "valueMode": "color" },
       "targets": [
-        { "expr": "topk(10, sum by (store_id) (increase(ncf_storefront_http_requests_total{store_id=~\"[0-9]+\"}[$__range])))", "instant": true, "legendFormat": "Loja {{store_id}}", "refId": "A" }
+        { "expr": "topk(10, sum by (store_id) (increase(ncf_storefront_http_requests_total{store_id=~\"[0-9]+\"}[$__range])) * on (store_id) group_left (store_name) topk by (store_id) (1, max by (store_id, store_name) (ncf_store_info)))", "instant": true, "legendFormat": "{{store_name}}", "refId": "A" }
       ],
       "title": "Top 10 lojas por chamadas no período",
       "type": "bargauge"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "description": "Top 20 produtos ativos com campos de personalização por consultas bem-sucedidas de configuração no período selecionado. Não são visitantes únicos: recargas, bots e novas consultas podem aumentar o total. A coleta começa após o deploy desta versão.",
+      "fieldConfig": { "defaults": { "decimals": 0, "unit": "short", "custom": { "align": "auto" } }, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "id": 8,
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "Quantidade", "desc": true }] },
+      "targets": [
+        { "expr": "round(sort_desc(topk(20, (sum by (store_id, product_id) (increase(ncf_storefront_personalized_product_requests_total[$__range])) > 0) * on (store_id, product_id) group_left (store_name, product_name) topk by (store_id, product_id) (1, max by (store_id, product_id, store_name, product_name) (ncf_personalized_product_info)))))", "format": "table", "instant": true, "refId": "A" }
+      ],
+      "title": "Produtos personalizados mais consultados · Loja / Produto / Quantidade",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "store_id": true, "product_id": true }, "indexByName": { "store_name": 0, "product_name": 1, "Value": 2 }, "renameByName": { "store_name": "Loja", "product_name": "Produto", "Value": "Quantidade" } } }
+      ],
+      "type": "table"
     }
   ],
   "refresh": "30s",
@@ -116,6 +132,6 @@
   "timezone": "browser",
   "title": "Nuvemshop · Tráfego de Vitrine",
   "uid": "ncf-storefront-traffic",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

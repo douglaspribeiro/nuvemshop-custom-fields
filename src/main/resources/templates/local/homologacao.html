@@ -1,0 +1,4 @@
+<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Homologação local</title><link rel="stylesheet" th:href="@{/styles/app.css}"></head><body><main class="shell"><section class="panel">
+<h1>Entrar na loja fictícia local</h1><p>Este acesso simula a sessão do lojista após o redirecionamento da Nuvemshop. Não realiza OAuth nem cria uma loja real. Pagamentos usam somente a Efí sandbox.</p>
+<form method="post" th:action="@{/local/homologacao}"><label>Chave local de acesso <input name="accessKey" type="password" required autocomplete="off" minlength="24"></label><button class="button primary" type="submit">Entrar no painel local</button></form>
+</section></main></body></html>

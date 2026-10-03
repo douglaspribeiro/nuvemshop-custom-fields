@@ -1,0 +1,19 @@
+<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Confirmar upgrade</title><link rel="stylesheet" th:href="@{/styles/app.css}"><link rel="stylesheet" th:href="@{/styles/merchant.css}"></head>
+<body class="merchant-page"><main class="shell"><section class="panel">
+<h1 th:text="'Upgrade do '+${upgradeAdjustment.sourcePlan.displayName}+' para o '+${upgradeAdjustment.targetPlan.displayName}"></h1>
+<p>Você continuará com <strong>uma única assinatura</strong>. A mensalidade do novo plano substituirá a do anterior, sem mudar sua data de renovação.</p>
+<dl><dt>Plano atual</dt><dd th:text="${currentPrice}+' / mês'"></dd><dt>Novo plano</dt><dd th:text="${targetPrice}+' / mês'"></dd>
+<dt>Novo plano pelo período restante</dt><dd th:text="${proratedPrice}"></dd>
+<dt th:if="${upgradeAdjustment.couponCode!=null}" th:text="'Cupom '+${upgradeAdjustment.couponCode}+' — 30%'"></dt><dd th:if="${upgradeAdjustment.couponCode!=null}" th:text="'− '+${discountPrice}"></dd>
+<dt>Crédito do plano já pago e não utilizado</dt><dd th:text="'− '+${creditPrice}"></dd>
+<dt><strong>Pagar hoje — ajuste único</strong></dt><dd><strong th:text="${duePrice}"></strong></dd>
+<dt>Próxima mensalidade</dt><dd th:text="${targetPrice}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></dd></dl>
+<p>O ajuste de hoje permite usar o novo plano até a próxima renovação. Não é uma segunda assinatura. Os benefícios serão liberados após confirmar o pagamento e a alteração na Efí.</p>
+<p th:if="${upgradeAdjustment.couponCode!=null}">O BRINDE vale somente para o período restante deste ciclo, sem desconto nas próximas mensalidades.</p>
+<form method="get" th:action="@{/admin/billing/upgrade/efi}"><input type="hidden" name="plan" th:value="${upgradeAdjustment.targetPlan}"><label>Cupom <input name="couponCode" maxlength="36" th:value="${upgradeAdjustment.couponCode}" placeholder="BRINDE"></label><button class="button" type="submit">Aplicar cupom e recalcular</button></form>
+<p>Este resumo é válido por até 15 minutos. Se expirar, revise novamente antes de pagar.</p>
+<a class="button primary" th:if="${upgradeAdjustment.dueAmount.signum()>0}" th:href="@{/admin/billing/upgrade/efi/pay(id=${upgradeAdjustment.id})}" th:text="'Continuar para pagar '+${duePrice}"></a>
+<form th:if="${upgradeAdjustment.dueAmount.signum()==0}" method="post" th:action="@{/admin/billing/upgrade/efi/pay}"><input type="hidden" name="adjustmentId" th:value="${upgradeAdjustment.id}"><button class="button primary" type="submit">Confirmar upgrade sem cobrança agora</button></form>
+<a class="button" th:href="@{/admin/billing}">Voltar aos planos</a>
+</section></main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

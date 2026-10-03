@@ -27,14 +27,21 @@ public class DiscordSupportWebhookClient {
     public boolean configured() { return webhookUri != null; }
 
     public void sendNewTicket(Store store, SupportTicket ticket) {
-        send("📩 Novo chamado\nLoja: " + storeLabel(store) + "\nTicket: #" + ticket.getId()
+        send(priorityPrefix(ticket) + "📩 Novo chamado\nLoja: " + storeLabel(store) + "\nPlano: " + planLabel(ticket, store) + "\nTicket: #" + ticket.getId()
                 + "\nAssunto: " + ticket.getSubject());
     }
 
     public void sendStoreReply(Store store, SupportTicket ticket) {
-        send("💬 Nova resposta de loja\nLoja: " + storeLabel(store) + "\nTicket: #" + ticket.getId()
+        send(priorityPrefix(ticket) + "💬 Nova resposta de loja\nLoja: " + storeLabel(store) + "\nPlano: " + planLabel(ticket, store) + "\nTicket: #" + ticket.getId()
                 + "\nAssunto: " + ticket.getSubject());
     }
+
+    public void sendFeatureRequest(Store store,br.com.nuvemcustomfields.entity.FeatureRequest request){
+        send("💡 Sugestão de melhoria #"+request.getId()+"\nLoja: "+truncate(storeLabel(store),180)
+                +"\nPlano: "+request.getPlanAtSubmission().getDisplayName()+"\nTítulo: "+request.getTitle()
+                +"\nDescrição: "+truncate(request.getDescription(),1200)+"\nSugestão para avaliação; não é chamado de suporte.");
+    }
+    private static String truncate(String value,int max){return value.length()<=max?value:value.substring(0,max-1)+"…";}
 
     private void send(String content) {
         if (!configured()) return;
@@ -47,6 +54,14 @@ public class DiscordSupportWebhookClient {
         String name = store.getStoreName() == null || store.getStoreName().isBlank()
                 ? "Loja sem nome" : store.getStoreName();
         return name + " (" + store.getStoreId() + ")";
+    }
+
+    private static String planLabel(SupportTicket ticket, Store store) {
+        return (ticket.getPlanAtOpen() == null ? store.getEffectivePlan() : ticket.getPlanAtOpen()).getDisplayName();
+    }
+
+    private static String priorityPrefix(SupportTicket ticket) {
+        return ticket.isPriority() ? "🚨 PRIORITÁRIO · Ultra\n" : "";
     }
 
     private static URI validWebhookUri(String value) {

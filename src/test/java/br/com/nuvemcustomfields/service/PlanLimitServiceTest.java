@@ -27,6 +27,8 @@ class PlanLimitServiceTest {
         assertThat(service.fieldLimit(PlanType.PREMIUM)).isEqualTo(3);
         assertThat(service.productLimit(PlanType.PREMIUM_PLUS)).isEqualTo(50);
         assertThat(service.fieldLimit(PlanType.PREMIUM_PLUS)).isEqualTo(-1);
+        assertThat(service.productLimit(PlanType.PREMIUM_ULTRA)).isEqualTo(-1);
+        assertThat(service.fieldLimit(PlanType.PREMIUM_ULTRA)).isEqualTo(-1);
     }
 
     @Test

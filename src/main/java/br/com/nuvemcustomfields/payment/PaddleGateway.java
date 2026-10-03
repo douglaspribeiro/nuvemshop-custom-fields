@@ -55,6 +55,17 @@ public class PaddleGateway implements PaymentGateway {
     @Override public BigDecimal amount(Store store, PlanType plan) { return requireCatalog(store, plan).getAmountValue(); }
     @Override public String currency(Store store) { return requireCatalog(store, PlanType.PREMIUM).getCurrency(); }
     @Override public String priceId(Store store, PlanType plan) { return requireCatalog(store, plan).getProviderPriceId(); }
+    @Override public boolean planAvailable(Store store, PlanType plan) {
+        return configured() && supports(store) && catalog(normalize(store.getStoreCountryCode()), plan).isPresent();
+    }
+    @Override public void changeSubscriptionPlan(String subscriptionId, Store store, PlanType plan) {
+        JsonNode existing = get("/subscriptions/" + subscriptionId).path("data");
+        if (!existing.path("items").isArray() || existing.path("items").size() != 1)
+            throw new IllegalArgumentException("Esta assinatura precisa ser revisada pelo suporte.");
+        patch("/subscriptions/" + subscriptionId, Map.of(
+                "items", List.of(Map.of("price_id", requireCatalog(store, plan).getProviderPriceId(), "quantity", 1)),
+                "proration_billing_mode", "do_not_bill"));
+    }
     public String clientSideToken() { return properties.clientSideToken(); }
     public boolean sandbox() { return properties.sandbox(); }
     public int graceDays() { return properties.safeGraceDays(); }

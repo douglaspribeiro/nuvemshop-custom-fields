@@ -10,6 +10,7 @@ import java.util.Optional;
 public interface WinbackCampaignRepository extends JpaRepository<WinbackCampaign, String> {
     Optional<WinbackCampaign> findByStoreIdAndUninstalledAt(Long storeId, Instant uninstalledAt);
     List<WinbackCampaign> findByStoreIdAndReinstalledAtIsNull(Long storeId);
+    List<WinbackCampaign> findByStoreIdIn(java.util.Collection<Long> storeIds);
     boolean existsByStoreIdAndOptedOutAtIsNotNull(Long storeId);
     @Query("select c.storeId from WinbackCampaign c where c.id = :id")
     Optional<Long> storeIdFor(String id);

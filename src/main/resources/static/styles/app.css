@@ -105,6 +105,9 @@ h2 {
     margin: 20px 0;
 }
 
+.priority-ticket { background: #fff7df; }
+.plan-dot.ultra { background: #bd8b19; }
+
 
 .plan-card {
     display: grid;

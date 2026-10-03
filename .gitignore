@@ -2,6 +2,7 @@ target/
 .idea/
 *.iml
 .env
+.env.local-homolog
 logs/*.log
 __pycache__/
 *.gz

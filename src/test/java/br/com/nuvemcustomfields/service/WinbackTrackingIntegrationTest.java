@@ -44,6 +44,7 @@ class WinbackTrackingIntegrationTest {
     @Autowired WinbackCampaignService service;
     @Autowired WinbackSesEventService ses;
     @Autowired StoreDataErasureService erasure;
+    @Autowired StoreErasureRequestService erasureRequests;
     @Autowired ObjectMapper json;
     @Autowired MockMvc mvc;
     @Autowired jakarta.persistence.EntityManager em;
@@ -63,6 +64,52 @@ class WinbackTrackingIntegrationTest {
         event = new WinbackOutbox(STORE_ID, store.getUninstalledAt()); event.published(); outbox.saveAndFlush(event);
         message = new MimeMessage(Session.getInstance(new Properties()));
         when(sender.createMimeMessage()).thenReturn(message);
+    }
+
+    @Test
+    void manualFeedbackClaimsOnlyOnceAndPendingErasureCancelsSending() throws Exception {
+        String id = service.prepareManual(STORE_ID);
+        assertThat(id).isNotNull();
+        assertThat(service.prepareManual(STORE_ID)).isNull();
+        erasureRequests.receive(STORE_ID,Instant.now());
+        service.send(id);
+        assertThat(emails.findById(id).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        verify(sender,never()).send(any(MimeMessage.class));
+        assertThatThrownBy(()->service.prepareManual(STORE_ID)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    }
+
+    @Test
+    void pendingErasureAllowsExplicitManualFeedbackButNeverAutomaticFollowups() throws Exception {
+        erasureRequests.receive(STORE_ID,Instant.now());
+        assertThat(service.prepare(event.getId())).isNull();
+        assertThatThrownBy(()->service.prepareManual(STORE_ID)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        String id=service.prepareManual(STORE_ID,true); service.send(id);
+        var mail=emails.findById(id).orElseThrow();
+        assertThat(mail.getErasureContactRequestAt()).isEqualTo(store.getErasureRequestedAt());
+        assertThat(mail.getStatus()).isEqualTo("SENT");
+        service.respond(id,"MISSING_FEATURE","Copiar campos",false);
+        assertThat(campaign.getReason()).isEqualTo("MISSING_FEATURE");
+        assertThat(emails.findByCampaignIdAndStep(campaign.getId(),"FOLLOWUP")).isEmpty();
+        assertThat(service.prepareManual(STORE_ID,true)).isNull();
+        verify(sender,times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void manualFeedbackIsSentAndCannotBeAutomaticallyDuplicated() throws Exception {
+        String id=service.prepareManual(STORE_ID); service.send(id);
+        assertThat(service.prepare(event.getId())).isNull();
+        assertThat(service.prepareManual(STORE_ID)).isNull();
+        verify(sender,times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void aCompletedSendCannotBeReclassifiedAndResentAfterRedact() throws Exception {
+        String id=service.prepareManual(STORE_ID); service.send(id);
+        erasureRequests.receive(STORE_ID,Instant.now());
+        service.send(id);
+        assertThat(emails.findById(id).orElseThrow().getStatus()).isEqualTo("SENT");
+        assertThat(service.prepareManual(STORE_ID,true)).isNull();
+        verify(sender,times(1)).send(any(MimeMessage.class));
     }
 
     @Test

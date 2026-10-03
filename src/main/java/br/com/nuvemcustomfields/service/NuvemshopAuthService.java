@@ -114,6 +114,7 @@ public class NuvemshopAuthService {
 
         LOGGER.info("nuvemshop.oauth.exchange.done store_id={} scope={}", token.storeId(), token.scope());
         Store store = storeRepository.findByStoreIdForUpdate(token.storeId()).orElseGet(Store::new);
+        boolean erasureCancelled = store.isErasurePending();
         store.setStoreId(token.storeId());
         store.setAccessToken(token.accessToken());
         store.setScope(token.scope());
@@ -130,7 +131,11 @@ public class NuvemshopAuthService {
         }
         logStoreLocale(store, profileLoaded);
         store.setUninstalledAt(null);
+        store.setErasureRequestedAt(null);
+        store.setBillingSuspended(false);
         store.setDepartureCounted(false);
+        store.setDepartureReason(null);
+        store.setDepartureJustification(null);
         Store saved = storeRepository.save(store);
         winbackTracking.reinstalled(saved.getStoreId());
         webhookRegistrationService.registerRequiredWebhooks(saved);
@@ -141,6 +146,8 @@ public class NuvemshopAuthService {
             integrationLogService.warn(saved.getStoreId(), "script.install.failed", "Falha ao instalar script na vitrine: " + ex.getMessage());
         }
         integrationLogService.info(saved.getStoreId(), "oauth.installed", "Loja instalada ou reconectada via OAuth.");
+        if (erasureCancelled) integrationLogService.info(saved.getStoreId(), "lgpd.erasure_cancelled_by_reinstallation",
+                "Pendência de exclusão cancelada após nova autorização OAuth da loja.");
         integrationLogService.info(
                 saved.getStoreId(),
                 "store.locale.resolved",

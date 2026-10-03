@@ -23,6 +23,8 @@ import java.io.IOException;
 public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
 
     public static final String ACTIVE_STORE_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".activeStoreId";
+    public static final String PERSONALIZED_PRODUCT_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".personalizedProductId";
+    public static final String PRODUCT_REQUEST_METRIC = "ncf.storefront.personalized.product.requests";
 
     private final MeterRegistry meterRegistry;
     private final StoreRepository storeRepository;
@@ -53,6 +55,16 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
                     .tag("store_id", storeId)
                     .register(meterRegistry)
                     .increment();
+            Object product = request.getAttribute(PERSONALIZED_PRODUCT_ID_ATTRIBUTE);
+            if ("storefront_personalization".equals(kind) && "GET".equals(request.getMethod())
+                    && response.getStatus() >= 200 && response.getStatus() < 300
+                    && request.getAttribute(ACTIVE_STORE_ID_ATTRIBUTE) instanceof Long id
+                    && product instanceof Long productId) {
+                Counter.builder(PRODUCT_REQUEST_METRIC)
+                        .description("Successful configuration reads of enabled products with personalization fields; not unique visitors")
+                        .tag("store_id", id.toString()).tag("product_id", productId.toString())
+                        .register(meterRegistry).increment();
+            }
         }
     }
 

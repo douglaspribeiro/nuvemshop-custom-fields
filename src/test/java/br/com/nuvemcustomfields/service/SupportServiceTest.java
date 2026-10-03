@@ -23,6 +23,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SupportServiceTest {
+    @Test
+    void prioritizesOpenUltraTicketsBeforeStandardAndClosedTickets() {
+        SupportTicket standard = new SupportTicket();
+        standard.setPlanAtOpen(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);
+        SupportTicket ultra = new SupportTicket();
+        ultra.setPlanAtOpen(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA);
+        SupportTicket closed = new SupportTicket();
+        closed.setPlanAtOpen(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA);
+        closed.setStatus(SupportTicketStatus.CLOSED);
+        when(ticketRepository.findAllByOrderByLastMessageAtDesc()).thenReturn(java.util.List.of(closed, standard, ultra));
+        assertThat(service.allTickets()).containsExactly(ultra, standard, closed);
+    }
 
     private final SupportTicketRepository ticketRepository = mock(SupportTicketRepository.class);
     private final SupportMessageRepository messageRepository = mock(SupportMessageRepository.class);
@@ -54,6 +66,7 @@ class SupportServiceTest {
     void opensTicketWithNormalizedStoreMessage() {
         Store store = new Store();
         store.setStoreId(123L);
+        store.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA);
         when(ticketRepository.save(any(SupportTicket.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         SupportTicket ticket = service.openTicket(store, "  Preciso de ajuda  ", "  Minha mensagem  ");
@@ -61,6 +74,8 @@ class SupportServiceTest {
         assertThat(ticket.getStoreId()).isEqualTo(123L);
         assertThat(ticket.getSubject()).isEqualTo("Preciso de ajuda");
         assertThat(ticket.getStatus()).isEqualTo(SupportTicketStatus.OPEN);
+        assertThat(ticket.getPlanAtOpen()).isEqualTo(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA);
+        assertThat(ticket.isPriority()).isTrue();
 
         ArgumentCaptor<SupportMessage> messageCaptor = ArgumentCaptor.forClass(SupportMessage.class);
         verify(messageRepository).save(messageCaptor.capture());

@@ -19,6 +19,13 @@ public interface PaymentGateway {
     default PaymentEnvironment environment() { return PaymentEnvironment.PRODUCTION; }
     GatewayCheckout createCheckout(Store store, PlanType plan, String externalReference, String returnUrl);
     GatewaySubscription getSubscription(String subscriptionId);
+    default boolean planAvailable(Store store, PlanType plan) {
+        return configured() && supports(store) && plan != null && plan.isBillable()
+                && amount(store, plan) != null && amount(store, plan).signum() > 0;
+    }
+    default void changeSubscriptionPlan(String subscriptionId, Store store, PlanType plan) {
+        throw new UnsupportedOperationException("Alteração de assinatura indisponível para este provedor.");
+    }
     Optional<GatewayInvoice> getLatestInvoice(String subscriptionId);
     GatewayInvoice getInvoice(String invoiceId);
     void cancel(String subscriptionId);

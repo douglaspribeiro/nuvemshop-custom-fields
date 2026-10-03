@@ -33,7 +33,7 @@ public class DiscordPaymentWebhookClient {
         String amount = "BRL".equals(notification.getCurrency())
                 ? NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(notification.getAmountValue())
                 : notification.getCurrency() + " " + notification.getAmountValue();
-        String plan = notification.getPlan() == PlanType.PREMIUM ? "Essencial" : "Pro";
+        String plan = notification.getPlan().getDisplayName();
         String content = "✅ Pagamento confirmado\n"
                 + "Loja: " + notification.getStoreId() + "\n"
                 + "Plano: " + plan + "\n"

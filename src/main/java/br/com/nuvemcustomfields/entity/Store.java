@@ -142,6 +142,24 @@ public class Store {
     @Column(name = "uninstalled_at")
     private Instant uninstalledAt;
 
+    @Column(name = "erasure_requested_at")
+    private Instant erasureRequestedAt;
+
+    public Instant getErasureRequestedAt() { return erasureRequestedAt; }
+    public void setErasureRequestedAt(Instant at) {
+        erasureRequestedAt = at == null ? null : at.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+    }
+    public boolean isErasurePending() { return erasureRequestedAt != null; }
+
+    @Column(name = "departure_reason", length = 160)
+    private String departureReason;
+    @Column(name = "departure_justification", length = 2000)
+    private String departureJustification;
+    public String getDepartureReason() { return departureReason; }
+    public void setDepartureReason(String reason) { departureReason = reason; }
+    public String getDepartureJustification() { return departureJustification; }
+    public void setDepartureJustification(String justification) { departureJustification = justification; }
+
     @Column(name = "departure_counted", nullable = false)
     @org.hibernate.annotations.ColumnDefault("false")
     private boolean departureCounted;
@@ -356,7 +374,7 @@ public class Store {
     }
 
     public boolean isActive() {
-        return uninstalledAt == null;
+        return uninstalledAt == null && !isErasurePending();
     }
 
     private String normalizeUpper(String value) {

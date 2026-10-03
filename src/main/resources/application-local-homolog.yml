@@ -1,0 +1,39 @@
+environment: LOCAL_HOMOLOG
+local:
+  homologation:
+    enabled: true
+    access-key: ${LOCAL_HOMOLOG_ACCESS_KEY:}
+server:
+  address: 127.0.0.1
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+        secure: ${LOCAL_HOMOLOG_COOKIE_SECURE:false}
+nuvemshop:
+  client-id: local-homologation
+  client-secret: local-not-a-real-secret
+  api-base-url: http://127.0.0.1:9
+  billing:
+    enabled: false
+payments:
+  efi:
+    sandbox: true
+    premium-amount: ${EFI_PREMIUM_AMOUNT:19.99}
+    premium-plus-amount: ${EFI_PREMIUM_PLUS_AMOUNT:29.99}
+    premium-ultra-amount: ${EFI_PREMIUM_ULTRA_AMOUNT:59.90}
+  mercado-pago:
+    enabled: false
+  paddle:
+    enabled: false
+notifications:
+  ses-events:
+    enabled: false
+  ses:
+    host: ''
+    username: ''
+    password: ''
+    from: ''
+winback:
+  enabled: false
+  mail-enabled: false

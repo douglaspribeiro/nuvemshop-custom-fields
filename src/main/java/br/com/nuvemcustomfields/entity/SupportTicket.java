@@ -22,6 +22,10 @@ public class SupportTicket {
     @Column(name = "store_id", nullable = false)
     private Long storeId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plan_at_open", length = 30)
+    private PlanType planAtOpen;
+
     @Column(nullable = false, length = 160)
     private String subject;
 
@@ -48,6 +52,18 @@ public class SupportTicket {
 
     public void setStoreId(Long storeId) {
         this.storeId = storeId;
+    }
+
+    public PlanType getPlanAtOpen() {
+        return planAtOpen;
+    }
+
+    public void setPlanAtOpen(PlanType planAtOpen) {
+        this.planAtOpen = planAtOpen;
+    }
+
+    public boolean isPriority() {
+        return planAtOpen != null && planAtOpen.hasPrioritySupport();
     }
 
     public String getSubject() {

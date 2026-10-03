@@ -59,6 +59,7 @@ public class PlanLimitService {
             case FREE, FREE_GRATIS -> 1L;
             case PREMIUM -> 10L;
             case PREMIUM_PLUS -> 50L;
+            case PREMIUM_ULTRA -> UNLIMITED;
         };
     }
 
@@ -67,7 +68,7 @@ public class PlanLimitService {
             case FREE -> 1L;
             case FREE_GRATIS -> 3L;
             case PREMIUM -> 3L;
-            case PREMIUM_PLUS -> UNLIMITED;
+            case PREMIUM_PLUS, PREMIUM_ULTRA -> UNLIMITED;
         };
     }
 }

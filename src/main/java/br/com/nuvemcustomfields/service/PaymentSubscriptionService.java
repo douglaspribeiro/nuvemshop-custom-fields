@@ -150,6 +150,8 @@ public class PaymentSubscriptionService {
         refreshProfileIfNeeded(store);
         if (store.isCourtesyPremium()) throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
         if (!efi.configured() || !efi.supports(store)) throw new IllegalArgumentException("Pagamento Efí indisponível para esta loja.");
+        if (plan == PlanType.PREMIUM_ULTRA && !efi.planAvailable(store, plan))
+            throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
         if (local != null && local.getProvider() == PaymentProviderType.EFI
                 && local.getStatus() == PaymentSubscriptionStatus.PENDING) {
@@ -294,21 +296,87 @@ public class PaymentSubscriptionService {
     }
 
     public BigDecimal amount(Store store, PlanType plan) {
-        return router.forStore(store).map(gateway -> amount(gateway, store, plan)).orElse(BigDecimal.ZERO);
+        return priceGateway(store).map(gateway -> amount(gateway, store, plan)).orElse(BigDecimal.ZERO);
     }
 
     public String currency(Store store) {
-        return router.forStore(store).map(gateway -> gateway.currency(store)).orElse(store.getStoreCurrency());
+        return priceGateway(store).map(gateway -> gateway.currency(store)).orElse(store.getStoreCurrency());
+    }
+
+    private Optional<PaymentGateway> priceGateway(Store store) {
+        PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
+        if (existing != null && existing.isAccessActive() && router.configured(existing.getProvider()))
+            return Optional.of(router.require(existing.getProvider()));
+        return router.forStore(store);
     }
 
     public Optional<PaymentSubscription> find(Long storeId) {
         return subscriptions.findByStoreId(storeId);
     }
 
+    public boolean planAvailable(Store store, PlanType plan) {
+        try {
+            PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
+            PaymentGateway gateway = existing != null && existing.isAccessActive()
+                    ? router.require(existing.getProvider()) : router.requireForStore(store);
+            return gateway.planAvailable(store, plan);
+        } catch (RuntimeException ex) { return false; }
+    }
+
+    public BigDecimal upgradeAmount(Store store, PlanType plan) {
+        PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElseThrow();
+        return amount(router.require(existing.getProvider()), store, plan);
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void upgrade(Long storeId, PlanType targetPlan, BigDecimal confirmedAmount) {
+        Store store = stores.findActiveByStoreIdForUpdate(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
+        PaymentSubscription subscription = subscriptions.findByStoreId(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("Não há assinatura ativa para alterar."));
+        if (targetPlan == null || !subscription.isAccessActive()
+                || subscription.getStatus() != PaymentSubscriptionStatus.ACTIVE
+                || subscription.isCancellationPending() || subscription.getCancellationEffectiveAt() != null
+                || subscription.isWinbackRestorePending() || store.isCourtesyPremium()
+                || !targetPlan.isUpgradeFrom(subscription.getPlan())
+                || !hasText(subscription.getProviderSubscriptionId())) {
+            throw new IllegalArgumentException("Selecione um plano superior ao plano atual.");
+        }
+        PaymentGateway gateway = router.require(subscription.getProvider());
+        if (subscription.getProviderEnvironment() != gateway.environment() || !gateway.planAvailable(store, targetPlan)) {
+            throw new IllegalArgumentException("Plano ainda não disponível para esta assinatura.");
+        }
+        if (subscription.getUpgradePlan() != null) {
+            reconcile(storeId);
+            throw new PaymentGatewayException("A alteração anterior está sendo confirmada. Atualize a página antes de tentar novamente.");
+        }
+        BigDecimal targetAmount = amount(gateway, store, targetPlan);
+        if (confirmedAmount == null || targetAmount.compareTo(confirmedAmount) != 0) {
+            throw new IllegalArgumentException("O preço mudou. Revise o valor antes de confirmar.");
+        }
+        GatewaySubscription before = gateway.getSubscription(subscription.getProviderSubscriptionId());
+        validateRemote(subscription, before);
+        if (!"active".equalsIgnoreCase(before.status()) && !"authorized".equalsIgnoreCase(before.status())
+                && !"new_charge".equalsIgnoreCase(before.status())) {
+            throw new IllegalArgumentException("A assinatura precisa estar ativa para fazer upgrade.");
+        }
+        subscription.requestUpgrade(targetPlan, targetAmount, gateway.priceId(store, targetPlan));
+        subscriptions.saveAndFlush(subscription);
+        try {
+            gateway.changeSubscriptionPlan(subscription.getProviderSubscriptionId(), store, targetPlan);
+            GatewaySubscription remote = gateway.getSubscription(subscription.getProviderSubscriptionId());
+            if (!matchesUpgrade(subscription, remote))
+                throw new PaymentGatewayException("A alteração está aguardando confirmação do provedor.");
+            synchronize(subscription, remote, null, "PAYMENT_UPGRADE");
+        } catch (RuntimeException ex) {
+            throw new PaymentGatewayException("A alteração precisa ser confirmada pelo provedor. Seu acesso atual foi preservado.", ex);
+        }
+    }
+
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public String startCheckout(Long storeId, PlanType plan) {
         if (plan == null || !plan.isBillable()) {
-            throw new IllegalArgumentException("Selecione o plano Essencial ou Pro.");
+            throw new IllegalArgumentException("Selecione um plano pago.");
         }
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
@@ -318,6 +386,8 @@ public class PaymentSubscriptionService {
         }
         PaymentGateway gateway = router.requireForStore(store);
         PaymentSubscription subscription = subscriptions.findByStoreId(storeId).orElse(null);
+        if (plan == PlanType.PREMIUM_ULTRA && !gateway.planAvailable(store, plan))
+            throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
         if (subscription != null && subscription.isWinbackRestorePending()) {
             restoreWinbackAmount(subscription);
             if (subscription.isWinbackRestorePending())
@@ -622,8 +692,11 @@ public class PaymentSubscriptionService {
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void cancel(Long storeId) {
+        stores.findByStoreIdForUpdate(storeId);
         PaymentSubscription local = subscriptions.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura nao encontrada."));
+        if (local.isUpgradePaymentPending() || local.getUpgradePlan() != null)
+            throw new IllegalArgumentException("Aguarde a confirmação do upgrade antes de cancelar. Se precisar, entre em contato com o suporte.");
         if (local.getStatus() == PaymentSubscriptionStatus.CANCELED) return;
         PaymentGateway gateway = router.require(local.getProvider());
         if (local.isAccessActive() && hasText(local.getProviderSubscriptionId())) {
@@ -681,6 +754,13 @@ public class PaymentSubscriptionService {
             String source
     ) {
         validateRemote(local, remote);
+        boolean upgraded = matchesUpgrade(local, remote);
+        if (upgraded) {
+            local.setPlan(local.getUpgradePlan());
+            local.setAmountValue(local.getUpgradeAmount());
+            local.setProviderPriceId(local.getUpgradePriceId());
+            local.clearUpgrade();
+        }
         local.setProviderSubscriptionId(remote.id());
         if (local.getProvider() == PaymentProviderType.EFI && hasText(remote.checkoutResourceId())) {
             local.setProviderPriceId(remote.checkoutResourceId());
@@ -707,6 +787,7 @@ public class PaymentSubscriptionService {
         }
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
+        if (upgraded) activate(local, store, "PAYMENT_UPGRADE");
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
         if (remote.cancellationEffectiveAt() != null) {
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
@@ -768,6 +849,13 @@ public class PaymentSubscriptionService {
     }
 
     private void validateRemote(PaymentSubscription local, GatewaySubscription remote) {
+        if (hasText(local.getProviderSubscriptionId()) && !Objects.equals(local.getProviderSubscriptionId(), remote.id()))
+            throw new IllegalArgumentException("Identificador de assinatura divergente.");
+        if (matchesUpgrade(local, remote)) {
+            if (hasText(remote.externalReference()) && !Objects.equals(local.getExternalReference(), remote.externalReference()))
+                throw new IllegalArgumentException("Referencia externa da assinatura divergente.");
+            return;
+        }
         String expectedResource = hasText(local.getProviderPriceId()) ? local.getProviderPriceId() : local.getProviderCheckoutId();
         if (hasText(expectedResource) && hasText(remote.checkoutResourceId())
                 && !Objects.equals(expectedResource, remote.checkoutResourceId())) {
@@ -784,6 +872,17 @@ public class PaymentSubscriptionService {
                 || (local.getAmountValue().compareTo(remote.amount()) != 0 && !restoringFullPrice)) {
             throw new IllegalArgumentException("Valor ou moeda da assinatura divergente.");
         }
+    }
+
+    private boolean matchesUpgrade(PaymentSubscription local, GatewaySubscription remote) {
+        if (local.isUpgradePaymentPending() && !Objects.equals(local.getNextPaymentAt(), remote.nextPaymentAt())) return false;
+        if (local.getUpgradePlan() == null || remote.amount() == null
+                || !local.getCurrency().equalsIgnoreCase(remote.currency())
+                || local.getUpgradeAmount().compareTo(remote.amount()) != 0
+                || (!"active".equalsIgnoreCase(remote.status()) && !"authorized".equalsIgnoreCase(remote.status())
+                    && !"new_charge".equalsIgnoreCase(remote.status()))) return false;
+        String remotePrice = local.getProvider() == PaymentProviderType.PADDLE ? remote.priceId() : remote.checkoutResourceId();
+        return !hasText(local.getUpgradePriceId()) || Objects.equals(local.getUpgradePriceId(), remotePrice);
     }
 
     private void restoreWinbackAmount(PaymentSubscription local) {

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$LOCAL_HOMOLOG_ACCESS_KEY" == local-test-key-with-more-than-24-characters ]]
+[[ "$SPRING_PROFILES_ACTIVE" == docker,local-homolog ]]
+[[ "$DB_HOST" == 127.0.0.1 ]]
+[[ "$DB_NAME" == nuvem_custom_fields_homolog ]]
+[[ "$APP_BASE_URL" == "${LAUNCHER_TEST_EXPECT_URL:-https://local-tunnel.invalid}" ]]
+[[ "$NUVEMSHOP_REDIRECT_URI" == "${APP_BASE_URL}/oauth/callback" ]]
+if [[ "$APP_BASE_URL" == http://* ]]; then
+  [[ "$LOCAL_HOMOLOG_COOKIE_SECURE" == false ]]
+else
+  [[ "$LOCAL_HOMOLOG_COOKIE_SECURE" == true ]]
+fi
+[[ "${!#}" == '-Dtest.argument=valor com espacos' ]]
+printf 'fake:mvn\n'

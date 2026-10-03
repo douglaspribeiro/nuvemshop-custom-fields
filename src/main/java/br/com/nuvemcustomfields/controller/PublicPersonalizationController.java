@@ -76,6 +76,7 @@ public class PublicPersonalizationController {
         var fields = planLimitService.storefrontFields(store, rule.getFields()).stream()
                 .map(FieldResponse::from)
                 .toList();
+        if (!fields.isEmpty()) request.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE, productId);
         LOGGER.info(
                 "public.personalization.enabled store_id={} product_id={} rule_id={} fields_count={} country={} locale={}",
                 storeId,

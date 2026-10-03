@@ -41,13 +41,45 @@ public class WinbackCampaignService {
 
     /** Commit the sending claim BEFORE SMTP, so a crash cannot trigger an automatic duplicate. */
     @Transactional
+    public String prepareManual(Long storeId) {
+        return prepareManual(storeId, false);
+    }
+
+    @Transactional
+    public String prepareManual(Long storeId, boolean authorizeErasureContact) {
+        if (!smtp.configured() || !StringUtils.hasText(ses.configurationSet()))
+            throw new IllegalStateException("Configure SES e Configuration Set antes de disparar a reconquista.");
+        var store = stores.findByStoreIdForUpdate(storeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (store.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está ativa.");
+        if (store.isErasurePending() && !authorizeErasureContact)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Confirme a autorização do contato manual para esta exclusão pendente.");
+        if (!StringUtils.hasText(store.getStoreEmail())) throw new IllegalStateException("A loja não possui e-mail cadastrado.");
+        if (campaigns.existsByStoreIdAndOptedOutAtIsNotNull(storeId))
+            throw new IllegalStateException("A loja optou por não receber contatos.");
+        var campaign = campaigns.findByStoreIdAndUninstalledAt(storeId, store.getUninstalledAt()).orElseGet(() -> {
+            var c = new WinbackCampaign(storeId, store.getUninstalledAt());
+            c.setPaidBeforeDeparture(discounts.hasPaidHistory(storeId));
+            return campaigns.saveAndFlush(c);
+        });
+        if (campaign.getReinstalledAt() != null || campaign.getOptedOutAt() != null)
+            throw new IllegalStateException("Esta campanha não permite novos contatos.");
+        var existing = emails.findByCampaignIdAndStep(campaign.getId(), "FEEDBACK").orElse(null);
+        if (existing != null) return null;
+        var mail = new WinbackEmail(campaign.getId(), "FEEDBACK");
+        mail.authorizeErasureContact(store.isErasurePending() ? store.getErasureRequestedAt() : null);
+        mail.status("SENDING");
+        return emails.saveAndFlush(mail).getId();
+    }
+
+    /** Commit the sending claim BEFORE SMTP, so a crash cannot trigger an automatic duplicate. */
+    @Transactional
     public String prepare(String eventId) {
         if (!smtp.configured() || !StringUtils.hasText(ses.configurationSet()))
             throw new IllegalStateException("Configure SES e Configuration Set antes de disparar a reconquista.");
         var event = outbox.findById(eventId).orElse(null);
         if (event == null) return null;
         var store = stores.findByStoreIdForUpdate(event.getStoreId()).orElse(null);
-        if (store == null || store.isActive() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
+        if (store == null || store.isActive() || store.isErasurePending() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
         if (event.getPublishedAt() == null) return null;
         var campaign = campaigns.findByStoreIdAndUninstalledAt(store.getStoreId(), store.getUninstalledAt()).orElse(null);
         if (campaign == null || campaign.getReinstalledAt() != null || campaign.getOptedOutAt() != null) return null;
@@ -71,14 +103,14 @@ public class WinbackCampaignService {
         var campaign = campaigns.findById(campaignId).orElse(null);
         var mail = emails.findById(emailId).orElse(null);
         if (campaign == null || mail == null || store == null) return;
+        if (!"SENDING".equals(mail.getStatus())) return;
         boolean featureDelivered = "FEATURE_DELIVERED".equals(mail.getStep());
-        if ((!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
+        if ((store.isErasurePending() && !authorizedPendingContact(store, mail)) || (!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
                 || campaign.getReinstalledAt() != null)) || campaign.getOptedOutAt() != null
                 || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(storeId)
                 || (featureDelivered && !"ENTREGUE".equals(campaign.getFeatureStatus()))) {
             mail.status("CANCELLED"); return;
         }
-        if (!"SENDING".equals(mail.getStatus())) return;
         boolean spanish = !"BR".equalsIgnoreCase(store.getStoreCountryCode());
         String link = baseUrl + "/winback/" + mail.getId();
         String question = spanish ? "¿Qué podemos mejorar para tu tienda?" : "O que podemos melhorar para sua loja?";
@@ -134,6 +166,9 @@ public class WinbackCampaignService {
         var mail = emails.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (mail.getSentAt() == null || !campaigns.existsById(mail.getCampaignId()))
             throw new ResponseStatusException(HttpStatus.GONE);
+        Long storeId = campaigns.storeIdFor(mail.getCampaignId()).orElse(null);
+        if (storeId == null || stores.findByStoreId(storeId).map(s -> s.isErasurePending() && !authorizedPendingContact(s, mail)).orElse(true))
+            throw new ResponseStatusException(HttpStatus.GONE);
         return mail;
     }
 
@@ -141,7 +176,8 @@ public class WinbackCampaignService {
     public void respond(String emailId, String reason, String response, boolean optOut) {
         var mail = publicEmail(emailId);
         var storeId = campaigns.storeIdFor(mail.getCampaignId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.GONE));
-        if (stores.findByStoreIdForUpdate(storeId).isEmpty()) throw new ResponseStatusException(HttpStatus.GONE);
+        var owner = stores.findByStoreIdForUpdate(storeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.GONE));
+        if (owner.isErasurePending() && !authorizedPendingContact(owner, mail)) throw new ResponseStatusException(HttpStatus.GONE);
         var campaign = campaigns.findById(mail.getCampaignId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.GONE));
         if (optOut) { campaign.optOut(); return; }
         if (mail.getCreatedAt().plus(30, ChronoUnit.DAYS).isBefore(Instant.now()))
@@ -152,6 +188,8 @@ public class WinbackCampaignService {
         if (("CONFIGURATION".equals(reason) || "MISSING_FEATURE".equals(reason)) && value.isBlank())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conte a dificuldade ou a funcionalidade que precisa.");
         campaign.respond(reason, value);
+        // A autorização manual cobre somente este pedido de feedback, não ofertas/follow-ups.
+        if (owner.isErasurePending()) return;
         var store = stores.findByStoreId(storeId).orElseThrow();
         discounts.issue(campaign, store);
         if (emails.findByCampaignIdAndStep(campaign.getId(), "FOLLOWUP").isEmpty())
@@ -164,11 +202,21 @@ public class WinbackCampaignService {
         String campaignId = emails.campaignIdFor(emailId).orElse(null);
         if (campaignId == null) return null;
         var storeId = campaigns.storeIdFor(campaignId).orElse(null);
-        if (storeId == null || stores.findByStoreIdForUpdate(storeId).isEmpty()) return null;
+        if (storeId == null) return null;
+        var store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         var mail = emails.findById(emailId).orElse(null);
+        if (store == null || store.isErasurePending()) {
+            if (mail != null && "PREPARED".equals(mail.getStatus())) mail.status("CANCELLED");
+            return null;
+        }
         if (mail == null || !"PREPARED".equals(mail.getStatus())) return null;
         mail.status("SENDING");
         return mail.getId();
+    }
+
+    private boolean authorizedPendingContact(Store store, WinbackEmail mail) {
+        return "FEEDBACK".equals(mail.getStep()) && mail.getErasureContactRequestAt() != null
+                && mail.getErasureContactRequestAt().equals(store.getErasureRequestedAt());
     }
 
     @Transactional(readOnly = true)

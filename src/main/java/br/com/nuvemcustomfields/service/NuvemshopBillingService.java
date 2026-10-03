@@ -64,6 +64,7 @@ public class NuvemshopBillingService {
         return switch (plan) {
             case PREMIUM -> priceForCountry("BR").premiumAmount();
             case PREMIUM_PLUS -> priceForCountry("BR").premiumPlusAmount();
+            case PREMIUM_ULTRA -> priceForCountry("BR").premiumUltraAmount();
             case FREE, FREE_GRATIS -> BigDecimal.ZERO;
         };
     }
@@ -77,6 +78,7 @@ public class NuvemshopBillingService {
         return switch (plan) {
             case PREMIUM -> billingPrice(store).premiumAmount();
             case PREMIUM_PLUS -> billingPrice(store).premiumPlusAmount();
+            case PREMIUM_ULTRA -> billingPrice(store).premiumUltraAmount();
             case FREE, FREE_GRATIS -> BigDecimal.ZERO;
         };
     }
@@ -336,6 +338,9 @@ public class NuvemshopBillingService {
         if (billingProperties.premiumPlusExternalId().equals(externalId)) {
             return PlanType.PREMIUM_PLUS;
         }
+        if (billingProperties.premiumUltraExternalId().equals(externalId)) {
+            return PlanType.PREMIUM_ULTRA;
+        }
         LOGGER.warn("nuvemshop.billing.sync.plan_unknown external_id={} fallback_plan={}", externalId, fallbackPlan);
         return fallbackPlan;
     }
@@ -354,6 +359,12 @@ public class NuvemshopBillingService {
                     price.currency(),
                     price.premiumPlusAmount(),
                     "Campos Personalizados Premium Plus"
+            );
+            case PREMIUM_ULTRA -> new PlanDefinition(
+                    billingProperties.premiumUltraExternalId(),
+                    price.currency(),
+                    price.premiumUltraAmount(),
+                    "Campos Personalizados Ultra"
             );
             case FREE, FREE_GRATIS -> throw new IllegalArgumentException(planType.getDisplayName() + " nao usa billing automatico.");
         };
@@ -444,14 +455,14 @@ public class NuvemshopBillingService {
         if (configured == null) {
             return null;
         }
-        return new BillingPrice(normalize(configured.currency()), configured.premiumAmount(), configured.premiumPlusAmount());
+        return new BillingPrice(normalize(configured.currency()), configured.premiumAmount(), configured.premiumPlusAmount(), configured.premiumUltraAmount());
     }
 
     private BillingPrice priceForCurrency(String currency) {
         return configuredPrices().values().stream()
                 .filter(price -> currency.equals(normalize(price.currency())))
                 .findFirst()
-                .map(price -> new BillingPrice(normalize(price.currency()), price.premiumAmount(), price.premiumPlusAmount()))
+                .map(price -> new BillingPrice(normalize(price.currency()), price.premiumAmount(), price.premiumPlusAmount(), price.premiumUltraAmount()))
                 .orElse(null);
     }
 
@@ -459,7 +470,7 @@ public class NuvemshopBillingService {
         Map<String, NuvemshopBillingProperties.CountryPrice> prices = billingProperties.prices();
         if (prices == null || prices.isEmpty()) {
             return Map.of(
-                    "BR", new NuvemshopBillingProperties.CountryPrice(billingProperties.currency(), billingProperties.premiumAmount(), billingProperties.premiumPlusAmount())
+                    "BR", new NuvemshopBillingProperties.CountryPrice(billingProperties.currency(), billingProperties.premiumAmount(), billingProperties.premiumPlusAmount(), billingProperties.premiumUltraAmount())
             );
         }
         return prices.entrySet().stream()
@@ -557,6 +568,6 @@ public class NuvemshopBillingService {
     private record PlanDefinition(String externalId, String currency, BigDecimal amount, String description) {
     }
 
-    private record BillingPrice(String currency, BigDecimal premiumAmount, BigDecimal premiumPlusAmount) {
+    private record BillingPrice(String currency, BigDecimal premiumAmount, BigDecimal premiumPlusAmount, BigDecimal premiumUltraAmount) {
     }
 }

@@ -13,6 +13,31 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class StorefrontTrafficMetricsFilterTest {
+    @Test
+    void countsOnlyValidatedConfiguredProductsAndSuccessfulGets() throws Exception {
+        var registry=new SimpleMeterRegistry();
+        var filter=new StorefrontTrafficMetricsFilter(registry,mock(StoreRepository.class));
+        var request=new MockHttpServletRequest("GET","/public/stores/123/personalization");
+        filter.doFilter(request,new MockHttpServletResponse(),(r,s)->{
+            r.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE,123L);
+            r.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE,456L);
+        });
+        assertThat(registry.get(StorefrontTrafficMetricsFilter.PRODUCT_REQUEST_METRIC)
+                .tags("store_id","123","product_id","456").counter().count()).isEqualTo(1);
+        var arbitrary=new MockHttpServletRequest("GET","/public/stores/123/personalization");
+        arbitrary.setParameter("productId","999999999");
+        filter.doFilter(arbitrary,new MockHttpServletResponse(),(r,s)->
+                r.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE,123L));
+        assertThat(registry.find(StorefrontTrafficMetricsFilter.PRODUCT_REQUEST_METRIC).tag("product_id","999999999").counter()).isNull();
+        var failed=new MockHttpServletRequest("GET","/public/stores/123/personalization");
+        var response=new MockHttpServletResponse();response.setStatus(500);
+        filter.doFilter(failed,response,(r,s)->{
+            r.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE,123L);
+            r.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE,456L);
+        });
+        assertThat(registry.get(StorefrontTrafficMetricsFilter.PRODUCT_REQUEST_METRIC)
+                .tags("store_id","123","product_id","456").counter().count()).isEqualTo(1);
+    }
 
     @Test
     void countsStorefrontConfigurationRequestsWithBoundedTags() throws Exception {

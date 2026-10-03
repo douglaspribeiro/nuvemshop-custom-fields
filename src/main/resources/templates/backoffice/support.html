@@ -15,6 +15,7 @@
             <p class="muted"><span th:text="${openTickets}">0</span> chamados abertos</p>
         </div>
         <a class="button" th:href="@{/backoffice}">Voltar</a>
+        <a class="button" th:href="@{/backoffice/suggestions}">Sugestões dos lojistas</a>
     </section>
     <section class="panel">
         <div class="empty" th:if="${#lists.isEmpty(tickets)}">Nenhum chamado recebido.</div>
@@ -23,6 +24,7 @@
             <tr>
                 <th>ID</th>
                 <th>Loja</th>
+                <th>Plano</th>
                 <th>Assunto</th>
                 <th>Status</th>
                 <th>Última mensagem</th>
@@ -30,9 +32,10 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="ticket : ${tickets}">
+            <tr th:each="ticket : ${tickets}" th:classappend="${ticket.priority} ? ' priority-ticket' : ''">
                 <td th:text="${ticket.id}">1</td>
                 <td th:text="${ticket.storeId}">0</td>
+                <td><strong th:if="${ticket.priority}">Prioritário · </strong><span th:text="${ticket.planAtOpen == null ? '-' : ticket.planAtOpen.displayName}">Free</span></td>
                 <td th:text="${ticket.subject}">Assunto</td>
                 <td th:text="${ticket.status.name() == 'OPEN' ? 'Aberto' : 'Fechado'}">Aberto</td>
                 <td th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</td>

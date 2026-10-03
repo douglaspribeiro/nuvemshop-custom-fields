@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$1" == run ]]
+shift
+printf 'fake:infisical\n'
+[[ "${LAUNCHER_TEST_FAIL:-false}" != true ]] || exit 73
+[[ "$1" == --projectId=831846ed-254b-4e13-b763-f124da86d11f ]]
+[[ "$2" == --env=stage ]]
+[[ "$3" == --path=/app_custom-fields ]]
+[[ "$4" == -- ]]
+shift 4
+export LOCAL_HOMOLOG_ACCESS_KEY=local-test-key-with-more-than-24-characters
+export APP_BASE_URL=https://injected.invalid
+export NUVEMSHOP_REDIRECT_URI=https://stage.invalid/oauth/callback
+exec "$@"

@@ -22,6 +22,16 @@
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <p class="notice" th:if="${paymentSubscription != null and paymentSubscription.upgradePlan != null}"
+       th:text="#{admin.billing.upgrade.pending}">Confirmando alteração de plano.</p>
+    <section class="panel" th:if="${upgradeHistory!=null and !#lists.isEmpty(upgradeHistory)}">
+        <h2>Ajustes proporcionais de upgrade</h2><p>Estes pagamentos são ajustes únicos, não novas assinaturas nem mensalidades extras.</p>
+        <article th:each="adjustment:${upgradeHistory}">
+            <p th:text="'Ajuste proporcional — upgrade '+${adjustment.sourcePlan.displayName}+' → '+${adjustment.targetPlan.displayName}"></p>
+            <p th:text="'R$ '+${#numbers.formatDecimal(adjustment.dueAmount,1,'POINT',2,'COMMA')}+' · '+${adjustment.state.name()=='COMPLETED' ? 'Concluído' : (adjustment.state.name()=='FAILED' ? 'Não pago' : 'Em confirmação')}"></p>
+            <a class="button" th:href="@{/admin/billing/upgrade/efi/processing(id=${adjustment.id})}">Ver detalhes e andamento</a>
+        </article>
+    </section>
 
     <section class="panel plan-strip">
         <div>
@@ -109,11 +119,36 @@
                 <li th:text="#{admin.billing.premiumplus.feature.fields}">Campos ilimitados</li>
             </ul>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
+            <a class="button primary" th:if="${canUpgrade and paymentSubscription.plan.name() == 'PREMIUM'}"
+               th:href="@{/admin/billing/upgrade(plan='PREMIUM_PLUS')}" th:text="#{admin.billing.upgrade.heading('Pro')}">Trocar para Pro</a>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
                 <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM_PLUS'}"
                         th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Pro
+                </button>
+            </form>
+        </article>
+
+        <article class="panel plan-card">
+            <h2 th:text="#{plan.PREMIUM_ULTRA}">Ultra</h2>
+            <p class="price" th:if="${ultraAvailable}">
+                <span th:text="${premiumUltraPrice}">R$ 59,90</span><span th:text="#{admin.billing.month}">/mês</span>
+            </p>
+            <p class="price" th:unless="${ultraAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
+            <ul class="feature-list">
+                <li th:text="#{admin.billing.ultra.feature.products}">Produtos personalizados ilimitados</li>
+                <li th:text="#{admin.billing.ultra.feature.fields}">Campos ilimitados</li>
+                <li th:text="#{admin.billing.ultra.feature.support}">Atendimento prioritário</li>
+            </ul>
+            <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_ULTRA'}" th:with="planName=#{plan.PREMIUM_ULTRA}" th:text="#{plan.current(${planName})}">Plano atual</span>
+            <a class="button primary" th:if="${canUpgrade and ultraAvailable and paymentSubscription.plan.name() != 'PREMIUM_ULTRA'}"
+               th:href="@{/admin/billing/upgrade(plan='PREMIUM_ULTRA')}" th:text="#{admin.billing.upgrade.heading('Ultra')}">Trocar para Ultra</a>
+            <form th:if="${billingEnabled and ultraAvailable and !store.courtesyPremium and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
+                <input type="hidden" name="plan" value="PREMIUM_ULTRA">
+                <button class="button primary" type="submit" th:disabled="${store.effectivePlan.name() == 'PREMIUM_ULTRA'}"
+                        th:with="planName=#{plan.PREMIUM_ULTRA}" th:text="#{admin.billing.subscribe.plan(${planName})}">
+                    Assinar Ultra
                 </button>
             </form>
         </article>
@@ -128,7 +163,7 @@
     <p class="notice" th:if="${billingEnabled and store.courtesyPremium}" th:text="#{admin.billing.courtesy.blocked}">
         Premium Cortesia nao gera cobranca automatica.
     </p>
-    <details class="merchant-billing-manage" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.status.name() != 'CANCELED' and !paymentSubscription.cancellationPending}">
+    <details class="merchant-billing-manage" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.status.name() != 'CANCELED' and !paymentSubscription.cancellationPending and !paymentSubscription.upgradePaymentPending}">
         <summary th:text="#{admin.billing.manage}">Gerenciar assinatura</summary>
         <a th:href="@{/admin/billing/cancel}" th:text="#{admin.billing.cancel}">Cancelar assinatura</a>
     </details>

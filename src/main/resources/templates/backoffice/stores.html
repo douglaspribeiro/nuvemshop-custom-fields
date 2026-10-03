@@ -13,10 +13,11 @@
     <header class="backoffice-header compact">
         <div>
             <p class="eyebrow">Backoffice</p>
-            <h1 th:text="${uninstalledOnly} ? 'Lojas desinstaladas' : 'Diretório de lojas'">Diretório de lojas</h1>
+            <h1 th:text="${uninstalledOnly} ? 'Desinstalações e exclusões pendentes' : 'Diretório de lojas'">Diretório de lojas</h1>
             <p th:if="${uninstalledOnly}"><span th:text="${departures.total}">0</span> saídas no histórico · <span th:text="${departures.today}">0</span> hoje.</p>
             <p th:if="${uninstalledOnly}"><span th:text="${departures.uninstalls}">0</span> desinstalações registradas · <span th:text="${departures.erasures}">0</span> exclusões recebidas antes da desinstalação.</p>
-            <p th:if="${uninstalledOnly}"><span th:text="${inactiveInstallations}">0</span> cadastros desinstalados disponíveis abaixo. Lojas com dados excluídos permanecem apenas nos totais anônimos.</p>
+            <p th:if="${uninstalledOnly}"><span th:text="${inactiveInstallations}">0</span> cadastros desinstalados ou pendentes disponíveis abaixo. Lojas com dados excluídos permanecem apenas nos totais anônimos.</p>
+            <p th:if="${uninstalledOnly}">Pedidos de exclusão aguardam revisão manual, sem acesso ao app. Contato manual exige confirmação; contatos automáticos ficam suspensos. A exclusão definitiva remove todos os dados vinculados.</p>
             <p th:unless="${uninstalledOnly}"><span th:text="${activeInstallations}">0</span> instalações ativas de <span th:text="${installations}">0</span> no total.</p>
         </div>
         <nav class="backoffice-nav">
@@ -27,6 +28,8 @@
             <a th:href="@{/backoffice/support}">Suporte</a>
         </nav>
     </header>
+    <p class="notice" th:if="${message}" th:text="${message}" role="status"></p>
+    <p class="notice error" th:if="${error}" th:text="${error}" role="alert"></p>
     <section class="backoffice-directory">
         <form class="backoffice-search" method="get" th:action="@{/backoffice/stores}">
             <label for="store-search">Buscar por nome, Store ID ou país</label>
@@ -42,6 +45,7 @@
             <b>Cortesia <span th:text="${courtesyInstallations}">0</span></b>
             <b>Essencial <span th:text="${essentialInstallations}">0</span></b>
             <b>Pro <span th:text="${proInstallations}">0</span></b>
+            <b>Ultra <span th:text="${ultraInstallations}">0</span></b>
         </div>
         <div class="backoffice-empty" th:if="${#lists.isEmpty(stores)}">Nenhuma loja encontrada para esta busca.</div>
         <div class="backoffice-store-list" th:if="${!#lists.isEmpty(stores)}">
@@ -63,7 +67,8 @@
                     <small th:if="${store.courtesyPremium}">Cortesia</small>
                 </div>
                 <div class="store-payment">
-                    <span th:unless="${store.active}" class="status-muted">Desinstalada<br>
+                    <span th:if="${store.erasurePending}" class="status-muted">Exclusão pendente</span>
+                    <span th:if="${!store.active and !store.erasurePending}" class="status-muted">Desinstalada<br>
                         <small th:if="${store.uninstalledAt != null}" th:text="${#temporals.format(store.uninstalledAt, 'dd/MM/yyyy HH:mm')}">01/01/2026</small>
                     </span>
                     <span th:if="${store.active and subscriptionsByStoreId[store.storeId] == null}" class="status-muted">Sem assinatura</span>
@@ -72,10 +77,51 @@
                           th:classappend="' payment-' + ${#strings.toLowerCase(subscriptionsByStoreId[store.storeId].status.name())}">ACTIVE</span>
                 </div>
                 <div class="store-actions">
+                    <details th:if="${store.erasurePending}" class="store-erasure-confirmation store-manual-contact">
+                        <summary>Reconquista manual</summary>
+                        <form th:action="@{/backoffice/stores/{storeId}/winback(storeId=${store.storeId})}" method="post">
+                            <input type="hidden" name="actionToken" th:value="${departureActionToken}">
+                            <p>Solicitar feedback sobre o produto. A loja possui um pedido de exclusão pendente.</p>
+                            <label><input type="checkbox" name="authorizeErasureContact" value="true" required> Confirmo que este contato manual está autorizado conforme a orientação obtida.</label>
+                            <button class="button small" type="submit">Disparar reconquista</button>
+                        </form>
+                    </details>
+                    <form th:if="${!store.active and !store.erasurePending}" th:action="@{/backoffice/stores/{storeId}/winback(storeId=${store.storeId})}" method="post">
+                        <input type="hidden" name="actionToken" th:value="${departureActionToken}">
+                        <button class="button small" type="submit">Disparar reconquista</button>
+                    </form>
+                    <details th:if="${!store.active}" class="store-erasure-confirmation">
+                        <summary>Excluir definitivamente</summary>
+                        <form th:action="@{/backoffice/stores/{storeId}/erase(storeId=${store.storeId})}" method="post">
+                            <input type="hidden" name="actionToken" th:value="${departureActionToken}">
+                            <p>Remove o cadastro, configurações, chamados e histórico vinculado. Esta ação não pode ser desfeita.</p>
+                            <label><input type="checkbox" name="confirmation" value="APAGAR" required> Confirmo a exclusão definitiva</label>
+                            <button class="button small danger" type="submit">Deletar loja</button>
+                        </form>
+                    </details>
                     <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
                         <button class="button small primary" type="submit">Abrir como loja</button>
                     </form>
                     <a class="button small" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Gerenciar</a>
+                </div>
+                <div th:if="${uninstalledOnly}" class="store-departure-details" th:with="campaign=${departureCampaigns[store.storeId]}">
+                    <p><strong>E-mail: </strong><span th:text="${store.storeEmail ?: 'Não cadastrado'}"></span></p>
+                    <p><strong>Motivo: </strong><span th:text="${store.departureReason != null ? store.departureReason : (campaign != null ? campaign.reasonLabel : 'Ainda não informado')}">Ainda não informado</span></p>
+                    <p><strong>Justificativa: </strong><span th:text="${store.departureReason != null ? (store.departureJustification ?: '—') : (campaign != null ? (campaign.response ?: '—') : '—')}">—</span></p>
+                    <small th:if="${store.departureReason != null}">Registro manual do backoffice</small>
+                    <small th:if="${store.departureReason == null and campaign != null and campaign.reason != null}">Resposta do lojista na reconquista</small>
+                    <details>
+                        <summary>Registrar motivo da saída</summary>
+                        <form class="store-departure-reason-form" th:action="@{/backoffice/stores/{storeId}/departure-reason(storeId=${store.storeId})}" method="post">
+                            <input type="hidden" name="actionToken" th:value="${departureActionToken}">
+                            <p>Copie o motivo e a justificativa disponíveis no painel da Nuvemshop. Esses dados não vêm nos webhooks.</p>
+                            <label th:for="${'departure-reason-' + store.storeId}">Motivo</label>
+                            <input th:id="${'departure-reason-' + store.storeId}" name="reason" required maxlength="160" th:value="${store.departureReason}">
+                            <label th:for="${'departure-justification-' + store.storeId}">Justificativa</label>
+                            <textarea th:id="${'departure-justification-' + store.storeId}" name="justification" maxlength="2000" rows="3" th:text="${store.departureJustification}"></textarea>
+                            <button class="button small" type="submit">Salvar motivo</button>
+                        </form>
+                    </details>
                 </div>
             </article>
         </div>

@@ -11,21 +11,21 @@ public class LgpdWebhookService {
 
     private final ObjectMapper objectMapper;
     private final SupportService supportService;
-    private final StoreDataErasureService storeDataErasureService;
+    private final StoreErasureRequestService erasureRequests;
 
     public LgpdWebhookService(
             ObjectMapper objectMapper,
             SupportService supportService,
-            StoreDataErasureService storeDataErasureService
+            StoreErasureRequestService erasureRequests
     ) {
         this.objectMapper = objectMapper;
         this.supportService = supportService;
-        this.storeDataErasureService = storeDataErasureService;
+        this.erasureRequests = erasureRequests;
     }
 
     public void eraseStore(String rawBody) throws Exception {
         JsonNode payload = objectMapper.readTree(rawBody);
-        storeDataErasureService.erase(requiredStoreId(payload));
+        erasureRequests.receive(requiredStoreId(payload), java.time.Instant.now());
     }
 
     public void forwardToSupport(String requestType, String rawBody) throws Exception {

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'fake:docker\n'
+if [[ "$*" == *'exec -T'* ]]; then
+  # Consome o SQL sem executa-lo nem exibir credenciais.
+  while IFS= read -r line; do :; done
+fi

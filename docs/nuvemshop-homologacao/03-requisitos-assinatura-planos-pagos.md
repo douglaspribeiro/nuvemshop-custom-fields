@@ -15,7 +15,8 @@ Este artefato atende ao requisito: "Requisitos tecnicos e cuidados com etapas de
 | --- | --- | --- |
 | `FREE` | Nao | 1 produto personalizado e 1 campo por produto |
 | `PREMIUM` | Sim, quando billing estiver habilitado | Ate 10 produtos personalizados e ate 3 campos por produto |
-| `PREMIUM_PLUS` | Sim, quando billing estiver habilitado | Produtos e campos ilimitados |
+| `PREMIUM_PLUS` | Sim, quando billing estiver habilitado | Até 50 produtos personalizados e campos ilimitados |
+| `PREMIUM_ULTRA` | Sim, quando billing estiver habilitado | Produtos e campos ilimitados, com atendimento prioritário |
 | `FREE_GRATIS` / Premium Cortesia | Nao | Liberacao manual sem cobranca automatica |
 
 ## Requisitos tecnicos
@@ -63,4 +64,4 @@ Todos os webhooks devem validar `x-linkedstore-hmac-sha256` antes de alterar est
 - Mercado sem preco configurado: bloquear assinatura e informar que o mercado ainda nao esta disponivel.
 - Loja suspensa: manter regras salvas, mas aplicar limites de acesso premium conforme `billing_suspended`.
 - Desinstalacao: encerrar o acesso local imediatamente, apagar token/escopos e responder rapidamente ao webhook, sem depender de limpeza remota.
-- Exclusao LGPD `store/redact`: excluir definitivamente todos os registros vinculados a loja de forma idempotente.
+- Exclusao LGPD `store/redact`: nesta versao, registrar recebimento, bloquear acesso/contatos automaticos e colocar o cadastro em revisao manual. Consulta manual de feedback exige confirmacao por loja, conforme orientacao obtida pelo responsavel pelo produto. A exclusao definitiva no backoffice remove os registros vinculados de forma idempotente. Nao considerar esse fluxo manual, sem prazo automatico, como conformidade validada: exige revisao e conclusao tempestiva dos pedidos antes da homologacao.

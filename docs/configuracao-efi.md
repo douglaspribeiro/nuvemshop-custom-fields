@@ -27,6 +27,46 @@ dados do pagador. Endereço de cobrança não é solicitado.
 | `EFI_PAYEE_CODE` | identificador de conta usado na tokenização |
 | `EFI_PREMIUM_PLAN_ID`, `EFI_PREMIUM_PLUS_PLAN_ID` | IDs dos planos mensais |
 | `EFI_PREMIUM_AMOUNT`, `EFI_PREMIUM_PLUS_AMOUNT` | preços mensais em BRL |
+| `EFI_PREMIUM_ULTRA_PLAN_ID` | ID do plano mensal Ultra (também configurável no catálogo do backoffice) |
+| `EFI_PREMIUM_ULTRA_AMOUNT` | mensalidade Ultra; padrão R$ 59,90 |
+
+O upgrade altera a mesma assinatura por `updateSubscription`, enviando o novo
+`plan_id` e os itens com a nova mensalidade. O app consulta a assinatura para
+confirmar ID, plano, valor e moeda antes de liberar os limites superiores.
+O endpoint `/subscriptions/subscription/{id}/change-plan`, com `mode: direct`,
+pertence ao Efipay colombiano; não é a API da Efí brasileira utilizada aqui.
+
+### Ajuste proporcional no upgrade
+
+O sistema calcula o restante do ciclo mensal usando a data de criação da mensalidade
+confirmada como paga e a próxima execução na Efí (dias corridos no fuso São Paulo).
+Não usa um mês fixo de 30 dias. O valor pago precisa corresponder ao contrato local;
+assinaturas atrasadas, em cancelamento ou com desconto de reconquista pendente não
+são elegíveis. Um segundo upgrade no mesmo ciclo é bloqueado para não duplicar créditos.
+
+`BRINDE` aplica 30% ao valor mensal do Ultra antes do cálculo proporcional, somente
+no período restante. O crédito do plano atual é abatido depois. Arredondamento em
+centavos, ajuste mínimo zero; não há transferência de eventual saldo excedente.
+Use `UPGRADE_BRINDE_ENABLED=false` para desativar novas aplicações do cupom.
+
+O ajuste cria uma transação avulsa (`createCharge` + `definePayMethod`), não uma
+assinatura. O cartão é tokenizado novamente apenas para esse ajuste e não substitui
+o cartão recorrente. Não são salvos números, CVV nem token. Depois de confirmar o
+status `paid` e validar referência/valor/ID, o sistema altera a assinatura existente.
+A intenção financeira é persistida antes da API: reenvios do formulário, callbacks
+e retentativas não criam outra cobrança. Respostas incertas são consultadas novamente;
+a criação incerta é procurada pelo `custom_id`. Nunca se repete o pagamento incerto.
+
+A migration V40 é automática. O proxy deve encaminhar **POST
+`/prod/webhooks/efi-upgrades`** (ou `/webhooks/efi-upgrades` se remover `/prod`) para
+a aplicação. Esse callback confirma a cobrança avulsa; o callback antigo das
+assinaturas continua ativo. A conciliação periódica roda a cada 60 segundos e pode
+ser ajustada com `UPGRADE_RECONCILE_DELAY_MS`.
+
+O lojista acompanha o andamento e histórico em Planos e cobrança; o backoffice tem
+**Pagamentos → Acompanhar ajustes de upgrade**. Se um ajuste pago perder elegibilidade
+(por exemplo, após encerrar o ciclo) ou houver divergência de dados, requer conferência
+humana, sem nova cobrança automática. Não há estorno automático nesta versão.
 
 As variáveis são independentes por ambiente. Nunca versionar credenciais.
 `APP_BASE_URL` deve ser a origem HTTPS pública, sem barra final nem `/prod`.
@@ -67,3 +107,12 @@ e cancelamento no provedor para evitar cobrança duplicada.
 - [Notificações](https://dev.efipay.com.br/docs/api-cobrancas/notificacoes/)
 - [SDK Java oficial](https://github.com/efipay/sdk-java-apis-efi)
 - [Logo Efí usado no formulário](https://github.com/efipay/js-payment-token-efi/blob/main/assets/img/logo-ef.svg)
+
+## Consultar IDs dos planos
+
+Em **Backoffice → Pagamentos → Consultar planos da Efí e seus IDs**, o sistema consulta
+`GET /v1/plans` usando o ambiente e as credenciais Efí configurados. A página exibe
+ID, nome, intervalo em meses, repetições e criação, com paginação de 50 registros.
+É somente leitura e não exige que os IDs já estejam cadastrados no catálogo local.
+Copie o `plan_id` do Ultra para o catálogo do mesmo ambiente. Planos criados no painel
+que não forem retornados devem ter sua disponibilidade na API confirmada com a Efí.
