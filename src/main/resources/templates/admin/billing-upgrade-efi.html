@@ -1,19 +1,32 @@
-<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Confirmar upgrade</title><link rel="stylesheet" th:href="@{/styles/app.css}"><link rel="stylesheet" th:href="@{/styles/merchant.css}"></head>
-<body class="merchant-page"><main class="shell"><section class="panel">
-<h1 th:text="'Upgrade do '+${upgradeAdjustment.sourcePlan.displayName}+' para o '+${upgradeAdjustment.targetPlan.displayName}"></h1>
-<p>Você continuará com <strong>uma única assinatura</strong>. A mensalidade do novo plano substituirá a do anterior, sem mudar sua data de renovação.</p>
-<dl><dt>Plano atual</dt><dd th:text="${currentPrice}+' / mês'"></dd><dt>Novo plano</dt><dd th:text="${targetPrice}+' / mês'"></dd>
-<dt>Novo plano pelo período restante</dt><dd th:text="${proratedPrice}"></dd>
-<dt th:if="${upgradeAdjustment.couponCode!=null}" th:text="'Cupom '+${upgradeAdjustment.couponCode}+' — 30%'"></dt><dd th:if="${upgradeAdjustment.couponCode!=null}" th:text="'− '+${discountPrice}"></dd>
-<dt>Crédito do plano já pago e não utilizado</dt><dd th:text="'− '+${creditPrice}"></dd>
-<dt><strong>Pagar hoje — ajuste único</strong></dt><dd><strong th:text="${duePrice}"></strong></dd>
-<dt>Próxima mensalidade</dt><dd th:text="${targetPrice}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></dd></dl>
-<p>O ajuste de hoje permite usar o novo plano até a próxima renovação. Não é uma segunda assinatura. Os benefícios serão liberados após confirmar o pagamento e a alteração na Efí.</p>
-<p th:if="${upgradeAdjustment.couponCode!=null}">O BRINDE vale somente para o período restante deste ciclo, sem desconto nas próximas mensalidades.</p>
-<form method="get" th:action="@{/admin/billing/upgrade/efi}"><input type="hidden" name="plan" th:value="${upgradeAdjustment.targetPlan}"><label>Cupom <input name="couponCode" maxlength="36" th:value="${upgradeAdjustment.couponCode}" placeholder="BRINDE"></label><button class="button" type="submit">Aplicar cupom e recalcular</button></form>
-<p>Este resumo é válido por até 15 minutos. Se expirar, revise novamente antes de pagar.</p>
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmar upgrade</title>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><main class="shell merchant-upgrade-page">
+<div class="flash error" th:if="${error}" th:text="${error}" role="alert"></div>
+<a class="merchant-cancel-back" th:href="@{/admin/billing}">← Voltar aos planos</a>
+<header class="page-header"><div><p class="eyebrow">Mais possibilidades para sua loja</p>
+<h1 th:text="'Upgrade do '+${upgradeAdjustment.sourcePlan.displayName}+' para o '+${upgradeAdjustment.targetPlan.displayName}">Upgrade do Pro para o Ultra</h1>
+<p>Mais liberdade para personalizar, com clareza sobre o que você paga hoje e na próxima renovação.</p></div></header>
+<div class="merchant-upgrade-layout"><div class="merchant-upgrade-details">
+<section class="panel merchant-upgrade-benefits"><p class="eyebrow" th:text="${upgradeAdjustment.targetPlan.displayName}">Ultra</p><h2>Seu próximo passo, sem recomeçar</h2>
+<ul th:if="${upgradeAdjustment.targetPlan.name()=='PREMIUM_ULTRA'}"><li>Produtos personalizados ilimitados</li><li>Campos de personalização ilimitados</li><li>Suporte prioritário para sua loja</li></ul>
+<div class="merchant-upgrade-assurance"><strong>Você continuará com uma única assinatura</strong><p>A mensalidade do novo plano substituirá a do anterior, sem mudar sua data de renovação. Seus produtos e configurações serão mantidos.</p></div></section>
+<section class="panel"><h2>Como funciona a mudança</h2><ol class="merchant-upgrade-steps"><li><strong>Revise o resumo</strong><span>O valor considera somente o período restante e desconta o crédito do plano já pago.</span></li><li><strong>Confirme o ajuste único</strong><span>O pagamento de hoje não cria uma segunda assinatura.</span></li><li><strong>Comece a usar o novo plano</strong><span>Os benefícios serão liberados após confirmar o pagamento e a alteração na Efí.</span></li></ol></section>
+<section class="panel"><h2>Tem um cupom?</h2><p class="merchant-intro">Se você recebeu um código promocional, informe aqui para recalcular o ajuste.</p>
+<form class="merchant-upgrade-coupon" method="get" th:action="@{/admin/billing/upgrade/efi}"><input type="hidden" name="plan" th:value="${upgradeAdjustment.targetPlan}"><label for="upgrade-coupon">Cupom<input id="upgrade-coupon" name="couponCode" maxlength="36" th:value="${upgradeAdjustment.couponCode}" placeholder="CUPOM" autocomplete="off" spellcheck="false" aria-describedby="coupon-detail"></label><button class="button" type="submit">Aplicar cupom</button></form>
+<p id="coupon-detail" class="merchant-upgrade-note">O desconto é válido somente para o período restante deste ciclo, sem desconto nas próximas mensalidades.</p>
+<p class="merchant-upgrade-coupon-applied" th:if="${upgradeAdjustment.couponCode!=null}" role="status" th:text="'Cupom '+${upgradeAdjustment.couponCode}+' aplicado: '+${upgradeAdjustment.couponPercent.stripTrailingZeros().toPlainString()}+'% de desconto no período restante.'"></p></section></div>
+<aside class="panel merchant-upgrade-summary" aria-labelledby="upgrade-summary-title"><p class="eyebrow">Sem surpresas</p><h2 id="upgrade-summary-title">Resumo do upgrade</h2>
+<div class="merchant-upgrade-plan"><span>Plano atual</span><strong th:text="${upgradeAdjustment.sourcePlan.displayName}"></strong><small th:text="${currentPrice}+' / mês'"></small></div>
+<div class="merchant-upgrade-plan is-target"><span>Novo plano</span><strong th:text="${upgradeAdjustment.targetPlan.displayName}"></strong><small th:text="${targetPrice}+' / mês'"></small></div>
+<dl class="merchant-upgrade-breakdown"><div><dt>Novo plano pelo período restante</dt><dd th:text="${proratedPrice}"></dd></div>
+<div th:if="${upgradeAdjustment.couponCode!=null}" class="is-credit"><dt th:text="'Cupom '+${upgradeAdjustment.couponCode}+' ('+${upgradeAdjustment.couponPercent.stripTrailingZeros().toPlainString()}+'%)'"></dt><dd th:text="'− '+${discountPrice}"></dd></div>
+<div class="is-credit"><dt>Crédito do plano já pago e não utilizado</dt><dd th:text="'− '+${creditPrice}"></dd></div></dl>
+<div class="merchant-upgrade-total"><span>Pagar hoje — ajuste único</span><strong th:text="${duePrice}"></strong><small>Somente para usar o novo plano até a renovação.</small></div>
+<div class="merchant-upgrade-renewal"><strong>Próxima mensalidade</strong><span th:text="${targetPrice}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></span><small>Uma única cobrança recorrente, sem o desconto do cupom.</small></div>
+<a class="merchant-upgrade-coupon-link" href="#upgrade-coupon">Tenho um cupom</a>
 <a class="button primary" th:if="${upgradeAdjustment.dueAmount.signum()>0}" th:href="@{/admin/billing/upgrade/efi/pay(id=${upgradeAdjustment.id})}" th:text="'Continuar para pagar '+${duePrice}"></a>
 <form th:if="${upgradeAdjustment.dueAmount.signum()==0}" method="post" th:action="@{/admin/billing/upgrade/efi/pay}"><input type="hidden" name="adjustmentId" th:value="${upgradeAdjustment.id}"><button class="button primary" type="submit">Confirmar upgrade sem cobrança agora</button></form>
-<a class="button" th:href="@{/admin/billing}">Voltar aos planos</a>
-</section></main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>
+<p class="merchant-upgrade-note">Resumo válido por até 15 minutos. Nenhuma cobrança é feita ao aplicar o cupom ou revisar esta tela.</p>
+</aside></div></main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

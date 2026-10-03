@@ -61,6 +61,7 @@ public class StoreDataErasureService {
         jdbcTemplate.update("delete from winback_outbox where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_attempts where store_id = ?", storeId);
         jdbcTemplate.update("delete from upgrade_adjustments where store_id = ?", storeId);
+        jdbcTemplate.update("delete from upgrade_coupon_uses where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_subscriptions where store_id = ?", storeId);
         jdbcTemplate.update("delete from store_order_sales where store_id = ?", storeId);
         jdbcTemplate.update("delete from store_sales_sync where store_id = ?", storeId);

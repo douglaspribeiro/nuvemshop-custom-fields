@@ -44,10 +44,24 @@ Não usa um mês fixo de 30 dias. O valor pago precisa corresponder ao contrato 
 assinaturas atrasadas, em cancelamento ou com desconto de reconquista pendente não
 são elegíveis. Um segundo upgrade no mesmo ciclo é bloqueado para não duplicar créditos.
 
-`BRINDE` aplica 30% ao valor mensal do Ultra antes do cálculo proporcional, somente
-no período restante. O crédito do plano atual é abatido depois. Arredondamento em
-centavos, ajuste mínimo zero; não há transferência de eventual saldo excedente.
-Use `UPGRADE_BRINDE_ENABLED=false` para desativar novas aplicações do cupom.
+O cupom cadastrado aplica seu percentual ao valor mensal do destino antes do cálculo
+proporcional, somente no período restante. O crédito do plano atual é abatido depois.
+Arredondamento em centavos, ajuste mínimo zero; não há transferência de saldo excedente.
+
+Em **Backoffice → Pagamentos → Gerenciar cupons de upgrade**, crie, edite, desative ou
+exclua códigos. Configure percentual (0,01 a 100%), plano de destino, ambiente, início/fim
+em horário de São Paulo, limite total opcional e limite por loja. Cupons novos começam
+inativos. `BRINDE` não é fixo nem criado pela migration V43: só funciona se cadastrado
+e ativado, como qualquer outro código. A variável `UPGRADE_BRINDE_ENABLED` não é mais usada.
+
+A prévia não consome utilizações. Ao confirmar o pagamento, o app revalida o cupom e
+reserva uma vaga com bloqueio transacional para não ultrapassar limites entre lojas.
+O percentual fica registrado no ajuste; mudanças no cupom antes do pagamento exigem
+uma nova prévia. Pagamento incerto ou em revisão mantém a vaga reservada; recusa
+confirmada antes de qualquer pagamento aprovado libera a vaga. Upgrade concluído
+confirma a utilização. Cupons com histórico são apenas desativados ao excluir.
+A exclusão definitiva da loja elimina suas utilizações identificáveis, mantendo o
+total agregado do cupom para não reabrir vagas de descontos já concedidos.
 
 O ajuste cria uma transação avulsa (`createCharge` + `definePayMethod`), não uma
 assinatura. O cartão é tokenizado novamente apenas para esse ajuste e não substitui

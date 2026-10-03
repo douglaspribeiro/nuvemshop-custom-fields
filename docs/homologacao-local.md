@@ -196,7 +196,8 @@ Fontes oficiais: [credenciais](https://sejaefi.com.br/central-de-ajuda/api/como-
 
 1. Entre pela página local e assine o Pro no painel, usando os dados de teste da Efí.
 2. Aguarde a confirmação do pagamento e confira o plano Pro ativo.
-3. Solicite Ultra, aplique BRINDE e confira crédito, desconto, ajuste de hoje e
+3. Cadastre e ative um cupom SANDBOX para Ultra em Backoffice → Pagamentos → Cupons,
+   com percentual e limites de utilização. Solicite Ultra, aplique esse código e confira crédito, desconto, ajuste de hoje e
    próxima mensalidade. Como a assinatura acabou de começar, o crédito será de
    quase todo o ciclo; não será o exemplo de metade do mês.
 4. Pague o ajuste no sandbox. Confira que os benefícios só foram liberados após

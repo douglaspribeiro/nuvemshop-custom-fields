@@ -83,7 +83,7 @@
             <div class="payment-summary-price"><strong th:text="${formattedAmount}">R$ 19,99</strong><span th:text="${upgradeAdjustment!=null ? ' pagar hoje' : (discounted ? ' no primeiro mês' : ' / mês')}"> / mês</span></div>
             <th:block th:if="${upgradeAdjustment!=null}">
                 <div class="payment-summary-line"><span>Plano novo pelo período restante</span><strong th:text="${proratedPrice}"></strong></div>
-                <div class="payment-summary-line" th:if="${upgradeAdjustment.couponCode!=null}"><span>Cupom BRINDE — 30%</span><strong th:text="'− '+${discountPrice}"></strong></div>
+                <div class="payment-summary-line" th:if="${upgradeAdjustment.couponCode!=null}"><span th:text="'Cupom '+${upgradeAdjustment.couponCode}+' — '+${upgradeAdjustment.couponPercent.stripTrailingZeros().toPlainString()}+'%'"></span><strong th:text="'− '+${discountPrice}"></strong></div>
                 <div class="payment-summary-line"><span>Crédito do Pro/plano atual</span><strong th:text="'− '+${creditPrice}"></strong></div>
                 <p th:text="'Próxima mensalidade: '+${formattedRegularAmount}+' em '+${#temporals.format(upgradeAdjustment.periodEnd,'dd/MM/yyyy','America/Sao_Paulo')}"></p>
                 <p th:if="${upgradeAdjustment.couponCode!=null}">Cupom somente no ajuste deste ciclo, sem desconto nas renovações seguintes.</p>

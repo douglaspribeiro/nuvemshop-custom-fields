@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface UpgradeAdjustmentRepository extends JpaRepository<UpgradeAdjustment,String> {
+    boolean existsByCouponId(Long couponId);
     List<UpgradeAdjustment> findTop100ByStateNotOrderByQuotedAtDesc(UpgradeAdjustment.State state);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from UpgradeAdjustment a where a.id = :id")

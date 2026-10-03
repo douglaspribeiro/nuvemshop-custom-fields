@@ -33,6 +33,7 @@ class StoreDataErasureServiceTest {
         deletion.verify(jdbcTemplate).update("delete from personalization_rules where store_id = ?", 123L);
         deletion.verify(jdbcTemplate).update("delete from integration_logs where store_id = ?", 123L);
         deletion.verify(jdbcTemplate).update("delete from plan_events where store_id = ?", 123L);
+        deletion.verify(jdbcTemplate).update("delete from upgrade_coupon_uses where store_id = ?",123L);
         deletion.verify(jdbcTemplate).update("delete from stores where store_id = ?", 123L);
     }
 

@@ -139,7 +139,7 @@ no Discord e na fila do backoffice, com prioridade entre os chamados abertos.
 
 O upgrade mantém a assinatura no mesmo gateway e ambiente. Na Efí, a tela calcula
 o valor do novo plano pelo restante do ciclo pago, desconta o crédito do plano
-atual e oferece BRINDE (30% somente sobre o restante deste ciclo, para Ultra).
+atual e aceita cupons cadastrados no backoffice (desconto somente no restante deste ciclo).
 Uma cobrança avulsa paga o ajuste, sem criar outra assinatura. Só após confirmar
 pagamento e alteração na Efí os recursos superiores são liberados. A próxima
 mensalidade integral continua na data existente. Paddle e Mercado Pago mantêm

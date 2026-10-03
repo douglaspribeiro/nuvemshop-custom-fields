@@ -30,6 +30,8 @@ class EfiUpgradeServiceTest {
     @Autowired UpgradeAdjustmentRepository adjustments;
     @Autowired PaymentSubscriptionRepository subscriptions;
     @Autowired StoreRepository stores;
+    @Autowired UpgradeCouponRepository coupons;
+    @Autowired UpgradeCouponUseRepository couponUses;
     @Autowired ObjectMapper json;
     @Autowired MockMvc mvc;
     @MockitoSpyBean EfiGateway efi;
@@ -43,6 +45,11 @@ class EfiUpgradeServiceTest {
     final String token="testpaymenttoken12345678901234567890";
 
     @BeforeEach void setup(){
+        couponUses.deleteAll(couponUses.findTop100ByOrderByCreatedAtDesc().stream().filter(u->u.getStoreId().equals(storeId)).toList());
+        var coupon=coupons.findByCode("BRINDE").orElseGet(UpgradeCoupon::new);
+        coupon.setCode("BRINDE");coupon.setDiscountPercent(new BigDecimal("30"));coupon.setEnvironment(PaymentEnvironment.PRODUCTION);
+        coupon.setTargetPlan(PlanType.PREMIUM_ULTRA);coupon.setEnabled(true);coupon.setMaxUsesPerStore(1);coupon.setUsedCount(0);
+        coupon.setMaxUses(null);coupon.setStartsAt(null);coupon.setEndsAt(null);coupons.save(coupon);
         adjustments.findByStoreIdOrderByQuotedAtDesc(storeId).forEach(adjustments::delete);
         subscriptions.findByStoreId(storeId).ifPresent(subscriptions::delete);
         stores.findByStoreId(storeId).ifPresent(stores::delete);
@@ -74,12 +81,12 @@ class EfiUpgradeServiceTest {
     }
 
     @Test void exactHalfCycleMathAndCouponAreRoundedInCents(){
-        var normal=EfiUpgradeService.calculate(new BigDecimal("29.99"),new BigDecimal("59.90"),new BigDecimal("0.5"),false);
+        var normal=EfiUpgradeService.calculate(new BigDecimal("29.99"),new BigDecimal("59.90"),new BigDecimal("0.5"),BigDecimal.ZERO);
         assertThat(normal.credit()).isEqualByComparingTo("15.00");assertThat(normal.due()).isEqualByComparingTo("14.95");
-        var coupon=EfiUpgradeService.calculate(new BigDecimal("29.99"),new BigDecimal("59.90"),new BigDecimal("0.5"),true);
+        var coupon=EfiUpgradeService.calculate(new BigDecimal("29.99"),new BigDecimal("59.90"),new BigDecimal("0.5"),new BigDecimal("30"));
         assertThat(coupon.due()).isEqualByComparingTo("5.97");assertThat(coupon.discount()).isEqualByComparingTo("8.98");
-        assertThat(EfiUpgradeService.calculate(new BigDecimal("29.99"),new BigDecimal("59.90"),BigDecimal.ZERO,true).due()).isZero();
-        assertThatThrownBy(()->EfiUpgradeService.calculate(BigDecimal.ONE,BigDecimal.TEN,new BigDecimal("1.1"),false)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(EfiUpgradeService.calculate(new BigDecimal("29.99"),new BigDecimal("59.90"),BigDecimal.ZERO,new BigDecimal("30")).due()).isZero();
+        assertThatThrownBy(()->EfiUpgradeService.calculate(BigDecimal.ONE,BigDecimal.TEN,new BigDecimal("1.1"),BigDecimal.ZERO)).isInstanceOf(IllegalArgumentException.class);
     }
     @Test void successfulAdjustmentKeepsSingleSubscriptionAndDoesNotChargeAgain(){
         createQuote(" brinde ");service.pay(storeId,quote.getId(),payer,token);service.pay(storeId,quote.getId(),payer,token);
@@ -90,12 +97,15 @@ class EfiUpgradeServiceTest {
         verify(efi,times(1)).createUpgradeCharge(eq(quote.getDueAmount()),eq(quote.reference()),any(),contains("Ajuste proporcional"));
         verify(efi,times(1)).payUpgradeCharge(eq("778899"),eq(payer),eq(token));
         verify(efi,never()).cancel(any());verify(efi,never()).createSubscription(any(),any(),any());
+        assertThat(coupons.findByCode("BRINDE").orElseThrow().getUsedCount()).isEqualTo(1);
+        assertThat(couponUses.findByAdjustmentId(quote.getId()).orElseThrow().getStatus()).isEqualTo(UpgradeCouponUse.Status.USED);
     }
     @Test void refusalPreservesProAndAllowsNewQuote(){
-        createQuote(null);paymentStatus.set("unpaid");service.pay(storeId,quote.getId(),payer,token);
+        createQuote("BRINDE");paymentStatus.set("unpaid");service.pay(storeId,quote.getId(),payer,token);
         assertThat(adjustments.findById(quote.getId()).orElseThrow().getState()).isEqualTo(UpgradeAdjustment.State.FAILED);
         assertThat(stores.findByStoreId(storeId).orElseThrow().getPlan()).isEqualTo(PlanType.PREMIUM_PLUS);
         assertThat(subscriptions.findByStoreId(storeId).orElseThrow().isUpgradePaymentPending()).isFalse();
+        assertThat(coupons.findByCode("BRINDE").orElseThrow().getUsedCount()).isZero();
         service.quote(storeId,PlanType.PREMIUM_ULTRA,null);
         verify(efi,never()).changeSubscriptionPlan(any(),anyString(),anyString(),any());
     }
@@ -179,6 +189,14 @@ class EfiUpgradeServiceTest {
         String preview=mvc.perform(get("/admin/billing/upgrade/efi").param("plan","PREMIUM_ULTRA").param("couponCode","BRINDE").session(session))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(preview).contains("uma única assinatura","Crédito do plano", "BRINDE", "Próxima mensalidade", "sem desconto nas próximas");
+        assertThat(preview).contains("placeholder=\"CUPOM\"","merchant-upgrade-layout","merchant-upgrade-summary","Pagar hoje — ajuste único");
+        assertThat(preview).doesNotContain("placeholder=\"BRINDE\"");
+        String previewFile=System.getProperty("upgrade.previewFile");
+        if(previewFile!=null){
+            String cssBase=java.nio.file.Path.of("src/main/resources/static/styles").toAbsolutePath().toUri().toString();
+            String offline=preview.replaceAll("href=\"/styles/([^?\"]+)\\?[^\"]*\"", "href=\""+cssBase+"$1\"");
+            java.nio.file.Files.writeString(java.nio.file.Path.of(previewFile),offline);
+        }
         quote=adjustments.findByStoreIdOrderByQuotedAtDesc(storeId).getFirst();
         String card=mvc.perform(get("/admin/billing/upgrade/efi/pay").param("id",quote.getId()).session(session))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
@@ -191,5 +209,30 @@ class EfiUpgradeServiceTest {
         assertThat(done).contains("Upgrade concluído", "única assinatura", "59,90");
         String billing=mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(billing).contains("Ajustes proporcionais de upgrade","Concluído","não novas assinaturas");
+    }
+    @Test void fixedCouponNoLongerWorksWithoutAnActiveRegistrationAndErrorStaysOnPreview() throws Exception {
+        var c=coupons.findByCode("BRINDE").orElseThrow();c.setEnabled(false);coupons.save(c);
+        assertThatThrownBy(()->service.quote(storeId,PlanType.PREMIUM_ULTRA,"BRINDE")).isInstanceOf(IllegalArgumentException.class);
+        var page=mvc.perform(get("/admin/billing/upgrade/efi").param("plan","PREMIUM_ULTRA")
+                .param("couponCode","BRINDE").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("Cupom inválido ou indisponível","Resumo do upgrade","placeholder=\"CUPOM\"");
+        assertThat(page).doesNotContain("Cupom BRINDE aplicado");
+    }
+    @Test void quoteUsesConfiguredPercentageAndChangedCouponCannotStartPayment(){
+        var c=coupons.findByCode("BRINDE").orElseThrow();c.setDiscountPercent(new BigDecimal("10"));coupons.save(c);
+        createQuote("BRINDE");assertThat(quote.getCouponPercent()).isEqualByComparingTo("10");
+        c.setDiscountPercent(new BigDecimal("20"));coupons.save(c);
+        assertThatThrownBy(()->service.pay(storeId,quote.getId(),payer,token)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("mudou");
+        verify(efi,never()).createUpgradeCharge(any(),any(),any(),any());
+        assertThat(coupons.findByCode("BRINDE").orElseThrow().getUsedCount()).isZero();
+    }
+    @Test void fullDiscountConfirmsUsageWithoutCreatingAnExtraCharge(){
+        var c=coupons.findByCode("BRINDE").orElseThrow();c.setDiscountPercent(new BigDecimal("100"));coupons.save(c);
+        createQuote("BRINDE");assertThat(quote.getDueAmount()).isZero();
+        service.pay(storeId,quote.getId(),null,null);
+        assertThat(adjustments.findById(quote.getId()).orElseThrow().getState()).isEqualTo(UpgradeAdjustment.State.COMPLETED);
+        assertThat(couponUses.findByAdjustmentId(quote.getId()).orElseThrow().getStatus()).isEqualTo(UpgradeCouponUse.Status.USED);
+        verify(efi,never()).createUpgradeCharge(any(),any(),any(),any());
+        verify(efi,never()).payUpgradeCharge(any(),any(),any());
     }
 }

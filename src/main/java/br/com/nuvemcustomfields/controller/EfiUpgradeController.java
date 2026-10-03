@@ -29,7 +29,14 @@ public class EfiUpgradeController {
         response.setHeader("Cache-Control","no-store");
         var store=stores.requireCurrentStore(session);
         try{var a=upgrades.quote(store.getStoreId(),plan,couponCode);populate(model,store,a);return "admin/billing-upgrade-efi";}
-        catch(RuntimeException ex){flash.addFlashAttribute("error",safeError(ex));return "redirect:/admin/billing";}
+        catch(RuntimeException ex){
+            if(ex instanceof IllegalArgumentException && couponCode!=null && !couponCode.isBlank()){
+                try{var a=upgrades.quote(store.getStoreId(),plan,null);populate(model,store,a);
+                    model.addAttribute("error",safeError(ex));return "admin/billing-upgrade-efi";
+                }catch(RuntimeException ignored){ /* Elegibilidade mudou: volte ao painel. */ }
+            }
+            flash.addFlashAttribute("error",safeError(ex));return "redirect:/admin/billing";
+        }
     }
 
     @GetMapping("/admin/billing/upgrade/efi/pay")

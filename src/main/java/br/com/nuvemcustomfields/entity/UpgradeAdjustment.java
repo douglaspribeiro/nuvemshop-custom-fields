@@ -25,6 +25,8 @@ public class UpgradeAdjustment {
     @Column(nullable=false,precision=12,scale=2) private BigDecimal creditAmount;
     @Column(nullable=false,precision=12,scale=2) private BigDecimal dueAmount;
     @Column(length=36) private String couponCode;
+    private Long couponId;
+    @Column(precision=5,scale=2) private BigDecimal couponPercent;
     @Column(nullable=false) private Instant periodStart;
     @Column(nullable=false) private Instant periodEnd;
     @Column(nullable=false) private Instant quotedAt;
@@ -50,6 +52,8 @@ public class UpgradeAdjustment {
     public BigDecimal getCreditAmount(){return creditAmount;} public void setCreditAmount(BigDecimal v){creditAmount=v;}
     public BigDecimal getDueAmount(){return dueAmount;} public void setDueAmount(BigDecimal v){dueAmount=v;}
     public String getCouponCode(){return couponCode;} public void setCouponCode(String v){couponCode=v;}
+    public Long getCouponId(){return couponId;} public void setCouponId(Long v){couponId=v;}
+    public BigDecimal getCouponPercent(){return couponPercent;} public void setCouponPercent(BigDecimal v){couponPercent=v;}
     public Instant getPeriodStart(){return periodStart;} public void setPeriodStart(Instant v){periodStart=v;}
     public Instant getPeriodEnd(){return periodEnd;} public void setPeriodEnd(Instant v){periodEnd=v;}
     public Instant getQuotedAt(){return quotedAt;} public void setQuotedAt(Instant v){quotedAt=v;}

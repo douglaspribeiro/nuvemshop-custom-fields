@@ -21,6 +21,10 @@ class UltraMigrationTest {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V40__upgrade_adjustments.sql"));
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V41__feature_requests.sql"));
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V42__store_erasure_requests.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V43__upgrade_coupon_catalog.sql"));
+            try(var result=sql.executeQuery("SELECT COUNT(*) FROM upgrade_coupons")){
+                assertThat(result.next()).isTrue();assertThat(result.getInt(1)).isZero();
+            }
             try (var result = sql.executeQuery("SELECT amount_value, enabled FROM payment_catalog_prices WHERE plan='PREMIUM_PLUS'")) {
                 assertThat(result.next()).isTrue();
                 assertThat(result.getBigDecimal(1)).isEqualByComparingTo("29.99");

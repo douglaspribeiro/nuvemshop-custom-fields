@@ -153,3 +153,43 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 @media (max-width:900px) { .merchant-page .grid.three { grid-template-columns:1fr; } .merchant-page .plan-card { min-height:0; } }
 @media (max-width:650px) { .merchant-field-upgrade { flex-direction:column; align-items:stretch; } }
 @media (max-width:760px) { .merchant-topbar-inner { min-height:55px; padding:0 16px; } .merchant-brand-mark { width:29px; height:29px; font-size:16px; } .merchant-store { max-width:42%; } .merchant-nav-inner { gap:18px; padding:0 16px; } .merchant-nav a { min-height:40px; font-size:12px; } .merchant-page .shell { padding:24px 16px 54px; } .merchant-overview-hero,.merchant-stat-grid { grid-template-columns:1fr; } .merchant-page .page-header { align-items:flex-start; flex-direction:column; } .merchant-page .panel { padding:19px; } .merchant-upgrade { flex-direction:column; align-items:stretch; } .merchant-product { grid-template-columns:1fr; } .merchant-product .row-actions { justify-content:flex-start; flex-wrap:wrap; } .merchant-order { grid-template-columns:1fr; } }
+.merchant-upgrade-page { max-width:1120px !important; }
+.merchant-upgrade-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(330px,.85fr); gap:24px; align-items:start; }
+.merchant-upgrade-details { display:grid; gap:20px; min-width:0; }
+.merchant-upgrade-benefits { background:linear-gradient(140deg,#f2faf5,#fff); }
+.merchant-upgrade-benefits ul { padding-left:22px; margin:20px 0; display:grid; gap:12px; line-height:1.5; }
+.merchant-upgrade-benefits li::marker { color:var(--merchant-green); }
+.merchant-upgrade-assurance { padding:16px; background:#e9f5ee; border:1px solid #cbe5d5; border-radius:10px; line-height:1.5; }
+.merchant-upgrade-assurance strong { color:var(--merchant-green-dark); }
+.merchant-upgrade-assurance p { margin:8px 0 0; color:var(--merchant-muted); font-size:.87rem; }
+.merchant-upgrade-steps { display:grid; gap:18px; padding-left:22px; margin:20px 0 0; }
+.merchant-upgrade-steps li { padding-left:5px; }
+.merchant-upgrade-steps li::marker { color:var(--merchant-green); font-weight:800; }
+.merchant-upgrade-steps strong,.merchant-upgrade-steps span { display:block; }
+.merchant-upgrade-steps span { color:var(--merchant-muted); font-size:.87rem; line-height:1.6; margin-top:4px; }
+.merchant-upgrade-coupon { display:flex; gap:12px; align-items:end; margin-top:18px; }
+.merchant-upgrade-coupon label { display:grid; gap:8px; flex:1; min-width:0; font-weight:700; font-size:.87rem; }
+.merchant-upgrade-coupon input { width:100%; box-sizing:border-box; text-transform:uppercase; }
+.merchant-upgrade-coupon .button { flex:none; }
+.merchant-upgrade-note { color:var(--merchant-muted); font-size:.77rem; line-height:1.6; margin:14px 0 0; }
+.merchant-upgrade-coupon-applied { color:var(--merchant-green-dark); font-size:.86rem; font-weight:700; line-height:1.5; }
+.merchant-upgrade-summary { position:sticky; top:24px; min-width:0; }
+.merchant-upgrade-plan { display:grid; grid-template-columns:1fr auto; gap:6px; padding:16px 0; border-bottom:1px solid var(--merchant-line); }
+.merchant-upgrade-plan span { color:var(--merchant-muted); font-size:.85rem; }
+.merchant-upgrade-plan small { grid-column:1/-1; text-align:right; color:var(--merchant-muted); }
+.merchant-upgrade-plan.is-target strong { color:var(--merchant-green-dark); }
+.merchant-upgrade-breakdown { display:grid; gap:14px; margin:22px 0; }
+.merchant-upgrade-breakdown > div { display:flex; justify-content:space-between; gap:16px; align-items:baseline; font-size:.84rem; line-height:1.5; }
+.merchant-upgrade-breakdown dt { flex:1; }
+.merchant-upgrade-breakdown dd { margin:0; font-weight:700; white-space:nowrap; }
+.merchant-upgrade-breakdown .is-credit dd { color:var(--merchant-green-dark); }
+.merchant-upgrade-total { display:grid; gap:8px; padding:20px; border-radius:10px; background:#eaf6ef; }
+.merchant-upgrade-total span { font-size:.88rem; font-weight:700; }
+.merchant-upgrade-total strong { color:var(--merchant-green-dark); font-size:2.1rem; letter-spacing:-.045em; }
+.merchant-upgrade-total small { color:var(--merchant-muted); line-height:1.5; }
+.merchant-upgrade-renewal { display:grid; gap:7px; margin:22px 0; font-size:.86rem; }
+.merchant-upgrade-renewal small { color:var(--merchant-muted); line-height:1.5; }
+.merchant-upgrade-summary .button { display:flex; width:100%; box-sizing:border-box; justify-content:center; text-align:center; }
+.merchant-upgrade-coupon-link { display:block; margin-bottom:16px; color:var(--merchant-green-dark); font-size:.85rem; font-weight:700; }
+@media(max-width:850px) { .merchant-upgrade-layout { grid-template-columns:1fr; } .merchant-upgrade-summary { position:static; grid-row:1; } }
+@media(max-width:480px) { .merchant-upgrade-coupon { flex-direction:column; align-items:stretch; } .merchant-upgrade-breakdown > div { gap:10px; } }

@@ -6,7 +6,6 @@ import br.com.nuvemcustomfields.payment.*;
 import br.com.nuvemcustomfields.repository.*;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -27,15 +26,15 @@ public class EfiUpgradeService {
     private final EfiGateway efi;
     private final NuvemshopProperties properties;
     private final TransactionTemplate tx;
-    private final boolean couponEnabled;
+    private final UpgradeCouponService coupons;
     private static final ZoneId BR = ZoneId.of("America/Sao_Paulo");
 
     public EfiUpgradeService(UpgradeAdjustmentRepository adjustments, PaymentSubscriptionRepository subscriptions,
             StoreRepository stores, PaymentSubscriptionService payments, EfiGateway efi, NuvemshopProperties properties,
-            PlatformTransactionManager manager, @Value("${payments.upgrade.brinde-enabled:true}") boolean couponEnabled) {
+            PlatformTransactionManager manager, UpgradeCouponService coupons) {
         this.adjustments=adjustments; this.subscriptions=subscriptions; this.stores=stores;
         this.payments=payments; this.efi=efi; this.properties=properties;
-        this.tx=new TransactionTemplate(manager); this.couponEnabled=couponEnabled;
+        this.tx=new TransactionTemplate(manager); this.coupons=coupons;
     }
 
     public UpgradeAdjustment quote(Long storeId, PlanType target, String coupon) {
@@ -63,33 +62,34 @@ public class EfiUpgradeService {
             if(adjustments.findByStoreIdOrderByQuotedAtDesc(storeId).stream()
                     .anyMatch(a -> a.isPending() || (a.getState()==State.COMPLETED && a.getPeriodEnd().equals(end))))
                 throw new IllegalArgumentException("Já existe um upgrade para este ciclo. Aguarde a próxima renovação para outra alteração.");
-            String code=coupon==null?"":coupon.trim().toUpperCase(Locale.ROOT);
-            if(!code.isEmpty() && (!couponEnabled || !"BRINDE".equals(code) || target!=PlanType.PREMIUM_ULTRA))
-                throw new IllegalArgumentException("Cupom inválido ou indisponível para este upgrade.");
+            var selectedCoupon=coupons.eligible(coupon,storeId,efi.environment(),target);
             BigDecimal regular=efi.amount(target);
             BigDecimal paidAmount=BigDecimal.valueOf(paid.path("total").asLong(),2);
             if(paidAmount.signum()<=0 || paidAmount.compareTo(sub.getAmountValue())!=0)
                 throw new IllegalArgumentException("O valor pago neste ciclo precisa ser conciliado antes do upgrade.");
             BigDecimal ratio=BigDecimal.valueOf(Duration.between(now,end).toMillis())
                     .divide(BigDecimal.valueOf(Duration.between(start,end).toMillis()),16,RoundingMode.HALF_UP);
-            var values=calculate(paidAmount,regular,ratio,!code.isEmpty());
+            var values=calculate(paidAmount,regular,ratio,selectedCoupon==null?BigDecimal.ZERO:selectedCoupon.getDiscountPercent());
             UpgradeAdjustment a=new UpgradeAdjustment();
             a.setStoreId(storeId); a.setSubscriptionId(sub.getProviderSubscriptionId()); a.setEnvironment(efi.environment());
             a.setSourcePlan(sub.getPlan()); a.setTargetPlan(target); a.setSourceAmount(paidAmount); a.setRegularAmount(regular);
             a.setTargetPriceId(efi.planId(target)); a.setSourcePriceId(remote.path("plan").path("plan_id").asText());
             a.setTargetProrated(values.target()); a.setDiscountAmount(values.discount()); a.setCreditAmount(values.credit()); a.setDueAmount(values.due());
-            a.setCouponCode(code.isEmpty()?null:code); a.setPeriodStart(start); a.setPeriodEnd(end); a.setQuotedAt(now);
+            if(selectedCoupon!=null){a.setCouponCode(selectedCoupon.getCode());a.setCouponId(selectedCoupon.getId());a.setCouponPercent(selectedCoupon.getDiscountPercent());}
+            a.setPeriodStart(start); a.setPeriodEnd(end); a.setQuotedAt(now);
             a.setExpiresAt(now.plusSeconds(900).isBefore(end)?now.plusSeconds(900):end);
             return adjustments.save(a);
         });
     }
 
     public record Calculation(BigDecimal target,BigDecimal discount,BigDecimal credit,BigDecimal due) {}
-    public static Calculation calculate(BigDecimal source,BigDecimal target,BigDecimal ratio,boolean coupon) {
-        if(ratio.signum()<0 || ratio.compareTo(BigDecimal.ONE)>0 || source.signum()<0 || target.signum()<=0)
+    public static Calculation calculate(BigDecimal source,BigDecimal target,BigDecimal ratio,BigDecimal percent) {
+        if(ratio.signum()<0 || ratio.compareTo(BigDecimal.ONE)>0 || source.signum()<0 || target.signum()<=0
+                || percent==null || percent.signum()<0 || percent.compareTo(new BigDecimal("100"))>0)
             throw new IllegalArgumentException("Período ou preço inválido.");
         BigDecimal prorated=money(target.multiply(ratio));
-        BigDecimal discounted=money(money(target.multiply(coupon?new BigDecimal("0.70"):BigDecimal.ONE)).multiply(ratio));
+        BigDecimal factor=BigDecimal.ONE.subtract(percent.movePointLeft(2));
+        BigDecimal discounted=money(money(target.multiply(factor)).multiply(ratio));
         BigDecimal credit=money(source.multiply(ratio));
         return new Calculation(prorated,prorated.subtract(discounted),credit,discounted.subtract(credit).max(BigDecimal.ZERO));
     }
@@ -121,6 +121,7 @@ public class EfiUpgradeService {
             if(!cycleEnd(remote).equals(a.getPeriodEnd())) throw new IllegalArgumentException("Seu ciclo mudou. Revise o upgrade novamente.");
             if(a.getDueAmount().signum()>0 && (!validPayer(payer) || token==null || !token.matches("[a-zA-Z0-9]{20,120}")))
                 throw new IllegalArgumentException("Informe os dados de pagamento.");
+            coupons.reserve(a);
             a.setState(a.getDueAmount().signum()==0?State.PAID:State.CREATING);
             if(a.getDueAmount().signum()==0) a.setPaidAt(Instant.now());
             sub.setUpgradePaymentPending(true); sub.setNextPaymentAt(a.getPeriodEnd()); subscriptions.save(sub); adjustments.save(a);
@@ -182,6 +183,7 @@ public class EfiUpgradeService {
                 }else if(Set.of("unpaid","canceled","refunded","contested").contains(paymentStatus)){
                     if(current.getPaidAt()!=null){current.setState(State.REVIEW);current.setMessage("O pagamento mudou de status. Entre em contato com o suporte.");}
                     else{current.setState(State.FAILED);current.setMessage("O ajuste não foi pago. Você continua no plano anterior.");
+                        coupons.release(current);
                         subscriptions.findByStoreId(current.getStoreId()).ifPresent(s->{s.setUpgradePaymentPending(false);subscriptions.save(s);});}
                 }
                 adjustments.save(current);
@@ -229,6 +231,7 @@ public class EfiUpgradeService {
                     || !snapshot.getSubscriptionId().equals(sub.getProviderSubscriptionId()))
                 throw new PaymentGatewayException("A alteração do plano está aguardando confirmação.");
             sub.setUpgradePaymentPending(false);subscriptions.save(sub);
+            coupons.complete(current);
             current.setState(State.COMPLETED);current.setCompletedAt(Instant.now());current.setMessage(null);adjustments.save(current);
         });
     }
