@@ -207,6 +207,7 @@ public class AdminController {
         }
         model.addAttribute("store", store);
         model.addAttribute("usage", planLimitService.usage(store, 0));
+        model.addAttribute("planDefinitions", planLimitService.planDefinitions());
         model.addAttribute("billingEnabled", paymentSubscriptionService.anyGatewayEnabled());
         model.addAttribute("billingAvailable", available);
         String billingCurrency = available ? paymentSubscriptionService.currency(store) : "";

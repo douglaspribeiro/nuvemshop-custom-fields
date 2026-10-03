@@ -42,6 +42,13 @@ class UltraMigrationTest {
                 assertThat(result.getBoolean(2)).isFalse();
                 assertThat(result.next()).isFalse();
             }
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V45__create_plan_assets.sql"));
+            try (var result = sql.executeQuery("SELECT product_limit, field_limit FROM plan_assets WHERE plan_type='PREMIUM_PLUS'")) {
+                assertThat(result.next()).isTrue(); assertThat(result.getLong(1)).isEqualTo(50); assertThat(result.getLong(2)).isEqualTo(-1);
+            }
+            try (var result = sql.executeQuery("SELECT COUNT(*) FROM plan_assets")) {
+                assertThat(result.next()).isTrue(); assertThat(result.getInt(1)).isEqualTo(5);
+            }
             sql.executeQuery("SELECT plan_at_open FROM support_tickets").close();
             sql.executeQuery("SELECT upgrade_plan, upgrade_amount, upgrade_price_id FROM payment_subscriptions").close();
             sql.executeQuery("SELECT upgrade_payment_pending FROM payment_subscriptions").close();

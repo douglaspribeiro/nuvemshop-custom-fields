@@ -18,7 +18,7 @@
     </section>
     <section class="details metrics">
         <div>
-            <dt>MRR estimado</dt>
+            <dt>MRR estimado · BRL</dt>
             <dd th:text="'R$ ' + ${report.estimatedMrr}">R$ 0</dd>
         </div>
         <div>
@@ -26,7 +26,7 @@
             <dd th:text="${report.freeStores}">0</dd>
         </div>
         <div>
-            <dt>Premium</dt>
+            <dt>Essencial</dt>
             <dd th:text="${report.premiumStores}">0</dd>
         </div>
         <div>
@@ -34,6 +34,21 @@
             <dd th:text="${report.premiumPlusStores}">0</dd>
         </div>
         <div><dt>Ultra</dt><dd th:text="${report.premiumUltraStores}">0</dd></div>
+    </section>
+    <section class="panel">
+        <h2>Receita recorrente e próximas cobranças</h2>
+        <p>Estimativa para lojas ativas pagas, sem cortesia ou cobrança suspensa. Assinaturas de teste, pendentes, canceladas e com cancelamento solicitado são excluídas. Valores separados por moeda, sem conversão.</p>
+        <p th:text="|Projeção de cobranças restantes de ${report.projectedMonth}: de hoje até o fim do mês, conforme a próxima cobrança registrada. Não inclui cobranças vencidas ou ajustes de upgrade.|">Projeção</p>
+        <table class="table">
+            <thead><tr><th>Moeda</th><th>MRR estimado</th><th>Próximas cobranças no mês</th><th>Assinaturas previstas</th></tr></thead>
+            <tbody><tr th:each="entry : ${report.mrrByCurrency}">
+                <td th:text="${entry.key}">BRL</td><td th:text="${entry.value}">0</td>
+                <td th:text="${report.projectedPaymentsByCurrency[entry.key] ?: 0}">0</td>
+                <td th:text="${report.projectedStoresByCurrency[entry.key] ?: 0}">0</td>
+            </tr></tbody>
+        </table>
+        <p>O MRR usa o valor recorrente contratado; em reconquistas com desconto inicial, usa a mensalidade regular. Lojas sem valor registrado usam o preço de referência do plano quando a moeda é compatível.</p>
+        <a class="button" th:href="@{/backoffice/plans}">Gerenciar planos</a>
     </section>
     <section class="details metrics">
         <div>

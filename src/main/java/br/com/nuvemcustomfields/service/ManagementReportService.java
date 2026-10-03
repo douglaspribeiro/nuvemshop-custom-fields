@@ -1,59 +1,93 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.ManagementReport;
-import br.com.nuvemcustomfields.entity.PlanType;
-import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
-import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
-import br.com.nuvemcustomfields.repository.PlanEventRepository;
-import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.entity.*;
+import br.com.nuvemcustomfields.repository.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
+import java.time.*;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ManagementReportService {
+    private final StoreRepository stores;
+    private final PersonalizationRuleRepository rules;
+    private final PersonalizationFieldRepository fields;
+    private final PlanEventRepository events;
+    private final PaymentSubscriptionRepository subscriptions;
+    private final PlanCatalogService catalog;
+    private final Clock clock;
 
-    private static final BigDecimal PREMIUM_PRICE = new BigDecimal("19.99");
-    private static final BigDecimal PREMIUM_PLUS_PRICE = new BigDecimal("29.99");
-    private static final BigDecimal ULTRA_PRICE = new BigDecimal("59.90");
+    @Autowired
+    public ManagementReportService(StoreRepository stores, PersonalizationRuleRepository rules,
+            PersonalizationFieldRepository fields, PlanEventRepository events,
+            PaymentSubscriptionRepository subscriptions, PlanCatalogService catalog) {
+        this(stores, rules, fields, events, subscriptions, catalog, Clock.system(ZoneId.of("America/Sao_Paulo")));
+    }
 
-    private final StoreRepository storeRepository;
-    private final PersonalizationRuleRepository ruleRepository;
-    private final PersonalizationFieldRepository fieldRepository;
-    private final PlanEventRepository planEventRepository;
-
-    public ManagementReportService(
-            StoreRepository storeRepository,
-            PersonalizationRuleRepository ruleRepository,
-            PersonalizationFieldRepository fieldRepository,
-            PlanEventRepository planEventRepository
-    ) {
-        this.storeRepository = storeRepository;
-        this.ruleRepository = ruleRepository;
-        this.fieldRepository = fieldRepository;
-        this.planEventRepository = planEventRepository;
+    ManagementReportService(StoreRepository stores, PersonalizationRuleRepository rules,
+            PersonalizationFieldRepository fields, PlanEventRepository events,
+            PaymentSubscriptionRepository subscriptions, PlanCatalogService catalog, Clock clock) {
+        this.stores = stores; this.rules = rules; this.fields = fields; this.events = events;
+        this.subscriptions = subscriptions; this.catalog = catalog; this.clock = clock;
     }
 
     public ManagementReport report() {
-        var stores = storeRepository.findAll();
-        long free = stores.stream().filter(store -> store.getPlan() == PlanType.FREE || store.getPlan() == PlanType.FREE_GRATIS).count();
-        long premium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM).count();
-        long premiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS).count();
-        long ultra = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_ULTRA).count();
-        long billableUltra = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_ULTRA && !store.isCourtesyPremium()).count();
-        long billablePremium = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM && !store.isCourtesyPremium()).count();
-        long billablePremiumPlus = stores.stream().filter(store -> store.getPlan() == PlanType.PREMIUM_PLUS && !store.isCourtesyPremium()).count();
-        long fields = ruleRepository.findAll().stream().mapToLong(rule -> fieldRepository.countByRuleId(rule.getId())).sum();
+        var all = stores.findAll();
+        var ids = all.stream().map(Store::getStoreId).filter(Objects::nonNull).toList();
+        var byStore = ids.isEmpty() ? Map.<Long, PaymentSubscription>of() : subscriptions.findByStoreIdIn(ids).stream()
+                .collect(Collectors.toMap(PaymentSubscription::getStoreId, Function.identity()));
+        var mrr = new TreeMap<String, BigDecimal>();
+        var projected = new TreeMap<String, BigDecimal>();
+        var projectedCounts = new TreeMap<String, Long>();
+        LocalDate today = LocalDate.now(clock);
+        YearMonth month = YearMonth.from(today);
+        for (Store store : all) {
+            if (!store.isActive() || store.isCourtesyPremium() || store.isBillingSuspended() || !store.getPlan().isBillable()) continue;
+            PaymentSubscription subscription = store.getStoreId() == null ? null : byStore.get(store.getStoreId());
+            BigDecimal monthlyAmount;
+            BigDecimal nextAmount;
+            String currency;
+            LocalDate next;
+            if (subscription != null) {
+                if (subscription.getStatus() != PaymentSubscriptionStatus.ACTIVE || !subscription.isAccessActive()
+                        || subscription.getProviderEnvironment() != PaymentEnvironment.PRODUCTION || subscription.isCancellationPending()) continue;
+                monthlyAmount = subscription.getWinbackRegularAmount() != null && subscription.isWinbackRestorePending()
+                        ? subscription.getWinbackRegularAmount() : subscription.getAmountValue();
+                nextAmount = subscription.getAmountValue();
+                currency = subscription.getCurrency();
+                next = subscription.getNextPaymentAt() == null ? null : subscription.getNextPaymentAt().atZone(clock.getZone()).toLocalDate();
+            } else {
+                monthlyAmount = store.getBillingAmountValue();
+                currency = store.getBillingAmountCurrency();
+                if (monthlyAmount == null) {
+                    var reference = catalog.activePlan(store.getPlan());
+                    String marketCurrency = currency == null || currency.isBlank() ? store.getStoreCurrency() : currency;
+                    if (marketCurrency != null && !marketCurrency.isBlank() && !marketCurrency.equalsIgnoreCase(reference.getCurrency())) continue;
+                    monthlyAmount = reference.getAmount();
+                    currency = reference.getCurrency();
+                }
+                nextAmount = monthlyAmount;
+                next = store.getBillingNextExecution();
+            }
+            if (currency == null || currency.isBlank() || monthlyAmount == null) continue;
+            currency = currency.strip().toUpperCase(Locale.ROOT);
+            mrr.merge(currency, monthlyAmount, BigDecimal::add);
+            if (next != null && !next.isBefore(today) && YearMonth.from(next).equals(month) && nextAmount != null) {
+                projected.merge(currency, nextAmount, BigDecimal::add);
+                projectedCounts.merge(currency, 1L, Long::sum);
+            }
+        }
+        long fieldCount = rules.findAll().stream().mapToLong(rule -> fields.countByRuleId(rule.getId())).sum();
         return new ManagementReport(
-                free,
-                premium,
-                premiumPlus,
-                ultra,
-                PREMIUM_PRICE.multiply(BigDecimal.valueOf(billablePremium)).add(PREMIUM_PLUS_PRICE.multiply(BigDecimal.valueOf(billablePremiumPlus)))
-                        .add(ULTRA_PRICE.multiply(BigDecimal.valueOf(billableUltra))),
-                planEventRepository.count(),
-                ruleRepository.count(),
-                fields
-        );
+                all.stream().filter(s -> !s.getPlan().isBillable()).count(),
+                all.stream().filter(s -> s.getPlan() == PlanType.PREMIUM).count(),
+                all.stream().filter(s -> s.getPlan() == PlanType.PREMIUM_PLUS).count(),
+                all.stream().filter(s -> s.getPlan() == PlanType.PREMIUM_ULTRA).count(),
+                mrr.getOrDefault("BRL", BigDecimal.ZERO), events.count(), rules.count(), fieldCount,
+                month, Map.copyOf(mrr), Map.copyOf(projected), Map.copyOf(projectedCounts));
     }
 }

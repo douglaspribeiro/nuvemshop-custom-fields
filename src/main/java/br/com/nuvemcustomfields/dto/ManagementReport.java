@@ -10,6 +10,10 @@ public record ManagementReport(
         BigDecimal estimatedMrr,
         long planEvents,
         long configuredProducts,
-        long configuredFields
+        long configuredFields,
+        java.time.YearMonth projectedMonth,
+        java.util.Map<String, BigDecimal> mrrByCurrency,
+        java.util.Map<String, BigDecimal> projectedPaymentsByCurrency,
+        java.util.Map<String, Long> projectedStoresByCurrency
 ) {
 }

@@ -31,6 +31,7 @@ class UltraBillingPageTest {
 
     @BeforeEach void setup() {
         stores.findByStoreId(991120L).ifPresent(stores::delete);
+        stores.flush();
         Store store = new Store();
         store.setStoreId(991120L); store.setAccessToken("test"); store.setStoreCountryCode("BR");
         store.setStoreCurrency("BRL"); store.setPlan(PlanType.PREMIUM_PLUS); store.setStoreName("Ultra test");
@@ -51,6 +52,19 @@ class UltraBillingPageTest {
         when(payments.amount(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(new BigDecimal("59.90"));
         when(payments.upgradeAmount(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(new BigDecimal("59.90"));
         when(payments.planAvailable(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(true);
+    }
+
+    @Autowired br.com.nuvemcustomfields.service.PlanCatalogService planCatalog;
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void billingComparisonShowsConfiguredLimits() throws Exception {
+        planCatalog.createVersion(PlanType.PREMIUM_PLUS, "Pro", "", "PREMIUM_PLUS", "BRL",
+                new BigDecimal("29.99"), 75, 6, planCatalog.today(), null);
+        String plans = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(plans).contains("75 produtos personalizados", "6 campos por produto", "1 produto personalizado")
+                .doesNotContain("50 produtos personalizados");
     }
 
     @Test void activeProCanReachUltraConfirmationAndSubmitReviewedPrice() throws Exception {

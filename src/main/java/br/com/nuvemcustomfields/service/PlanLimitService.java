@@ -16,10 +16,12 @@ public class PlanLimitService {
 
     private static final long UNLIMITED = -1L;
 
+    private final PlanCatalogService catalog;
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
 
-    public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository) {
+    public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository, PlanCatalogService catalog) {
+        this.catalog = catalog;
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
     }
@@ -54,21 +56,16 @@ public class PlanLimitService {
         return ordered.limit(limit).toList();
     }
 
+    public java.util.Map<String, br.com.nuvemcustomfields.entity.PlanAsset> planDefinitions() {
+        return catalog.activePlansByType().entrySet().stream().collect(java.util.stream.Collectors.toMap(
+                entry -> entry.getKey().name(), java.util.Map.Entry::getValue));
+    }
+
     public long productLimit(PlanType plan) {
-        return switch (plan) {
-            case FREE, FREE_GRATIS -> 1L;
-            case PREMIUM -> 10L;
-            case PREMIUM_PLUS -> 50L;
-            case PREMIUM_ULTRA -> UNLIMITED;
-        };
+        return catalog.activePlan(plan).getProductLimit();
     }
 
     public long fieldLimit(PlanType plan) {
-        return switch (plan) {
-            case FREE -> 1L;
-            case FREE_GRATIS -> 3L;
-            case PREMIUM -> 3L;
-            case PREMIUM_PLUS, PREMIUM_ULTRA -> UNLIMITED;
-        };
+        return catalog.activePlan(plan).getFieldLimit();
     }
 }
