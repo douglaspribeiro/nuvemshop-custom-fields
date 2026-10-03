@@ -7,34 +7,38 @@
     <title th:text="#{admin.billing.title} + ' - ' + #{common.app.title}">Planos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/billing.css(v=${assetVersion})}">
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('billing')}"></th:block>
-<main class="shell">
-    <section class="page-header">
-        <div>
-            <p class="eyebrow" th:text="#{admin.billing.eyebrow}">Planos</p>
-            <h1 th:text="#{merchant.nav.billing}">Planos e cobrança</h1>
-            <p th:text="#{merchant.billing.intro}">Veja o plano atual e acompanhe o uso.</p>
+<main class="shell merchant-billing-page">
+    <section class="billing-hero">
+        <div class="billing-hero-copy">
+            <p class="eyebrow" th:text="#{billing.offer.eyebrow}">Uma loja com a sua identidade</p>
+            <h1 th:text="#{billing.offer.heading}">Cada detalhe pode tornar um pedido especial.</h1>
+            <p class="billing-hero-description" th:text="#{billing.offer.description}">Dê ao cliente espaço para escolher. Encontre o plano ideal para oferecer mais possibilidades de personalização no seu catálogo.</p>
+            <div class="billing-hero-points">
+                <span th:text="#{billing.offer.point.products}">Campos na página do produto</span>
+                <span th:text="#{billing.offer.point.orders}">Detalhes junto ao pedido</span>
+                <span th:text="#{billing.offer.point.monthly}">Assinatura mensal</span>
+            </div>
         </div>
-        <a class="button" th:href="@{/admin/products}" th:text="#{merchant.nav.products}">Produtos e campos</a>
+        <div class="billing-example" aria-hidden="true">
+            <div class="billing-example-heading"><span class="billing-example-icon">✦</span><span th:text="#{billing.example.heading}">Um toque pessoal em cada escolha</span></div>
+            <div class="billing-example-product"><div class="billing-example-tag">S<span>✦</span></div><div><strong th:text="#{billing.example.product}">Feito para alguém especial</strong><small th:text="#{billing.example.caption}">Exemplo de personalização</small></div></div>
+            <div class="billing-example-field"><span th:text="#{billing.example.name.label}">Nome para personalizar</span><strong>Sofia</strong></div>
+            <div class="billing-example-field"><span th:text="#{billing.example.message.label}">Mensagem do presente</span><strong th:text="#{billing.example.message}">Feito com carinho, para você.</strong></div>
+            <div class="billing-example-footer"><span aria-hidden="true">✓</span><span th:text="#{billing.example.footer}">As escolhas acompanham o pedido</span></div>
+        </div>
     </section>
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
     <p class="notice" th:if="${paymentSubscription != null and paymentSubscription.upgradePlan != null}"
        th:text="#{admin.billing.upgrade.pending}">Confirmando alteração de plano.</p>
-    <section class="panel" th:if="${upgradeHistory!=null and !#lists.isEmpty(upgradeHistory)}">
-        <h2>Ajustes proporcionais de upgrade</h2><p>Estes pagamentos são ajustes únicos, não novas assinaturas nem mensalidades extras.</p>
-        <article th:each="adjustment:${upgradeHistory}">
-            <p th:text="'Ajuste proporcional — upgrade '+${adjustment.sourcePlan.displayName}+' → '+${adjustment.targetPlan.displayName}"></p>
-            <p th:text="'R$ '+${#numbers.formatDecimal(adjustment.dueAmount,1,'POINT',2,'COMMA')}+' · '+${adjustment.state.name()=='COMPLETED' ? 'Concluído' : (adjustment.state.name()=='FAILED' ? 'Não pago' : 'Em confirmação')}"></p>
-            <a class="button" th:href="@{/admin/billing/upgrade/efi/processing(id=${adjustment.id})}">Ver detalhes e andamento</a>
-        </article>
-    </section>
-
-    <section class="panel plan-strip">
+    <section class="panel plan-strip billing-current">
+        <div class="billing-current-icon" aria-hidden="true">↗</div>
         <div>
             <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}"
                 th:text="${store.courtesyPremium} ? #{plan.current.courtesy} : #{plan.current(${planName})}">
@@ -43,7 +47,7 @@
             <p class="muted"
                th:text="${usage.unlimitedProducts()}
                         ? #{usage.products.unlimited(${usage.productsUsed})}
-                        : #{usage.products.limited(${usage.productsUsed}, ${usage.productLimit})}">
+                        : #{billing.current.usage(${usage.productsUsed}, ${usage.productLimit})}">
                 de 1 produto personalizado
             </p>
             <p class="notice" th:if="${store.courtesyPremium}" th:text="#{admin.billing.courtesy.notice}">
@@ -73,31 +77,33 @@
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.cancellationPending}"
                th:text="#{admin.billing.cancel.awaiting}">Estamos aguardando a confirmação do cancelamento pelo provedor.</p>
         </div>
+        <a class="button billing-current-link" th:href="@{/admin/products}" th:text="#{billing.current.manage}">Gerenciar meus produtos</a>
     </section>
 
-    <section class="grid three billing-grid">
-        <article class="panel plan-card">
-            <h2 th:text="#{plan.FREE}">FREE</h2>
-            <p class="price" th:text="#{admin.billing.free.price}">Gratuito</p>
-            <ul class="feature-list">
-                <li th:text="${planDefinitions['FREE'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['FREE'].productLimit})}">1 produto personalizado</li>
-                <li th:text="${planDefinitions['FREE'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['FREE'].fieldLimit})}">1 campo por produto</li>
-                <li th:text="#{admin.billing.free.feature.editor}">Editor de campos no admin</li>
-            </ul>
-            <span class="badge" th:if="${store.effectivePlan.name() == 'FREE'}" th:text="#{plan.effective}">Plano efetivo</span>
-        </article>
+    <header class="billing-section-heading"><div><p class="eyebrow" th:text="#{billing.compare.eyebrow}">Escolha seu próximo passo</p><h2 th:text="#{billing.compare.heading}">Um plano para cada momento da sua loja</h2></div><span th:text="#{billing.compare.note}">Preços por mês</span></header>
+    <section class="grid three billing-grid" th:aria-label="#{billing.compare.heading}">
 
-        <article class="panel plan-card">
+
+        <article class="panel plan-card billing-plan billing-plan-essential" th:classappend="${store.effectivePlan.name() == 'PREMIUM'} ? ' is-current'">
+            <div class="billing-plan-header">
+                <p class="billing-plan-kicker" th:text="#{billing.plan.essential.kicker}"></p>
             <h2 th:text="#{plan.PREMIUM}">Essencial</h2>
+                <p class="billing-plan-description" th:text="#{billing.plan.essential.description}"></p>
+            </div>
+            <div class="billing-plan-price">
             <p class="price" th:if="${billingAvailable}">
                 <span th:text="${premiumPrice}">R$ 19,99</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
+            </div>
             <ul class="feature-list">
                 <li th:text="${planDefinitions['PREMIUM'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM'].productLimit})}">10 produtos personalizados</li>
                 <li th:text="${planDefinitions['PREMIUM'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM'].fieldLimit})}">3 campos por produto</li>
                 <li th:text="#{admin.billing.premium.feature.templates}">Templates por nicho</li>
+                <li th:text="#{billing.plan.feature.order}">Personalizações junto ao pedido</li>
+                <li th:text="#{admin.billing.free.feature.editor}">Editor de campos no admin</li>
             </ul>
+            <div class="billing-plan-actions">
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and !store.courtesyPremium}" th:with="planName=#{plan.PREMIUM}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
             <form th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
@@ -107,18 +113,30 @@
                     Assinar Essencial
                 </button>
             </form>
+
+            </div>
         </article>
 
-        <article class="panel plan-card">
+        <article class="panel plan-card billing-plan billing-plan-pro" th:classappend="${store.effectivePlan.name() == 'PREMIUM_PLUS'} ? ' is-current'">
+            <div class="billing-plan-header">
+                <span class="billing-recommended" th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and store.effectivePlan.name() != 'PREMIUM_ULTRA'}" th:text="#{billing.plan.recommended}">Recomendado</span>
+                <p class="billing-plan-kicker" th:text="#{billing.plan.pro.kicker}"></p>
             <h2 th:text="#{plan.PREMIUM_PLUS}">Pro</h2>
+                <p class="billing-plan-description" th:text="#{billing.plan.pro.description}"></p>
+            </div>
+            <div class="billing-plan-price">
             <p class="price" th:if="${billingAvailable}">
                 <span th:text="${premiumPlusPrice}">R$ 29,99</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
+            </div>
             <ul class="feature-list">
                 <li th:text="${planDefinitions['PREMIUM_PLUS'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_PLUS'].productLimit})}">50 produtos personalizados</li>
                 <li th:text="${planDefinitions['PREMIUM_PLUS'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_PLUS'].fieldLimit})}">Campos ilimitados</li>
+                <li th:text="#{billing.plan.feature.order}">Personalizações junto ao pedido</li>
+                <li th:text="#{admin.billing.free.feature.editor}">Editor de campos no admin</li>
             </ul>
+            <div class="billing-plan-actions">
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <a class="button primary" th:if="${canUpgrade and paymentSubscription.plan.name() == 'PREMIUM'}"
                th:href="@{/admin/billing/upgrade(plan='PREMIUM_PLUS')}" th:text="#{admin.billing.upgrade.heading('Pro')}">Trocar para Pro</a>
@@ -129,19 +147,30 @@
                     Assinar Pro
                 </button>
             </form>
+
+            </div>
         </article>
 
-        <article class="panel plan-card">
+        <article class="panel plan-card billing-plan billing-plan-ultra" th:classappend="${store.effectivePlan.name() == 'PREMIUM_ULTRA'} ? ' is-current'">
+            <div class="billing-plan-header">
+                <p class="billing-plan-kicker" th:text="#{billing.plan.ultra.kicker}"></p>
             <h2 th:text="#{plan.PREMIUM_ULTRA}">Ultra</h2>
+                <p class="billing-plan-description" th:text="#{billing.plan.ultra.description}"></p>
+            </div>
+            <div class="billing-plan-price">
             <p class="price" th:if="${ultraAvailable}">
                 <span th:text="${premiumUltraPrice}">R$ 59,90</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
             <p class="price" th:unless="${ultraAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
+            </div>
             <ul class="feature-list">
                 <li th:text="${planDefinitions['PREMIUM_ULTRA'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_ULTRA'].productLimit})}">Produtos personalizados ilimitados</li>
                 <li th:text="${planDefinitions['PREMIUM_ULTRA'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_ULTRA'].fieldLimit})}">Campos ilimitados</li>
                 <li th:text="#{admin.billing.ultra.feature.support}">Atendimento prioritário</li>
+                <li th:text="#{billing.plan.feature.order}">Personalizações junto ao pedido</li>
+                <li th:text="#{admin.billing.free.feature.editor}">Editor de campos no admin</li>
             </ul>
+            <div class="billing-plan-actions">
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_ULTRA'}" th:with="planName=#{plan.PREMIUM_ULTRA}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <a class="button primary" th:if="${canUpgrade and ultraAvailable and paymentSubscription.plan.name() != 'PREMIUM_ULTRA'}"
                th:href="@{/admin/billing/upgrade(plan='PREMIUM_ULTRA')}" th:text="#{admin.billing.upgrade.heading('Ultra')}">Trocar para Ultra</a>
@@ -152,7 +181,18 @@
                     Assinar Ultra
                 </button>
             </form>
+
+            </div>
         </article>
+    </section>
+
+    <section class="panel billing-free-option" th:aria-label="#{plan.FREE}">
+        <div><p class="billing-plan-kicker" th:text="#{billing.plan.free.kicker}">Primeiros passos</p><h2 th:text="#{plan.FREE}">FREE</h2><p th:text="#{billing.plan.free.description}">Conheça a personalização e comece pelo seu primeiro produto.</p></div>
+        <div class="billing-free-limits"><strong th:text="#{admin.billing.free.price}">Gratuito</strong>
+            <span th:text="${planDefinitions['FREE'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['FREE'].productLimit})}">1 produto personalizado</span>
+            <span th:text="${planDefinitions['FREE'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['FREE'].fieldLimit})}">1 campo por produto</span>
+        </div>
+        <div class="billing-free-actions"><span class="badge" th:if="${store.effectivePlan.name() == 'FREE'}" th:text="#{plan.effective}">Plano efetivo</span><a class="button" th:if="${store.effectivePlan.name() == 'FREE' or store.effectivePlan.name() == 'FREE_GRATIS'}" th:href="@{/admin/products}" th:text="#{billing.plan.free.cta}">Explorar meu plano</a></div>
     </section>
 
     <p class="notice" th:if="${!billingEnabled}" th:text="#{admin.billing.disabled}">
@@ -164,6 +204,30 @@
     <p class="notice" th:if="${billingEnabled and store.courtesyPremium}" th:text="#{admin.billing.courtesy.blocked}">
         Premium Cortesia nao gera cobranca automatica.
     </p>
+    <section class="billing-assurance" th:aria-label="#{billing.assurance.heading}">
+        <div><span class="billing-assurance-icon" aria-hidden="true">✓</span><h3 th:text="#{billing.assurance.fields.heading}">Sua configuração continua com você</h3><p th:text="#{billing.assurance.fields.description}">Ao trocar de plano, você mantém os campos e produtos já configurados.</p></div>
+        <div><span class="billing-assurance-icon" aria-hidden="true">↗</span><h3 th:text="#{billing.assurance.grow.heading}">Mais espaço quando precisar</h3><p th:text="#{billing.assurance.grow.description}">Escolha pela capacidade de hoje. Quando sua loja crescer, você pode solicitar um upgrade.</p></div>
+        <div><span class="billing-assurance-icon" aria-hidden="true">◎</span><h3 th:text="#{billing.assurance.control.heading}">Você acompanha sua assinatura</h3><p th:text="#{billing.assurance.control.description}">Consulte o status, a próxima cobrança e as opções de cancelamento nesta tela.</p></div>
+    </section>
+
+    <section class="billing-faq">
+        <div><p class="eyebrow" th:text="#{billing.faq.eyebrow}">Antes de escolher</p><h2 th:text="#{billing.faq.heading}">Suas dúvidas, respondidas.</h2><p th:text="#{billing.faq.description}">Entenda como os planos acompanham sua loja.</p><a th:href="@{/support/}" th:text="#{billing.faq.support}">Falar com o suporte →</a></div>
+        <div class="billing-faq-items">
+            <details><summary th:text="#{billing.faq.activation.question}">Quando meu plano é liberado?</summary><p th:text="#{billing.faq.activation.answer}">A liberação acontece após a confirmação do pagamento. Você pode acompanhar o status da assinatura nesta tela.</p></details>
+            <details><summary th:text="#{billing.faq.upgrade.question}">Posso mudar de plano depois?</summary><p th:text="#{billing.faq.upgrade.answer}">Sim. Com uma assinatura ativa e elegível, você pode solicitar um plano superior. Antes de confirmar, confira o ajuste proporcional e a próxima mensalidade.</p></details>
+            <details><summary th:text="#{billing.faq.fields.question}">O que acontece com meus campos ao mudar de plano?</summary><p th:text="#{billing.faq.fields.answer}">Os campos e produtos configurados são preservados. O que fica disponível para seus clientes segue os limites do plano vigente.</p></details>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${upgradeHistory!=null and !#lists.isEmpty(upgradeHistory)}">
+        <h2>Ajustes proporcionais de upgrade</h2><p>Estes pagamentos são ajustes únicos, não novas assinaturas nem mensalidades extras.</p>
+        <article th:each="adjustment:${upgradeHistory}">
+            <p th:text="'Ajuste proporcional — upgrade '+${adjustment.sourcePlan.displayName}+' → '+${adjustment.targetPlan.displayName}"></p>
+            <p th:text="'R$ '+${#numbers.formatDecimal(adjustment.dueAmount,1,'POINT',2,'COMMA')}+' · '+${adjustment.state.name()=='COMPLETED' ? 'Concluído' : (adjustment.state.name()=='FAILED' ? 'Não pago' : 'Em confirmação')}"></p>
+            <a class="button" th:href="@{/admin/billing/upgrade/efi/processing(id=${adjustment.id})}">Ver detalhes e andamento</a>
+        </article>
+    </section>
+
     <details class="merchant-billing-manage" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.status.name() != 'CANCELED' and !paymentSubscription.cancellationPending and !paymentSubscription.upgradePaymentPending}">
         <summary th:text="#{admin.billing.manage}">Gerenciar assinatura</summary>
         <a th:href="@{/admin/billing/cancel}" th:text="#{admin.billing.cancel}">Cancelar assinatura</a>
