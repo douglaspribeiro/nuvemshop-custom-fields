@@ -14,6 +14,11 @@ public interface PersonalizationFieldRepository extends JpaRepository<Personaliz
 
     long countByRuleId(Long ruleId);
 
+    @Query("select f.rule.productId from PersonalizationField f where f.rule.storeId = :storeId "
+            + "and f.fieldType = br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT "
+            + "group by f.rule.productId order by min(f.id)")
+    List<Long> findImageProductIdsByStoreId(@Param("storeId") Long storeId);
+
     @Query("select count(field) from PersonalizationField field where field.rule.storeId = :storeId")
     long countByStoreId(@Param("storeId") Long storeId);
 

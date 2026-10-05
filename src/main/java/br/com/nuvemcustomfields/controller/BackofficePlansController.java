@@ -42,6 +42,7 @@ public class BackofficePlansController {
             @RequestParam String displayName, @RequestParam(defaultValue = "") String description,
             @RequestParam(defaultValue = "") String billingExternalId, @RequestParam String currency,
             @RequestParam BigDecimal amount, @RequestParam long productLimit, @RequestParam long fieldLimit,
+            @RequestParam long imageProductLimit, @RequestParam int imageOptionLimit,
             @RequestParam LocalDate effectiveFrom, HttpSession session, RedirectAttributes flash) {
         if (!(session.getAttribute(TOKEN_KEY) instanceof String expected)
                 || !MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), actionToken.getBytes(StandardCharsets.UTF_8))) {
@@ -49,7 +50,7 @@ public class BackofficePlansController {
         }
         try {
             catalog.createVersion(planType, displayName, description, billingExternalId, currency,
-                    amount, productLimit, fieldLimit, effectiveFrom, null);
+                    amount, productLimit, fieldLimit, imageProductLimit, imageOptionLimit, effectiveFrom, null);
             flash.addFlashAttribute("message", "Versão criada. Os limites entram em vigor na data indicada.");
         } catch (IllegalArgumentException ex) {
             flash.addFlashAttribute("error", ex.getMessage());

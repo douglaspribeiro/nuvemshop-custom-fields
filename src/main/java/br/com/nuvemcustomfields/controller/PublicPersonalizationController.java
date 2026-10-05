@@ -73,8 +73,9 @@ public class PublicPersonalizationController {
             return PersonalizationResponse.disabled();
         }
 
+        int imageOptionLimit = planLimitService.imageOptionLimit(store.getEffectivePlan());
         var fields = planLimitService.storefrontFields(store, rule.getFields()).stream()
-                .map(FieldResponse::from)
+                .map(field -> FieldResponse.from(field, imageOptionLimit))
                 .toList();
         if (!fields.isEmpty()) request.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE, productId);
         LOGGER.info(

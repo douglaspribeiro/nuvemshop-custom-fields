@@ -48,6 +48,22 @@ class PlanCatalogServiceTest {
         assertThatThrownBy(() -> create(LocalDate.now().plusDays(30), 0)).isInstanceOf(IllegalArgumentException.class);
     }
 
+
+    @Test void imageLimitsAreVersionedAndInvalidLimitsDoNotReplaceTheCatalog() {
+        var previous=catalog.activePlan(PlanType.PREMIUM);
+        assertThat(previous.getImageProductLimit()).isEqualTo(1);
+        assertThat(previous.getImageOptionLimit()).isEqualTo(3);
+        assertThatThrownBy(()->catalog.createVersion(PlanType.PREMIUM,"Essencial","","","BRL",BigDecimal.TEN,
+                10,3,11,3,LocalDate.now(),null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(()->catalog.createVersion(PlanType.PREMIUM,"Essencial","","","BRL",BigDecimal.TEN,
+                10,3,1,26,LocalDate.now(),null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(catalog.activePlan(PlanType.PREMIUM)).isEqualTo(previous);
+        var next=catalog.createVersion(PlanType.PREMIUM,"Essencial","","","BRL",BigDecimal.TEN,
+                10,3,2,5,LocalDate.now(),null);
+        assertThat(catalog.activePlan(PlanType.PREMIUM).getImageOptionLimit()).isEqualTo(5);
+        assertThat(next.getImageProductLimit()).isEqualTo(2);
+    }
+
     private br.com.nuvemcustomfields.entity.PlanAsset create(LocalDate date, long products) {
         return catalog.createVersion(PlanType.PREMIUM, "Essencial", "Descrição", "PREMIUM", "BRL",
                 new BigDecimal("19.99"), products, 3, date, null);

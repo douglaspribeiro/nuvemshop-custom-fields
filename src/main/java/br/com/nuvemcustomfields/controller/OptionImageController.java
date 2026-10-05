@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.controller;
 
+import br.com.nuvemcustomfields.service.ImagePlanLimitException;
 import br.com.nuvemcustomfields.service.OptionImageService;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.i18n.Messages;
@@ -22,7 +23,7 @@ public class OptionImageController {
     public ResponseEntity<?> upload(@PathVariable Long productId, @RequestParam MultipartFile file, HttpSession session) {
         var store=stores.requireCurrentStore(session);
         try { return ResponseEntity.ok().header("Cache-Control","no-store").body(images.upload(store.getStoreId(),productId,file)); }
-        catch(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("error", messages.get(e.getMessage()))); }
+        catch(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("error", e instanceof ImagePlanLimitException limit ? messages.get(limit.getMessage(), limit.arguments()) : messages.get(e.getMessage()))); }
     }
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
     public ResponseEntity<?> tooLarge() {

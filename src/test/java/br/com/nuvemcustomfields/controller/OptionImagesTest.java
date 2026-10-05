@@ -131,4 +131,55 @@ class OptionImagesTest {
             .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Nova capa")));
         assertThat(state(id)).isEqualTo("READY");assertThat(admin.requireRuleWithFields(store,product).getFields().getFirst().getLabel()).isEqualTo("Capa");
     }
+    void plan(PlanType plan) {
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(plan);stores.saveAndFlush(owner);
+    }
+    @Test void freeCannotUploadOrSaveImagesAndNormalFieldsStillWork() throws Exception {
+        plan(PlanType.FREE);
+        mvc.perform(multipart("/admin/products/"+product+"/images").file(png()).session(session))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("plano")));
+        assertThatThrownBy(()->admin.addField(store,product,form(java.util.UUID.randomUUID().toString())))
+                .isInstanceOf(ImagePlanLimitException.class);
+        verify(storage,never()).put(anyString(),anyString(),any());
+        var normal=new FieldForm();normal.setLabel("Nome");admin.addField(store,product,normal);
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fields[0].fieldType").value("TEXT"));
+    }
+    @Test void essentialAllowsThreeOptionsAndMultipleFieldsOnOneProductAndRemovalReleasesQuota() throws Exception {
+        plan(PlanType.PREMIUM);String a=upload(),b=upload(),c=upload(),d=upload();Long field=save(a,b,c);
+        assertThatThrownBy(()->admin.updateField(store,product,field,form(a,b,c,d)))
+                .isInstanceOf(ImagePlanLimitException.class);
+        admin.addField(store,product,form(d));
+        Long other=124L;admin.ensureRule(store,other,"Outro produto");
+        assertThatThrownBy(()->images.upload(store,other,png())).isInstanceOf(ImagePlanLimitException.class);
+        admin.deleteField(store,product,field);
+        assertThatThrownBy(()->images.upload(store,other,png())).isInstanceOf(ImagePlanLimitException.class);
+        var remaining=admin.requireRuleWithFields(store,product).getFields().getFirst();
+        var normal=new FieldForm();normal.setLabel("Nome");admin.updateField(store,product,remaining.getId(),normal);
+        assertThat(images.upload(store,other,png()).id()).isNotBlank();
+    }
+    @Test void plusAllowsEightOptionsAndUltraAllowsTwentyFive() throws Exception {
+        var ids=new String[26];for(int i=0;i<ids.length;i++) ids[i]=upload();
+        Long field=save(java.util.Arrays.copyOf(ids,8));
+        assertThatThrownBy(()->admin.updateField(store,product,field,form(java.util.Arrays.copyOf(ids,9))))
+                .isInstanceOf(ImagePlanLimitException.class);
+        plan(PlanType.PREMIUM_ULTRA);
+        admin.updateField(store,product,field,form(java.util.Arrays.copyOf(ids,25)));
+        assertThatThrownBy(()->admin.updateField(store,product,field,form(ids))).isInstanceOf(IllegalArgumentException.class);
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                .andExpect(jsonPath("$.fields[0].imageOptions.length()").value(25));
+    }
+    @Test void downgradeCapsOptionsAndDirectPublicUrlsAndSuspensionHidesImages() throws Exception {
+        String a=upload(),b=upload(),c=upload(),d=upload();save(a,b,c,d);plan(PlanType.PREMIUM);
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                .andExpect(jsonPath("$.fields[0].options.length()").value(3))
+                .andExpect(jsonPath("$.fields[0].imageOptions.length()").value(3));
+        mvc.perform(get("/public/stores/"+store+"/images/"+c)).andExpect(status().isFound());
+        mvc.perform(get("/public/stores/"+store+"/images/"+d)).andExpect(status().isNotFound());
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setBillingSuspended(true);stores.saveAndFlush(owner);
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                .andExpect(jsonPath("$.fields.length()").value(0));
+        mvc.perform(get("/public/stores/"+store+"/images/"+a)).andExpect(status().isNotFound());
+    }
+
 }

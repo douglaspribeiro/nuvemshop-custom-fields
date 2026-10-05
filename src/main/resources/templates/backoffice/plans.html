@@ -62,6 +62,14 @@
                     <input name="fieldLimit" type="number" step="1" required>
                 </label>
                 <label>
+                    Produtos com imagens (0 desabilita; -1 ilimitado)
+                    <input name="imageProductLimit" type="number" min="-1" step="1" value="0" required>
+                </label>
+                <label>
+                    Opções de imagem por campo (0 a 25)
+                    <input name="imageOptionLimit" type="number" min="0" max="25" step="1" value="0" required>
+                </label>
+                <label>
                     Inicio da vigencia
                     <input name="effectiveFrom" type="date" th:value="${today}" th:min="${today}" required>
                 </label>
@@ -95,6 +103,10 @@
                         <span th:text="${plan.productLimit == -1 ? 'Produtos ilimitados' : plan.productLimit + ' produtos'}">10 produtos</span>
                         <br>
                         <span th:text="${plan.fieldLimit == -1 ? 'Campos ilimitados' : plan.fieldLimit + ' campos'}">3 campos</span>
+                        <br>
+                        <span th:text="${plan.imageProductLimit == -1 ? 'Produtos com imagens ilimitados' : plan.imageProductLimit + ' produtos com imagens'}"></span>
+                        <br>
+                        <span th:text="${plan.imageOptionLimit + ' opções de imagem por campo'}"></span>
                     </td>
                     <td>
                         <span th:text="${plan.effectiveFrom}">2026-06-05</span>

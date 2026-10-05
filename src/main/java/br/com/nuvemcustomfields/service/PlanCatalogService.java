@@ -67,6 +67,15 @@ public class PlanCatalogService {
     }
 
     @Transactional
+    public PlanAsset createVersion(PlanType planType, String displayName, String description, String billingExternalId,
+            String currency, BigDecimal amount, long productLimit, long fieldLimit, LocalDate effectiveFrom, LocalDate effectiveUntil) {
+        if (planType == null) throw new IllegalArgumentException("Informe o plano.");
+        var current = activePlan(planType);
+        return createVersion(planType, displayName, description, billingExternalId, currency, amount,
+                productLimit, fieldLimit, current.getImageProductLimit(), current.getImageOptionLimit(), effectiveFrom, effectiveUntil);
+    }
+
+    @Transactional
     public PlanAsset createVersion(
             PlanType planType,
             String displayName,
@@ -76,9 +85,12 @@ public class PlanCatalogService {
             BigDecimal amount,
             long productLimit,
             long fieldLimit,
+            long imageProductLimit,
+            int imageOptionLimit,
             LocalDate effectiveFrom,
             LocalDate effectiveUntil
     ) {
+        validateImageLimits(productLimit, imageProductLimit, imageOptionLimit);
         if (description != null && description.length() > 500) throw new IllegalArgumentException("Descrição deve ter até 500 caracteres.");
         if (billingExternalId != null && billingExternalId.length() > 80) throw new IllegalArgumentException("ID externo deve ter até 80 caracteres.");
         validate(planType, displayName, billingExternalId, currency, amount, productLimit, fieldLimit, effectiveFrom, effectiveUntil);
@@ -105,10 +117,21 @@ public class PlanCatalogService {
         asset.setAmount(amount);
         asset.setProductLimit(productLimit);
         asset.setFieldLimit(fieldLimit);
+        asset.setImageProductLimit(imageProductLimit);
+        asset.setImageOptionLimit(imageOptionLimit);
         asset.setEffectiveFrom(effectiveFrom);
         asset.setEffectiveUntil(effectiveUntil);
         asset.setActive(true);
         return planAssetRepository.save(asset);
+    }
+
+    private void validateImageLimits(long products, long imageProducts, int options) {
+        if (imageProducts < -1 || options < 0 || options > 25)
+            throw new IllegalArgumentException("Use -1 para produtos com imagem ilimitados, 0 para desabilitar e até 25 opções por campo.");
+        if ((imageProducts == 0) != (options == 0))
+            throw new IllegalArgumentException("Para desabilitar imagens, use 0 nos dois limites. Para habilitar, informe ao menos uma opção.");
+        if (products >= 0 && (imageProducts == -1 || imageProducts > products))
+            throw new IllegalArgumentException("Produtos com imagem não podem ultrapassar o limite total de produtos do plano.");
     }
 
     private void validate(

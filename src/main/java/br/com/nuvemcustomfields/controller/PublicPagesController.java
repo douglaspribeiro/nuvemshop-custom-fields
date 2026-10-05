@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.controller;
 
+import br.com.nuvemcustomfields.service.PlanLimitService;
 import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.entity.Store;
@@ -25,11 +26,13 @@ public class PublicPagesController {
     private final StoreRepository storeRepository;
     private final SupportService supportService;
     private final Messages messages;
+    private final PlanLimitService planLimits;
 
-    public PublicPagesController(StoreRepository storeRepository, SupportService supportService, Messages messages) {
+    public PublicPagesController(StoreRepository storeRepository, SupportService supportService, Messages messages, PlanLimitService planLimits) {
         this.storeRepository = storeRepository;
         this.supportService = supportService;
         this.messages = messages;
+        this.planLimits = planLimits;
     }
 
     @GetMapping("/privacy")
@@ -46,7 +49,10 @@ public class PublicPagesController {
     public String pricingAlias() { return "redirect:/precos/"; }
 
     @GetMapping("/precos/")
-    public String pricing() { return "public/pricing"; }
+    public String pricing(Model model) {
+        model.addAttribute("planDefinitions", planLimits.planDefinitions());
+        return "public/pricing";
+    }
 
     @GetMapping("/termos")
     public String termsAlias() { return "redirect:/termos/"; }

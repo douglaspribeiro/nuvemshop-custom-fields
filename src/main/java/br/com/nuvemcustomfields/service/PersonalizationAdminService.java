@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.dto.NicheTemplate;
 import br.com.nuvemcustomfields.entity.PersonalizationField;
@@ -17,15 +19,18 @@ import java.util.List;
 public class PersonalizationAdminService {
 
     private final OptionImageService images;
+    private final PlanLimitService limits;
+    private final StoreRepository stores;
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
 
     public PersonalizationAdminService(
             PersonalizationRuleRepository ruleRepository,
             PersonalizationFieldRepository fieldRepository,
-            OptionImageService images
+            OptionImageService images, PlanLimitService limits, StoreRepository stores
     ) {
         this.images = images;
+        this.limits = limits; this.stores = stores;
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
     }
@@ -74,6 +79,7 @@ public class PersonalizationAdminService {
         PersonalizationRule rule = ruleRepository.findByStoreIdAndProductId(storeId, productId)
                 .orElseThrow(() -> new IllegalArgumentException("Regra de personalizacao nao encontrada."));
         PersonalizationField field = new PersonalizationField();
+        validateImagePlan(storeId, productId, form);
         applyForm(field, form);
         field.setRule(rule);
         fieldRepository.saveAndFlush(field);
@@ -88,6 +94,7 @@ public class PersonalizationAdminService {
                 .filter(candidate -> candidate.getId().equals(fieldId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Campo nao encontrado para esta loja/produto."));
+        validateImagePlan(storeId, productId, form);
         applyForm(field, form);
         fieldRepository.saveAndFlush(field);
         images.bind(field, field.imageOptions());
@@ -112,6 +119,7 @@ public class PersonalizationAdminService {
 
     @Transactional
     public int applyTemplate(Store store, Long productId, String productName, NicheTemplate template, PlanLimitService planLimitService) {
+        images.lockStore(store.getStoreId());
         PersonalizationRule rule = ensureRule(store.getStoreId(), productId, productName);
         int created = 0;
         int sortOrder = 0;
@@ -120,7 +128,9 @@ public class PersonalizationAdminService {
                 break;
             }
             PersonalizationField field = new PersonalizationField();
-            applyForm(field, fieldTemplate.toForm(sortOrder++));
+            var form = fieldTemplate.toForm(sortOrder++);
+            validateImagePlan(store.getStoreId(), productId, form);
+            applyForm(field, form);
             field.setRule(rule);
             fieldRepository.saveAndFlush(field);
             images.bind(field, field.imageOptions());
@@ -129,17 +139,24 @@ public class PersonalizationAdminService {
         return created;
     }
 
+    private void validateImagePlan(Long storeId, Long productId, FieldForm form) {
+        if (form.getFieldType() == FieldType.IMAGE_SELECT) {
+            var store = stores.findActiveByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("image.options.invalid"));
+            limits.requireImageConfiguration(store, productId, ImageOptions.parse(form.getImageOptionsJson()).size());
+        }
+    }
+
     private void applyForm(PersonalizationField field, FieldForm form) {
-        if (form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
+        if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired());
-        field.setImageOptionsJson(form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT
+        field.setImageOptionsJson(form.getFieldType() == FieldType.IMAGE_SELECT
                 ? ImageOptions.serialize(ImageOptions.parse(form.getImageOptionsJson())) : null);
-        field.setMaxLength(form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT ? 100 : form.getMaxLength());
+        field.setMaxLength(form.getFieldType() == FieldType.IMAGE_SELECT ? 100 : form.getMaxLength());
         field.setPlaceholder(form.getPlaceholder() == null || form.getPlaceholder().isBlank() ? null : form.getPlaceholder().strip());
-        field.setValidationPattern(form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT || form.getValidationPattern() == null || form.getValidationPattern().isBlank()
+        field.setValidationPattern(form.getFieldType() == FieldType.IMAGE_SELECT || form.getValidationPattern() == null || form.getValidationPattern().isBlank()
                 ? null
                 : form.getValidationPattern().strip());
         field.setOptionsText(form.getOptionsText() == null || form.getOptionsText().isBlank()

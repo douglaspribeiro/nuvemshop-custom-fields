@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.entity.PlanAsset;
+import br.com.nuvemcustomfields.entity.FieldType;
 import br.com.nuvemcustomfields.dto.PlanUsage;
 import br.com.nuvemcustomfields.entity.PersonalizationField;
 import br.com.nuvemcustomfields.entity.PlanType;
@@ -46,9 +48,44 @@ public class PlanLimitService {
         );
     }
 
+    public long imageProductLimit(PlanType plan) { return catalog.activePlan(plan).getImageProductLimit(); }
+    public int imageOptionLimit(PlanType plan) { return catalog.activePlan(plan).getImageOptionLimit(); }
+    public List<Long> imageProductIds(Long storeId) { return fieldRepository.findImageProductIdsByStoreId(storeId); }
+    public boolean canConfigureImageProduct(Store store, Long productId) {
+        long limit = imageProductLimit(store.getEffectivePlan());
+        if (limit == 0) return false;
+        if (limit == UNLIMITED) return true;
+        var products = imageProductIds(store.getStoreId());
+        int index = products.indexOf(productId);
+        return index >= 0 ? index < limit : products.size() < limit;
+    }
+    public boolean imageProductVisible(Store store, Long productId) {
+        long limit = imageProductLimit(store.getEffectivePlan());
+        if (limit == UNLIMITED) return true;
+        if (limit == 0) return false;
+        var products = imageProductIds(store.getStoreId());
+        int index = products.indexOf(productId);
+        return index >= 0 && index < limit;
+    }
+    public void requireImageConfiguration(Store store, Long productId, int options) {
+        if (imageProductLimit(store.getEffectivePlan()) == 0)
+            throw new ImagePlanLimitException("image.plan.unavailable");
+        if (!canConfigureImageProduct(store, productId))
+            throw new ImagePlanLimitException("image.plan.products.limit", imageProductLimit(store.getEffectivePlan()));
+        if (options > imageOptionLimit(store.getEffectivePlan()))
+            throw new ImagePlanLimitException("image.plan.options.limit", imageOptionLimit(store.getEffectivePlan()));
+    }
+
     public List<PersonalizationField> storefrontFields(Store store, List<PersonalizationField> fields) {
         long limit = fieldLimit(store.getEffectivePlan());
+        boolean hasImages = fields.stream().anyMatch(field -> field.getFieldType() == FieldType.IMAGE_SELECT);
+        long imageLimit = hasImages ? imageProductLimit(store.getEffectivePlan()) : 0;
+        var visibleProducts = imageLimit > 0
+                ? imageProductIds(store.getStoreId()).stream().limit(imageLimit).collect(java.util.stream.Collectors.toSet())
+                : java.util.Set.<Long>of();
         var ordered = fields.stream()
+                .filter(field -> field.getFieldType() != FieldType.IMAGE_SELECT
+                        || imageLimit == UNLIMITED || visibleProducts.contains(field.getRule().getProductId()))
                 .sorted(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
         if (limit == UNLIMITED) {
             return ordered.toList();
@@ -56,7 +93,7 @@ public class PlanLimitService {
         return ordered.limit(limit).toList();
     }
 
-    public java.util.Map<String, br.com.nuvemcustomfields.entity.PlanAsset> planDefinitions() {
+    public java.util.Map<String, PlanAsset> planDefinitions() {
         return catalog.activePlansByType().entrySet().stream().collect(java.util.stream.Collectors.toMap(
                 entry -> entry.getKey().name(), java.util.Map.Entry::getValue));
     }

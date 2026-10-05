@@ -38,6 +38,9 @@
                         : #{usage.fields.limited(${usage.fieldsUsed}, ${usage.fieldLimit})}">
                 de 1 campo neste produto
             </p>
+            <p class="muted" th:if="${imageProductLimit != 0}"
+               th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed}, ${imageOptionLimit})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit}, ${imageOptionLimit})}"></p>
+            <p class="muted" th:if="${imageProductLimit == 0}" th:text="#{billing.images.none}"></p>
         </div>
         <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
     </section>
@@ -78,8 +81,9 @@
                     <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
                 </label>
                 <section class="image-options-editor" hidden
-                         th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit}">
-                    <p class="muted" th:text="#{image.options.help}">JPG ou PNG, até 5 MB por imagem. Até 20 opções.</p>
+                         th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled and canUseImages},data-max-options=${imageOptionLimit},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit(${imageOptionLimit})}">
+                    <p class="muted" th:text="#{image.options.help(${imageOptionLimit})}">JPG ou PNG, até 5 MB por imagem. </p>
+                    <p class="notice" th:unless="${canUseImages}" th:text="${imageProductLimit == 0} ? #{image.plan.unavailable} : #{image.plan.products.limit(${imageProductLimit})}"></p>
                     <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
                     <input type="hidden" name="imageOptionsJson" th:value="${fieldForm.imageOptionsJson}">
                     <div class="image-options-rows"></div>
@@ -148,9 +152,10 @@
                             <textarea name="optionsText" rows="4" th:text="${draft.optionsText}"></textarea>
                         </label>
                         <section class="image-options-editor" hidden
-                                 th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit}">
-                            <p class="muted" th:text="#{image.options.help}">JPG ou PNG, até 5 MB por imagem. Até 20 opções.</p>
-                            <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
+                                 th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled and canUseImages},data-max-options=${imageOptionLimit},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit(${imageOptionLimit})}">
+                            <p class="muted" th:text="#{image.options.help(${imageOptionLimit})}">JPG ou PNG, até 5 MB por imagem. </p>
+                            <p class="notice" th:unless="${canUseImages}" th:text="${imageProductLimit == 0} ? #{image.plan.unavailable} : #{image.plan.products.limit(${imageProductLimit})}"></p>
+                    <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
                             <input type="hidden" name="imageOptionsJson" th:value="${draft.imageOptionsJson}">
                             <div class="image-options-rows"></div>
                             <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>

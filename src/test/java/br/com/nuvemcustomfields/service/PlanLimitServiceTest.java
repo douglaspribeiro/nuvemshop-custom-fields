@@ -76,4 +76,25 @@ class PlanLimitServiceTest {
         assertThat(service.usage(store, 0).plan()).isEqualTo(PlanType.FREE_GRATIS);
         assertThat(service.fieldLimit(store.getEffectivePlan())).isEqualTo(3);
     }
+    @Test void plusCountsUniqueConfiguredProductsAndUltraHasNoProductCeiling() {
+        var fields=mock(PersonalizationFieldRepository.class);
+        var rules=mock(PersonalizationRuleRepository.class);
+        var limits=new PlanLimitService(rules,fields,catalog);
+        var store=new Store();store.setStoreId(123L);store.setPlan(PlanType.PREMIUM_PLUS);
+        catalog.activePlan(PlanType.PREMIUM_PLUS).setImageProductLimit(50);
+        catalog.activePlan(PlanType.PREMIUM_PLUS).setImageOptionLimit(8);
+        when(fields.findImageProductIdsByStoreId(123L)).thenReturn(java.util.stream.LongStream.rangeClosed(1,50).boxed().toList());
+        assertThat(limits.canConfigureImageProduct(store,50L)).isTrue();
+        assertThat(limits.canConfigureImageProduct(store,51L)).isFalse();
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->limits.requireImageConfiguration(store,51L,1))
+                .isInstanceOf(ImagePlanLimitException.class);
+        catalog.activePlan(PlanType.PREMIUM_ULTRA).setImageProductLimit(-1);
+        catalog.activePlan(PlanType.PREMIUM_ULTRA).setImageOptionLimit(25);
+        store.setPlan(PlanType.PREMIUM_ULTRA);
+        assertThat(limits.canConfigureImageProduct(store,51L)).isTrue();
+        limits.requireImageConfiguration(store,51L,25);
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->limits.requireImageConfiguration(store,51L,26))
+                .isInstanceOf(ImagePlanLimitException.class);
+    }
+
 }

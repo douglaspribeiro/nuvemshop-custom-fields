@@ -12,7 +12,7 @@ public final class ImageOptions {
         if (json == null || json.isBlank()) return List.of();
         try {
             List<ImageOption> options = JSON.readValue(json, new TypeReference<List<ImageOption>>() {});
-            if (options == null || options.isEmpty() || options.size() > 20) throw new IllegalArgumentException();
+            if (options == null || options.isEmpty() || options.size() > 25) throw new IllegalArgumentException();
             Set<String> labels = new HashSet<>();
             Set<String> ids = new HashSet<>();
             List<ImageOption> result = new ArrayList<>();

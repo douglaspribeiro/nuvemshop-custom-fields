@@ -1,6 +1,8 @@
 # Opções com imagem: configuração e operação
 
-O editor de campos oferece `IMAGE_SELECT` (“Opções com imagem”), com até 20 opções por campo. Cada opção tem nome e uma imagem JPG ou PNG de até 5 MB e 20 megapixels. A loja pode reordenar, renomear, substituir imagens e remover opções. O campo segue os limites existentes de quantidade de campos/produtos do plano; não há restrição exclusiva ao Ultra.
+O editor oferece `IMAGE_SELECT` (“Opções com imagem”). Free não inclui imagens; Essencial permite 1 produto com imagens e 3 opções por campo; Plus (`PREMIUM_PLUS`) permite 50 produtos com imagens e 8 opções por campo; Ultra permite produtos ilimitados e 25 opções por campo. Vários campos com imagens no mesmo produto consomem uma única vaga. Os limites são versionados no catálogo do backoffice e também respeitam os limites gerais de produtos/campos. Não há exceções para configurações antigas. Upload e salvamento validam o plano no servidor; a vitrine e as URLs públicas respeitam o plano efetivo, inclusive em suspensão ou downgrade. Configurações excedentes ficam ocultas; as imagens são apagadas quando a configuração/produto é removido, conforme o fluxo de limpeza existente.
+
+Cada opção tem nome e uma imagem JPG ou PNG de até 5 MB e 20 megapixels. A loja pode reordenar, renomear, substituir imagens e remover opções.
 
 Na vitrine, SDK, temas tradicionais e Patagonia exibem as imagens, nomes e seleção. “Ampliar imagem” abre a imagem maior em outra aba. O carrinho/pedido recebe o nome selecionado nas propriedades existentes, e não a URL do arquivo. O nome já registrado no pedido não é reescrito quando o catálogo muda. O envio de imagem pelo comprador continua como próxima etapa.
 
@@ -24,6 +26,16 @@ O S3 usa **as mesmas credenciais AWS já utilizadas pelo SQS**, conforme decisã
 O usuário/role precisa de `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` e `s3:DeleteObjectVersion` nos objetos do prefixo; `s3:ListBucketVersions` e `s3:GetBucketVersioning` no bucket. Se a política restringir listagens por prefixo, permitir os prefixos usados pela aplicação. Caso o bucket use chave KMS própria, configurar também as permissões necessárias dessa chave. Não habilitar Object Lock/retenção obrigatória nos objetos desse fluxo, pois isso impediria a exclusão exigida pelo produto.
 
 A migration **V47** acrescenta a configuração visual nos campos e o registro `personalization_images`. Faça o build normal do Maven, que também gera os bundles da vitrine. Antes de publicar, configurar bucket, região e credenciais/permissões e verificar upload, visualização e exclusão com um produto de teste no ambiente correspondente.
+
+### Publicar o JavaScript da vitrine no Partner Portal
+
+Atualizar o backend não substitui automaticamente o arquivo do Storefront SDK que a Nuvemshop hospeda em sua CDN. Depois do build, criar uma nova versão do script existente da vitrine no Partner Portal, enviar `src/main/frontend/dist/nuvemshop-storefront-sdk.js` e publicar essa versão. Preservar o identificador do script, a marcação NubeSDK e as permissões/configurações atuais. Associar/atualizar a versão na loja de teste conforme o fluxo do portal e confirmar no navegador qual arquivo da CDN está sendo carregado. Esta etapa não altera o script de checkout.
+
+Antes de publicar a versão do script para as lojas, guarde o arquivo anterior e valide na loja de teste: um produto com os campos existentes (texto, número e lista), um produto com imagens, campos obrigatórios, troca de variante/quantidade, carrinho e checkout. Confira se os nomes escolhidos acompanham o item e se a compra não adiciona itens duplicados. Repita em desktop e celular. Os testes automatizados cobrem esses componentes, mas a validação no tema real continua necessária. Se houver regressão, republicar o arquivo anterior permite recuperar o comportamento anterior.
+
+Os limites comerciais de imagens dependem da publicação do backend com a migração `V48__plan_image_limits.sql`. O script de vitrine recebe apenas os campos/opções permitidos pela API; não precisa conhecer o plano nem os limites do catálogo.
+
+Diagnóstico de 05/10/2026 na LojaTeste1 (Morelia): o produto tinha três opções com imagem e a miniatura respondeu 200/JPEG. O bundle servido pelo backend continha `IMAGE_SELECT` e `imageOptions`, mas o script carregado pela loja, `store-front-v5/4.js`, não continha esses recursos. Nesse cenário, é necessário publicar a nova versão no portal; alterar o bucket ou suas permissões não atualiza o JavaScript hospedado pela Nuvemshop.
 
 ## Upload e entrega
 

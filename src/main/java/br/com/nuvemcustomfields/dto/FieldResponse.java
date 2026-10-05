@@ -17,7 +17,9 @@ public record FieldResponse(
         List<ImageOptionResponse> imageOptions
 ) {
 
-    public static FieldResponse from(PersonalizationField field) {
+    public static FieldResponse from(PersonalizationField field) { return from(field, 25); }
+    public static FieldResponse from(PersonalizationField field, int imageOptionLimit) {
+        var images = field.getFieldType() == FieldType.IMAGE_SELECT ? field.imageOptions().stream().limit(imageOptionLimit).toList() : List.<ImageOption>of();
         return new FieldResponse(
                 field.getLabel(),
                 field.getFieldType(),
@@ -26,8 +28,8 @@ public record FieldResponse(
                 field.getPlaceholder(),
                 field.getValidationPattern(),
                 propertyName(field.getLabel()),
-                field.options(),
-                field.getFieldType() == FieldType.IMAGE_SELECT ? field.imageOptions().stream().map(option -> {
+                field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(ImageOption::label).toList() : field.options(),
+                field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(option -> {
                     String url = "/public/stores/" + field.getRule().getStoreId() + "/images/" + option.id();
                     return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);
                 }).toList() : List.of()

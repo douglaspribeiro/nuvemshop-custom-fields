@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.controller;
 import java.math.BigDecimal;
 
+import br.com.nuvemcustomfields.service.ImagePlanLimitException;
 import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.dto.ProductPage;
 import br.com.nuvemcustomfields.dto.ProductSummary;
@@ -591,7 +592,7 @@ public class AdminController {
         }
         try { personalizationAdminService.addField(store.getStoreId(), productId, fieldForm); }
         catch (IllegalArgumentException exception) {
-            model.addAttribute("error", messages.get("image.options.invalid"));
+            model.addAttribute("error", imageConfigurationError(exception));
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
@@ -625,7 +626,7 @@ public class AdminController {
             populateFieldsModel(store, productId, model, new FieldForm());
             model.addAttribute("editedFieldId", fieldId);
             model.addAttribute("editedFieldForm", fieldForm);
-            model.addAttribute("error", messages.get("image.options.invalid"));
+            model.addAttribute("error", imageConfigurationError(exception));
             return "admin/fields";
         }
         LOGGER.info("admin.fields.update.done store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
@@ -656,6 +657,11 @@ public class AdminController {
         return "redirect:/admin/products";
     }
 
+    private String imageConfigurationError(IllegalArgumentException error) {
+        if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
+        return messages.get("image.options.invalid");
+    }
+
     private void populateFieldsModel(Store store, Long productId, Model model, FieldForm fieldForm) {
         PersonalizationRule rule = personalizationAdminService.requireRuleWithFields(store.getStoreId(), productId);
         LOGGER.info(
@@ -669,6 +675,10 @@ public class AdminController {
         model.addAttribute("rule", rule);
         model.addAttribute("fieldTypes", FieldType.values());
         model.addAttribute("imagesEnabled", personalizationAdminService.imagesEnabled());
+        model.addAttribute("canUseImages", planLimitService.canConfigureImageProduct(store, productId));
+        model.addAttribute("imageProductLimit", planLimitService.imageProductLimit(store.getEffectivePlan()));
+        model.addAttribute("imageProductsUsed", planLimitService.imageProductIds(store.getStoreId()).size());
+        model.addAttribute("imageOptionLimit", planLimitService.imageOptionLimit(store.getEffectivePlan()));
         model.addAttribute("fieldForm", fieldForm);
         model.addAttribute("usage", planLimitService.usage(store, rule.getFields().size()));
         model.addAttribute("canAddField", planLimitService.canAddField(store, rule.getId()));

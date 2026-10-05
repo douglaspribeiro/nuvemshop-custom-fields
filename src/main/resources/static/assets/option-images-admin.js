@@ -10,6 +10,7 @@
         try { options = JSON.parse(hidden.value || "[]"); } catch (_) { options = []; }
         if (!Array.isArray(options)) options = [];
         options = options.filter(option => option && typeof option.label === "string" && typeof option.id === "string");
+        const maxOptions = Number(editor.dataset.maxOptions || 25);
         let uploads = 0;
         function sync() {
             hidden.value = JSON.stringify(options.map(({id, label}) => ({id, label})));
@@ -17,7 +18,7 @@
         }
         function lock() {
             form.querySelectorAll("button[type=submit]").forEach(button => button.disabled = uploads > 0);
-            add.disabled = uploads > 0 || options.length >= 20 || editor.dataset.enabled !== "true";
+            add.disabled = uploads > 0 || options.length >= maxOptions || editor.dataset.enabled !== "true";
         }
         function render() {
             rows.replaceChildren();
@@ -69,10 +70,11 @@
                 const input=form.querySelector("[name="+name+"]");if(input) input.closest("label").hidden=type.value==="IMAGE_SELECT";
             });
         }
-        add.addEventListener("click",()=>{if(options.length>=20){status.textContent=editor.dataset.limit;return;}options.push({id:"",label:""});sync();render();});
+        add.addEventListener("click",()=>{if(editor.dataset.enabled !== "true") return; if(options.length>=maxOptions){status.textContent=editor.dataset.limit;return;}options.push({id:"",label:""});sync();render();});
         type.addEventListener("change",visibility);
         form.addEventListener("submit",event=>{
             if(type.value!=="IMAGE_SELECT") return;
+            if (options.length > maxOptions) { event.preventDefault(); status.textContent=editor.dataset.limit; return; }
             const labels=options.map(o=>(o.label||"").trim().toLocaleLowerCase());
             if(uploads || !options.length || options.some(o=>!o.id || !(o.label||"").trim()) || new Set(labels).size!==labels.length){
                 event.preventDefault();status.textContent=editor.dataset.incomplete;

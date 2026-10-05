@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
+import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.dto.ImageOption;
 import br.com.nuvemcustomfields.entity.PersonalizationField;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
@@ -24,9 +26,14 @@ public class OptionImageService {
     private final OptionImageProcessor processor;
     private final TransactionTemplate isolated;
     private final PersonalizationRuleRepository rules;
+    private final PlanLimitService limits;
+    private final StoreRepository stores;
+    private final PersonalizationFieldRepository fields;
     public OptionImageService(JdbcTemplate jdbc, OptionImageStorage storage, OptionImageProcessor processor,
-            PlatformTransactionManager transactions, PersonalizationRuleRepository rules) {
+            PlatformTransactionManager transactions, PersonalizationRuleRepository rules, PlanLimitService limits,
+            StoreRepository stores, PersonalizationFieldRepository fields) {
         this.jdbc=jdbc; this.storage=storage; this.processor=processor; this.rules=rules;
+        this.limits=limits; this.stores=stores; this.fields=fields;
         isolated=new TransactionTemplate(transactions);
         isolated.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -43,6 +50,8 @@ public class OptionImageService {
         isolated.executeWithoutResult(tx -> {
             var stores=jdbc.queryForList("select store_id from stores where store_id=? and uninstalled_at is null and erasure_requested_at is null for update", storeId);
             if (stores.isEmpty() || rules.findByStoreIdAndProductId(storeId, productId).isEmpty()) throw new IllegalArgumentException("image.options.invalid");
+            var store = this.stores.findActiveByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("image.options.invalid"));
+            limits.requireImageConfiguration(store, productId, 0);
             long count=jdbc.queryForObject("select count(*) from personalization_images where store_id=? and field_id is null and state in ('PENDING','READY')", Long.class, storeId);
             if (count >= 100) throw new IllegalArgumentException("image.upload.limit");
             jdbc.update("insert into personalization_images (id,store_id,product_id,bucket,preview_key,thumbnail_key,state,created_at,updated_at,retry_at) values (?,?,?,?,?,?,'PENDING',?,?,?)",
@@ -96,6 +105,10 @@ public class OptionImageService {
         var row=rows.getFirst();
         // Unbound uploads can be previewed only in the authenticated admin endpoint.
         if (row.get("field_id")==null) return null;
+        var storeEntity=stores.findActiveByStoreId(store).orElse(null);
+        if (storeEntity==null || !limits.imageProductVisible(storeEntity, ((Number)row.get("product_id")).longValue())) return null;
+        var field=fields.findById(((Number)row.get("field_id")).longValue()).orElse(null);
+        if (field==null || field.imageOptions().stream().limit(limits.imageOptionLimit(storeEntity.getEffectivePlan())).noneMatch(option -> id.equals(option.id()))) return null;
         return storage.readUrl((String)row.get("bucket"),(String)row.get(thumbnail?"thumbnail_key":"preview_key"));
     }
     public String adminReadUrl(Long store, String id, boolean thumbnail) {

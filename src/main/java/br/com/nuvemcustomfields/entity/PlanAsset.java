@@ -46,6 +46,19 @@ public class PlanAsset {
     @Column(name = "field_limit", nullable = false)
     private long fieldLimit;
 
+    @Column(name = "image_product_limit", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private long imageProductLimit;
+
+    @Column(name = "image_option_limit", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private int imageOptionLimit;
+
+    public long getImageProductLimit() { return imageProductLimit; }
+    public void setImageProductLimit(long value) { imageProductLimit = value; }
+    public int getImageOptionLimit() { return imageOptionLimit; }
+    public void setImageOptionLimit(int value) { imageOptionLimit = value; }
+
     @Column(name = "effective_from", nullable = false)
     private LocalDate effectiveFrom;
 
