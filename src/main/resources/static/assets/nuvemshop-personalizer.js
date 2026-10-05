@@ -814,7 +814,7 @@
     }
 
     function renderField(field) {
-        const wrapper = document.createElement("label");
+        const wrapper = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
         wrapper.className = "ncf-field";
 
         const text = document.createElement("span");
@@ -836,6 +836,10 @@
             input.pattern = field.validationPattern;
         }
 
+        if (field.fieldType === "IMAGE_SELECT") {
+            input.setAttribute("aria-label",field.label);
+            wrapper.appendChild(renderImageChoices(field,input));
+        }
         wrapper.appendChild(input);
         return wrapper;
     }
@@ -845,7 +849,7 @@
             return document.createElement("textarea");
         }
 
-        if (field.fieldType === "SELECT") {
+        if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") {
             const select = document.createElement("select");
             const empty = document.createElement("option");
             empty.value = "";
@@ -863,6 +867,28 @@
         const input = document.createElement("input");
         input.type = field.fieldType === "NUMBER" ? "number" : "text";
         return input;
+    }
+
+    function renderImageChoices(field, select) {
+        const grid = document.createElement("div");
+        grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:8px";
+        const buttons = [];
+        (field.imageOptions || []).forEach(option => {
+            const card = document.createElement("div");
+            const button = document.createElement("button");button.type = "button";button.dataset.value = option.label;
+            button.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:8px;border:1px solid #c8d3d8;border-radius:8px;background:transparent;color:inherit;font:inherit";
+            const image = document.createElement("img");image.src = new URL(option.thumbnailUrl, apiOrigin).href;image.alt = option.label;
+            image.loading = "lazy";image.width = 120;image.height = 120;image.style.objectFit = "contain";
+            const name = document.createElement("span");name.textContent = option.label;button.append(image,name);
+            button.addEventListener("click", () => {select.value = option.label;select.dispatchEvent(new Event("change", {bubbles:true}));});
+            const link = document.createElement("a");link.href = new URL(option.imageUrl,apiOrigin).href;link.target = "_blank";link.rel = "noopener";
+            link.textContent = document.documentElement.lang.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
+            link.setAttribute("aria-label",link.textContent + ": " + option.label);
+            card.append(button,link);grid.append(card);buttons.push(button);
+        });
+        function highlight() {buttons.forEach(button => {const selected = button.dataset.value === select.value;button.setAttribute("aria-pressed",String(selected));button.style.border = selected ? "2px solid #1976d2" : "1px solid #c8d3d8";});}
+        select.addEventListener("change",highlight);highlight();
+        return grid;
     }
 
     function track(eventName, details) {

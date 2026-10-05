@@ -17,6 +17,7 @@ public class WebhookLifecycleService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebhookLifecycleService.class);
 
+    private final OptionImageService images;
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
     private final IntegrationLogService integrationLogService;
@@ -32,8 +33,10 @@ public class WebhookLifecycleService {
             NuvemshopBillingService billingService,
             PaymentSubscriptionService paymentSubscriptionService,
             StoreDepartureService departures,
-            WinbackQueueService winback
+            WinbackQueueService winback,
+            OptionImageService images
     ) {
+        this.images = images;
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.integrationLogService = integrationLogService;
@@ -92,6 +95,7 @@ public class WebhookLifecycleService {
 
     private void handleProductDeleted(Long storeId, Long productId) {
         if (storeId != null && productId != null) {
+            images.deleteProduct(storeId, productId);
             ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
             integrationLogService.info(storeId, "webhook.product_deleted", "Regras removidas para produto " + productId + ".");
         }

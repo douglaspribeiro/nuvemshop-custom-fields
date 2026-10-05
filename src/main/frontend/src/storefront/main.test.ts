@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { DISABLED } from "../shared/config";
 
-type Node = { type?: string; name?: string; children?: Node[]; onChange?: (event: { value: string }) => void };
+type Node = { type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void };
 
 describe("SDK storefront without a legacy script", () => {
 	let state: NubeSDKState;
@@ -85,4 +85,18 @@ describe("SDK storefront without a legacy script", () => {
 		expect(send.mock.calls.filter(([event]) => event === "cart:add")).toHaveLength(1);
 		expect(send.mock.calls[2][1]()).toEqual({ eventPayload: { request_id: "self", proceed: true } });
 	});
+    it("renders image options, blocks empty required choice and sends selected name", async () => {
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,
+            fields:[{label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT",required:true,maxLength:100,
+                placeholder:null,validationPattern:null,options:["Floral"],imageOptions:[{label:"Floral",thumbnailUrl:"/public/thumb",imageUrl:"/public/large"}]}],
+        })} as Response);
+        await boot();add();expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        function button(node:Node):Node|undefined {
+            if(node.type==="button" && node.ariaLabel?.includes("Floral"))return node;
+            for(const child of node.children ?? []) {const result=button(child);if(result)return result;}
+        }
+        button(render.mock.calls[render.mock.calls.length-1][1])!.onClick!();send.mockClear();add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Capa:"Floral"});
+    });
+
 });

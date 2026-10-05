@@ -13,7 +13,8 @@ public record FieldResponse(
         String placeholder,
         String validationPattern,
         String propertyName,
-        List<String> options
+        List<String> options,
+        List<ImageOptionResponse> imageOptions
 ) {
 
     public static FieldResponse from(PersonalizationField field) {
@@ -25,9 +26,15 @@ public record FieldResponse(
                 field.getPlaceholder(),
                 field.getValidationPattern(),
                 propertyName(field.getLabel()),
-                field.options()
+                field.options(),
+                field.getFieldType() == FieldType.IMAGE_SELECT ? field.imageOptions().stream().map(option -> {
+                    String url = "/public/stores/" + field.getRule().getStoreId() + "/images/" + option.id();
+                    return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);
+                }).toList() : List.of()
         );
     }
+
+    public record ImageOptionResponse(String label, String thumbnailUrl, String imageUrl) {}
 
     private static String propertyName(String label) {
         return label.replace('[', '(').replace(']', ')').strip();

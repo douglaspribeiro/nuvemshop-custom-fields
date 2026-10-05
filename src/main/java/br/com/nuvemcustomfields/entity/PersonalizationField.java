@@ -52,6 +52,15 @@ public class PersonalizationField {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
+    @Column(name = "image_options_json", columnDefinition = "TEXT")
+    private String imageOptionsJson;
+
+    public String getImageOptionsJson() { return imageOptionsJson; }
+    public void setImageOptionsJson(String value) { imageOptionsJson = value; }
+    public java.util.List<br.com.nuvemcustomfields.dto.ImageOption> imageOptions() {
+        return br.com.nuvemcustomfields.service.ImageOptions.parse(imageOptionsJson);
+    }
+
     public Long getId() {
         return id;
     }
@@ -121,6 +130,7 @@ public class PersonalizationField {
     }
 
     public List<String> options() {
+        if (fieldType == FieldType.IMAGE_SELECT) return imageOptions().stream().map(br.com.nuvemcustomfields.dto.ImageOption::label).toList();
         if (optionsText == null || optionsText.isBlank()) {
             return List.of();
         }

@@ -1,3 +1,4 @@
+import { imageChoices } from "./image-options";
 import type { NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { fetchConfig, type PersonalizationConfig } from "../shared/config";
 import { langOf } from "../shared/i18n";
@@ -111,10 +112,10 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		const color = normalizedColor(config.style?.productTextColor);
 		if (color) container.style.color = color;
 		config.fields.forEach((field, index) => {
-			const label = document.createElement("label");
+			const label = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
 			label.textContent = field.label + (field.required ? " *" : "");
 			label.style.cssText = "display:flex;flex-direction:column;gap:4px";
-			const input = document.createElement(field.fieldType === "SELECT" ? "select"
+			const input = document.createElement((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") ? "select"
 				: field.fieldType === "TEXTAREA" ? "textarea" : "input");
 			input.id = `ncf-patagonia-${index}`;
 			input.name = `properties[${keyOf(field)}]`;
@@ -131,6 +132,10 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 			input.addEventListener("input", () => input.setCustomValidity(""));
 			input.addEventListener("change", () => input.setCustomValidity(""));
 			controls.set(keyOf(field), input);
+            if (field.fieldType === "IMAGE_SELECT" && input instanceof HTMLSelectElement) {
+                input.setAttribute("aria-label",field.label);
+                label.append(imageChoices(field,input,config?.locale));
+            }
 			label.append(input);
 			container!.append(label);
 		});

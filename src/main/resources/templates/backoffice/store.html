@@ -16,6 +16,7 @@
             <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
             <p class="muted" th:text="'Store ID ' + ${store.storeId}">Store ID 0</p>
             <p class="muted" th:text="${'Mercado ' + (store.storeCountryCode ?: '-') + ' / ' + (store.storeCurrency ?: '-')}">Mercado BR / BRL</p>
+            <small class="muted" th:if="${store.installedAt != null}">Instalada em <span th:attr="data-local-time=${store.installedAt}" data-time-format="date" th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">01/01/2026</span></small>
         </div>
         <nav class="row-actions">
             <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">

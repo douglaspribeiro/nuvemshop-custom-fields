@@ -29,6 +29,15 @@ public class FieldForm {
     private String validationPattern;
 
     private String optionsText;
+    private String imageOptionsJson;
+    public String getImageOptionsJson() { return imageOptionsJson; }
+    public void setImageOptionsJson(String value) { imageOptionsJson = value; }
+    @AssertTrue(message = "image.options.invalid")
+    public boolean isImageOptionsValid() {
+        if (fieldType != FieldType.IMAGE_SELECT) return true;
+        try { return !br.com.nuvemcustomfields.service.ImageOptions.parse(imageOptionsJson).isEmpty(); }
+        catch (IllegalArgumentException e) { return false; }
+    }
 
     @Min(0)
     private Integer sortOrder = 0;

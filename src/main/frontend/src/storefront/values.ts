@@ -40,7 +40,7 @@ export function validate(
 			errors.push({ propertyName: key, label: field.label, message: text.number });
 			continue;
 		}
-		if (field.fieldType === "SELECT" && field.options.length > 0 && !field.options.includes(value)) {
+		if ((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") && !field.options.includes(value)) {
 			errors.push({ propertyName: key, label: field.label, message: text.select });
 			continue;
 		}

@@ -62,6 +62,7 @@ export function App(nube: NubeSDK) {
 		pendingSelfAdds = 0;
 		values = {};
 		errors = [];
+        if (config.fields.some(field => field.fieldType === "IMAGE_SELECT")) render(nube);
 	});
 	nube.on("cart:add:fail", () => {
 		pendingSelfAdds = 0;
@@ -125,8 +126,11 @@ function render(nube: NubeSDK) {
 			fields={config.fields}
 			errors={errors}
 			color={textColor}
+            values={values}
+            locale={config.locale}
 			onValueChange={(key, value) => {
 				values[key] = value;
+                if (config.fields.some(field => field.fieldType === "IMAGE_SELECT" && (field.propertyName || field.label) === key)) { errors = errors.filter(error => error.propertyName !== key); render(nube); }
 			}}
 		/>,
 	);

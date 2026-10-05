@@ -578,6 +578,7 @@ public class AdminController {
         LOGGER.info("admin.fields.add store_id={} product_id={} label={}", store.getStoreId(), productId, fieldForm.getLabel());
         if (bindingResult.hasErrors()) {
             LOGGER.warn("admin.fields.add.validation_error store_id={} product_id={}", store.getStoreId(), productId);
+            model.addAttribute("error", messages.get("flash.field.invalid"));
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
@@ -588,7 +589,12 @@ public class AdminController {
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
-        personalizationAdminService.addField(store.getStoreId(), productId, fieldForm);
+        try { personalizationAdminService.addField(store.getStoreId(), productId, fieldForm); }
+        catch (IllegalArgumentException exception) {
+            model.addAttribute("error", messages.get("image.options.invalid"));
+            populateFieldsModel(store, productId, model, fieldForm);
+            return "admin/fields";
+        }
         LOGGER.info("admin.fields.add.done store_id={} product_id={}", store.getStoreId(), productId);
         redirectAttributes.addFlashAttribute("message", messages.get("flash.field.created"));
         return "redirect:/admin/products/{productId}/fields";
@@ -601,16 +607,27 @@ public class AdminController {
             @Valid @ModelAttribute FieldForm fieldForm,
             BindingResult bindingResult,
             HttpSession session,
+            Model model,
             RedirectAttributes redirectAttributes
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
         LOGGER.info("admin.fields.update store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
         if (bindingResult.hasErrors()) {
             LOGGER.warn("admin.fields.update.validation_error store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
-            redirectAttributes.addFlashAttribute("error", messages.get("flash.field.invalid"));
-            return "redirect:/admin/products/{productId}/fields";
+            populateFieldsModel(store, productId, model, new FieldForm());
+            model.addAttribute("editedFieldId", fieldId);
+            model.addAttribute("editedFieldForm", fieldForm);
+            model.addAttribute("error", messages.get("flash.field.invalid"));
+            return "admin/fields";
         }
-        personalizationAdminService.updateField(store.getStoreId(), productId, fieldId, fieldForm);
+        try { personalizationAdminService.updateField(store.getStoreId(), productId, fieldId, fieldForm); }
+        catch (IllegalArgumentException exception) {
+            populateFieldsModel(store, productId, model, new FieldForm());
+            model.addAttribute("editedFieldId", fieldId);
+            model.addAttribute("editedFieldForm", fieldForm);
+            model.addAttribute("error", messages.get("image.options.invalid"));
+            return "admin/fields";
+        }
         LOGGER.info("admin.fields.update.done store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
         redirectAttributes.addFlashAttribute("message", messages.get("flash.field.updated"));
         return "redirect:/admin/products/{productId}/fields";
@@ -651,6 +668,7 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("rule", rule);
         model.addAttribute("fieldTypes", FieldType.values());
+        model.addAttribute("imagesEnabled", personalizationAdminService.imagesEnabled());
         model.addAttribute("fieldForm", fieldForm);
         model.addAttribute("usage", planLimitService.usage(store, rule.getFields().size()));
         model.addAttribute("canAddField", planLimitService.canAddField(store, rule.getId()));

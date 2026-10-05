@@ -16,16 +16,21 @@ import java.util.List;
 @Service
 public class PersonalizationAdminService {
 
+    private final OptionImageService images;
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
 
     public PersonalizationAdminService(
             PersonalizationRuleRepository ruleRepository,
-            PersonalizationFieldRepository fieldRepository
+            PersonalizationFieldRepository fieldRepository,
+            OptionImageService images
     ) {
+        this.images = images;
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
     }
+
+    public boolean imagesEnabled() { return images.enabled(); }
 
     public List<PersonalizationRule> listRules(Long storeId) {
         return ruleRepository.findByStoreIdOrderByProductNameAsc(storeId);
@@ -65,27 +70,33 @@ public class PersonalizationAdminService {
 
     @Transactional
     public void addField(Long storeId, Long productId, FieldForm form) {
+        images.lockStore(storeId);
         PersonalizationRule rule = ruleRepository.findByStoreIdAndProductId(storeId, productId)
                 .orElseThrow(() -> new IllegalArgumentException("Regra de personalizacao nao encontrada."));
         PersonalizationField field = new PersonalizationField();
         applyForm(field, form);
         field.setRule(rule);
-        fieldRepository.save(field);
+        fieldRepository.saveAndFlush(field);
+        images.bind(field, field.imageOptions());
     }
 
     @Transactional
     public void updateField(Long storeId, Long productId, Long fieldId, FieldForm form) {
+        images.lockStore(storeId);
         PersonalizationRule rule = requireRuleWithFields(storeId, productId);
         PersonalizationField field = rule.getFields().stream()
                 .filter(candidate -> candidate.getId().equals(fieldId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Campo nao encontrado para esta loja/produto."));
         applyForm(field, form);
-        fieldRepository.save(field);
+        fieldRepository.saveAndFlush(field);
+        images.bind(field, field.imageOptions());
     }
 
     @Transactional
     public void deleteField(Long storeId, Long productId, Long fieldId) {
+        images.lockStore(storeId);
+        images.deleteField(storeId, productId, fieldId);
         int deleted = fieldRepository.deleteByIdAndStoreIdAndProductId(fieldId, storeId, productId);
         if (deleted == 0) {
             throw new IllegalArgumentException("Campo nao encontrado para esta loja/produto.");
@@ -94,6 +105,8 @@ public class PersonalizationAdminService {
 
     @Transactional
     public void deleteRule(Long storeId, Long productId) {
+        images.lockStore(storeId);
+        images.deleteProduct(storeId, productId);
         ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
     }
 
@@ -109,19 +122,24 @@ public class PersonalizationAdminService {
             PersonalizationField field = new PersonalizationField();
             applyForm(field, fieldTemplate.toForm(sortOrder++));
             field.setRule(rule);
-            fieldRepository.save(field);
+            fieldRepository.saveAndFlush(field);
+            images.bind(field, field.imageOptions());
             created++;
         }
         return created;
     }
 
     private void applyForm(PersonalizationField field, FieldForm form) {
+        if (form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
+            throw new IllegalArgumentException("image.options.invalid");
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired());
-        field.setMaxLength(form.getMaxLength());
+        field.setImageOptionsJson(form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT
+                ? ImageOptions.serialize(ImageOptions.parse(form.getImageOptionsJson())) : null);
+        field.setMaxLength(form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT ? 100 : form.getMaxLength());
         field.setPlaceholder(form.getPlaceholder() == null || form.getPlaceholder().isBlank() ? null : form.getPlaceholder().strip());
-        field.setValidationPattern(form.getValidationPattern() == null || form.getValidationPattern().isBlank()
+        field.setValidationPattern(form.getFieldType() == br.com.nuvemcustomfields.entity.FieldType.IMAGE_SELECT || form.getValidationPattern() == null || form.getValidationPattern().isBlank()
                 ? null
                 : form.getValidationPattern().strip());
         field.setOptionsText(form.getOptionsText() == null || form.getOptionsText().isBlank()

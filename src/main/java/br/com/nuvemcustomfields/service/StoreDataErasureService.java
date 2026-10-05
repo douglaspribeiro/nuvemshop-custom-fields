@@ -35,6 +35,9 @@ public class StoreDataErasureService {
         // Pode chegar antes de app/uninstalled. Conta uma saída por exclusão,
         // separada de desinstalações confirmadas, antes de apagar o cadastro.
         departures.record(storeId, true);
+        // Keep only the durable S3 deletion ledger after owner data is erased.
+        jdbcTemplate.update("update personalization_images set state='DELETING',field_id=null,retry_at=?,updated_at=? where store_id=?",
+                java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(300)), java.sql.Timestamp.from(java.time.Instant.now()), storeId);
         if (discounts != null) discounts.beforeErasure(storeId);
         jdbcTemplate.update(
                 "delete from support_messages where ticket_id in (select id from support_tickets where store_id = ?)",

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Adoção, assinaturas e desinstalações · Backoffice</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
+<body class="backoffice-page"><main class="backoffice-shell">
+    <header class="backoffice-header compact">
+        <div><p class="eyebrow">Relatórios</p><h1>Adoção e desinstalações</h1><p>Veja o que as lojas configuraram, quem assina e quais motivos foram informados para sair.</p></div>
+        <nav class="backoffice-nav"><a th:href="@{/backoffice/reports}">Relatórios gerenciais</a><a th:href="@{/backoffice/stores(status='uninstalled')}">Registrar motivos de saída</a><a th:href="@{/backoffice}">Visão geral</a></nav>
+    </header>
+    <section class="backoffice-directory adoption-section">
+        <form class="adoption-filters" method="get" th:action="@{/backoffice/reports/adoption}">
+            <label>Buscar loja<input type="search" name="q" th:value="${query}" placeholder="Nome ou Store ID"></label>
+            <label>Instalação a partir de<input type="date" name="from" th:value="${from}"></label>
+            <label>Instalação até<input type="date" name="to" th:value="${to}"></label>
+            <label>Situação na lista<select name="status"><option value="">Todas</option><option value="active" th:selected="${selectedStatus == 'active'}">Ativas</option><option value="uninstalled" th:selected="${selectedStatus == 'uninstalled'}">Desinstaladas</option><option value="erasure" th:selected="${selectedStatus == 'erasure'}">Exclusão pendente</option></select></label>
+            <button class="button primary" type="submit">Filtrar</button><a class="button" th:href="@{/backoffice/reports/adoption}">Limpar</a>
+        </form>
+        <p class="muted adoption-note">Busca e datas selecionam a base analisada. A situação filtra apenas a lista detalhada. As datas correspondem à primeira instalação registrada.</p>
+    </section>
+    <section class="backoffice-primary-metrics adoption-metrics">
+        <article><span>Lojas na base analisada</span><strong th:text="${adoption.total}">0</strong><small>Cadastros ainda disponíveis</small></article>
+        <article><span>Lojas ativas</span><strong th:text="${adoption.active}">0</strong><small>Aplicativo instalado, sem exclusão pendente</small></article>
+        <article><span>Lojas desinstaladas</span><strong th:text="${adoption.uninstalled}">0</strong><small><b th:text="${adoption.erasurePending}">0</b> cadastro(s) com exclusão pendente na base</small></article>
+        <article><span>Assinaturas pagas ativas</span><strong th:text="${adoption.paidActive}">0</strong><small>Assinaturas externas de produção elegíveis</small></article>
+        <article><span>Assinantes entre as ativas</span><strong th:text="${adoption.paidActiveRate != null ? #numbers.formatDecimal(adoption.paidActiveRate,1,'POINT',1,'COMMA') + '%' : '—'}">—</strong><small th:text="|${adoption.paidActive} de ${adoption.active} lojas ativas|">0 de 0</small></article>
+        <article><span>Assinantes sobre toda a base</span><strong th:text="${adoption.paidBaseRate != null ? #numbers.formatDecimal(adoption.paidBaseRate,1,'POINT',1,'COMMA') + '%' : '—'}">—</strong><small th:text="|${adoption.paidActive} de ${adoption.total} lojas, incluindo desinstaladas|">0 de 0</small></article>
+    </section>
+    <p class="muted adoption-note">Esses percentuais mostram a participação atual de assinantes, não a conversão histórica para a primeira compra. Cortesias, assinaturas de teste, pendentes, canceladas ou com cancelamento solicitado não contam como assinaturas pagas ativas. O billing nativo legado não entra nessa contagem.</p>
+
+    <section class="backoffice-directory adoption-section">
+        <div class="backoffice-section-head"><div><p class="eyebrow">Experiência com o aplicativo</p><h2>Configuração e uso registrado</h2></div></div>
+        <div class="backoffice-sales-table-wrap"><table class="table adoption-table"><thead><tr><th>Situação observada</th><th>Ativas</th><th>Saídas com cadastro</th></tr></thead><tbody>
+            <tr th:each="stage : ${adoption.stages}"><td th:text="${stage.label}">Etapa</td><td th:text="${stage.active}">0</td><td th:text="${stage.departed}">0</td></tr>
+        </tbody></table></div>
+        <p class="adoption-note">Cada loja aparece em uma única situação, priorizando a venda registrada e depois a exibição reportada pela vitrine. Produtos configurados são produtos habilitados com campos cadastrados. Isso não comprova que a personalização apareceu na vitrine.</p>
+        <p class="adoption-note">A configuração é o estado salvo atualmente, não uma fotografia do momento da saída. Ausência de venda pode significar histórico incompleto. Pedidos com personalização comprovam uso registrado. Os registros de exibição vêm dos sinais enviados pelos scripts da vitrine, sem contar visitantes únicos; sua ausência não comprova falta de uso. Ainda não medimos aqui o preenchimento de cada campo.</p>
+        <p class="adoption-note">Entre as lojas ativas com produto configurado: <strong th:text="${adoption.configuredPaidRate != null ? #numbers.formatDecimal(adoption.configuredPaidRate,1,'POINT',1,'COMMA') + '%' : '—'}">—</strong> têm assinatura paga ativa (<span th:text="${adoption.paidConfiguredActive}">0</span> de <span th:text="${adoption.configuredActive}">0</span>).</p>
+    </section>
+
+    <div class="adoption-columns">
+        <section class="backoffice-directory adoption-section"><div class="backoffice-section-head"><div><p class="eyebrow">Desistência declarada</p><h2>Motivos das saídas</h2></div></div>
+            <p class="backoffice-empty" th:if="${#lists.isEmpty(adoption.reasons)}">Nenhuma saída com cadastro nesta seleção.</p>
+            <div class="backoffice-sales-table-wrap" th:unless="${#lists.isEmpty(adoption.reasons)}"><table class="table adoption-table"><thead><tr><th>Motivo</th><th>Fonte</th><th>Lojas</th></tr></thead><tbody>
+                <tr th:each="reason : ${adoption.reasons}"><td th:text="${reason.label}">Ainda não informado</td><td th:text="${reason.source}">Fonte</td><td th:text="${reason.stores}">0</td></tr>
+            </tbody></table></div>
+            <p class="adoption-note">O motivo registrado manualmente a partir da Nuvemshop tem prioridade. Na ausência dele, usamos a resposta de reconquista da mesma saída. Os motivos da Nuvemshop não chegam pelo webhook.</p>
+            <a class="button small" th:href="@{/backoffice/stores(status='uninstalled')}">Registrar motivos e justificativas</a>
+        </section>
+        <section class="backoffice-directory adoption-section"><div class="backoffice-section-head"><div><p class="eyebrow">Tempo até desistir</p><h2>Instalação até desinstalação</h2></div></div>
+            <table class="table adoption-table"><thead><tr><th>Tempo</th><th>Lojas</th></tr></thead><tbody><tr th:each="bucket : ${adoption.durations}"><td th:text="${bucket.label}">Tempo</td><td th:text="${bucket.stores}">0</td></tr></tbody></table>
+            <p class="adoption-note">Dias completos entre a primeira instalação e a última desinstalação registrada. Uma reinstalação não reinicia essa data. Saídas apenas por pedido de exclusão não entram nesta distribuição.</p>
+        </section>
+    </div>
+
+    <section class="backoffice-directory adoption-section"><div class="backoffice-section-head"><div><p class="eyebrow">Grupos de instalação</p><h2>Comparação por mês</h2></div></div>
+        <div class="backoffice-sales-table-wrap"><table class="table adoption-table"><thead><tr><th>Primeira instalação</th><th>Lojas</th><th>Ativas</th><th>Desinstaladas</th><th>Com produto configurado</th><th>Assinaturas pagas ativas</th><th>Assinantes / base</th></tr></thead><tbody>
+            <tr th:each="cohort : ${adoption.cohorts}"><td th:text="${cohort.month}">2026-10</td><td th:text="${cohort.stores}">0</td><td th:text="${cohort.active}">0</td><td th:text="${cohort.uninstalled}">0</td><td th:text="${cohort.configured}">0</td><td th:text="${cohort.paidActive}">0</td><td th:text="${#numbers.formatDecimal(cohort.paidRate,1,'POINT',1,'COMMA') + '%'}">0%</td></tr>
+        </tbody></table></div>
+        <p class="adoption-note">A posição de cada grupo é a atual. Grupos recentes tiveram menos tempo para contratar. Este quadro não mede conversão em 30, 60 ou 90 dias nem inclui cadastros já apagados.</p>
+    </section>
+
+    <section class="backoffice-directory adoption-section"><div class="backoffice-section-head"><div><p class="eyebrow">Investigar loja por loja</p><h2>Lista detalhada</h2></div></div>
+        <p class="backoffice-empty" th:if="${#lists.isEmpty(adoption.rows)}">Nenhuma loja encontrada para esses filtros.</p>
+        <div class="backoffice-sales-table-wrap" th:unless="${#lists.isEmpty(adoption.rows)}"><table class="table adoption-table adoption-detail"><thead><tr><th>Loja e situação</th><th>Instalação e saída</th><th>Configuração</th><th>Vendas registradas</th><th>Assinatura</th><th>Motivo e justificativa</th></tr></thead><tbody>
+            <tr th:each="row : ${adoption.rows}">
+                <td><a th:href="@{/backoffice/stores/{storeId}(storeId=${row.store.storeId})}" th:text="${row.store.storeName ?: 'Loja sem nome'}">Loja</a><small th:text="|${row.store.storeId} · ${row.statusLabel}|">ID</small></td>
+                <td><span th:attr="data-local-time=${row.store.installedAt}" data-time-format="date" th:text="${row.store.installedAt != null ? #temporals.format(row.store.installedAt,'dd/MM/yyyy','America/Sao_Paulo') : 'Data não registrada'}">Instalação</span><small th:if="${row.departureAt != null}">Saída: <span th:attr="data-local-time=${row.departureAt}" data-time-format="date" th:text="${#temporals.format(row.departureAt,'dd/MM/yyyy','America/Sao_Paulo')}">Saída</span></small><small th:if="${!row.store.active}" th:text="${row.daysToDeparture != null ? row.daysToDeparture + ' dia(s) desde a primeira instalação' : 'Duração não disponível'}">Duração</small></td>
+                <td><span th:text="${row.stage}">Situação</span><small th:text="|${row.fields} campo(s) · ${row.products} produto(s) com campos · ${row.enabledProducts} habilitado(s)|">Configuração</small><small th:text="${row.renderReports > 0 ? 'Há registro de exibição na vitrine' : 'Sem registro de exibição na vitrine'}">Exibição</small></td>
+                <td th:text="${row.salesLabel}">Histórico incompleto</td>
+                <td><span th:text="${row.subscriptionLabel}">Sem assinatura</span><small th:if="${row.paidActive}">Conta como assinatura paga ativa</small></td>
+                <td><th:block th:if="${!row.store.active}"><span th:text="${row.reason}">Motivo</span><small th:text="${row.reasonSource}">Fonte</small><details th:if="${row.justification != null and !#strings.isEmpty(row.justification)}"><summary>Ver justificativa</summary><p th:text="${row.justification}">Justificativa</p></details></th:block><span th:if="${row.store.active}">—</span></td>
+            </tr>
+        </tbody></table></div>
+    </section>
+    <section class="backoffice-directory adoption-section"><h2>Histórico agregado de saídas</h2>
+        <p><strong th:text="${adoption.historicalDepartures.uninstalls}">0</strong> desinstalações registradas e <strong th:text="${adoption.historicalDepartures.erasures}">0</strong> saídas por exclusão recebida antes da desinstalação.</p>
+        <p class="adoption-note">Totais de todo o histórico, sem os filtros acima. Incluem cadastros já apagados e podem incluir mais de uma saída da mesma loja após reinstalações. Não são usados como número de lojas nem como denominador de conversão.</p>
+    </section>
+</main></body></html>

@@ -50,6 +50,8 @@
 .billing-plan-actions .button { display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; padding:12px 9px; font-size:.8rem; line-height:1.45; text-align:center; font-weight:750; }
 .billing-plan-essential .button.primary,.billing-plan-ultra .button.primary { background:#fff; border-color:#bdd2c5; color:var(--merchant-green-dark); }
 .billing-plan-essential .button.primary:hover,.billing-plan-ultra .button.primary:hover { background:#e9f3ed; border-color:var(--merchant-green); }
+.billing-plan-help { margin:0; color:var(--merchant-muted); font-size:.73rem; line-height:1.6; text-align:center; text-wrap:pretty; }
+.billing-plan-help a { color:var(--merchant-green-dark); text-underline-offset:3px; }
 .billing-plan-actions .badge { align-self:flex-start; max-width:100%; font-size:.66rem; line-height:1.5; }
 .billing-plan.is-current::after { content:''; position:absolute; bottom:0; left:28px; right:28px; height:3px; background:#91b5a0; border-radius:3px 3px 0 0; }
 .billing-assurance { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px; margin:34px 0 45px; padding:28px 0; border-bottom:1px solid var(--merchant-line); }

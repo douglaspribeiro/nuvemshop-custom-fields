@@ -21,7 +21,7 @@
             <p th:if="${uninstalledOnly}">Pedidos de exclusão aguardam revisão manual, sem acesso ao app. Contato manual exige confirmação; contatos automáticos ficam suspensos. A exclusão definitiva remove todos os dados vinculados.</p>
             <p th:unless="${uninstalledOnly}"><span th:text="${activeInstallations}">0</span> instalações ativas de <span th:text="${installations}">0</span> no total.</p>
         </div>
-        <nav class="backoffice-nav">
+        <nav class="backoffice-nav"><a th:href="@{/backoffice/reports/adoption}">Adoção e saídas</a>
             <a th:href="@{/backoffice}">Visão geral</a>
             <a th:classappend="${!uninstalledOnly} ? 'is-current'" th:href="@{/backoffice/stores}">Lojas</a>
             <a th:classappend="${uninstalledOnly} ? 'is-current'" th:href="@{/backoffice/stores(status='uninstalled')}">Desinstaladas</a>
@@ -58,9 +58,9 @@
                         <small>
                             <span th:text="${store.storeId}">0</span> ·
                             <span th:text="${store.storeCountryCode ?: '-'}">BR</span> /
-                            <span th:text="${store.storeCurrency ?: '-'}">BRL</span> ·
-                            instalada em <span th:attr="data-local-time=${store.installedAt}" data-time-format="date" th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy')}">01/01/2026</span>
+                            <span th:text="${store.storeCurrency ?: '-'}">BRL</span>
                         </small>
+                        <small class="store-installation-date" th:if="${store.installedAt != null}">Instalada em <span th:attr="data-local-time=${store.installedAt}" data-time-format="date" th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">01/01/2026</span></small>
                     </div>
                 </div>
                 <div class="store-plan">

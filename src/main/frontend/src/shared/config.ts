@@ -1,6 +1,6 @@
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 
-export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA";
+export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELECT";
 
 /** Espelha br.com.nuvemcustomfields.dto.FieldResponse. */
 export type PersonalizationField = {
@@ -12,6 +12,7 @@ export type PersonalizationField = {
 	validationPattern: string | null;
 	propertyName: string;
 	options: string[];
+	imageOptions?: { label: string; thumbnailUrl: string; imageUrl: string }[];
 };
 
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationStyleResponse. */
@@ -78,7 +79,13 @@ export async function fetchConfig(
 function normalize(config: PersonalizationConfig): PersonalizationConfig {
 	return {
 		enabled: true,
-		fields: (config.fields ?? []).filter((field) => !!field?.label),
+		fields: (config.fields ?? []).filter((field) => !!field?.label).map(field => ({
+            ...field,
+            imageOptions: (field.imageOptions ?? []).map(option => ({...option,
+                thumbnailUrl: new URL(option.thumbnailUrl, appOrigin()).href,
+                imageUrl: new URL(option.imageUrl, appOrigin()).href,
+            })),
+        })),
 		style: config.style ?? DISABLED.style,
 		locale: config.locale ?? DISABLED.locale,
 	};

@@ -193,3 +193,18 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-upgrade-coupon-link { display:block; margin-bottom:16px; color:var(--merchant-green-dark); font-size:.85rem; font-weight:700; }
 @media(max-width:850px) { .merchant-upgrade-layout { grid-template-columns:1fr; } .merchant-upgrade-summary { position:static; grid-row:1; } }
 @media(max-width:480px) { .merchant-upgrade-coupon { flex-direction:column; align-items:stretch; } .merchant-upgrade-breakdown > div { gap:10px; } }
+
+.image-options-form [hidden] { display:none !important; }
+.image-options-editor { grid-column:1 / -1; min-width:0; margin:12px 0; }
+.image-options-rows { display:grid; gap:12px; }
+.image-option-row { display:grid; grid-template-columns:96px minmax(0,1fr); gap:12px; padding:12px; border:1px solid #dce3e8; border-radius:8px; }
+.image-option-row img { grid-row:1 / span 2; object-fit:contain; border-radius:6px; }
+.image-option-row label { grid-column:2; min-width:0; }
+.image-option-row input { width:100%; max-width:100%; box-sizing:border-box; }
+.image-option-row .row-actions { grid-column:1 / -1; flex-wrap:wrap; }
+.image-options-status { color:#9b2828; }
+@media(max-width:480px) {
+    .image-option-row { grid-template-columns:1fr; }
+    .image-option-row img { grid-row:auto; }
+    .image-option-row label { grid-column:1; }
+}

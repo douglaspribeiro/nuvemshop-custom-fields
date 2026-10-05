@@ -162,4 +162,15 @@ describe("Patagonia transition", () => {
 		expect(document.body.textContent).toContain("Revisá el carrito");
 		expect(runtime.send).toHaveBeenCalledTimes(1);
 	});
+    it("selects image options and carries their names through the Patagonia cart", async () => {
+        const images = {...configuration,fields:[{label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT" as const,required:true,
+            maxLength:100,placeholder:null,validationPattern:null,options:["Floral"],
+            imageOptions:[{label:"Floral",thumbnailUrl:"https://assets.test/thumb",imageUrl:"https://assets.test/large"}]}]};
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue(images));await vi.waitFor(()=>expect(document.querySelector("#ncf-patagonia-fields select")).not.toBeNull());
+        click();expect(runtime.send).not.toHaveBeenCalled();
+        document.querySelector<HTMLButtonElement>("#ncf-patagonia-fields button[data-value='Floral']")!.click();click();
+        const update=vi.mocked(runtime.send).mock.calls[0][2];
+        expect(update()).toMatchObject({cart:{items:[{properties:{Capa:"Floral"}}]}});
+    });
+
 });

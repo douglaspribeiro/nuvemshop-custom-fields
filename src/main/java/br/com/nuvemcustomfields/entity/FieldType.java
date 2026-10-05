@@ -4,5 +4,6 @@ public enum FieldType {
     TEXT,
     NUMBER,
     SELECT,
+    IMAGE_SELECT,
     TEXTAREA
 }

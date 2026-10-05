@@ -45,7 +45,7 @@
     <section class="grid two" th:classappend="${!canAddField} ? ' fields-edit-only'">
         <div class="panel" th:if="${canAddField}">
             <h2 th:text="#{admin.fields.new.title}">Novo campo</h2>
-            <form class="form preview-source" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
+            <form class="form preview-source image-options-form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
                   th:object="${fieldForm}" method="post">
                 <label>
                     <span th:text="#{admin.fields.label}">Label</span>
@@ -54,7 +54,7 @@
                 <label>
                     <span th:text="#{admin.fields.type}">Tipo</span>
                     <select th:field="*{fieldType}" required>
-                        <option th:each="type : ${fieldTypes}" th:value="${type}" th:text="${type}">TEXT</option>
+                        <option th:each="type : ${fieldTypes}" th:value="${type}" th:text="#{'field.type.' + ${type}}">TEXT</option>
                     </select>
                 </label>
                 <label class="checkbox">
@@ -77,6 +77,15 @@
                     <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
                 </label>
+                <section class="image-options-editor" hidden
+                         th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit}">
+                    <p class="muted" th:text="#{image.options.help}">JPG ou PNG, até 5 MB por imagem. Até 20 opções.</p>
+                    <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
+                    <input type="hidden" name="imageOptionsJson" th:value="${fieldForm.imageOptionsJson}">
+                    <div class="image-options-rows"></div>
+                    <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
+                    <p class="image-options-status" role="status" aria-live="polite"></p>
+                </section>
                 <label>
                     <span th:text="#{admin.fields.order}">Ordem</span>
                     <input th:field="*{sortOrder}" type="number" min="0">
@@ -101,46 +110,55 @@
             </div>
 
             <div class="field-list">
-                <article class="field-item" th:each="field : ${rule.fields}">
-                    <form class="form compact"
+                <article class="field-item" th:each="field : ${rule.fields}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
+                    <form class="form compact image-options-form"
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
                           method="post">
                         <label>
                             <span th:text="#{admin.fields.label}">Label</span>
-                            <input name="label" th:value="${field.label}" maxlength="100" required>
+                            <input name="label" th:value="${draft.label}" maxlength="100" required>
                         </label>
                         <label>
                             <span th:text="#{admin.fields.type}">Tipo</span>
                             <select name="fieldType" required>
                                 <option th:each="type : ${fieldTypes}"
                                         th:value="${type}"
-                                        th:selected="${type == field.fieldType}"
-                                        th:text="${type}">TEXT</option>
+                                        th:selected="${type == draft.fieldType}"
+                                        th:text="#{'field.type.' + ${type}}">TEXT</option>
                             </select>
                         </label>
                         <label class="checkbox">
-                            <input name="required" type="checkbox" value="true" th:checked="${field.required}">
+                            <input name="required" type="checkbox" value="true" th:checked="${draft.required}">
                             <span th:text="#{admin.fields.required}">Obrigatorio</span>
                         </label>
                         <label>
                             <span th:text="#{admin.fields.maxlength.short}">Maximo</span>
-                            <input name="maxLength" th:value="${field.maxLength}" type="number" min="1" max="500" required>
+                            <input name="maxLength" th:value="${draft.maxLength}" type="number" min="1" max="500" required>
                         </label>
                         <label>
                             <span th:text="#{admin.fields.placeholder}">Placeholder</span>
-                            <input name="placeholder" th:value="${field.placeholder}" maxlength="150">
+                            <input name="placeholder" th:value="${draft.placeholder}" maxlength="150">
                         </label>
                         <label>
                             <span th:text="#{admin.fields.pattern}">Regex ou mascara</span>
-                            <input name="validationPattern" th:value="${field.validationPattern}" maxlength="255">
+                            <input name="validationPattern" th:value="${draft.validationPattern}" maxlength="255">
                         </label>
                         <label>
                             <span th:text="#{admin.fields.options}">Opcoes do select</span>
-                            <textarea name="optionsText" rows="4" th:text="${field.optionsText}"></textarea>
+                            <textarea name="optionsText" rows="4" th:text="${draft.optionsText}"></textarea>
                         </label>
+                        <section class="image-options-editor" hidden
+                                 th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit}">
+                            <p class="muted" th:text="#{image.options.help}">JPG ou PNG, até 5 MB por imagem. Até 20 opções.</p>
+                            <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
+                            <input type="hidden" name="imageOptionsJson" th:value="${draft.imageOptionsJson}">
+                            <div class="image-options-rows"></div>
+                            <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
+                            <p class="image-options-status" role="status" aria-live="polite"></p>
+                        </section>
                         <label>
                             <span th:text="#{admin.fields.order}">Ordem</span>
-                            <input name="sortOrder" th:value="${field.sortOrder}" type="number" min="0">
+                            <input name="sortOrder" th:value="${draft.sortOrder}" type="number" min="0">
                         </label>
                         <div class="row-actions">
                             <button class="button primary small" type="submit" th:text="#{common.save}">Salvar</button>
@@ -162,6 +180,7 @@
         <a class="button primary" th:href="@{/admin/billing}" th:text="#{merchant.fields.upgrade.cta}">Aumentar limite</a>
     </section>
 </main>
+<script th:src="@{/assets/option-images-admin.js(v=${assetVersion})}"></script>
 <script>
     const source = document.querySelector(".preview-source");
     const preview = document.getElementById("field-preview");
@@ -189,9 +208,16 @@
         let input;
         if (type === "TEXTAREA") {
             input = document.createElement("textarea");
-        } else if (type === "SELECT") {
+        } else if (type === "SELECT" || type === "IMAGE_SELECT") {
             input = document.createElement("select");
-            optionsText.split(/\r?\n/).filter(Boolean).forEach((value) => {
+            let names = optionsText.split(/\r?\n/).filter(Boolean);
+            if (type === "IMAGE_SELECT") {
+                try {
+                    const options = JSON.parse(source.querySelector("[name='imageOptionsJson']").value || "[]");
+                    names = Array.isArray(options) ? options.filter(option => option && typeof option.label === "string").map(option => option.label) : [];
+                } catch (_) { names = []; }
+            }
+            names.forEach((value) => {
                 const option = document.createElement("option");
                 option.textContent = value;
                 input.appendChild(option);

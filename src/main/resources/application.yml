@@ -14,6 +14,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   messages:
     basename: messages
     encoding: UTF-8
@@ -193,3 +197,10 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
   level:
     br.com.nuvemcustomfields: DEBUG
+
+images:
+  s3:
+    bucket: ${IMAGES_S3_BUCKET:}
+    region: ${IMAGES_S3_REGION:us-east-2}
+    prefix: ${IMAGES_S3_PREFIX:production/options}
+  cleanup-delay-ms: ${IMAGES_CLEANUP_DELAY_MS:60000}

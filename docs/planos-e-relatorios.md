@@ -15,3 +15,11 @@ Valores são separados por moeda, sem conversão cambial. Para reconquista com d
 A projeção cobre as próximas cobranças de hoje ao final do mês, pelo fuso de São Paulo. Não inclui vencidos, pagamentos já realizados, reajustes de upgrade ou uma previsão de recebimentos confirmados. Assinaturas sem próxima cobrança conhecida compõem o MRR, mas não a projeção.
 
 A branch `plans-in-bd` foi preservada. A integração Shopify e a troca de JPA por JDBC não foram incorporadas.
+
+## Apresentação do Ultra e reavaliação futura
+
+Decisão de 05/10/2026: manter o preço do Ultra visível e permitir assinatura/upgrade direto. O cartão explica que o plano atende lojas com catálogos maiores, apresenta seus benefícios e oferece um contato opcional para dúvidas sobre a escolha. A página pública de preços segue a mesma abordagem.
+
+Reavaliar essa decisão quando houver dados suficientes do funil no GA4. Comparar conversão do Ultra, conversão dos demais planos e receita por loja que visualizou os planos; considerar também dúvidas recebidas, tempo de atendimento e tempo até a contratação. Cliques em contato, isoladamente, não indicam melhora na conversão.
+
+A alternativa a avaliar no futuro é substituir a contratação direta por “Entre em contato” e liberar a visualização do preço após conversar com a loja. Essa hipótese fica registrada para revisão; não foi implementada. Antes de adotar essa alternativa, verificar se o contato ajuda a orientar a escolha ou negociar condições e se compensa a etapa adicional para contratar.

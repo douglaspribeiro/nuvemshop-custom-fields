@@ -252,6 +252,10 @@ A configuracao padrao fica em `src/main/resources/application.yml`. As principai
 | `NUVEMSHOP_API_BASE_URL` | `https://api.tiendanube.com` | Base URL da API. |
 | `APP_BASE_URL` | `http://localhost:8080` | URL publica usada em scripts e webhooks. |
 | `GA4_MEASUREMENT_ID` | `G-RM8VWNPDT8` | ID de medição do Google Analytics 4; deixe vazio para desativar. Mede as telas administrativas, sem parâmetros da URL nem dados do formulário de pagamento. |
+| `IMAGES_S3_BUCKET` | vazio | Bucket privado para opções com imagem. Configuração e limpeza em [opcoes-com-imagem-s3.md](docs/opcoes-com-imagem-s3.md). |
+| `IMAGES_S3_REGION` | `us-east-2` | Região do bucket de imagens. |
+| `IMAGES_S3_PREFIX` | `production/options` | Prefixo de imagens; separar homologação e produção. |
+| `IMAGES_CLEANUP_DELAY_MS` | `60000` | Intervalo da rotina de exclusão e limpeza de imagens temporárias. |
 | `GA4_API_SECRET` | vazio | Segredo do Measurement Protocol, somente no backend, para compras e upgrades confirmados. Configuração e relatórios em [GA4_COMPRA_UPGRADE.md](docs/GA4_COMPRA_UPGRADE.md). |
 | `LEGAL_OPERATOR_NAME` | vazio | Nome completo da pessoa responsável pelo serviço, exibido nas páginas públicas. |
 | `LEGAL_DOCUMENT` | vazio | Documento opcional do responsável; não é necessário exibir CPF publicamente. |

@@ -20,6 +20,18 @@ public interface PersonalizationFieldRepository extends JpaRepository<Personaliz
     @Query("select distinct field.rule.productId from PersonalizationField field where field.rule.storeId = :storeId")
     List<Long> findConfiguredProductIdsByStoreId(@Param("storeId") Long storeId);
 
+    @Query("select new br.com.nuvemcustomfields.dto.StoreMetricCount(f.rule.storeId, count(f)) "
+            + "from PersonalizationField f group by f.rule.storeId")
+    List<br.com.nuvemcustomfields.dto.StoreMetricCount> countFieldsByStore();
+
+    @Query("select new br.com.nuvemcustomfields.dto.StoreMetricCount(f.rule.storeId, count(distinct f.rule.productId)) "
+            + "from PersonalizationField f group by f.rule.storeId")
+    List<br.com.nuvemcustomfields.dto.StoreMetricCount> countProductsWithFieldsByStore();
+
+    @Query("select new br.com.nuvemcustomfields.dto.StoreMetricCount(f.rule.storeId, count(distinct f.rule.productId)) "
+            + "from PersonalizationField f where f.rule.enabled = true group by f.rule.storeId")
+    List<br.com.nuvemcustomfields.dto.StoreMetricCount> countEnabledProductsWithFieldsByStore();
+
     @Modifying
     @Query("""
             delete from PersonalizationField field
