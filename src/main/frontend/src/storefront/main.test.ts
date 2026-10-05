@@ -99,4 +99,21 @@ describe("SDK storefront without a legacy script", () => {
         expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Capa:"Floral"});
     });
 
+    it("updates cart thumbnails without changing native cart properties", async () => {
+        await boot();
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,
+            fields:[{label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT",required:true,maxLength:100,
+                placeholder:null,validationPattern:null,options:["Floral"],imageOptions:[{label:"Floral",thumbnailUrl:"/public/thumb",imageUrl:"/public/large"}]}],
+        })} as Response);
+        const cartState={...state,cart:{items:[{id:101,product_id:341531127,properties:{Capa:"Floral"}}]}} as unknown as NubeSDKState;
+        listeners.get("cart:update")!(cartState);
+        await vi.waitFor(()=>expect(render.mock.calls.some(([slot])=>slot==="before_line_item")).toBe(true));
+        const nodes=render.mock.calls.find(([slot])=>slot==="before_line_item")![1];
+        expect(nodes[0].key).toBe(101);
+        expect(JSON.stringify(nodes)).toContain("https://app.test/public/thumb");
+        expect(send).not.toHaveBeenCalled();
+        listeners.get("cart:update")!({...state,cart:{items:[]}} as unknown as NubeSDKState);
+        expect(nube.clearSlot).toHaveBeenCalledWith("before_line_item");
+    });
+
 });

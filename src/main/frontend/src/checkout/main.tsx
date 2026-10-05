@@ -1,8 +1,9 @@
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { messages } from "../shared/i18n";
 import { PersonalizationSummary } from "../shared/PersonalizationSummary";
+import { createConfigurationLoader, imageProperties } from "../shared/selected-images";
 import { appOrigin, safeState, storeId } from "../shared/config";
-import { collectItemProperties, normalizedColor } from "../shared/properties";
+import { collectItemProperties, normalizedColor, normalizeProperties, type ItemProperties } from "../shared/properties";
 
 const SLOT = "after_line_items";
 
@@ -10,21 +11,41 @@ let textColor: string | undefined;
 let locale: string | null = null;
 
 export function App(nube: NubeSDK) {
-	const state = safeState(nube);
-	render(nube, state);
+    const configFor = createConfigurationLoader();
+    let latestState = safeState(nube);
+    let generation = 0;
+    const refresh = async (state: NubeSDKState | null) => {
+        latestState = state;
+        const current = ++generation;
+        render(nube, state);
+        const store = storeId(state);
+        const items = (state?.cart?.items ?? []).filter(item => normalizeProperties(item?.properties).length > 0);
+        if (!store || !items.length) return;
+        const groups = await Promise.all(items.map(async item => ({
+            productName: item.name || "Produto",
+            fields: item.product_id > 0 ? imageProperties(item, await configFor(store, item.product_id)) : normalizeProperties(item.properties),
+        })));
+        if (current !== generation) return;
+        renderGroups(nube, groups);
+    };
+    const state = latestState;
+	void refresh(state);
 
 	loadStyle(state).then((style) => {
 		textColor = style.color;
 		locale = style.locale;
-		render(nube, safeState(nube) ?? state);
+		void refresh(latestState);
 	});
 
-	nube.on("checkout:ready", (nextState) => render(nube, nextState));
-	nube.on("cart:update", (nextState) => render(nube, nextState));
+	nube.on("checkout:ready", (nextState) => void refresh(nextState));
+	nube.on("cart:update", (nextState) => void refresh(nextState));
 }
 
 function render(nube: NubeSDK, state: NubeSDKState | null) {
-	const groups = collectItemProperties(state?.cart?.items);
+	renderGroups(nube, collectItemProperties(state?.cart?.items));
+}
+
+function renderGroups(nube: NubeSDK, groups: ItemProperties[]) {
 	if (groups.length === 0) {
 		nube.clearSlot(SLOT);
 		return;

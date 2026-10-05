@@ -8,6 +8,7 @@ import {
 	storeId,
 } from "../shared/config";
 import { normalizedColor } from "../shared/properties";
+import { createCartImageRenderer } from "./cart-images";
 import { PersonalizationFields } from "./PersonalizationFields";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
 
@@ -46,19 +47,23 @@ export function App(nube: NubeSDK) {
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
 
 	startDiagnostics(nube);
+    const renderCartImages = createCartImageRenderer(nube);
+    void renderCartImages(safeState(nube));
 
 	// Tres gatilhos de proposito. O script roda com event=onfirstinteraction, entao sobe
 	// depois da pagina montada: `location:updated` pode nunca disparar (nada navegou) e o
 	// getState() imediato pode ainda nao estar hidratado. `page:loaded` e o sinal oficial
 	// de "SDK pronto". syncProduct e idempotente, then chamar de varios lugares e seguro.
 	void syncProduct(nube, safeState(nube));
-	nube.on("page:loaded", (state) => void syncProduct(nube, state));
-	nube.on("location:updated", (state) => void syncProduct(nube, state));
+	nube.on("page:loaded", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
+	nube.on("location:updated", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
+    nube.on("cart:update", state => void renderCartImages(state));
 	nube.on("product:variant_selected", (state) => {
 		variantId = readVariantId(state) ?? variantId;
 	});
 	nube.on("cart:before_update", (state) => gate(nube, state));
-	nube.on("cart:add:success", () => {
+	nube.on("cart:add:success", (state) => {
+        void renderCartImages(state);
 		pendingSelfAdds = 0;
 		values = {};
 		errors = [];

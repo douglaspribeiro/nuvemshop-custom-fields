@@ -1,6 +1,6 @@
 import type { CartItem } from "@tiendanube/nube-sdk-types";
 
-export type NamedProperty = { name: string; value: string };
+export type NamedProperty = { name: string; value: string; thumbnailUrl?: string };
 
 export type ItemProperties = { productName: string; fields: NamedProperty[] };
 

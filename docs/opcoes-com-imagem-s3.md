@@ -27,15 +27,25 @@ O usuário/role precisa de `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` e `
 
 A migration **V47** acrescenta a configuração visual nos campos e o registro `personalization_images`. Faça o build normal do Maven, que também gera os bundles da vitrine. Antes de publicar, configurar bucket, região e credenciais/permissões e verificar upload, visualização e exclusão com um produto de teste no ambiente correspondente.
 
-### Publicar o JavaScript da vitrine no Partner Portal
+### Publicar os scripts da vitrine e checkout no Partner Portal
 
-Atualizar o backend não substitui automaticamente o arquivo do Storefront SDK que a Nuvemshop hospeda em sua CDN. Depois do build, criar uma nova versão do script existente da vitrine no Partner Portal, enviar `src/main/frontend/dist/nuvemshop-storefront-sdk.js` e publicar essa versão. Preservar o identificador do script, a marcação NubeSDK e as permissões/configurações atuais. Associar/atualizar a versão na loja de teste conforme o fluxo do portal e confirmar no navegador qual arquivo da CDN está sendo carregado. Esta etapa não altera o script de checkout.
+Atualizar o backend não substitui automaticamente o arquivo do Storefront SDK que a Nuvemshop hospeda em sua CDN. Depois do build, criar uma nova versão do script existente da vitrine no Partner Portal, enviar `src/main/frontend/dist/nuvemshop-storefront-sdk.js` e publicar essa versão. Preservar o identificador do script, a marcação NubeSDK e as permissões/configurações atuais. Associar/atualizar a versão na loja de teste conforme o fluxo do portal e confirmar no navegador qual arquivo da CDN está sendo carregado. Para exibir as miniaturas também no checkout, enviar `src/main/frontend/dist/nuvemshop-checkout-sdk.js` como nova versão do script existente `checkout-v1` (ID 7145). O script da vitrine é `store-front-v5` (ID 9319). Implantar em testes primeiro e manter os mesmos IDs/handles. Publicar ambos após validar.
 
 Antes de publicar a versão do script para as lojas, guarde o arquivo anterior e valide na loja de teste: um produto com os campos existentes (texto, número e lista), um produto com imagens, campos obrigatórios, troca de variante/quantidade, carrinho e checkout. Confira se os nomes escolhidos acompanham o item e se a compra não adiciona itens duplicados. Repita em desktop e celular. Os testes automatizados cobrem esses componentes, mas a validação no tema real continua necessária. Se houver regressão, republicar o arquivo anterior permite recuperar o comportamento anterior.
 
 Os limites comerciais de imagens dependem da publicação do backend com a migração `V48__plan_image_limits.sql`. O script de vitrine recebe apenas os campos/opções permitidos pela API; não precisa conhecer o plano nem os limites do catálogo.
 
 Diagnóstico de 05/10/2026 na LojaTeste1 (Morelia): o produto tinha três opções com imagem e a miniatura respondeu 200/JPEG. O bundle servido pelo backend continha `IMAGE_SELECT` e `imageOptions`, mas o script carregado pela loja, `store-front-v5/4.js`, não continha esses recursos. Nesse cenário, é necessário publicar a nova versão no portal; alterar o bucket ou suas permissões não atualiza o JavaScript hospedado pela Nuvemshop.
+
+## Carrinho e checkout
+
+O Storefront SDK exibe os campos personalizados em `before_line_item`, com a chave do componente igual ao ID da linha do carrinho, conforme os [slots oficiais da Nuvemshop](https://nuvemshop.dev/apps/nube-sdk/slots/storefront-slots). Cada campo apresenta `nome: valor`; opções com imagem recebem uma miniatura de 56 pixels. O resumo do checkout em `after_line_items` usa o mesmo componente de campos e miniaturas.
+
+A seleção é resolvida pelo produto, nome da propriedade e valor efetivamente salvos no item do carrinho, tanto em propriedades no formato objeto quanto array. Não usa a seleção corrente do formulário nem snapshots locais para escolher uma imagem. Se a opção foi removida/renomeada ou deixou de estar disponível no plano, o valor salvo continua aparecendo como texto. As propriedades de compra/pedido permanecem com os nomes escolhidos, sem acrescentar URLs assinadas.
+
+A configuração é reaproveitada por loja/produto por até um minuto, e requisições concorrentes compartilham a mesma consulta. Falhas são tentadas novamente na próxima atualização; o texto permanece visível. Respostas atrasadas não recolocam itens removidos. O checkout usa o estado mais recente mesmo se as cores/idioma terminarem de carregar após uma atualização do carrinho.
+
+Validação local: 71 testes frontend, verificação TypeScript e build aprovados. Inclui imagens distintas no mesmo produto, propriedades em ambos os formatos, campos comuns, opções indisponíveis, falhas de consulta, remoção de itens e respostas atrasadas. A conferência no tema real depende da instalação das versões de teste dos dois scripts no portal.
 
 ## Upload e entrega
 

@@ -1,4 +1,5 @@
 import { Column, Text } from "@tiendanube/nube-sdk-jsx";
+import { PersonalizationValues } from "./PersonalizationValues";
 import type { ItemProperties } from "./properties";
 
 type Props = {
@@ -52,17 +53,7 @@ export function PersonalizationSummary({ title, groups, color }: Props) {
 						>
 							{group.productName}
 						</Text>
-						<Column gap={0}>
-							{group.fields.map((field) => (
-								<Text
-									color={color}
-									modifiers={["bold"]}
-									style={{ fontSize: "14px", lineHeight: "18px", marginBottom: "2px" }}
-								>
-									{`${field.name}: ${field.value}`}
-								</Text>
-							))}
-						</Column>
+						<PersonalizationValues fields={group.fields} color={color} />
 					</Column>
 				))}
 			</Column>
