@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.24.0] - 2026-10-05
+
+### Features
+
+- add S3 image options and adoption reports (`8eb6fbb`)
+
 ## [1.23.0] - 2026-10-03
 
 ### Features
