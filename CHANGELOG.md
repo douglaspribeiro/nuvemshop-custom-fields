@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.25.0] - 2026-10-05
+
+### Features
+
+- show personalization images in cart and checkout (`6e203ff`)
+- enforce image option limits by subscription plan (`013548a`)
+
 ## [1.24.0] - 2026-10-05
 
 ### Features
