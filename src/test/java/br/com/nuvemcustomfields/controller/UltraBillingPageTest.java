@@ -26,6 +26,7 @@ class UltraBillingPageTest {
     @Autowired MockMvc mvc;
     @Autowired StoreRepository stores;
     @MockitoBean PaymentSubscriptionService payments;
+    @MockitoBean br.com.nuvemcustomfields.service.EfiUpgradeService upgrades;
     private MockHttpSession session;
     private PaymentSubscription subscription;
 
@@ -85,5 +86,35 @@ class UltraBillingPageTest {
         assertThat(plans).contains("50 produtos personalizados", "Ultra").doesNotContain("/admin/billing/upgrade?plan=PREMIUM_ULTRA");
         mvc.perform(get("/admin/billing/upgrade").session(session).param("plan", "PREMIUM_ULTRA"))
                 .andExpect(redirectedUrl("/admin/billing"));
+    }
+
+    @Test void paymentAndUpgradePagesRenderAnalyticsWithAmountsAndAnonymousContext() throws Exception {
+        when(payments.provider(any())).thenReturn(Optional.of(PaymentProviderType.EFI));
+        when(payments.efiQuote(any(), any())).thenReturn(new br.com.nuvemcustomfields.service.WinbackDiscountService.Quote(
+                "VOLTA", new BigDecimal("59.90"), new BigDecimal("29.95")));
+        String payment = mvc.perform(get("/admin/billing/pay").param("plan", "PREMIUM_ULTRA").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(payment).contains("billing-analytics.js", "step: \"payment\"").doesNotContain("GA4_API_SECRET");
+        var a = new UpgradeAdjustment();
+        a.setStoreId(991120L); a.setSourcePlan(PlanType.PREMIUM_PLUS); a.setTargetPlan(PlanType.PREMIUM_ULTRA);
+        a.setSourceAmount(new BigDecimal("29.99")); a.setRegularAmount(new BigDecimal("59.90"));
+        a.setDueAmount(new BigDecimal("8.97")); a.setTargetProrated(new BigDecimal("20.00"));
+        a.setDiscountAmount(BigDecimal.ZERO); a.setCreditAmount(new BigDecimal("11.03"));
+        a.setPeriodEnd(java.time.Instant.now().plusSeconds(86400)); a.setEnvironment(PaymentEnvironment.SANDBOX);
+        when(upgrades.quote(eq(991120L),eq(PlanType.PREMIUM_ULTRA),isNull())).thenReturn(a);
+        when(upgrades.owned(991120L,a.getId())).thenReturn(a);
+        String review = mvc.perform(get("/admin/billing/upgrade/efi").param("plan", "PREMIUM_ULTRA").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(review).contains("billing-analytics.js", "upgrade_review", "8.97", "59.90", "sandbox: true");
+        String upgradePayment = mvc.perform(get("/admin/billing/upgrade/efi/pay").param("id",a.getId()).session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(upgradePayment).contains("billing-analytics.js", "8.97", "flow: \"upgrade\"");
+    }
+
+    @Test void otherProviderUpgradeConfirmationRendersAnalytics() throws Exception {
+        subscription.setProvider(PaymentProviderType.MERCADO_PAGO);
+        String page = mvc.perform(get("/admin/billing/upgrade").param("plan","PREMIUM_ULTRA").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("billing-analytics.js", "upgrade_review", "MERCADO_PAGO");
     }
 }

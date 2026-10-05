@@ -2,6 +2,8 @@
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmar upgrade</title>
 <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: billingEvents('upgrade_review')}"></th:block>
 </head>
 <body class="merchant-page"><main class="shell merchant-upgrade-page">
 <div class="flash error" th:if="${error}" th:text="${error}" role="alert"></div>

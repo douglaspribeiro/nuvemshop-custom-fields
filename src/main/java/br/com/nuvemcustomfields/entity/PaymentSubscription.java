@@ -16,6 +16,17 @@ import java.time.Instant;
 @Entity
 @Table(name = "payment_subscriptions")
 public class PaymentSubscription {
+    @Column(length=64) private String analyticsClientId;
+    @Column(length=20) private String analyticsSessionId;
+    public String getAnalyticsClientId(){return analyticsClientId;}
+    public String getAnalyticsSessionId(){return analyticsSessionId;}
+    public void captureAnalytics(){
+        var context=br.com.nuvemcustomfields.service.Ga4Context.current();
+        analyticsClientId=context.clientId(); analyticsSessionId=context.sessionId();
+    }
+    @Column(length=120) private String analyticsFirstPaymentId;
+    public String getAnalyticsFirstPaymentId(){return analyticsFirstPaymentId;}
+    public void setAnalyticsFirstPaymentId(String value){analyticsFirstPaymentId=value;}
     @Column(name="upgrade_payment_pending",nullable=false)
     @org.hibernate.annotations.ColumnDefault("false")
     private boolean upgradePaymentPending;

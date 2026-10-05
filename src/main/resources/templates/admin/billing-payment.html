@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="../../static/styles/checkout.css" th:href="@{/styles/checkout.css(v=${assetVersion})}">
     <script defer src="https://cdn.jsdelivr.net/gh/efipay/js-payment-token-efi@3.4.1/dist/payment-token-efi-umd.min.js"></script>
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: billingEvents('payment')}"></th:block>
 </head>
 <body class="payment-page">
 <main class="shell payment-shell">
@@ -190,8 +192,10 @@ document.getElementById('efi-payment-form').addEventListener('submit', async fun
         if (!token.payment_token) throw new Error('Não foi possível gerar o token do cartão.');
         document.getElementById('payment-token').value = token.payment_token;
         for (const id of ['card-number', 'card-holder', 'card-expiration', 'card-cvv']) document.getElementById(id).value = '';
+        window.billingTrackPayment?.();
         form.submit();
     } catch (failure) {
+        window.billingTrackFailure?.('tokenization');
         error.textContent = failure.message || 'Não foi possível validar o cartão. Confira os dados e tente novamente.';
         error.hidden = false;
         error.focus();

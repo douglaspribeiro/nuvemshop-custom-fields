@@ -3,6 +3,8 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{admin.billing.upgrade.title}">Confirmar upgrade</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: billingEvents('upgrade_review')}"></th:block>
 </head>
 <body class="merchant-page"><main class="shell"><section class="panel"><p class="eyebrow">Upgrade de plano</p>
     <h1 th:text="#{admin.billing.upgrade.heading(${targetPlan.displayName})}">Trocar para Ultra</h1>

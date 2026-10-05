@@ -123,6 +123,7 @@ public class EfiUpgradeService {
             if(!cycleEnd(remote).equals(a.getPeriodEnd())) throw new IllegalArgumentException("Seu ciclo mudou. Revise o upgrade novamente.");
             if(a.getDueAmount().signum()>0 && (!validPayer(payer) || token==null || !token.matches("[a-zA-Z0-9]{20,120}")))
                 throw new IllegalArgumentException("Informe os dados de pagamento.");
+            a.captureAnalytics();
             coupons.reserve(a);
             a.setState(a.getDueAmount().signum()==0?State.PAID:State.CREATING);
             if(a.getDueAmount().signum()==0) a.setPaidAt(Instant.now());
@@ -185,6 +186,7 @@ public class EfiUpgradeService {
                 }else if(Set.of("unpaid","canceled","refunded","contested").contains(paymentStatus)){
                     if(current.getPaidAt()!=null){current.setState(State.REVIEW);current.setMessage("O pagamento mudou de status. Entre em contato com o suporte.");}
                     else{current.setState(State.FAILED);current.setMessage("O ajuste não foi pago. Você continua no plano anterior.");
+                        notifications.upgradeFailed(current);
                         coupons.release(current);
                         subscriptions.findByStoreId(current.getStoreId()).ifPresent(s->{s.setUpgradePaymentPending(false);subscriptions.save(s);});}
                 }

@@ -220,6 +220,8 @@ public class PaymentSubscriptionService {
         local.setProviderCheckoutId(null);
         local.setProviderPriceId(efi.planId(plan));
         local.setExternalReference(reference);
+        local.captureAnalytics();
+        local.setAnalyticsFirstPaymentId(null);
         local.setPayerEmail(payer.email());
         local.setPlan(plan);
         local.setCurrency("BRL");
@@ -299,6 +301,10 @@ public class PaymentSubscriptionService {
         return priceGateway(store).map(gateway -> amount(gateway, store, plan)).orElse(BigDecimal.ZERO);
     }
 
+    public boolean analyticsSandbox(Store store) {
+        return priceGateway(store).map(gateway -> gateway.environment() == br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX).orElse(false);
+    }
+
     public String currency(Store store) {
         return priceGateway(store).map(gateway -> gateway.currency(store)).orElse(store.getStoreCurrency());
     }
@@ -360,6 +366,8 @@ public class PaymentSubscriptionService {
                 && !"new_charge".equalsIgnoreCase(before.status())) {
             throw new IllegalArgumentException("A assinatura precisa estar ativa para fazer upgrade.");
         }
+        subscription.captureAnalytics();
+        if (subscription.getAnalyticsFirstPaymentId() == null) subscription.setAnalyticsFirstPaymentId("legacy");
         subscription.requestUpgrade(targetPlan, targetAmount, gateway.priceId(store, targetPlan));
         subscriptions.saveAndFlush(subscription);
         try {
@@ -458,6 +466,8 @@ public class PaymentSubscriptionService {
         subscription.setProviderSubscriptionId(null);
         subscription.setProviderCheckoutId(null);
         subscription.setExternalReference(reference);
+        subscription.captureAnalytics();
+        subscription.setAnalyticsFirstPaymentId(null);
         subscription.setPlan(plan);
         subscription.setCurrency(gateway.currency(store));
         subscription.setAmountValue(amount(gateway, store, plan));
@@ -754,6 +764,7 @@ public class PaymentSubscriptionService {
             String source
     ) {
         validateRemote(local, remote);
+        PlanType sourcePlan = local.getPlan();
         boolean upgraded = matchesUpgrade(local, remote);
         if (upgraded) {
             local.setPlan(local.getUpgradePlan());
@@ -787,7 +798,11 @@ public class PaymentSubscriptionService {
         }
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
-        if (upgraded) activate(local, store, "PAYMENT_UPGRADE");
+        if (upgraded) {
+            activate(local, store, "PAYMENT_UPGRADE");
+            paymentNotifications.planChanged(local, sourcePlan);
+        }
+        paymentNotifications.paymentFailed(local, invoice);
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
         if (remote.cancellationEffectiveAt() != null) {
             local.setStatus(PaymentSubscriptionStatus.CANCELED);

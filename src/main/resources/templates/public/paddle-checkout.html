@@ -5,6 +5,8 @@
     <title>Pagamento seguro · Campos Personalizados</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: billingEvents('external_payment')}"></th:block>
 </head>
 <body class="public-page">
 <main class="public-shell" style="max-width:720px;margin:48px auto;padding:24px">
@@ -22,7 +24,11 @@ const status = document.getElementById('paddle-status');
 const button = document.getElementById('paddle-open');
 if (sandbox) Paddle.Environment.set('sandbox');
 Paddle.Initialize({token, eventCallback: event => {
-    if (event.name === 'checkout.completed') {
+    if (event.name === 'checkout.payment.initiated') {
+        window.billingTrackPayment?.('paddle');
+    } else if (event.name === 'checkout.payment.failed' || event.name === 'checkout.payment.error') {
+        window.billingTrackFailure?.('provider_browser');
+    } else if (event.name === 'checkout.completed') {
         status.textContent = 'Pagamento recebido. A confirmação está sendo processada; você já pode fechar esta página.';
         button.hidden = true;
     } else if (event.name === 'checkout.closed') {

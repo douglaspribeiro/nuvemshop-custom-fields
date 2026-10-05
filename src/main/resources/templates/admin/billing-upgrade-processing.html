@@ -1,5 +1,7 @@
 <!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Andamento do upgrade</title><link rel="stylesheet" th:href="@{/styles/app.css}"><link rel="stylesheet" th:href="@{/styles/merchant.css}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: billingEvents('processing')}"></th:block>
 </head>
 <body class="merchant-page"><main class="shell"><section class="panel">
 <h1 th:text="${upgradeAdjustment.state.name()=='COMPLETED' ? 'Upgrade concluído!' : (upgradeAdjustment.state.name()=='FAILED' ? 'Pagamento não confirmado' : 'Confirmando seu upgrade')}"></h1>

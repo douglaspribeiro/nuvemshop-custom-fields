@@ -15,7 +15,14 @@ public class PaddleCheckoutController {
     @GetMapping("/checkout/paddle")
     public String checkout(@RequestParam String token, Model model, HttpServletResponse response) {
         response.setHeader("Cache-Control", "no-store");
-        model.addAttribute("checkout", subscriptions.paddleCheckout(token));
+        var checkout = subscriptions.paddleCheckout(token);
+        model.addAttribute("checkout", checkout);
+        model.addAttribute("analyticsPlan", java.util.Arrays.stream(br.com.nuvemcustomfields.entity.PlanType.values())
+                .filter(plan -> plan.getDisplayName().equals(checkout.planName())).map(Enum::name).findFirst().orElse(null));
+        model.addAttribute("analyticsProvider", "PADDLE");
+        model.addAttribute("analyticsCurrency", checkout.currency());
+        model.addAttribute("amount", checkout.amount());
+        model.addAttribute("analyticsSandbox", checkout.sandbox());
         return "public/paddle-checkout";
     }
 }

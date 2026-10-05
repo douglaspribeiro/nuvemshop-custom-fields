@@ -17,5 +17,24 @@
         });
     </script>
 </th:block>
+<th:block th:fragment="billingEvents(step)">
+    <script th:inline="javascript">
+        window.billingAnalytics = {
+            measurementId: /*[[${ga4MeasurementId}]]*/ '',
+            step: /*[[${step}]]*/ '',
+            flow: /*[[${upgradeAdjustment != null or targetPlan != null ? 'upgrade' : 'subscription'}]]*/ 'subscription',
+            plan: /*[[${upgradeAdjustment != null ? upgradeAdjustment.targetPlan.name() : (targetPlan != null ? targetPlan.name() : (plan != null ? plan.name() : analyticsPlan))}]]*/ null,
+            sourcePlan: /*[[${upgradeAdjustment != null ? upgradeAdjustment.sourcePlan.name() : (store != null ? store.effectivePlan.name() : null)}]]*/ null,
+            provider: /*[[${analyticsProvider}]]*/ null,
+            currency: /*[[${analyticsCurrency}]]*/ null,
+            amount: /*[[${upgradeAdjustment != null ? upgradeAdjustment.dueAmount : amount}]]*/ null,
+            recurringAmount: /*[[${upgradeAdjustment != null ? upgradeAdjustment.regularAmount : analyticsRecurringAmount}]]*/ null,
+            coupon: /*[[${upgradeAdjustment != null ? upgradeAdjustment.couponCode : couponCode}]]*/ null,
+            sandbox: /*[[${efiEnvironment == 'sandbox' or analyticsSandbox == true}]]*/ false,
+            hasError: /*[[${error != null}]]*/ false
+        };
+    </script>
+    <script defer th:src="@{/assets/billing-analytics.js(v=${assetVersion})}"></script>
+</th:block>
 </body>
 </html>

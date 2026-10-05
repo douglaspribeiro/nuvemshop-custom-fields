@@ -86,6 +86,8 @@ public class EfiUpgradeController {
 
     private void populate(Model model,Store store,UpgradeAdjustment a){
         model.addAttribute("store",store);model.addAttribute("upgradeAdjustment",a);
+        model.addAttribute("analyticsProvider","EFI");model.addAttribute("analyticsCurrency","BRL");
+        model.addAttribute("analyticsSandbox",a.getEnvironment()==PaymentEnvironment.SANDBOX);
         model.addAttribute("targetPrice",money(a.getRegularAmount()));model.addAttribute("currentPrice",money(a.getSourceAmount()));
         model.addAttribute("proratedPrice",money(a.getTargetProrated()));model.addAttribute("discountPrice",money(a.getDiscountAmount()));
         model.addAttribute("creditPrice",money(a.getCreditAmount()));model.addAttribute("duePrice",money(a.getDueAmount()));

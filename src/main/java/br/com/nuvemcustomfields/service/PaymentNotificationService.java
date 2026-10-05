@@ -21,6 +21,20 @@ public class PaymentNotificationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(PaymentNotificationService.class);
     private final PaymentNotificationOutboxRepository outbox;
     private final DiscordPaymentWebhookClient discord;
+    private Ga4BillingService analytics;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setAnalytics(Ga4BillingService analytics) { this.analytics = analytics; }
+
+    public void planChanged(PaymentSubscription sub, br.com.nuvemcustomfields.entity.PlanType source) {
+        if (analytics != null) analytics.planChanged(sub, source);
+    }
+    public void upgradeFailed(UpgradeAdjustment adjustment) {
+        if (analytics != null) analytics.upgradeFailure(adjustment);
+    }
+    public void paymentFailed(PaymentSubscription sub, GatewayInvoice invoice) {
+        if (analytics != null) analytics.failure(sub, invoice);
+    }
 
     public PaymentNotificationService(PaymentNotificationOutboxRepository outbox,
                                       DiscordPaymentWebhookClient discord) {
@@ -32,7 +46,11 @@ public class PaymentNotificationService {
     public void enqueue(PaymentSubscription subscription, GatewayInvoice invoice) {
         if (invoice == null || !invoice.approved() || invoice.paymentId() == null
                 || invoice.paymentId().isBlank()) return;
-        if (outbox.existsByProviderAndPaymentId(subscription.getProvider(), invoice.paymentId())) return;
+        if (outbox.existsByProviderAndPaymentId(subscription.getProvider(), invoice.paymentId())) {
+            if (subscription.getAnalyticsFirstPaymentId() == null) subscription.setAnalyticsFirstPaymentId(invoice.paymentId());
+            return;
+        }
+        if (analytics != null) analytics.payment(subscription, invoice);
         PaymentNotificationOutbox notification = new PaymentNotificationOutbox();
         notification.setProvider(subscription.getProvider());
         notification.setPaymentId(invoice.paymentId());
@@ -49,6 +67,7 @@ public class PaymentNotificationService {
     @Transactional
     public void enqueueUpgrade(Store store, UpgradeAdjustment adjustment) {
         if (adjustment.getState()!=UpgradeAdjustment.State.COMPLETED) return;
+        if (analytics != null) analytics.upgrade(adjustment);
         String eventId=adjustment.reference();
         if (outbox.existsByProviderAndPaymentId(PaymentProviderType.EFI,eventId)) return;
         var notification=new PaymentNotificationOutbox();

@@ -225,6 +225,10 @@ public class AdminController {
                 && !subscription.isWinbackRestorePending() && subscription.getUpgradePlan() == null
                 && !subscription.isUpgradePaymentPending() && !store.isCourtesyPremium());
         model.addAttribute("paymentSubscription", subscription);
+        model.addAttribute("analyticsCurrency", billingCurrency);
+        model.addAttribute("analyticsProvider", subscription != null && subscription.isAccessActive()
+                ? subscription.getProvider().name() : paymentSubscriptionService.provider(store).map(Enum::name).orElse(null));
+        model.addAttribute("analyticsSandbox", paymentSubscriptionService.analyticsSandbox(store));
         model.addAttribute("billingError", subscription == null || subscription.getLastError() == null ? null
                 : paymentSubscriptionService.customerFacingError(subscription.getTechnicalError() == null
                 ? subscription.getLastError() : subscription.getTechnicalError()));
@@ -272,6 +276,10 @@ public class AdminController {
             return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
         model.addAttribute("store", store);
         model.addAttribute("targetPlan", plan);
+        model.addAttribute("analyticsCurrency", subscription.getCurrency());
+        model.addAttribute("analyticsProvider", subscription.getProvider().name());
+        model.addAttribute("analyticsSandbox", subscription.getProviderEnvironment() == br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX);
+        model.addAttribute("analyticsRecurringAmount", paymentSubscriptionService.upgradeAmount(store, plan));
         response.setHeader("Cache-Control", "no-store");
         BigDecimal amount = paymentSubscriptionService.upgradeAmount(store, plan);
         model.addAttribute("amount", amount);
@@ -309,6 +317,9 @@ public class AdminController {
         model.addAttribute("plan", plan);
         var quote = paymentSubscriptionService.efiQuote(store, plan);
         model.addAttribute("couponCode", quote.code());
+        model.addAttribute("analyticsProvider", "EFI");
+        model.addAttribute("analyticsCurrency", "BRL");
+        model.addAttribute("analyticsRecurringAmount", quote.regularAmount());
         model.addAttribute("discounted", quote.discounted());
         model.addAttribute("amount", quote.firstAmount());
         model.addAttribute("formattedAmount", NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
