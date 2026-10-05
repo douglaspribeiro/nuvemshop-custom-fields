@@ -95,6 +95,11 @@ public class Store {
         return premiumBonusExpiresAt != null && Instant.now().isBefore(premiumBonusExpiresAt);
     }
 
+    public long getPremiumBonusDurationDays() {
+        if (premiumBonusStartedAt == null || premiumBonusExpiresAt == null) return 30;
+        return java.time.temporal.ChronoUnit.DAYS.between(premiumBonusStartedAt, premiumBonusExpiresAt);
+    }
+
     public long getPremiumBonusDaysRemaining() {
         if (!isPremiumBonusActive()) {
             return 0;

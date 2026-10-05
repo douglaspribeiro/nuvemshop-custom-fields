@@ -41,8 +41,8 @@
                 <button class="button primary" type="submit">Salvar override</button>
             </form>
             <div class="settings-panel">
-                <h3>Plano gratuito por 30 dias</h3>
-                <p>Permite conceder o plano Essencial ou Pro. Sem cobranca ou renovacao automatica.
+                <h3>Cortesia temporária</h3>
+                <p>Permite conceder o plano Essencial ou Pro por 7 ou 30 dias. Sem cobranca ou renovacao automatica.
                     Ao expirar, a loja volta aos limites do plano gratuito, preservando os dados cadastrados.</p>
                 <p>Plano em uso: <strong th:text="${store.effectivePlan.displayName}">FREE</strong></p>
                 <p th:if="${store.premiumBonusStartedAt}">
@@ -56,17 +56,31 @@
                     <form th:if="${!store.premiumBonusActive or store.premiumBonusPlan.name() != 'PREMIUM'}"
                           th:action="@{/backoffice/stores/{storeId}/premium-bonus(storeId=${store.storeId})}" method="post">
                         <input type="hidden" name="plan" value="PREMIUM">
+                        <label th:unless="${store.premiumBonusActive}">
+                            Prazo da cortesia
+                            <select name="days" required>
+                                <option value="7">7 dias</option>
+                                <option value="30" selected>30 dias</option>
+                            </select>
+                        </label>
                         <button class="button primary" type="submit"
-                                th:text="${store.premiumBonusActive} ? 'Trocar para Essencial (manter prazo)' : 'Conceder Essencial por 30 dias'">
-                            Conceder Essencial por 30 dias
+                                th:text="${store.premiumBonusActive} ? 'Trocar para Essencial (manter prazo)' : 'Conceder Essencial'">
+                            Conceder Essencial
                         </button>
                     </form>
                     <form th:if="${!store.premiumBonusActive or store.premiumBonusPlan.name() != 'PREMIUM_PLUS'}"
                           th:action="@{/backoffice/stores/{storeId}/premium-bonus(storeId=${store.storeId})}" method="post">
                         <input type="hidden" name="plan" value="PREMIUM_PLUS">
+                        <label th:unless="${store.premiumBonusActive}">
+                            Prazo da cortesia
+                            <select name="days" required>
+                                <option value="7">7 dias</option>
+                                <option value="30" selected>30 dias</option>
+                            </select>
+                        </label>
                         <button class="button primary" type="submit"
-                                th:text="${store.premiumBonusActive} ? 'Trocar para Pro (manter prazo)' : 'Conceder Pro por 30 dias'">
-                            Conceder Pro por 30 dias
+                                th:text="${store.premiumBonusActive} ? 'Trocar para Pro (manter prazo)' : 'Conceder Pro'">
+                            Conceder Pro
                         </button>
                     </form>
                 </div>

@@ -252,15 +252,16 @@ public class BackofficeController {
     public String premiumBonus(
             @PathVariable Long storeId,
             @RequestParam PlanType plan,
+            @RequestParam(defaultValue = "30") int days,
             RedirectAttributes redirectAttributes
     ) {
         try {
-            boolean changedExistingBonus = backofficeService.grantOrChangePlanBonus(storeId, plan);
+            boolean changedExistingBonus = backofficeService.grantOrChangePlanBonus(storeId, plan, days);
             redirectAttributes.addFlashAttribute(
                     "message",
                     changedExistingBonus
                             ? "Plano temporario alterado para " + plan.getDisplayName() + ". A data de termino foi mantida."
-                            : plan.getDisplayName() + " concedido por 30 dias, sem cobranca ou renovacao automatica."
+                            : plan.getDisplayName() + " concedido por " + days + " dias, sem cobranca ou renovacao automatica."
             );
         } catch (IllegalArgumentException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());

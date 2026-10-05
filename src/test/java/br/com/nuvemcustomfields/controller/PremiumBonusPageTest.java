@@ -230,8 +230,8 @@ class PremiumBonusPageTest {
         String path = "/backoffice/stores/7654321";
 
         mvc.perform(get(path).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Conceder Essencial por 30 dias")))
-                .andExpect(content().string(containsString("Conceder Pro por 30 dias")));
+                .andExpect(content().string(containsString("Conceder Essencial")))
+                .andExpect(content().string(containsString("Conceder Pro")));
         mvc.perform(post(path + "/premium-bonus").param("plan", "PREMIUM").session(session))
                 .andExpect(redirectedUrl(path));
         Store saved = stores.findByStoreId(7654321L).orElseThrow();
@@ -318,4 +318,26 @@ class PremiumBonusPageTest {
         mvc.perform(post("/backoffice/stores/7654321/premium-bonus"))
                 .andExpect(redirectedUrl("/backoffice/login"));
     }
+    @Test void grantsSevenDaysAndPreservesExpirationOnPlanChange() throws Exception {
+        Store store=new Store();store.setStoreId(7654399L);store.setAccessToken("test");store.setStoreCountryCode("BR");stores.save(store);
+        var owner=new MockHttpSession();owner.setAttribute(BackofficeSessionInterceptor.SESSION_KEY,true);
+        String path="/backoffice/stores/7654399";
+        mvc.perform(get(path).session(owner)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("value=\"7\"")));
+        mvc.perform(post(path+"/premium-bonus").param("plan","PREMIUM").param("days","7").session(owner))
+                .andExpect(redirectedUrl(path)).andExpect(flash().attribute("message",containsString("7 dias")));
+        var saved=stores.findByStoreId(7654399L).orElseThrow();var expiration=saved.getPremiumBonusExpiresAt();
+        assertThat(java.time.Duration.between(saved.getPremiumBonusStartedAt(),expiration)).isEqualTo(java.time.Duration.ofDays(7));
+        var merchant=new MockHttpSession();merchant.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,7654399L);
+        mvc.perform(get("/admin").session(merchant)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Você está no plano Essencial por 7 dias.")))
+                .andExpect(content().string(containsString("Restam 7 dias.")));
+        mvc.perform(post(path+"/premium-bonus").param("plan","PREMIUM_PLUS").session(owner)).andExpect(redirectedUrl(path));
+        assertThat(stores.findByStoreId(7654399L).orElseThrow().getPremiumBonusExpiresAt()).isEqualTo(expiration);
+        mvc.perform(post(path+"/premium-bonus").param("plan","PREMIUM").param("days","8").session(owner))
+                .andExpect(flash().attributeExists("error"));
+        assertThat(saved.getPremiumBonusExpiresAt()).isEqualTo(expiration);
+        verifyNoInteractions(billing);
+    }
+
 }

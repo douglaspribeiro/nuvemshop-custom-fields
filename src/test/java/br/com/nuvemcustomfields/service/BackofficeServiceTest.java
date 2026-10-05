@@ -128,4 +128,16 @@ class BackofficeServiceTest {
         assertThat(store.getCourtesyPremiumReason()).isNull();
         verify(storeRepository).save(store);
     }
+    @Test void sevenDayCourtesyExpiresAutomaticallyAndRejectsInvalidDurations() {
+        Store store=new Store();store.setStoreId(123L);
+        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+        assertThatThrownBy(()->service.grantOrChangePlanBonus(123L,PlanType.PREMIUM,8)).isInstanceOf(IllegalArgumentException.class);
+        service.grantOrChangePlanBonus(123L,PlanType.PREMIUM,7);
+        assertThat(store.getPremiumBonusDurationDays()).isEqualTo(7);
+        assertThat(Duration.between(store.getPremiumBonusStartedAt(),store.getPremiumBonusExpiresAt())).isEqualTo(Duration.ofDays(7));
+        store.setPremiumBonusExpiresAt(Instant.now().minusSeconds(1));
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.FREE);
+        assertThat(store.isCourtesyPremium()).isFalse();
+    }
+
 }
