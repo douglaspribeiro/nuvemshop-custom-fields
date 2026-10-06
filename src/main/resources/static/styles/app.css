@@ -509,3 +509,5 @@ input[type="color"] {
         flex-direction: column;
     }
 }
+
+.store-last-access { display: block; }

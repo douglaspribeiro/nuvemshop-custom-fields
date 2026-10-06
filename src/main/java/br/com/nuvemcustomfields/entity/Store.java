@@ -141,6 +141,13 @@ public class Store {
     @Column(name = "cart_text_color", length = 7)
     private String cartTextColor;
 
+    // Updated separately so saving a stale Store cannot overwrite a more recent access.
+    @Column(name = "last_admin_access_at", updatable = false)
+    private Instant lastAdminAccessAt;
+
+    public Instant getLastAdminAccessAt() { return lastAdminAccessAt; }
+    public void setLastAdminAccessAt(Instant value) { lastAdminAccessAt = value; }
+
     @Column(name = "installed_at", nullable = false, updatable = false)
     private Instant installedAt = Instant.now();
 
