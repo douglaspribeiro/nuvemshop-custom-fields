@@ -77,8 +77,8 @@ class PublicMarketPagesTest {
 
     @Test void fallsBackWithoutGeolocationAndShowsSupportAndProBadge() throws Exception {
         mvc.perform(get("/precos/")).andExpect(content().string(containsString("R$ 19,99")))
-                .andExpect(content().string(containsString("<p>Mais escolhido</p><h2>Pro</h2>")))
-                .andExpect(content().string(not(containsString("<p>Mais escolhido</p><h2>Essencial</h2>"))));
+                .andExpect(content().string(containsString("class=\"pricing-card featured\" aria-labelledby=\"pro-plan-title\"")))
+                .andExpect(content().string(not(containsString("class=\"pricing-card featured\" aria-labelledby=\"essential-plan-title\""))));
         mvc.perform(get("/precos/").header("CF-IPCountry", "XX").header("Accept-Language", "es-CL"))
                 .andExpect(content().string(containsString("CLP 4.199")));
         for (var path : new String[]{"/contato/", "/termos/", "/support/"}) {

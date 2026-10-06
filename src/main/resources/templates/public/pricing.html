@@ -1,3 +1,96 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Preços · Campos Personalizados</title><th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/landing.css(v=${assetVersion})}"></head>
-<body class="landing-page"><header class="landing-header"><a class="landing-brand" th:href="@{/}"><span class="landing-brand-mark">✦</span>Campos Personalizados</a><nav class="landing-nav"><a th:href="@{/contato/}">Contato</a><a class="button small" th:href="@{/install}">Instalar na Nuvemshop</a></nav></header><main class="landing-section public-marketing"><p class="landing-kicker">Planos</p><h1>Escolha a capacidade ideal para sua loja.</h1><p class="landing-lead">Todos os planos são mensais. Você pode solicitar o cancelamento antes da próxima renovação e mantém o acesso até o fim do período já pago.</p><th:block th:replace="~{fragments/public-market :: selector}"></th:block><section class="marketing-price-grid"><article><h2>Free</h2><strong>Gratuito</strong><p>Para começar a personalizar.</p><ul><li>1 produto personalizado</li><li>1 campo por produto</li><li th:text="#{billing.images.none}"></li></ul></article><article><h2>Essencial</h2><strong><span th:text="${publicMarket.essentialPrice}"></span> <small>/mês</small></strong><p>Para a operação que está crescendo.</p><ul><li>10 produtos personalizados</li><li>3 campos por produto</li><li>Templates por nicho</li><li th:text="${planDefinitions['PREMIUM'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM'].imageProductLimit})}"></li><li th:text="#{billing.images.options(${planDefinitions['PREMIUM'].imageOptionLimit})}"></li></ul><a class="landing-cta" th:href="@{/install}">Instalar na Nuvemshop <span>→</span></a></article><article class="featured"><p>Mais escolhido</p><h2>Pro</h2><strong><span th:text="${publicMarket.proPrice}"></span> <small>/mês</small></strong><p>Mais espaço para a sua operação.</p><ul><li>50 produtos personalizados</li><li>Campos ilimitados</li><li th:text="${planDefinitions['PREMIUM_PLUS'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM_PLUS'].imageProductLimit})}"></li><li th:text="#{billing.images.options(${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})}"></li></ul></article><article><h2>Ultra</h2><strong><span th:text="${publicMarket.ultraPrice}"></span> <small>/mês</small></strong><p>Para lojas com catálogos maiores, com atendimento prioritário.</p><ul><li>Produtos personalizados ilimitados</li><li>Campos ilimitados</li><li>Atendimento prioritário</li><li th:text="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM_ULTRA'].imageProductLimit})}"></li><li th:text="#{billing.images.options(${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})}"></li></ul><p><small>Tem dúvidas sobre qual plano escolher? <a th:href="@{/support/}">Fale conosco.</a></small></p></article></section><th:block th:replace="~{fragments/public-market :: provider}"></th:block><th:block th:replace="~{fragments/public-market :: internationalProvider}"></th:block><p class="marketing-disclaimer">Assinatura mensal, sem fidelidade.</p></main><footer class="landing-footer"><span th:if="${!#strings.isEmpty(companyLegalName)}" th:text="${companyLegalName + ' · ' + companyTaxId}"></span><a th:href="@{/termos/}">Termos</a><a th:href="@{/privacy/}">Privacidade</a><a th:href="@{/contato/}">Contato</a></footer></body></html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Preços · Campos Personalizados</title>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/landing.css(v=${assetVersion})}">
+</head>
+<body class="landing-page pricing-page">
+<header class="landing-header">
+    <a class="landing-brand" th:href="@{/}"><span class="landing-brand-mark">✦</span>Campos Personalizados</a>
+    <nav class="landing-nav"><a th:href="@{/contato/}">Contato</a><a class="button small" th:href="@{/install}">Instalar aplicativo</a></nav>
+</header>
+<main class="landing-section public-marketing">
+    <section class="pricing-intro">
+        <div>
+            <p class="landing-kicker">Planos e preços</p>
+            <h1>Um plano para cada fase da sua loja.</h1>
+            <p class="landing-lead">Comece grátis e amplie as possibilidades de personalização conforme seu catálogo cresce.</p>
+        </div>
+        <div class="pricing-market">
+            <th:block th:replace="~{fragments/public-market :: selector}"></th:block>
+            <p>Valores mensais na moeda do país selecionado.</p>
+        </div>
+    </section>
+
+    <section class="pricing-free" aria-labelledby="free-plan-title">
+        <div class="pricing-free-name"><h2 id="free-plan-title">Free</h2><span>Gratuito</span></div>
+        <p><span>Para experimentar:</span> 1 produto personalizado · 1 campo por produto · <span th:text="#{billing.images.none}">Sem opções com imagens</span></p>
+        <a th:href="@{/install}">Começar grátis <span aria-hidden="true">→</span></a>
+    </section>
+
+    <section class="marketing-price-grid" aria-label="Comparação dos planos pagos">
+        <article class="pricing-card" aria-labelledby="essential-plan-title">
+            <p class="pricing-card-tag">Primeiros passos</p>
+            <h2 id="essential-plan-title">Essencial</h2>
+            <p class="pricing-card-description">Para ampliar a personalização dos seus produtos.</p>
+            <div class="pricing-amount"><strong th:text="${publicMarket.essentialPrice}">CLP 4.199</strong><small>/mês</small></div>
+            <ul>
+                <li><strong>10</strong> produtos personalizados</li>
+                <li><strong>3</strong> campos por produto</li>
+                <li>Templates por nicho</li>
+                <li th:text="${planDefinitions['PREMIUM'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM'].imageProductLimit})}"></li>
+                <li th:text="#{billing.images.options(${planDefinitions['PREMIUM'].imageOptionLimit})}"></li>
+            </ul>
+            <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="pricing-card featured" aria-labelledby="pro-plan-title">
+            <p class="pricing-card-tag">Mais escolhido</p>
+            <h2 id="pro-plan-title">Pro</h2>
+            <p class="pricing-card-description">Mais produtos e liberdade para criar seus campos.</p>
+            <div class="pricing-amount"><strong th:text="${publicMarket.proPrice}">CLP 6.299</strong><small>/mês</small></div>
+            <ul>
+                <li><strong>50</strong> produtos personalizados</li>
+                <li>Campos <strong>ilimitados</strong></li>
+                <li th:text="${planDefinitions['PREMIUM_PLUS'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM_PLUS'].imageProductLimit})}"></li>
+                <li th:text="#{billing.images.options(${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})}"></li>
+            </ul>
+            <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="pricing-card" aria-labelledby="ultra-plan-title">
+            <p class="pricing-card-tag">Operações maiores</p>
+            <h2 id="ultra-plan-title">Ultra</h2>
+            <p class="pricing-card-description">Para expandir seu catálogo com atendimento prioritário.</p>
+            <div class="pricing-amount"><strong th:text="${publicMarket.ultraPrice}">CLP 12.599</strong><small>/mês</small></div>
+            <ul>
+                <li>Produtos personalizados <strong>ilimitados</strong></li>
+                <li>Campos <strong>ilimitados</strong></li>
+                <li>Atendimento prioritário</li>
+                <li th:text="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM_ULTRA'].imageProductLimit})}"></li>
+                <li th:text="#{billing.images.options(${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})}"></li>
+            </ul>
+            <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
+        </article>
+    </section>
+
+    <p class="pricing-install-note">Instale o aplicativo e escolha seu plano no painel da loja.</p>
+    <section class="pricing-details" aria-label="Informações sobre a assinatura">
+        <div><h2>Mensal, sem fidelidade.</h2>
+            <p>Você pode solicitar o cancelamento antes da próxima renovação e mantém o acesso até o fim do período já pago.</p>
+            <th:block th:replace="~{fragments/public-market :: provider}"></th:block>
+            <th:block th:replace="~{fragments/public-market :: internationalProvider}"></th:block>
+        </div>
+        <div class="pricing-help"><h2>Precisa de ajuda para escolher?</h2>
+            <p>Conte como você personaliza seus produtos.</p><a th:href="@{/support/}">Fale conosco <span aria-hidden="true">→</span></a>
+        </div>
+    </section>
+</main>
+<footer class="landing-footer">
+    <span th:if="${!#strings.isEmpty(companyLegalName)}" th:text="${companyLegalName + ' · ' + companyTaxId}"></span>
+    <a th:href="@{/termos/}">Termos</a><a th:href="@{/privacy/}">Privacidade</a><a th:href="@{/contato/}">Contato</a>
+</footer>
+</body>
+</html>
