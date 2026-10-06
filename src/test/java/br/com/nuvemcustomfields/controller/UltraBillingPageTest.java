@@ -76,6 +76,59 @@ class UltraBillingPageTest {
                 .andExpect(redirectedUrl("https://checkout.creem.io/new_checkout"));
     }
 
+    @Test void acceptedCreemUpgradeShowsConfirmationInProgressWithoutError() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        when(payments.upgrade(subscription.getStoreId(), PlanType.PREMIUM_ULTRA, new BigDecimal("59.90")))
+                .thenReturn(false);
+        mvc.perform(post("/admin/billing/upgrade").session(session).param("plan", "PREMIUM_ULTRA").param("amount", "59.90"))
+                .andExpect(redirectedUrl("/admin/billing"))
+                .andExpect(flash().attribute("message", org.hamcrest.Matchers.containsString("confirmando")))
+                .andExpect(flash().attributeCount(1));
+    }
+
+    @Test void confirmedCreemUpgradeShowsSuccess() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        when(payments.upgrade(subscription.getStoreId(), PlanType.PREMIUM_ULTRA, new BigDecimal("59.90")))
+                .thenReturn(true);
+        mvc.perform(post("/admin/billing/upgrade").session(session).param("plan", "PREMIUM_ULTRA").param("amount", "59.90"))
+                .andExpect(flash().attribute("message", org.hamcrest.Matchers.containsString("Upgrade confirmado")))
+                .andExpect(flash().attributeCount(1));
+    }
+
+    @Test void timeoutAfterPersistingTargetShowsPendingWithoutEncouragingAnotherCharge() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        when(payments.upgrade(subscription.getStoreId(), PlanType.PREMIUM_ULTRA, new BigDecimal("59.90")))
+                .thenAnswer(i -> {
+                    subscription.requestUpgrade(PlanType.PREMIUM_ULTRA, new BigDecimal("59.90"), "prod_ultra");
+                    throw new br.com.nuvemcustomfields.payment.PaymentGatewayException("timeout");
+                });
+        mvc.perform(post("/admin/billing/upgrade").session(session).param("plan", "PREMIUM_ULTRA").param("amount", "59.90"))
+                .andExpect(flash().attribute("message", org.hamcrest.Matchers.containsString("confirmando")))
+                .andExpect(flash().attributeCount(1));
+        verify(payments).upgrade(subscription.getStoreId(), PlanType.PREMIUM_ULTRA, new BigDecimal("59.90"));
+    }
+
+    @Test void webhookAlreadyConfirmedUpgradeOverridesStaleFailure() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        when(payments.upgrade(subscription.getStoreId(), PlanType.PREMIUM_ULTRA, new BigDecimal("59.90")))
+                .thenAnswer(i -> {
+                    subscription.setPlan(PlanType.PREMIUM_ULTRA); subscription.clearUpgrade();
+                    throw new br.com.nuvemcustomfields.payment.PaymentGatewayException("timeout");
+                });
+        mvc.perform(post("/admin/billing/upgrade").session(session).param("plan", "PREMIUM_ULTRA").param("amount", "59.90"))
+                .andExpect(flash().attribute("message", org.hamcrest.Matchers.containsString("Upgrade confirmado")))
+                .andExpect(flash().attributeCount(1));
+    }
+
+    @Test void priceValidationFailureStillShowsError() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        when(payments.upgrade(subscription.getStoreId(), PlanType.PREMIUM_ULTRA, new BigDecimal("59.90")))
+                .thenThrow(new IllegalArgumentException("O preço mudou."));
+        mvc.perform(post("/admin/billing/upgrade").session(session).param("plan", "PREMIUM_ULTRA").param("amount", "59.90"))
+                .andExpect(flash().attribute("error", "O preço mudou."))
+                .andExpect(flash().attributeCount(1));
+    }
+
     @Test
     @org.springframework.transaction.annotation.Transactional
     void billingComparisonShowsConfiguredLimits() throws Exception {

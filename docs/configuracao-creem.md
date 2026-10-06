@@ -93,7 +93,12 @@ persistida. Notificações e GA4 usam o valor efetivamente pago, por moeda.
 
 O upgrade solicita cobrança proporcional imediata na Creem. A tela informa esse
 comportamento; o plano superior é liberado após uma nova transação paga. A
-solicitação é persistida antes da chamada e não é repetida quando o resultado
+resposta distingue upgrade confirmado de confirmação pendente. Se a transação
+ainda não apareceu na API, a tela informa que a alteração está sendo confirmada,
+sem apresentar a espera como falha e sem repetir a cobrança. Se o webhook já
+confirmou o plano, o estado salvo prevalece sobre uma falha na consulta imediata.
+Uma validação que impede o envio do upgrade continua mostrando o erro apropriado.
+A solicitação é persistida antes da chamada e não é repetida quando o resultado
 for desconhecido. Webhook/job retomam a confirmação; o suporte revisa alterações
 que permaneçam pendentes. A API calcula o valor proporcional.
 

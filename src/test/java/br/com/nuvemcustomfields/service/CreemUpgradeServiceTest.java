@@ -42,7 +42,7 @@ class CreemUpgradeServiceTest {
             assertThat(local.getUpgradePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
             assertThat(local.getPlan()).isEqualTo(PlanType.PREMIUM); verify(manager).commit(any()); return null;
         }).when(gateway).changeSubscriptionPlan("sub_1",store,PlanType.PREMIUM_PLUS);
-        service.upgrade(42L,PlanType.PREMIUM_PLUS,new BigDecimal("19.99"));
+        assertThat(service.upgrade(42L,PlanType.PREMIUM_PLUS,new BigDecimal("19.99"))).isFalse();
         verify(synchronization).synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1");
     }
     @Test void unknownOutcomeNeverReplaysTheCharge() {
@@ -58,5 +58,30 @@ class CreemUpgradeServiceTest {
         when(gateway.currency(store)).thenReturn("USD");
         assertThatThrownBy(() -> service.upgrade(42L,PlanType.PREMIUM_PLUS,BigDecimal.ONE)).hasMessageContaining("preço mudou");
         verify(gateway,never()).changeSubscriptionPlan(anyString(),any(),any());
+    }
+
+    @Test void acceptedUpgradeWithDelayedInvoiceIsPendingInsteadOfFailed() {
+        when(synchronization.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1"))
+                .thenThrow(new PaymentGatewayException("Aguardando confirmação do pagamento proporcional Creem."));
+        assertThat(service.upgrade(42L,PlanType.PREMIUM_PLUS,new BigDecimal("19.99"))).isFalse();
+        assertThat(local.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getUpgradePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        verify(gateway,times(1)).changeSubscriptionPlan("sub_1",store,PlanType.PREMIUM_PLUS);
+    }
+
+    @Test void synchronizedUpgradeReturnsConfirmed() {
+        when(synchronization.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1")).thenAnswer(i -> {
+            local.setPlan(PlanType.PREMIUM_PLUS); local.clearUpgrade(); return local;
+        });
+        assertThat(service.upgrade(42L,PlanType.PREMIUM_PLUS,new BigDecimal("19.99"))).isTrue();
+    }
+
+    @Test void concurrentWebhookConfirmationWinsOverSynchronizationFailure() {
+        when(synchronization.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1")).thenAnswer(i -> {
+            local.setPlan(PlanType.PREMIUM_PLUS); local.clearUpgrade();
+            throw new org.springframework.orm.ObjectOptimisticLockingFailureException(PaymentSubscription.class,42L);
+        });
+        assertThat(service.upgrade(42L,PlanType.PREMIUM_PLUS,new BigDecimal("19.99"))).isTrue();
+        verify(gateway,times(1)).changeSubscriptionPlan("sub_1",store,PlanType.PREMIUM_PLUS);
     }
 }

@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 /** Persist the requested target before asking Creem to charge the proportional adjustment. */
 @Service
 public class CreemUpgradeService {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(CreemUpgradeService.class);
     private final StoreRepository stores;
     private final PaymentSubscriptionRepository subscriptions;
     private final CreemGateway gateway;
@@ -23,7 +24,7 @@ public class CreemUpgradeService {
         transaction = new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
-    public void upgrade(Long storeId, PlanType target, BigDecimal confirmedAmount) {
+    public boolean upgrade(Long storeId, PlanType target, BigDecimal confirmedAmount) {
         Reservation reservation = transaction.execute(status -> {
             Store store = stores.findActiveByStoreIdForUpdate(storeId).orElseThrow();
             PaymentSubscription local = subscriptions.findByStoreId(storeId).orElseThrow();
@@ -51,7 +52,25 @@ public class CreemUpgradeService {
         });
         // Do not replay this non-idempotent call if its outcome is unknown.
         gateway.changeSubscriptionPlan(reservation.id(), reservation.store(), target);
-        transaction.executeWithoutResult(status -> service.getObject().synchronizeFromSubscription(PaymentProviderType.CREEM, reservation.id()));
+        try {
+            transaction.executeWithoutResult(status -> service.getObject().synchronizeFromSubscription(PaymentProviderType.CREEM, reservation.id()));
+        } catch (RuntimeException ex) {
+            // The gateway accepted the change. A delayed invoice or concurrent webhook
+            // must not turn that accepted request into a checkout failure.
+            LOGGER.info("payments.creem.upgrade.confirmation_pending store_id={} subscription_id={} type={}",
+                    storeId, reservation.id(), ex.getClass().getSimpleName());
+        }
+        try {
+            return Boolean.TRUE.equals(transaction.execute(status -> subscriptions.findByStoreId(storeId)
+                    .filter(local -> local.getProvider() == PaymentProviderType.CREEM
+                            && reservation.id().equals(local.getProviderSubscriptionId())
+                            && local.getPlan() == target && local.getUpgradePlan() == null
+                            && local.isAccessActive() && local.getStatus() == PaymentSubscriptionStatus.ACTIVE)
+                    .isPresent()));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("payments.creem.upgrade.status_deferred store_id={} type={}", storeId, ex.getClass().getSimpleName());
+            return false;
+        }
     }
     private record Reservation(Store store, String id) { }
 }

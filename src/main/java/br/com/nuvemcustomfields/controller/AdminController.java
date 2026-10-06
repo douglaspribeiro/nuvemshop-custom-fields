@@ -298,10 +298,28 @@ public class AdminController {
             var subscription = paymentSubscriptionService.find(store.getStoreId()).orElseThrow();
             if (subscription.getProvider() == PaymentProviderType.EFI)
                 return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
-            paymentSubscriptionService.upgrade(store.getStoreId(), plan, amount);
-            redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.upgrade.success"));
+            boolean confirmed = paymentSubscriptionService.upgrade(store.getStoreId(), plan, amount);
+            redirectAttributes.addFlashAttribute("message", messages.get(confirmed
+                    ? "admin.billing.upgrade.success" : "admin.billing.upgrade.pending"));
             return "redirect:/admin/billing";
         } catch (RuntimeException ex) {
+            LOGGER.warn("payments.upgrade.response_deferred store_id={} target_plan={} type={}",
+                    store.getStoreId(), plan, ex.getClass().getSimpleName());
+            try {
+                var current = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
+                if (current != null && current.getProvider() == PaymentProviderType.CREEM) {
+                    boolean confirmed = current.getPlan() == plan && current.getUpgradePlan() == null
+                            && current.isAccessActive() && current.getStatus() == PaymentSubscriptionStatus.ACTIVE;
+                    if (confirmed || current.getUpgradePlan() != null) {
+                        redirectAttributes.addFlashAttribute("message", messages.get(confirmed
+                                ? "admin.billing.upgrade.success" : "admin.billing.upgrade.pending"));
+                        return "redirect:/admin/billing";
+                    }
+                }
+            } catch (RuntimeException lookupFailure) {
+                LOGGER.warn("payments.upgrade.status_unavailable store_id={} type={}",
+                        store.getStoreId(), lookupFailure.getClass().getSimpleName());
+            }
             redirectAttributes.addFlashAttribute("error", merchantError(ex));
             return "redirect:/admin/billing";
         }

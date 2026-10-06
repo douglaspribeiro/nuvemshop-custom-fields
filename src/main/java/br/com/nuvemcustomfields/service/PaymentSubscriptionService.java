@@ -353,11 +353,10 @@ public class PaymentSubscriptionService {
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
-    public void upgrade(Long storeId, PlanType targetPlan, BigDecimal confirmedAmount) {
+    public boolean upgrade(Long storeId, PlanType targetPlan, BigDecimal confirmedAmount) {
         if (creemUpgrade != null && subscriptions.findByStoreId(storeId)
                 .map(local -> local.getProvider() == PaymentProviderType.CREEM).orElse(false)) {
-            creemUpgrade.upgrade(storeId, targetPlan, confirmedAmount);
-            return;
+            return creemUpgrade.upgrade(storeId, targetPlan, confirmedAmount);
         }
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
@@ -402,6 +401,7 @@ public class PaymentSubscriptionService {
         } catch (RuntimeException ex) {
             throw new PaymentGatewayException("A alteração precisa ser confirmada pelo provedor. Seu acesso atual foi preservado.", ex);
         }
+        return true;
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
