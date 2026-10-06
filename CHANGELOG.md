@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.29.1] - 2026-10-06
+
+### Correções
+
+- show pending confirmation for accepted Creem upgrades (`2f2de78`)
+- expire abandoned checkouts before new subscriptions (`9d20d5b`)
+
 ## [1.29.0] - 2026-10-06
 
 ### Features
