@@ -2,7 +2,7 @@
 """Build editable gallery layouts from exported production screens and real storefront JS.
 
 Export merchant screens first with MarketingScreensExportTest. Capture the resulting
-1600x800 HTML files with Chromium. All demonstration data are fictional.
+1920x1080 HTML files with Chromium. All demonstration data are fictional.
 """
 import base64
 import html
@@ -20,7 +20,7 @@ ASSETS.mkdir(parents=True, exist_ok=True)
 STATIC = ROOT / 'src/main/resources/static'
 for path in [STATIC / 'styles/app.css', STATIC / 'styles/merchant.css',
              STATIC / 'assets/nuvemshop-personalizer.js', STATIC / 'assets/local-time.js',
-             STATIC / 'assets/option-images-admin.js']:
+             STATIC / 'assets/option-images-admin.js', STATIC / 'assets/product-fields-editor.js']:
     shutil.copyfile(path, ASSETS / path.name)
 
 for name in ['campos', 'aparencia', 'pedidos']:
@@ -141,27 +141,32 @@ slides = [
      ['Detalhes no próprio item','Consulta à venda na Nuvemshop','Clareza na hora de preparar'],'pedido-concluido.html',
      'Representação ilustrativa · Não é captura do painel da Nuvemshop')
 ]
-css = '''*{box-sizing:border-box}html,body{margin:0;width:1600px;height:800px;overflow:hidden}body{font-family:Arial,sans-serif;background:#eef2e8;color:#173b2e}
-    .canvas{position:relative;width:1600px;height:800px;background:radial-gradient(ellipse at 95% 10%,#d6e5ce 0,transparent 55%),#f4f6ef}
+css = '''*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden}body{font-family:Arial,sans-serif;background:#eef2e8;color:#173b2e}
+    .canvas{position:relative;width:1600px;height:900px;transform:scale(1.2);transform-origin:top left;background:radial-gradient(ellipse at 95% 10%,#d6e5ce 0,transparent 55%),#f4f6ef}
     .brand{position:absolute;left:62px;top:46px;display:flex;align-items:center;gap:13px;font-size:23px;font-weight:700;letter-spacing:-.6px}
     .mark{height:44px;width:44px;display:grid;place-items:center;background:#176b57;color:#fff;border-radius:12px;font-size:26px}
     .overline{color:#537c60;letter-spacing:2.5px;font-size:13px;font-weight:bold;margin-bottom:23px}
-    .copy{position:absolute;left:62px;top:170px;width:430px}h1{font-size:51px;line-height:1.07;letter-spacing:-2px;font-weight:700;margin:0 0 27px}
+    .copy{position:absolute;left:62px;top:210px;width:430px}h1{font-size:51px;line-height:1.07;letter-spacing:-2px;font-weight:700;margin:0 0 27px}
     .lead{font-size:22px;line-height:1.45;color:#5a7160;margin:0 0 30px}.point{display:flex;align-items:center;gap:12px;font-size:17px;color:#31523f;margin:15px 0}
     .check{height:23px;width:23px;border-radius:50%;background:#dce8d6;display:grid;place-items:center;color:#176b57;font-size:14px;font-weight:bold}
-    .screen{position:absolute;left:537px;top:133px;width:1010px;height:597px;border:1px solid #cfdbc9;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 25px 65px #233c2920}
+    .screen{position:absolute;left:537px;top:170px;width:1010px;height:650px;border:1px solid #cfdbc9;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 25px 65px #233c2920}
     .browser{height:37px;padding:12px 16px;border-bottom:1px solid #e0e7db;background:#fafbf8;display:flex;gap:6px;align-items:center}.browser i{width:8px;height:8px;border-radius:50%;background:#cdd7c6}.browser span{font-size:12px;margin:auto;color:#879880;padding-right:40px}
-    iframe{border:0;width:1180px;height:654px;transform:scale(.856);transform-origin:top left;background:white;pointer-events:none}
+    iframe{border:0;width:1180px;height:716px;transform:scale(.856);transform-origin:top left;background:white;pointer-events:none}
     .footer{position:absolute;left:62px;bottom:39px;font-size:14px;color:#6c806c}.caption{position:absolute;right:54px;bottom:34px;font-size:12px;color:#849381}
     .pill{position:absolute;right:54px;top:49px;border:1px solid #bfd0b6;padding:10px 15px;border-radius:30px;color:#456541;font-size:13px}
     '''
 for slug, eyebrow, title, lead, points, screen, caption in slides:
+    destination = SOURCES
+    if slug.startswith('04-'):
+        destination = SOURCES / 'alternativas'
+        destination.mkdir(exist_ok=True)
+        screen = '../' + screen
     page = f'''<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>{slug}</title><style>{css}</style></head>
     <body><div class="canvas"><div class="brand"><span class="mark">C</span>Campos Personalizados</div><div class="pill">Para lojas Nuvemshop</div>
     <div class="copy"><div class="overline">{eyebrow}</div><h1>{html.escape(title).replace(chr(10),'<br>')}</h1><p class="lead">{lead}</p>
     {''.join(f'<div class="point"><span class="check">✓</span>{p}</div>' for p in points)}</div>
     <div class="screen"><div class="browser"><i></i><i></i><i></i><span>{'Sua loja · Exemplo de uso' if screen in ['texto.html','imagens.html'] else 'Item do pedido · Exemplo ilustrativo' if screen == 'pedido-concluido.html' else 'Campos Personalizados · Painel da loja'}</span></div><iframe src="{screen}"></iframe></div>
     <div class="footer">Comece com o plano gratuito.</div><div class="caption">{caption}</div></div></body></html>'''
-    (SOURCES / (slug + '.html')).write_text(page)
+    (destination / (slug + '.html')).write_text(page)
 
-print(len(slides), 'layouts gerados em', SOURCES)
+print('5 layouts principais e 1 alternativa gerados em', SOURCES)

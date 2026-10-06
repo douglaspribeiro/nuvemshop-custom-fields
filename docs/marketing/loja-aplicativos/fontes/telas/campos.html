@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../assets/app.css">
     <link rel="stylesheet" href="../assets/merchant.css">
 </head>
-<body class="merchant-page">
+<body class="merchant-page product-field-page">
 <header class="merchant-topbar">
     <div class="merchant-topbar-inner">
         <a class="merchant-brand" href="/admin" aria-label="Campos Personalizados">
@@ -33,7 +33,7 @@
 <main class="shell">
     <section class="page-header">
         <div>
-            <p class="eyebrow">Editor</p>
+            <p class="eyebrow">Configurar produto</p>
             <h1>Caderno personalizado</h1>
             <p>Defina os dados que seus clientes preencherão antes de comprar este produto.</p>
         </div>
@@ -55,65 +55,7 @@
         <a class="button" href="/admin/billing">Ver planos e limites</a>
     </section>
 
-    <section class="grid two">
-        <div class="panel">
-            <h2>Novo campo</h2>
-            <form class="form preview-source image-options-form" action="/admin/products/7001/fields"
-                  method="post">
-                <label>
-                    <span>Label</span>
-                    <input maxlength="100" required id="label" name="label" value="">
-                </label>
-                <label>
-                    <span>Tipo</span>
-                    <select required id="fieldType" name="fieldType">
-                        <option value="TEXT" selected="selected">Texto curto</option>
-                        <option value="NUMBER">Número</option>
-                        <option value="SELECT">Lista de opções</option>
-                        <option value="IMAGE_SELECT">Opções com imagem</option>
-                        <option value="TEXTAREA">Texto longo</option>
-                    </select>
-                </label>
-                <label class="checkbox">
-                    <input type="checkbox" id="required1" name="required" value="true"><input type="hidden" name="_required" value="on"/>
-                    <span>Obrigatorio</span>
-                </label>
-                <label>
-                    <span>Maximo de caracteres</span>
-                    <input type="number" min="1" max="500" required id="maxLength" name="maxLength" value="100">
-                </label>
-                <label>
-                    <span>Placeholder</span>
-                    <input maxlength="150" id="placeholder" name="placeholder" value="">
-                </label>
-                <label>
-                    <span>Regex ou mascara</span>
-                    <input maxlength="255" placeholder="Ex: ^[0-9]{1,2}$" id="validationPattern" name="validationPattern" value="">
-                </label>
-                <label>
-                    <span>Opcoes do select</span>
-                    <textarea rows="4" placeholder="Uma opcao por linha" id="optionsText" name="optionsText"></textarea>
-                </label>
-                <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
-                    <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
-
-                    <p class="notice">O envio de imagens ainda não está disponível. Entre em contato com o suporte.</p>
-                    <input type="hidden" name="imageOptionsJson" value="">
-                    <div class="image-options-rows"></div>
-                    <button class="button small image-option-add" type="button">Adicionar opção</button>
-                    <p class="image-options-status" role="status" aria-live="polite"></p>
-                </section>
-                <label>
-                    <span>Ordem</span>
-                    <input type="number" min="0" id="sortOrder" name="sortOrder" value="0">
-                </label>
-                <button class="button primary" type="submit">Criar campo</button>
-            </form>
-            <div class="preview-box">
-                <h2>Preview</h2>
-                <div id="field-preview" data-fallback-label="Campo"></div>
-            </div>
-        </div>
+    <section class="field-editor-layout">
 
         <div class="panel">
             <div class="panel-title">
@@ -125,16 +67,19 @@
 
 
             <div class="field-list">
-                <article class="field-item">
-                    <form class="form compact image-options-form"
+                <details class="field-item" open="open">
+                    <summary class="field-summary"><span><strong>Nome na capa</strong><small>Texto curto</small></span><span class="field-edit-label">Editar</span></summary>
+                    <form class="form field-editor-form image-options-form"
                           action="/admin/products/7001/fields/1"
                           method="post">
                         <label>
-                            <span>Label</span>
-                            <input name="label" value="Nome na capa" maxlength="100" required>
+                            <span>Nome do campo</span>
+                    <small class="field-help">É a pergunta ou o nome que aparece para o cliente.</small>
+                            <input name="label" value="Nome na capa" maxlength="100" required placeholder="Ex.: Nome para gravar">
                         </label>
                         <label>
-                            <span>Tipo</span>
+                            <span>Como o cliente vai responder?</span>
+                    <small class="field-help">Texto para escrever, lista para escolher ou imagens para comparar.</small>
                             <select name="fieldType" required>
                                 <option value="TEXT"
                                         selected="selected">Texto curto</option>
@@ -146,23 +91,42 @@
                         </label>
                         <label class="checkbox">
                             <input name="required" type="checkbox" value="true" checked="checked">
-                            <span>Obrigatorio</span>
+                            <span>O cliente precisa preencher este campo</span>
                         </label>
                         <label>
-                            <span>Maximo</span>
+                            <span>Limite de caracteres</span>
                             <input name="maxLength" value="30" type="number" min="1" max="500" required>
                         </label>
                         <label>
-                            <span>Placeholder</span>
+                            <span>Exemplo de preenchimento (opcional)</span>
+                    <small class="field-help">Um exemplo dentro do campo vazio. Não é uma resposta preenchida.</small>
                             <input name="placeholder" value="Ex.: Ana Clara" maxlength="150">
                         </label>
+                        <input type="hidden" name="validationPattern" value="">
+                        <section class="field-validation">
+    <label>
+        <span>Quais respostas são aceitas?</span>
+        <small class="field-help">Use uma regra pronta ou deixe livre para o cliente escrever.</small>
+        <select class="field-format">
+            <option value="">Sem restrição de formato</option>
+            <option value="^[0-9]+$">Somente números (ex.: 12345)</option>
+            <option value="^[A-Za-zÀ-ÖØ-öø-ÿ ]+$">Somente letras e espaços (ex.: Ana Maria)</option>
+            <option value="custom">Regra personalizada (avançado)</option>
+        </select>
+    </label>
+    <details class="field-advanced field-custom-format">
+        <summary>Configurar regra avançada</summary>
+        <p class="field-help">Opcional. Use uma expressão regular apenas se precisar de uma regra específica. Ela valida a resposta, mas não adiciona pontuação automaticamente.</p>
+        <label>
+            <span>Expressão regular (regex)</span>
+            <input class="field-pattern" maxlength="255" spellcheck="false" autocomplete="off" data-invalid="Revise a regra personalizada: a expressão não é válida.">
+        </label>
+    </details>
+</section>
                         <label>
-                            <span>Regex ou mascara</span>
-                            <input name="validationPattern" value="" maxlength="255">
-                        </label>
-                        <label>
-                            <span>Opcoes do select</span>
-                            <textarea name="optionsText" rows="4"></textarea>
+                            <span>Opções para o cliente escolher</span>
+                    <small class="field-help">Escreva cada escolha em uma linha. Ex.: Azul, Verde e Rosa, em linhas separadas.</small>
+                            <textarea name="optionsText" rows="4" placeholder="Uma opcao por linha"></textarea>
                         </label>
                         <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
                             <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
@@ -173,10 +137,20 @@
                             <button class="button small image-option-add" type="button">Adicionar opção</button>
                             <p class="image-options-status" role="status" aria-live="polite"></p>
                         </section>
-                        <label>
+                        <details class="field-advanced">
+                    <summary>Posição do campo (opcional)</summary>
+                    <p class="field-help">A posição começa em 1. Números menores aparecem primeiro. Você pode manter o valor sugerido.</p>
+                    <label>
                             <span>Ordem</span>
-                            <input name="sortOrder" value="0" type="number" min="0">
+                            <input type="hidden" name="sortOrder" value="0">
+                            <input class="field-position" value="1" type="number" min="1" step="1" required>
                         </label>
+                </details>
+                        <section class="field-live-preview" data-fallback-label="Campo" data-select-prompt="Escolha uma opção">
+    <p class="eyebrow">Assim o cliente verá este campo</p>
+    <p class="field-help">Experimente como este campo será preenchido. A prévia não salva respostas.</p>
+    <div class="field-preview-control"></div>
+</section>
                         <div class="row-actions">
                             <button class="button primary small" type="submit">Salvar</button>
                         </div>
@@ -185,17 +159,19 @@
                           method="post">
                         <button class="button danger small" type="submit">Excluir campo</button>
                     </form>
-                </article>
-                <article class="field-item">
-                    <form class="form compact image-options-form"
+                </details><details class="field-item">
+                    <summary class="field-summary"><span><strong>Mensagem para presente</strong><small>Texto longo</small></span><span class="field-edit-label">Editar</span></summary>
+                    <form class="form field-editor-form image-options-form"
                           action="/admin/products/7001/fields/2"
                           method="post">
                         <label>
-                            <span>Label</span>
-                            <input name="label" value="Mensagem para presente" maxlength="100" required>
+                            <span>Nome do campo</span>
+                    <small class="field-help">É a pergunta ou o nome que aparece para o cliente.</small>
+                            <input name="label" value="Mensagem para presente" maxlength="100" required placeholder="Ex.: Nome para gravar">
                         </label>
                         <label>
-                            <span>Tipo</span>
+                            <span>Como o cliente vai responder?</span>
+                    <small class="field-help">Texto para escrever, lista para escolher ou imagens para comparar.</small>
                             <select name="fieldType" required>
                                 <option value="TEXT">Texto curto</option>
                                 <option value="NUMBER">Número</option>
@@ -207,23 +183,42 @@
                         </label>
                         <label class="checkbox">
                             <input name="required" type="checkbox" value="true">
-                            <span>Obrigatorio</span>
+                            <span>O cliente precisa preencher este campo</span>
                         </label>
                         <label>
-                            <span>Maximo</span>
+                            <span>Limite de caracteres</span>
                             <input name="maxLength" value="180" type="number" min="1" max="500" required>
                         </label>
                         <label>
-                            <span>Placeholder</span>
+                            <span>Exemplo de preenchimento (opcional)</span>
+                    <small class="field-help">Um exemplo dentro do campo vazio. Não é uma resposta preenchida.</small>
                             <input name="placeholder" value="Escreva uma mensagem especial" maxlength="150">
                         </label>
+                        <input type="hidden" name="validationPattern" value="">
+                        <section class="field-validation">
+    <label>
+        <span>Quais respostas são aceitas?</span>
+        <small class="field-help">Use uma regra pronta ou deixe livre para o cliente escrever.</small>
+        <select class="field-format">
+            <option value="">Sem restrição de formato</option>
+            <option value="^[0-9]+$">Somente números (ex.: 12345)</option>
+            <option value="^[A-Za-zÀ-ÖØ-öø-ÿ ]+$">Somente letras e espaços (ex.: Ana Maria)</option>
+            <option value="custom">Regra personalizada (avançado)</option>
+        </select>
+    </label>
+    <details class="field-advanced field-custom-format">
+        <summary>Configurar regra avançada</summary>
+        <p class="field-help">Opcional. Use uma expressão regular apenas se precisar de uma regra específica. Ela valida a resposta, mas não adiciona pontuação automaticamente.</p>
+        <label>
+            <span>Expressão regular (regex)</span>
+            <input class="field-pattern" maxlength="255" spellcheck="false" autocomplete="off" data-invalid="Revise a regra personalizada: a expressão não é válida.">
+        </label>
+    </details>
+</section>
                         <label>
-                            <span>Regex ou mascara</span>
-                            <input name="validationPattern" value="" maxlength="255">
-                        </label>
-                        <label>
-                            <span>Opcoes do select</span>
-                            <textarea name="optionsText" rows="4"></textarea>
+                            <span>Opções para o cliente escolher</span>
+                    <small class="field-help">Escreva cada escolha em uma linha. Ex.: Azul, Verde e Rosa, em linhas separadas.</small>
+                            <textarea name="optionsText" rows="4" placeholder="Uma opcao por linha"></textarea>
                         </label>
                         <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
                             <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
@@ -234,10 +229,20 @@
                             <button class="button small image-option-add" type="button">Adicionar opção</button>
                             <p class="image-options-status" role="status" aria-live="polite"></p>
                         </section>
-                        <label>
+                        <details class="field-advanced">
+                    <summary>Posição do campo (opcional)</summary>
+                    <p class="field-help">A posição começa em 1. Números menores aparecem primeiro. Você pode manter o valor sugerido.</p>
+                    <label>
                             <span>Ordem</span>
-                            <input name="sortOrder" value="1" type="number" min="0">
+                            <input type="hidden" name="sortOrder" value="1">
+                            <input class="field-position" value="2" type="number" min="1" step="1" required>
                         </label>
+                </details>
+                        <section class="field-live-preview" data-fallback-label="Campo" data-select-prompt="Escolha uma opção">
+    <p class="eyebrow">Assim o cliente verá este campo</p>
+    <p class="field-help">Experimente como este campo será preenchido. A prévia não salva respostas.</p>
+    <div class="field-preview-control"></div>
+</section>
                         <div class="row-actions">
                             <button class="button primary small" type="submit">Salvar</button>
                         </div>
@@ -246,17 +251,19 @@
                           method="post">
                         <button class="button danger small" type="submit">Excluir campo</button>
                     </form>
-                </article>
-                <article class="field-item">
-                    <form class="form compact image-options-form"
+                </details><details class="field-item">
+                    <summary class="field-summary"><span><strong>Acabamento</strong><small>Lista de opções</small></span><span class="field-edit-label">Editar</span></summary>
+                    <form class="form field-editor-form image-options-form"
                           action="/admin/products/7001/fields/3"
                           method="post">
                         <label>
-                            <span>Label</span>
-                            <input name="label" value="Acabamento" maxlength="100" required>
+                            <span>Nome do campo</span>
+                    <small class="field-help">É a pergunta ou o nome que aparece para o cliente.</small>
+                            <input name="label" value="Acabamento" maxlength="100" required placeholder="Ex.: Nome para gravar">
                         </label>
                         <label>
-                            <span>Tipo</span>
+                            <span>Como o cliente vai responder?</span>
+                    <small class="field-help">Texto para escrever, lista para escolher ou imagens para comparar.</small>
                             <select name="fieldType" required>
                                 <option value="TEXT">Texto curto</option>
                                 <option value="NUMBER">Número</option>
@@ -268,23 +275,42 @@
                         </label>
                         <label class="checkbox">
                             <input name="required" type="checkbox" value="true">
-                            <span>Obrigatorio</span>
+                            <span>O cliente precisa preencher este campo</span>
                         </label>
                         <label>
-                            <span>Maximo</span>
+                            <span>Limite de caracteres</span>
                             <input name="maxLength" value="100" type="number" min="1" max="500" required>
                         </label>
                         <label>
-                            <span>Placeholder</span>
+                            <span>Exemplo de preenchimento (opcional)</span>
+                    <small class="field-help">Um exemplo dentro do campo vazio. Não é uma resposta preenchida.</small>
                             <input name="placeholder" value="" maxlength="150">
                         </label>
+                        <input type="hidden" name="validationPattern" value="">
+                        <section class="field-validation">
+    <label>
+        <span>Quais respostas são aceitas?</span>
+        <small class="field-help">Use uma regra pronta ou deixe livre para o cliente escrever.</small>
+        <select class="field-format">
+            <option value="">Sem restrição de formato</option>
+            <option value="^[0-9]+$">Somente números (ex.: 12345)</option>
+            <option value="^[A-Za-zÀ-ÖØ-öø-ÿ ]+$">Somente letras e espaços (ex.: Ana Maria)</option>
+            <option value="custom">Regra personalizada (avançado)</option>
+        </select>
+    </label>
+    <details class="field-advanced field-custom-format">
+        <summary>Configurar regra avançada</summary>
+        <p class="field-help">Opcional. Use uma expressão regular apenas se precisar de uma regra específica. Ela valida a resposta, mas não adiciona pontuação automaticamente.</p>
+        <label>
+            <span>Expressão regular (regex)</span>
+            <input class="field-pattern" maxlength="255" spellcheck="false" autocomplete="off" data-invalid="Revise a regra personalizada: a expressão não é válida.">
+        </label>
+    </details>
+</section>
                         <label>
-                            <span>Regex ou mascara</span>
-                            <input name="validationPattern" value="" maxlength="255">
-                        </label>
-                        <label>
-                            <span>Opcoes do select</span>
-                            <textarea name="optionsText" rows="4">Espiral dourado
+                            <span>Opções para o cliente escolher</span>
+                    <small class="field-help">Escreva cada escolha em uma linha. Ex.: Azul, Verde e Rosa, em linhas separadas.</small>
+                            <textarea name="optionsText" rows="4" placeholder="Uma opcao por linha">Espiral dourado
 Espiral branco
 Espiral preto</textarea>
                         </label>
@@ -297,10 +323,20 @@ Espiral preto</textarea>
                             <button class="button small image-option-add" type="button">Adicionar opção</button>
                             <p class="image-options-status" role="status" aria-live="polite"></p>
                         </section>
-                        <label>
+                        <details class="field-advanced">
+                    <summary>Posição do campo (opcional)</summary>
+                    <p class="field-help">A posição começa em 1. Números menores aparecem primeiro. Você pode manter o valor sugerido.</p>
+                    <label>
                             <span>Ordem</span>
-                            <input name="sortOrder" value="2" type="number" min="0">
+                            <input type="hidden" name="sortOrder" value="2">
+                            <input class="field-position" value="3" type="number" min="1" step="1" required>
                         </label>
+                </details>
+                        <section class="field-live-preview" data-fallback-label="Campo" data-select-prompt="Escolha uma opção">
+    <p class="eyebrow">Assim o cliente verá este campo</p>
+    <p class="field-help">Experimente como este campo será preenchido. A prévia não salva respostas.</p>
+    <div class="field-preview-control"></div>
+</section>
                         <div class="row-actions">
                             <button class="button primary small" type="submit">Salvar</button>
                         </div>
@@ -309,72 +345,102 @@ Espiral preto</textarea>
                           method="post">
                         <button class="button danger small" type="submit">Excluir campo</button>
                     </form>
-                </article>
+                </details>
             </div>
         </div>
+
+        <details class="panel field-create-panel">
+            <summary class="field-create-summary"><span>Adicionar novo campo</span><small>Crie uma nova pergunta para este produto. Os campos existentes são editados acima.</small></summary>
+            <p class="field-help">Comece pelo nome e escolha como o cliente vai responder.</p>
+            <form class="form field-editor-form preview-source image-options-form" action="/admin/products/7001/fields"
+                  method="post">
+                <label>
+                    <span>Nome do campo</span>
+                    <small class="field-help">É a pergunta ou o nome que aparece para o cliente.</small>
+                    <input maxlength="100" required placeholder="Ex.: Nome para gravar" id="label" name="label" value="">
+                </label>
+                <label>
+                    <span>Como o cliente vai responder?</span>
+                    <small class="field-help">Texto para escrever, lista para escolher ou imagens para comparar.</small>
+                    <select required id="fieldType" name="fieldType">
+                        <option value="TEXT" selected="selected">Texto curto</option>
+                        <option value="NUMBER">Número</option>
+                        <option value="SELECT">Lista de opções</option>
+                        <option value="IMAGE_SELECT">Opções com imagem</option>
+                        <option value="TEXTAREA">Texto longo</option>
+                    </select>
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" id="required1" name="required" value="true"><input type="hidden" name="_required" value="on"/>
+                    <span>O cliente precisa preencher este campo</span>
+                </label>
+                <label>
+                    <span>Limite de caracteres</span>
+                    <input type="number" min="1" max="500" required id="maxLength" name="maxLength" value="100">
+                </label>
+                <label>
+                    <span>Exemplo de preenchimento (opcional)</span>
+                    <small class="field-help">Um exemplo dentro do campo vazio. Não é uma resposta preenchida.</small>
+                    <input maxlength="150" id="placeholder" name="placeholder" value="">
+                </label>
+                <input type="hidden" id="validationPattern" name="validationPattern" value="">
+                <section class="field-validation">
+    <label>
+        <span>Quais respostas são aceitas?</span>
+        <small class="field-help">Use uma regra pronta ou deixe livre para o cliente escrever.</small>
+        <select class="field-format">
+            <option value="">Sem restrição de formato</option>
+            <option value="^[0-9]+$">Somente números (ex.: 12345)</option>
+            <option value="^[A-Za-zÀ-ÖØ-öø-ÿ ]+$">Somente letras e espaços (ex.: Ana Maria)</option>
+            <option value="custom">Regra personalizada (avançado)</option>
+        </select>
+    </label>
+    <details class="field-advanced field-custom-format">
+        <summary>Configurar regra avançada</summary>
+        <p class="field-help">Opcional. Use uma expressão regular apenas se precisar de uma regra específica. Ela valida a resposta, mas não adiciona pontuação automaticamente.</p>
+        <label>
+            <span>Expressão regular (regex)</span>
+            <input class="field-pattern" maxlength="255" spellcheck="false" autocomplete="off" data-invalid="Revise a regra personalizada: a expressão não é válida.">
+        </label>
+    </details>
+</section>
+                <label>
+                    <span>Opções para o cliente escolher</span>
+                    <small class="field-help">Escreva cada escolha em uma linha. Ex.: Azul, Verde e Rosa, em linhas separadas.</small>
+                    <textarea rows="4" placeholder="Uma opcao por linha" id="optionsText" name="optionsText"></textarea>
+                </label>
+                <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
+                    <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
+
+                    <p class="notice">O envio de imagens ainda não está disponível. Entre em contato com o suporte.</p>
+                    <input type="hidden" name="imageOptionsJson" value="">
+                    <div class="image-options-rows"></div>
+                    <button class="button small image-option-add" type="button">Adicionar opção</button>
+                    <p class="image-options-status" role="status" aria-live="polite"></p>
+                </section>
+                <details class="field-advanced">
+                    <summary>Posição do campo (opcional)</summary>
+                    <p class="field-help">A posição começa em 1. Números menores aparecem primeiro. Você pode manter o valor sugerido.</p>
+                    <label>
+                    <span>Ordem</span>
+                    <input type="hidden" id="sortOrder" name="sortOrder" value="0">
+                    <input class="field-position" value="1" type="number" min="1" step="1" required>
+                </label>
+                </details>
+                <section class="field-live-preview" data-fallback-label="Campo" data-select-prompt="Escolha uma opção">
+    <p class="eyebrow">Assim o cliente verá este campo</p>
+    <p class="field-help">Experimente como este campo será preenchido. A prévia não salva respostas.</p>
+    <div class="field-preview-control"></div>
+</section>
+                <button class="button primary" type="submit">Criar campo</button>
+            </form>
+        </details>
+
     </section>
 
 </main>
 <script src="../assets/option-images-admin.js"></script>
-<script>
-    const source = document.querySelector(".preview-source");
-    const preview = document.getElementById("field-preview");
-    const fallbackLabel = (preview && preview.dataset.fallbackLabel) || "";
-
-    function updatePreview() {
-        if (!source || !preview) {
-            return;
-        }
-        const label = source.querySelector("[name='label']").value || fallbackLabel;
-        const type = source.querySelector("[name='fieldType']").value;
-        const placeholder = source.querySelector("[name='placeholder']").value || "";
-        const required = source.querySelector("[name='required']").checked;
-        const maxLength = source.querySelector("[name='maxLength']").value;
-        const optionsText = source.querySelector("[name='optionsText']").value || "";
-
-        preview.innerHTML = "";
-        const wrapper = document.createElement("label");
-        wrapper.className = "ncf-field";
-        const text = document.createElement("span");
-        text.className = "ncf-label";
-        text.textContent = label + (required ? " *" : "");
-        wrapper.appendChild(text);
-
-        let input;
-        if (type === "TEXTAREA") {
-            input = document.createElement("textarea");
-        } else if (type === "SELECT" || type === "IMAGE_SELECT") {
-            input = document.createElement("select");
-            let names = optionsText.split(/\r?\n/).filter(Boolean);
-            if (type === "IMAGE_SELECT") {
-                try {
-                    const options = JSON.parse(source.querySelector("[name='imageOptionsJson']").value || "[]");
-                    names = Array.isArray(options) ? options.filter(option => option && typeof option.label === "string").map(option => option.label) : [];
-                } catch (_) { names = []; }
-            }
-            names.forEach((value) => {
-                const option = document.createElement("option");
-                option.textContent = value;
-                input.appendChild(option);
-            });
-        } else {
-            input = document.createElement("input");
-            input.type = type === "NUMBER" ? "number" : "text";
-        }
-        input.placeholder = placeholder;
-        if (maxLength) {
-            input.maxLength = Number(maxLength);
-        }
-        wrapper.appendChild(input);
-        preview.appendChild(wrapper);
-    }
-
-    if (source) {
-        source.addEventListener("input", updatePreview);
-        source.addEventListener("change", updatePreview);
-        updatePreview();
-    }
-</script>
+<script src="../assets/product-fields-editor.js"></script>
 
 
 

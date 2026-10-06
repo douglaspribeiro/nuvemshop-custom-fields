@@ -1,29 +1,42 @@
-# Material para a loja de aplicativos Nuvemshop — Brasil
+# Material para a loja de aplicativos Nuvemshop / Tiendanube
 
 Pacote preparado em 05/10/2026. O conteúdo não foi publicado no Partner Portal.
 O vídeo será produzido pelo responsável usando o sistema.
 
 ## Arquivos para publicar
 
-- `descricao-pt-BR.md`: descrição curta e longa para copiar nos campos do perfil.
+- `descricao-pt-BR.md`: descrição curta e longa para o Brasil.
+- `descricao-completa.txt` e `descricao-curta.txt`: versões brasileiras em texto simples.
+- `descricao-es-AR.md`: Argentina, em espanhol, com preços em ARS.
+- `descricao-es-MX.md`: México, em espanhol, com preços em MXN.
+- `descricao-es-CL.md`: Chile, em espanhol, com preços em CLP.
+- `descricao-es-CO.md`: Colômbia, em espanhol, com preços em COP.
+- `descricao-en-US.md`: versão em inglês, com preços em USD para demais países.
+- `descricao-completa-{idioma}.txt` e `descricao-curta-{idioma}.txt`: textos separados para cada uma dessas versões.
 - `imagens/01-personalizacao-na-vitrine.png`: texto, mensagens e escolhas na página do produto.
 - `imagens/02-opcoes-com-imagens.png`: seleção de capas e modelos cadastrados pelo lojista.
 - `imagens/03-configuracao-dos-campos.png`: editor de campos por produto.
-- `imagens/04-aparencia.png`: cores no produto, carrinho e checkout.
 - `imagens/05-pedidos-personalizados.png`: consulta às informações dos pedidos recentes.
 - `imagens/06-personalizacao-no-item-vendido.png`: representação ilustrativa dos detalhes registrados no item após a compra.
 
-Se o Portal aceitar apenas cinco imagens, recomendamos usar 01, 02, 03, 04 e 06.
-A 05 fica como alternativa para destacar o relatório do aplicativo.
+O pacote principal contém **cinco imagens: 01, 02, 03, 05 e 06**, respeitando o
+limite do Portal. A numeração preserva a identificação dos arquivos.
 
-As seis imagens são PNG de **1600 × 800 pixels**, no formato indicado no
-[guia de publicação](https://dev.nuvemshop.com.br/en/docs/homologation/publication).
-Os [requisitos atuais](https://nuvemshop.dev/apps/publish/app-publication/requirements)
-pedem telas e funcionalidades do app, JPEG/PNG e pacotes por país. Conferir o tamanho
-solicitado no campo do Portal antes de subir, pois o painel pode atualizar requisitos.
+A imagem `imagens/alternativas/04-aparencia.png` foi retirada do pacote principal
+e permanece separada como alternativa. Ela pode substituir uma das
+cinco imagens principais.
 
-Este pacote é em português e apresenta preços brasileiros. Para outros países,
-localizar textos e preços e criar o pacote correspondente. Não reutilizar a tabela BR.
+As cinco imagens principais e a alternativa são PNG de **1920 × 1080 pixels**, cada uma com até **5 MB**,
+conforme as especificações informadas para o campo do Portal. Os formatos aceitos
+são **JPEG, PNG ou WebP**. O pacote usa PNG.
+
+As descrições estão localizadas por país, com nomes e valores dos planos. As imagens
+continuam em português; para publicar em outros países, adaptar também os textos
+das imagens. Usar a descrição e a moeda correspondentes ao mercado.
+
+As descrições completas têm no máximo **2.000 caracteres**, contando espaços e
+quebras de linha. Os arquivos `.txt` estão prontos para copiar no Portal; os `.md`
+incluem também a descrição curta e permanecem dentro do mesmo limite.
 
 ## Origem e limites das imagens
 
@@ -45,16 +58,18 @@ As fontes editáveis estão em `fontes/`; não foi usado gerador de imagens por 
 As capturas contêm apenas dados fictícios. Não anunciar esses pedidos como vendas
 reais ou usar esses números como prova social.
 
-O upload pelo comprador aparece **somente na descrição, como em desenvolvimento**.
-Nenhuma imagem mostra uma interface de upload já disponível. Seus limites futuros
-ainda não foram definidos. O roteiro técnico está em
-[planejamento do upload](../../plano-upload-imagens-comprador.md).
+As descrições apresentam os recursos disponíveis, incluindo a seleção de imagens
+cadastradas pelo lojista. A funcionalidade de envio de arquivos pelo comprador
+não faz parte deste material promocional.
 
 ## Antes de atualizar o perfil
 
 Confirmar no ambiente publicado os scripts de vitrine e checkout com suporte às
 imagens. O recurso mostrado precisa funcionar para as lojas que instalarem o app.
-Os valores apresentados correspondem ao `application.yml` atual. As propostas de
+Os valores apresentados correspondem ao `application.yml` atual, na seção
+`nuvemshop.billing.prices` (revisão editorial em 06/10/2026). A página pública não
+pôde ser consultada nesta revisão; confirmar os valores publicados antes de enviar
+as descrições ao Portal. As propostas de
 reajuste para novos assinantes não alteraram esses valores nem criaram uma promessa
 de preço vitalício para os primeiros assinantes.
 
@@ -80,12 +95,12 @@ mvn -o -Dskip.frontend=true -Dtest=MarketingScreensExportTest -Dmarketing.export
 python3 scripts/build-app-store-gallery.py
 ```
 
-Capturar cada um dos seis HTMLs numerados em `fontes/` com Chromium em 1600 × 800,
+Capturar os cinco HTMLs numerados na raiz de `fontes/` com Chromium em 1920 × 1080,
 permitindo leitura de arquivos locais e tempo de execução para os campos renderizarem:
 
 ```sh
 /opt/google/chrome/chrome --headless --no-sandbox --disable-gpu --disable-dev-shm-usage \
   --hide-scrollbars --allow-file-access-from-files --virtual-time-budget=7000 \
-  --window-size=1600,800 --screenshot=/caminho/01-personalizacao-na-vitrine.png \
+  --window-size=1920,1080 --screenshot=/caminho/01-personalizacao-na-vitrine.png \
   file:///caminho/fontes/01-personalizacao-na-vitrine.html
 ```

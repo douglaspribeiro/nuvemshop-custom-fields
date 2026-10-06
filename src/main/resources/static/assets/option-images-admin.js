@@ -66,9 +66,7 @@
         }
         function visibility() {
             editor.hidden=type.value!=="IMAGE_SELECT";
-            ["optionsText","maxLength","placeholder","validationPattern"].forEach(name=>{
-                const input=form.querySelector("[name="+name+"]");if(input) input.closest("label").hidden=type.value==="IMAGE_SELECT";
-            });
+
         }
         add.addEventListener("click",()=>{if(editor.dataset.enabled !== "true") return; if(options.length>=maxOptions){status.textContent=editor.dataset.limit;return;}options.push({id:"",label:""});sync();render();});
         type.addEventListener("change",visibility);

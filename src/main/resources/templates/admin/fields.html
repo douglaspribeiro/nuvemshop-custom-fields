@@ -8,7 +8,7 @@
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
 </head>
-<body class="merchant-page">
+<body class="merchant-page product-field-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
 <main class="shell">
     <section class="page-header">
@@ -45,64 +45,9 @@
         <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
     </section>
 
-    <section class="grid two" th:classappend="${!canAddField} ? ' fields-edit-only'">
-        <div class="panel" th:if="${canAddField}">
-            <h2 th:text="#{admin.fields.new.title}">Novo campo</h2>
-            <form class="form preview-source image-options-form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
-                  th:object="${fieldForm}" method="post">
-                <label>
-                    <span th:text="#{admin.fields.label}">Label</span>
-                    <input th:field="*{label}" maxlength="100" required>
-                </label>
-                <label>
-                    <span th:text="#{admin.fields.type}">Tipo</span>
-                    <select th:field="*{fieldType}" required>
-                        <option th:each="type : ${fieldTypes}" th:value="${type}" th:text="#{'field.type.' + ${type}}">TEXT</option>
-                    </select>
-                </label>
-                <label class="checkbox">
-                    <input th:field="*{required}" type="checkbox">
-                    <span th:text="#{admin.fields.required}">Obrigatorio</span>
-                </label>
-                <label>
-                    <span th:text="#{admin.fields.maxlength}">Maximo de caracteres</span>
-                    <input th:field="*{maxLength}" type="number" min="1" max="500" required>
-                </label>
-                <label>
-                    <span th:text="#{admin.fields.placeholder}">Placeholder</span>
-                    <input th:field="*{placeholder}" maxlength="150">
-                </label>
-                <label>
-                    <span th:text="#{admin.fields.pattern}">Regex ou mascara</span>
-                    <input th:field="*{validationPattern}" maxlength="255" th:placeholder="#{admin.fields.pattern.example}">
-                </label>
-                <label>
-                    <span th:text="#{admin.fields.options}">Opcoes do select</span>
-                    <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
-                </label>
-                <section class="image-options-editor" hidden
-                         th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled and canUseImages},data-max-options=${imageOptionLimit},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit(${imageOptionLimit})}">
-                    <p class="muted" th:text="#{image.options.help(${imageOptionLimit})}">JPG ou PNG, até 5 MB por imagem. </p>
-                    <p class="notice" th:unless="${canUseImages}" th:text="${imageProductLimit == 0} ? #{image.plan.unavailable} : #{image.plan.products.limit(${imageProductLimit})}"></p>
-                    <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
-                    <input type="hidden" name="imageOptionsJson" th:value="${fieldForm.imageOptionsJson}">
-                    <div class="image-options-rows"></div>
-                    <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
-                    <p class="image-options-status" role="status" aria-live="polite"></p>
-                </section>
-                <label>
-                    <span th:text="#{admin.fields.order}">Ordem</span>
-                    <input th:field="*{sortOrder}" type="number" min="0">
-                </label>
-                <button class="button primary" type="submit" th:text="#{admin.fields.create}">Criar campo</button>
-            </form>
-            <div class="preview-box">
-                <h2 th:text="#{admin.fields.preview}">Preview</h2>
-                <div id="field-preview" th:attr="data-fallback-label=#{admin.fields.preview.fallback}"></div>
-            </div>
-        </div>
+    <section class="field-editor-layout" th:classappend="${!canAddField} ? ' fields-edit-only'">
 
-        <div class="panel">
+        <div class="panel" th:unless="${#lists.isEmpty(rule.fields)}">
             <div class="panel-title">
                 <h2 th:text="${canAddField} ? #{admin.fields.list.title} : #{merchant.fields.edit.title}">Editar campos existentes</h2>
                 <span class="muted" th:text="#{admin.fields.list.count(${#lists.size(rule.fields)})}">0 campos</span>
@@ -114,16 +59,19 @@
             </div>
 
             <div class="field-list">
-                <article class="field-item" th:each="field : ${rule.fields}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
-                    <form class="form compact image-options-form"
+                <details class="field-item" th:each="field, position : ${rule.fields}" th:open="${position.first or (editedFieldId != null and editedFieldId == field.id)}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
+                    <summary class="field-summary"><span><strong th:text="${draft.label}"></strong><small th:text="#{'field.type.' + ${draft.fieldType}}"></small></span><span class="field-edit-label" th:text="#{editor.edit}"></span></summary>
+                    <form class="form field-editor-form image-options-form"
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
                           method="post">
                         <label>
                             <span th:text="#{admin.fields.label}">Label</span>
-                            <input name="label" th:value="${draft.label}" maxlength="100" required>
+                    <small class="field-help" th:text="#{editor.label.help}"></small>
+                            <input name="label" th:value="${draft.label}" maxlength="100" required th:placeholder="#{editor.label.example}">
                         </label>
                         <label>
                             <span th:text="#{admin.fields.type}">Tipo</span>
+                    <small class="field-help" th:text="#{editor.type.help}"></small>
                             <select name="fieldType" required>
                                 <option th:each="type : ${fieldTypes}"
                                         th:value="${type}"
@@ -141,15 +89,15 @@
                         </label>
                         <label>
                             <span th:text="#{admin.fields.placeholder}">Placeholder</span>
+                    <small class="field-help" th:text="#{editor.placeholder.help}"></small>
                             <input name="placeholder" th:value="${draft.placeholder}" maxlength="150">
                         </label>
-                        <label>
-                            <span th:text="#{admin.fields.pattern}">Regex ou mascara</span>
-                            <input name="validationPattern" th:value="${draft.validationPattern}" maxlength="255">
-                        </label>
+                        <input type="hidden" name="validationPattern" th:value="${draft.validationPattern}">
+                        <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
                         <label>
                             <span th:text="#{admin.fields.options}">Opcoes do select</span>
-                            <textarea name="optionsText" rows="4" th:text="${draft.optionsText}"></textarea>
+                    <small class="field-help" th:text="#{editor.options.help}"></small>
+                            <textarea name="optionsText" rows="4" th:placeholder="#{admin.fields.options.placeholder}" th:text="${draft.optionsText}"></textarea>
                         </label>
                         <section class="image-options-editor" hidden
                                  th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled and canUseImages},data-max-options=${imageOptionLimit},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit(${imageOptionLimit})}">
@@ -161,10 +109,16 @@
                             <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
                             <p class="image-options-status" role="status" aria-live="polite"></p>
                         </section>
-                        <label>
+                        <details class="field-advanced">
+                    <summary th:text="#{editor.order.title}"></summary>
+                    <p class="field-help" th:text="#{editor.order.help}"></p>
+                    <label>
                             <span th:text="#{admin.fields.order}">Ordem</span>
-                            <input name="sortOrder" th:value="${draft.sortOrder}" type="number" min="0">
+                            <input type="hidden" name="sortOrder" th:value="${draft.sortOrder}">
+                            <input class="field-position" th:value="${draft.sortOrder == null ? 1 : draft.sortOrder + 1}" type="number" min="1" step="1" required>
                         </label>
+                </details>
+                        <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
                         <div class="row-actions">
                             <button class="button primary small" type="submit" th:text="#{common.save}">Salvar</button>
                         </div>
@@ -173,9 +127,71 @@
                           method="post">
                         <button class="button danger small" type="submit" th:text="#{admin.fields.delete}">Excluir campo</button>
                     </form>
-                </article>
+                </details>
             </div>
         </div>
+
+        <details class="panel field-create-panel" th:if="${canAddField}" th:open="${#lists.isEmpty(rule.fields) or (error != null and editedFieldId == null)}">
+            <summary class="field-create-summary"><span th:text="#{editor.add}">Adicionar novo campo</span><small th:text="#{editor.add.help}"></small></summary>
+            <p class="field-help" th:text="#{editor.new.help}"></p>
+            <form class="form field-editor-form preview-source image-options-form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
+                  th:object="${fieldForm}" method="post">
+                <label>
+                    <span th:text="#{admin.fields.label}">Label</span>
+                    <small class="field-help" th:text="#{editor.label.help}"></small>
+                    <input th:field="*{label}" maxlength="100" required th:placeholder="#{editor.label.example}">
+                </label>
+                <label>
+                    <span th:text="#{admin.fields.type}">Tipo</span>
+                    <small class="field-help" th:text="#{editor.type.help}"></small>
+                    <select th:field="*{fieldType}" required>
+                        <option th:each="type : ${fieldTypes}" th:value="${type}" th:text="#{'field.type.' + ${type}}">TEXT</option>
+                    </select>
+                </label>
+                <label class="checkbox">
+                    <input th:field="*{required}" type="checkbox">
+                    <span th:text="#{admin.fields.required}">Obrigatorio</span>
+                </label>
+                <label>
+                    <span th:text="#{admin.fields.maxlength}">Maximo de caracteres</span>
+                    <input th:field="*{maxLength}" type="number" min="1" max="500" required>
+                </label>
+                <label>
+                    <span th:text="#{admin.fields.placeholder}">Placeholder</span>
+                    <small class="field-help" th:text="#{editor.placeholder.help}"></small>
+                    <input th:field="*{placeholder}" maxlength="150">
+                </label>
+                <input type="hidden" th:field="*{validationPattern}">
+                <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
+                <label>
+                    <span th:text="#{admin.fields.options}">Opcoes do select</span>
+                    <small class="field-help" th:text="#{editor.options.help}"></small>
+                    <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
+                </label>
+                <section class="image-options-editor" hidden
+                         th:attr="data-upload-url=@{/admin/products/{productId}/images(productId=${rule.productId})},data-enabled=${imagesEnabled and canUseImages},data-max-options=${imageOptionLimit},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit(${imageOptionLimit})}">
+                    <p class="muted" th:text="#{image.options.help(${imageOptionLimit})}">JPG ou PNG, até 5 MB por imagem. </p>
+                    <p class="notice" th:unless="${canUseImages}" th:text="${imageProductLimit == 0} ? #{image.plan.unavailable} : #{image.plan.products.limit(${imageProductLimit})}"></p>
+                    <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
+                    <input type="hidden" name="imageOptionsJson" th:value="${fieldForm.imageOptionsJson}">
+                    <div class="image-options-rows"></div>
+                    <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
+                    <p class="image-options-status" role="status" aria-live="polite"></p>
+                </section>
+                <details class="field-advanced">
+                    <summary th:text="#{editor.order.title}"></summary>
+                    <p class="field-help" th:text="#{editor.order.help}"></p>
+                    <label>
+                    <span th:text="#{admin.fields.order}">Ordem</span>
+                    <input th:field="*{sortOrder}" type="hidden">
+                    <input class="field-position" th:value="${fieldForm.sortOrder == null ? 1 : fieldForm.sortOrder + 1}" type="number" min="1" step="1" required>
+                </label>
+                </details>
+                <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
+                <button class="button primary" type="submit" th:text="#{admin.fields.create}">Criar campo</button>
+            </form>
+        </details>
+
     </section>
     <section class="panel merchant-field-upgrade" th:unless="${canAddField}">
         <div>
@@ -186,65 +202,7 @@
     </section>
 </main>
 <script th:src="@{/assets/option-images-admin.js(v=${assetVersion})}"></script>
-<script>
-    const source = document.querySelector(".preview-source");
-    const preview = document.getElementById("field-preview");
-    const fallbackLabel = (preview && preview.dataset.fallbackLabel) || "";
-
-    function updatePreview() {
-        if (!source || !preview) {
-            return;
-        }
-        const label = source.querySelector("[name='label']").value || fallbackLabel;
-        const type = source.querySelector("[name='fieldType']").value;
-        const placeholder = source.querySelector("[name='placeholder']").value || "";
-        const required = source.querySelector("[name='required']").checked;
-        const maxLength = source.querySelector("[name='maxLength']").value;
-        const optionsText = source.querySelector("[name='optionsText']").value || "";
-
-        preview.innerHTML = "";
-        const wrapper = document.createElement("label");
-        wrapper.className = "ncf-field";
-        const text = document.createElement("span");
-        text.className = "ncf-label";
-        text.textContent = label + (required ? " *" : "");
-        wrapper.appendChild(text);
-
-        let input;
-        if (type === "TEXTAREA") {
-            input = document.createElement("textarea");
-        } else if (type === "SELECT" || type === "IMAGE_SELECT") {
-            input = document.createElement("select");
-            let names = optionsText.split(/\r?\n/).filter(Boolean);
-            if (type === "IMAGE_SELECT") {
-                try {
-                    const options = JSON.parse(source.querySelector("[name='imageOptionsJson']").value || "[]");
-                    names = Array.isArray(options) ? options.filter(option => option && typeof option.label === "string").map(option => option.label) : [];
-                } catch (_) { names = []; }
-            }
-            names.forEach((value) => {
-                const option = document.createElement("option");
-                option.textContent = value;
-                input.appendChild(option);
-            });
-        } else {
-            input = document.createElement("input");
-            input.type = type === "NUMBER" ? "number" : "text";
-        }
-        input.placeholder = placeholder;
-        if (maxLength) {
-            input.maxLength = Number(maxLength);
-        }
-        wrapper.appendChild(input);
-        preview.appendChild(wrapper);
-    }
-
-    if (source) {
-        source.addEventListener("input", updatePreview);
-        source.addEventListener("change", updatePreview);
-        updatePreview();
-    }
-</script>
+<script th:src="@{/assets/product-fields-editor.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
 </body>
 </html>

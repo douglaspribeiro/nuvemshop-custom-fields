@@ -1,0 +1,32 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="validation" class="field-validation">
+    <label>
+        <span th:text="#{editor.format}"></span>
+        <small class="field-help" th:text="#{editor.format.help}"></small>
+        <select class="field-format">
+            <option value="" th:text="#{editor.format.any}"></option>
+            <option value="^[0-9]+$" th:text="#{editor.format.digits}"></option>
+            <option value="^[A-Za-zÀ-ÖØ-öø-ÿ ]+$" th:text="#{editor.format.letters}"></option>
+            <option value="custom" th:text="#{editor.format.custom}"></option>
+        </select>
+    </label>
+    <details class="field-advanced field-custom-format">
+        <summary th:text="#{editor.format.advanced}"></summary>
+        <p class="field-help" th:text="#{editor.format.advanced.help}"></p>
+        <label>
+            <span th:text="#{admin.fields.pattern}"></span>
+            <input class="field-pattern" maxlength="255" spellcheck="false" autocomplete="off"
+                   th:attr="data-invalid=#{editor.format.invalid}">
+        </label>
+    </details>
+</section>
+<section th:fragment="preview" class="field-live-preview"
+         th:attr="data-fallback-label=#{admin.fields.preview.fallback},data-select-prompt=#{editor.preview.select}">
+    <p class="eyebrow" th:text="#{admin.fields.preview}"></p>
+    <p class="field-help" th:text="#{editor.preview.help}"></p>
+    <div class="field-preview-control"></div>
+</section>
+</body>
+</html>
