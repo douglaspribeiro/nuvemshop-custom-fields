@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Campos - Aplicativo: Campos Personalizados</title>
+    <link rel="stylesheet" href="../assets/app.css">
+    <link rel="stylesheet" href="../assets/merchant.css">
+</head>
+<body class="merchant-page">
+<header class="merchant-topbar">
+    <div class="merchant-topbar-inner">
+        <a class="merchant-brand" href="/admin" aria-label="Campos Personalizados">
+            <span class="merchant-brand-mark" aria-hidden="true">C</span>
+            <span class="merchant-brand-copy"><strong>Campos Personalizados</strong><small>Painel da loja</small></span>
+        </a>
+        <div class="merchant-store">
+            <span class="merchant-store-copy"><strong>Ateliê Aurora · Demonstração</strong><small>Plano Pro</small></span>
+        </div>
+    </div>
+    <nav class="merchant-nav" aria-label="Navegação principal">
+        <div class="merchant-nav-inner">
+            <a href="/admin">Visão geral</a>
+            <a href="/admin/products" aria-current="page" class=" is-active">Produtos e campos</a>
+            <a href="/admin/dashboard">Pedidos personalizados</a>
+            <a href="/admin/settings/style">Aparência</a>
+            <a href="/admin/billing">Planos e cobrança</a>
+            <a href="/admin/help">Ajuda</a>
+        </div>
+    </nav>
+</header>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Editor</p>
+            <h1>Caderno personalizado</h1>
+            <p>Defina os dados que seus clientes preencherão antes de comprar este produto.</p>
+        </div>
+        <a class="button" href="/admin/products">Produtos</a>
+    </section>
+
+
+
+
+
+
+    <section class="panel plan-strip">
+        <div>
+            <h2>Plano Pro</h2>
+            <p class="muted">3 campos neste produto de limite ilimitado</p>
+            <p class="muted">Produtos com imagens: 0 de 50. Até 8 opções por campo.</p>
+
+        </div>
+        <a class="button" href="/admin/billing">Ver planos e limites</a>
+    </section>
+
+    <section class="grid two">
+        <div class="panel">
+            <h2>Novo campo</h2>
+            <form class="form preview-source image-options-form" action="/admin/products/7001/fields"
+                  method="post">
+                <label>
+                    <span>Label</span>
+                    <input maxlength="100" required id="label" name="label" value="">
+                </label>
+                <label>
+                    <span>Tipo</span>
+                    <select required id="fieldType" name="fieldType">
+                        <option value="TEXT" selected="selected">Texto curto</option>
+                        <option value="NUMBER">Número</option>
+                        <option value="SELECT">Lista de opções</option>
+                        <option value="IMAGE_SELECT">Opções com imagem</option>
+                        <option value="TEXTAREA">Texto longo</option>
+                    </select>
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" id="required1" name="required" value="true"><input type="hidden" name="_required" value="on"/>
+                    <span>Obrigatorio</span>
+                </label>
+                <label>
+                    <span>Maximo de caracteres</span>
+                    <input type="number" min="1" max="500" required id="maxLength" name="maxLength" value="100">
+                </label>
+                <label>
+                    <span>Placeholder</span>
+                    <input maxlength="150" id="placeholder" name="placeholder" value="">
+                </label>
+                <label>
+                    <span>Regex ou mascara</span>
+                    <input maxlength="255" placeholder="Ex: ^[0-9]{1,2}$" id="validationPattern" name="validationPattern" value="">
+                </label>
+                <label>
+                    <span>Opcoes do select</span>
+                    <textarea rows="4" placeholder="Uma opcao por linha" id="optionsText" name="optionsText"></textarea>
+                </label>
+                <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
+                    <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
+
+                    <p class="notice">O envio de imagens ainda não está disponível. Entre em contato com o suporte.</p>
+                    <input type="hidden" name="imageOptionsJson" value="">
+                    <div class="image-options-rows"></div>
+                    <button class="button small image-option-add" type="button">Adicionar opção</button>
+                    <p class="image-options-status" role="status" aria-live="polite"></p>
+                </section>
+                <label>
+                    <span>Ordem</span>
+                    <input type="number" min="0" id="sortOrder" name="sortOrder" value="0">
+                </label>
+                <button class="button primary" type="submit">Criar campo</button>
+            </form>
+            <div class="preview-box">
+                <h2>Preview</h2>
+                <div id="field-preview" data-fallback-label="Campo"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h2>Campos configurados</h2>
+                <span class="muted">3 campos</span>
+            </div>
+
+
+
+
+            <div class="field-list">
+                <article class="field-item">
+                    <form class="form compact image-options-form"
+                          action="/admin/products/7001/fields/1"
+                          method="post">
+                        <label>
+                            <span>Label</span>
+                            <input name="label" value="Nome na capa" maxlength="100" required>
+                        </label>
+                        <label>
+                            <span>Tipo</span>
+                            <select name="fieldType" required>
+                                <option value="TEXT"
+                                        selected="selected">Texto curto</option>
+                                <option value="NUMBER">Número</option>
+                                <option value="SELECT">Lista de opções</option>
+                                <option value="IMAGE_SELECT">Opções com imagem</option>
+                                <option value="TEXTAREA">Texto longo</option>
+                            </select>
+                        </label>
+                        <label class="checkbox">
+                            <input name="required" type="checkbox" value="true" checked="checked">
+                            <span>Obrigatorio</span>
+                        </label>
+                        <label>
+                            <span>Maximo</span>
+                            <input name="maxLength" value="30" type="number" min="1" max="500" required>
+                        </label>
+                        <label>
+                            <span>Placeholder</span>
+                            <input name="placeholder" value="Ex.: Ana Clara" maxlength="150">
+                        </label>
+                        <label>
+                            <span>Regex ou mascara</span>
+                            <input name="validationPattern" value="" maxlength="255">
+                        </label>
+                        <label>
+                            <span>Opcoes do select</span>
+                            <textarea name="optionsText" rows="4"></textarea>
+                        </label>
+                        <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
+                            <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
+
+                    <p class="notice">O envio de imagens ainda não está disponível. Entre em contato com o suporte.</p>
+                            <input type="hidden" name="imageOptionsJson" value="">
+                            <div class="image-options-rows"></div>
+                            <button class="button small image-option-add" type="button">Adicionar opção</button>
+                            <p class="image-options-status" role="status" aria-live="polite"></p>
+                        </section>
+                        <label>
+                            <span>Ordem</span>
+                            <input name="sortOrder" value="0" type="number" min="0">
+                        </label>
+                        <div class="row-actions">
+                            <button class="button primary small" type="submit">Salvar</button>
+                        </div>
+                    </form>
+                    <form action="/admin/products/7001/fields/1/delete"
+                          method="post">
+                        <button class="button danger small" type="submit">Excluir campo</button>
+                    </form>
+                </article>
+                <article class="field-item">
+                    <form class="form compact image-options-form"
+                          action="/admin/products/7001/fields/2"
+                          method="post">
+                        <label>
+                            <span>Label</span>
+                            <input name="label" value="Mensagem para presente" maxlength="100" required>
+                        </label>
+                        <label>
+                            <span>Tipo</span>
+                            <select name="fieldType" required>
+                                <option value="TEXT">Texto curto</option>
+                                <option value="NUMBER">Número</option>
+                                <option value="SELECT">Lista de opções</option>
+                                <option value="IMAGE_SELECT">Opções com imagem</option>
+                                <option value="TEXTAREA"
+                                        selected="selected">Texto longo</option>
+                            </select>
+                        </label>
+                        <label class="checkbox">
+                            <input name="required" type="checkbox" value="true">
+                            <span>Obrigatorio</span>
+                        </label>
+                        <label>
+                            <span>Maximo</span>
+                            <input name="maxLength" value="180" type="number" min="1" max="500" required>
+                        </label>
+                        <label>
+                            <span>Placeholder</span>
+                            <input name="placeholder" value="Escreva uma mensagem especial" maxlength="150">
+                        </label>
+                        <label>
+                            <span>Regex ou mascara</span>
+                            <input name="validationPattern" value="" maxlength="255">
+                        </label>
+                        <label>
+                            <span>Opcoes do select</span>
+                            <textarea name="optionsText" rows="4"></textarea>
+                        </label>
+                        <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
+                            <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
+
+                    <p class="notice">O envio de imagens ainda não está disponível. Entre em contato com o suporte.</p>
+                            <input type="hidden" name="imageOptionsJson" value="">
+                            <div class="image-options-rows"></div>
+                            <button class="button small image-option-add" type="button">Adicionar opção</button>
+                            <p class="image-options-status" role="status" aria-live="polite"></p>
+                        </section>
+                        <label>
+                            <span>Ordem</span>
+                            <input name="sortOrder" value="1" type="number" min="0">
+                        </label>
+                        <div class="row-actions">
+                            <button class="button primary small" type="submit">Salvar</button>
+                        </div>
+                    </form>
+                    <form action="/admin/products/7001/fields/2/delete"
+                          method="post">
+                        <button class="button danger small" type="submit">Excluir campo</button>
+                    </form>
+                </article>
+                <article class="field-item">
+                    <form class="form compact image-options-form"
+                          action="/admin/products/7001/fields/3"
+                          method="post">
+                        <label>
+                            <span>Label</span>
+                            <input name="label" value="Acabamento" maxlength="100" required>
+                        </label>
+                        <label>
+                            <span>Tipo</span>
+                            <select name="fieldType" required>
+                                <option value="TEXT">Texto curto</option>
+                                <option value="NUMBER">Número</option>
+                                <option value="SELECT"
+                                        selected="selected">Lista de opções</option>
+                                <option value="IMAGE_SELECT">Opções com imagem</option>
+                                <option value="TEXTAREA">Texto longo</option>
+                            </select>
+                        </label>
+                        <label class="checkbox">
+                            <input name="required" type="checkbox" value="true">
+                            <span>Obrigatorio</span>
+                        </label>
+                        <label>
+                            <span>Maximo</span>
+                            <input name="maxLength" value="100" type="number" min="1" max="500" required>
+                        </label>
+                        <label>
+                            <span>Placeholder</span>
+                            <input name="placeholder" value="" maxlength="150">
+                        </label>
+                        <label>
+                            <span>Regex ou mascara</span>
+                            <input name="validationPattern" value="" maxlength="255">
+                        </label>
+                        <label>
+                            <span>Opcoes do select</span>
+                            <textarea name="optionsText" rows="4">Espiral dourado
+Espiral branco
+Espiral preto</textarea>
+                        </label>
+                        <section class="image-options-editor" hidden data-upload-url="/admin/products/7001/images" data-enabled="false" data-max-options="8" data-label="Nome da opção" data-file="Imagem (JPG ou PNG)" data-remove="Remover opção" data-up="Mover acima" data-down="Mover abaixo" data-uploading="Enviando imagem…" data-failed="Não foi possível enviar a imagem. Tente novamente." data-incomplete="Preencha nomes únicos e envie uma imagem para cada opção antes de salvar." data-limit="Você pode cadastrar até 8 opções por campo.">
+                            <p class="muted">Até 8 opções por campo, com imagens JPG ou PNG de até 5 MB. O nome escolhido acompanhará o pedido. Salve o campo para confirmar as alterações.</p>
+
+                    <p class="notice">O envio de imagens ainda não está disponível. Entre em contato com o suporte.</p>
+                            <input type="hidden" name="imageOptionsJson" value="">
+                            <div class="image-options-rows"></div>
+                            <button class="button small image-option-add" type="button">Adicionar opção</button>
+                            <p class="image-options-status" role="status" aria-live="polite"></p>
+                        </section>
+                        <label>
+                            <span>Ordem</span>
+                            <input name="sortOrder" value="2" type="number" min="0">
+                        </label>
+                        <div class="row-actions">
+                            <button class="button primary small" type="submit">Salvar</button>
+                        </div>
+                    </form>
+                    <form action="/admin/products/7001/fields/3/delete"
+                          method="post">
+                        <button class="button danger small" type="submit">Excluir campo</button>
+                    </form>
+                </article>
+            </div>
+        </div>
+    </section>
+
+</main>
+<script src="../assets/option-images-admin.js"></script>
+<script>
+    const source = document.querySelector(".preview-source");
+    const preview = document.getElementById("field-preview");
+    const fallbackLabel = (preview && preview.dataset.fallbackLabel) || "";
+
+    function updatePreview() {
+        if (!source || !preview) {
+            return;
+        }
+        const label = source.querySelector("[name='label']").value || fallbackLabel;
+        const type = source.querySelector("[name='fieldType']").value;
+        const placeholder = source.querySelector("[name='placeholder']").value || "";
+        const required = source.querySelector("[name='required']").checked;
+        const maxLength = source.querySelector("[name='maxLength']").value;
+        const optionsText = source.querySelector("[name='optionsText']").value || "";
+
+        preview.innerHTML = "";
+        const wrapper = document.createElement("label");
+        wrapper.className = "ncf-field";
+        const text = document.createElement("span");
+        text.className = "ncf-label";
+        text.textContent = label + (required ? " *" : "");
+        wrapper.appendChild(text);
+
+        let input;
+        if (type === "TEXTAREA") {
+            input = document.createElement("textarea");
+        } else if (type === "SELECT" || type === "IMAGE_SELECT") {
+            input = document.createElement("select");
+            let names = optionsText.split(/\r?\n/).filter(Boolean);
+            if (type === "IMAGE_SELECT") {
+                try {
+                    const options = JSON.parse(source.querySelector("[name='imageOptionsJson']").value || "[]");
+                    names = Array.isArray(options) ? options.filter(option => option && typeof option.label === "string").map(option => option.label) : [];
+                } catch (_) { names = []; }
+            }
+            names.forEach((value) => {
+                const option = document.createElement("option");
+                option.textContent = value;
+                input.appendChild(option);
+            });
+        } else {
+            input = document.createElement("input");
+            input.type = type === "NUMBER" ? "number" : "text";
+        }
+        input.placeholder = placeholder;
+        if (maxLength) {
+            input.maxLength = Number(maxLength);
+        }
+        wrapper.appendChild(input);
+        preview.appendChild(wrapper);
+    }
+
+    if (source) {
+        source.addEventListener("input", updatePreview);
+        source.addEventListener("change", updatePreview);
+        updatePreview();
+    }
+</script>
+
+
+
+<script data-gallery-focus>setTimeout(()=>{const form=document.querySelector('.preview-source');if(form){form.querySelector('[name=label]').value='Mensagem na embalagem';form.querySelector('[name=placeholder]').value='Ex.: Feito com carinho';form.querySelector('[name=maxLength]').value='80';form.dispatchEvent(new Event('input',{bubbles:true}));}window.scrollTo(0,240);},100);</script></body>
+</html>

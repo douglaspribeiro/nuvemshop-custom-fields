@@ -1,0 +1,23 @@
+{
+  "name": "Caderno personalizado",
+  "quantity": 1,
+  "price": "49.90",
+  "properties": [
+    {
+      "name": "Nome na capa",
+      "value": "Ana Clara"
+    },
+    {
+      "name": "Capa",
+      "value": "Floral"
+    },
+    {
+      "name": "Acabamento",
+      "value": "Espiral dourado"
+    },
+    {
+      "name": "Mensagem para presente",
+      "value": "Que suas ideias ganhem vida!"
+    }
+  ]
+}

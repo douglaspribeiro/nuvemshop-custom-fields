@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Cores dos campos - Aplicativo: Campos Personalizados</title>
+    <link rel="stylesheet" href="../assets/app.css">
+    <link rel="stylesheet" href="../assets/merchant.css">
+</head>
+<body class="merchant-page">
+<header class="merchant-topbar">
+    <div class="merchant-topbar-inner">
+        <a class="merchant-brand" href="/admin" aria-label="Campos Personalizados">
+            <span class="merchant-brand-mark" aria-hidden="true">C</span>
+            <span class="merchant-brand-copy"><strong>Campos Personalizados</strong><small>Painel da loja</small></span>
+        </a>
+        <div class="merchant-store">
+            <span class="merchant-store-copy"><strong>Ateliê Aurora · Demonstração</strong><small>Plano Pro</small></span>
+        </div>
+    </div>
+    <nav class="merchant-nav" aria-label="Navegação principal">
+        <div class="merchant-nav-inner">
+            <a href="/admin">Visão geral</a>
+            <a href="/admin/products">Produtos e campos</a>
+            <a href="/admin/dashboard">Pedidos personalizados</a>
+            <a href="/admin/settings/style" aria-current="page" class=" is-active">Aparência</a>
+            <a href="/admin/billing">Planos e cobrança</a>
+            <a href="/admin/help">Ajuda</a>
+        </div>
+    </nav>
+</header>
+<main class="shell">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Configuracoes</p>
+            <h1>Aparência</h1>
+            <p>Defina como os textos dos campos aparecem em cada etapa da compra.</p>
+        </div>
+        <a class="button" href="/admin/products">Produtos e campos</a>
+    </section>
+
+
+
+
+    <section class="grid two">
+    <div class="panel">
+        <h2>Cores dos campos personalizados</h2>
+        <form class="form color-settings-form" method="post" action="/admin/settings/style">
+            <label class="color-field">
+                <span>Texto no produto</span>
+                <span class="color-input-row">
+                    <input type="color" name="productTextColor" value="#176b57">
+                    <span class="muted">#176b57</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearProductTextColor" value="true">
+                <span>Usar cor automatica no produto</span>
+            </label>
+            <label class="color-field">
+                <span>Texto no checkout</span>
+                <span class="color-input-row">
+                    <input type="color" name="checkoutTextColor" value="#176b57">
+                    <span class="muted">#176b57</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearCheckoutTextColor" value="true">
+                <span>Usar cor automatica no checkout</span>
+            </label>
+            <label class="color-field">
+                <span>Campos extras no carrinho</span>
+                <span class="color-input-row">
+                    <input type="color" name="cartTextColor" value="#176b57">
+                    <span class="muted">#176b57</span>
+                </span>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="clearCartTextColor" value="true">
+                <span>Usar cor automatica nos campos extras do carrinho</span>
+            </label>
+            <div class="row-actions">
+                <button class="button primary" type="submit">Salvar cores</button>
+                <a class="button" href="/admin">Cancelar</a>
+            </div>
+        </form>
+    </div>
+    <div class="panel">
+        <h2>Prévia da vitrine</h2>
+        <p class="muted">Uma referência visual das cores selecionadas para o produto.</p>
+        <div class="merchant-preview">
+            <div class="merchant-preview-card">
+                <strong>Produto</strong>
+                <label id="merchant-preview-label" style="color:#176b57">
+                    <span>Nome para personalização</span>
+                    <input type="text" disabled placeholder="Digite o nome desejado">
+                </label>
+            </div>
+        </div>
+    </div>
+    </section>
+</main>
+<script>
+    document.querySelectorAll(".color-settings-form input[type='color']").forEach((input) => {
+        input.addEventListener("input", () => {
+            const clearInputByName = {
+                productTextColor: "clearProductTextColor",
+                checkoutTextColor: "clearCheckoutTextColor",
+                cartTextColor: "clearCartTextColor"
+            };
+            const clearInput = document.querySelector("[name='" + clearInputByName[input.name] + "']");
+            if (clearInput) {
+                clearInput.checked = false;
+            }
+            if (input.name === "productTextColor") {
+                document.getElementById("merchant-preview-label").style.color = input.value;
+            }
+        });
+    });
+    document.querySelector("[name='clearProductTextColor']").addEventListener("change", (event) => {
+        if (event.target.checked) {
+            document.getElementById("merchant-preview-label").style.color = "";
+        }
+    });
+</script>
+
+
+
+<script data-gallery-focus>setTimeout(()=>{window.scrollTo(0,115);},100);</script></body>
+</html>
