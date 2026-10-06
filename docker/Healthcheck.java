@@ -6,7 +6,9 @@ import java.time.Duration;
 
 public class Healthcheck {
     public static void main(String[] args) {
-        String url = args.length > 0 ? args[0] : "http://localhost:8080/actuator/health";
+        boolean probe = args.length > 0 && "--probe".equals(args[0]);
+        String url = args.length > (probe ? 1 : 0) ? args[probe ? 1 : 0] : "http://localhost:8080/actuator/health";
+        long started = System.nanoTime();
         try {
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(2))
@@ -16,7 +18,11 @@ public class Healthcheck {
                     .GET()
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            if (probe) {
+                System.out.printf(java.util.Locale.ROOT, "%d %.6f%n", response.statusCode(),
+                        (System.nanoTime() - started) / 1_000_000_000.0);
+            }
+            if (response.statusCode() >= 200 && response.statusCode() < (probe ? 400 : 300)) {
                 return;
             }
             System.err.println("Healthcheck failed: HTTP " + response.statusCode());

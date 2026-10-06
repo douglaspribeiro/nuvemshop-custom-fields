@@ -31,6 +31,8 @@ FROM eclipse-temurin:25-jre
 
 ARG APP_VERSION=unknown
 ENV APP_VERSION=${APP_VERSION}
+# Infra refuses to enable B on images without scheduler isolation.
+LABEL app.background-control="true"
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV JAVA_OPTS=""
 
