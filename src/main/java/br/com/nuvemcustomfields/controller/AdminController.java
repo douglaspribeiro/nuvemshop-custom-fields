@@ -287,6 +287,7 @@ public class AdminController {
         model.addAttribute("targetPrice", formatBillingPrice(subscription.getCurrency(), amount));
         model.addAttribute("currentPrice", formatBillingPrice(subscription.getCurrency(), subscription.getAmountValue()));
         model.addAttribute("nextPaymentAt", subscription.getNextPaymentAt());
+        model.addAttribute("creemUpgrade", subscription.getProvider() == PaymentProviderType.CREEM);
         return "admin/billing-upgrade";
     }
 

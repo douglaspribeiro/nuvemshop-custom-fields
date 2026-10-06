@@ -25,4 +25,12 @@ class DiscordPaymentWebhookClientTest {
         var n=new PaymentNotificationOutbox();n.setStoreId(7744400L);n.setProvider(PaymentProviderType.EFI);
         n.setPaymentId("payment-1");n.setCurrency("BRL");n.setAmountValue(new BigDecimal("8.97"));return n;
     }
+    @Test void creemMessageShowsActualPaidCurrencyAndGateway(){
+        var n=notification();n.setProvider(PaymentProviderType.CREEM);n.setCurrency("USD");n.setPlan(PlanType.PREMIUM_PLUS);
+        assertThat(client.content(n)).contains("Pagamento confirmado", "Valor: USD 8.97", "Gateway: CREEM");
+        n.setEventType(PaymentNotificationOutbox.EventType.UPGRADE);n.setSourcePlan(PlanType.PREMIUM);
+        n.setRecurringAmount(new BigDecimal("19.99"));n.setSubscriptionId("sub_1");n.setChargeId("tran_upgrade");
+        assertThat(client.content(n)).contains("Upgrade concluído", "Essencial → Pro", "Ajuste único: USD 8.97",
+                "Nova mensalidade: USD 19.99", "Gateway: CREEM", "Cobrança do ajuste: tran_upgrade");
+    }
 }

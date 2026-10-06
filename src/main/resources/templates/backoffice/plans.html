@@ -122,6 +122,65 @@
             </table>
         </div>
     </section>
+    <section class="panel" id="creem">
+        <p class="eyebrow">Creem</p>
+        <h2>Cobrança dos planos</h2>
+        <p>Crie um produto mensal e salve seu código para usar nas assinaturas. O preço de cobrança é próprio em USD ou EUR. Criar o produto não altera os limites nem as assinaturas existentes.</p>
+        <p>Ambiente do servidor: <strong th:text="${creemEnvironment}">SANDBOX</strong>. Configure os preços e as rotas em <a th:href="@{/backoffice/payments}">Pagamentos</a> após publicar.</p>
+        <p class="notice" th:unless="${creemConfigured}">Configure CREEM_API_KEY no servidor para criar ou vincular produtos neste ambiente.</p>
+        <div class="grid two">
+            <form class="form" th:action="@{/backoffice/plans/creem/create}" method="post">
+                <h3>Criar na Creem</h3>
+                <input type="hidden" name="actionToken" th:value="${actionToken}">
+                <input type="hidden" name="environment" th:value="${creemEnvironment}">
+                <label>Plano<select name="plan" required><option th:each="type : ${billablePlans}" th:value="${type}" th:text="${type.displayName}"></option></select></label>
+                <label>País (duas letras)<input name="countryCode" pattern="[A-Za-z]{2}" maxlength="2" placeholder="MX" required></label>
+                <label>Nome no checkout<input name="name" maxlength="120" required></label>
+                <label>Descrição no checkout<input name="description" maxlength="500" required></label>
+                <label>Moeda<select name="currency"><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+                <label>Preço mensal<input name="amount" type="number" min="1" max="9999999999.99" step="0.01" required></label>
+                <label>Impostos<select name="taxMode"><option value="inclusive">Incluídos no preço</option><option value="exclusive">Adicionados ao preço no checkout</option></select></label>
+                <button class="button primary" type="submit" th:disabled="${!creemConfigured}">Criar na Creem e salvar código</button>
+            </form>
+            <form class="form" th:action="@{/backoffice/plans/creem/bind}" method="post">
+                <h3>Vincular produto existente</h3>
+                <p>Use também para compartilhar um produto com outro país que tenha o mesmo preço.</p>
+                <input type="hidden" name="actionToken" th:value="${actionToken}">
+                <input type="hidden" name="environment" th:value="${creemEnvironment}">
+                <label>Plano<select name="plan" required><option th:each="type : ${billablePlans}" th:value="${type}" th:text="${type.displayName}"></option></select></label>
+                <label>País (duas letras)<input name="countryCode" pattern="[A-Za-z]{2}" maxlength="2" required></label>
+                <label>Código do produto Creem<input name="productId" maxlength="120" placeholder="prod_..." required></label>
+                <label>Moeda<select name="currency"><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+                <label>Preço mensal<input name="amount" type="number" min="1" max="9999999999.99" step="0.01" required></label>
+                <label>Impostos<select name="taxMode"><option value="inclusive">Incluídos no preço</option><option value="exclusive">Adicionados ao preço no checkout</option></select></label>
+                <button class="button" type="submit" th:disabled="${!creemConfigured}">Validar e salvar código</button>
+            </form>
+        </div>
+        <h3>Códigos salvos</h3>
+        <p th:if="${#lists.isEmpty(creemPrices)}">Nenhum produto vinculado.</p>
+        <table class="table" th:unless="${#lists.isEmpty(creemPrices)}">
+            <thead><tr><th>Plano / país</th><th>Ambiente</th><th>Preço mensal</th><th>Código do produto Creem</th><th>Status</th></tr></thead>
+            <tbody><tr th:each="price : ${creemPrices}">
+                <td th:text="${price.plan.displayName + ' / ' + price.countryCode}"></td>
+                <td th:text="${price.environment}"></td><td th:text="${price.currency + ' ' + price.amountValue}"></td>
+                <td><input readonly aria-label="Código do produto Creem" th:value="${price.providerPriceId}" onclick="this.select()"></td>
+                <td th:text="${price.enabled and price.validated ? 'Habilitado' : 'Aguardando habilitação'}"></td>
+            </tr></tbody>
+        </table>
+        <h3>Publicações recentes</h3>
+        <table class="table" th:unless="${#lists.isEmpty(creemPublications)}">
+            <thead><tr><th>Plano / país</th><th>Ambiente</th><th>Resultado</th><th>Código retornado</th><th>Ação</th></tr></thead>
+            <tbody><tr th:each="publication : ${creemPublications}">
+                <td th:text="${publication.plan.displayName + ' / ' + publication.countryCode}"></td>
+                <td th:text="${publication.environment}"></td>
+                <td><span th:text="${publication.status}"></span><small th:if="${publication.lastError}" th:text="${publication.lastError}"></small></td>
+                <td th:text="${publication.productId ?: 'Aguardando resposta'}"></td>
+                <td><form th:if="${publication.status != 'LINKED' and publication.environment == creemEnvironment}" th:action="@{/backoffice/plans/creem/{id}/resume(id=${publication.id})}" method="post">
+                    <input type="hidden" name="actionToken" th:value="${actionToken}"><button class="button" type="submit" th:disabled="${!creemConfigured}">Retomar publicação</button>
+                </form></td>
+            </tr></tbody>
+        </table>
+    </section>
 </main>
 </body>
 </html>

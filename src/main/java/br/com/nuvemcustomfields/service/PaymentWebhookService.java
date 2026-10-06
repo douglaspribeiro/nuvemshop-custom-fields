@@ -130,9 +130,9 @@ public class PaymentWebhookService {
     }
 
     public void processPendingPaddle() {
-        var due = events.findTop50ByStatusInAndNextAttemptAtLessThanEqualOrderByReceivedAtAsc(
-                EnumSet.of(PaymentWebhookStatus.RECEIVED, PaymentWebhookStatus.FAILED), Instant.now());
-        for (PaymentWebhookEvent event : due) processPaddle(event);
+        var due = events.findTop50ByProviderAndProviderEnvironmentAndStatusInAndNextAttemptAtLessThanEqualOrderByReceivedAtAsc(
+                PaymentProviderType.PADDLE, router.environment(PaymentProviderType.PADDLE), EnumSet.of(PaymentWebhookStatus.RECEIVED, PaymentWebhookStatus.FAILED), Instant.now());
+        for (PaymentWebhookEvent event : due) if (event.getProvider() == PaymentProviderType.PADDLE) processPaddle(event);
     }
 
     private void processPaddle(PaymentWebhookEvent event) {

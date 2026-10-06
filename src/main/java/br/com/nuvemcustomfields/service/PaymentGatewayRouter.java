@@ -41,7 +41,7 @@ public class PaymentGatewayRouter {
 
     public PaymentGateway require(PaymentProviderType provider) {
         PaymentGateway gateway = gateways.get(provider);
-        if (gateway == null || !gateway.configured()) {
+        if (gateway == null || !(gateway.configured() || gateway.operational())) {
             throw new IllegalStateException("Gateway de pagamento indisponivel: " + provider);
         }
         return gateway;
@@ -50,6 +50,11 @@ public class PaymentGatewayRouter {
     public boolean configured(PaymentProviderType provider) {
         PaymentGateway gateway = gateways.get(provider);
         return gateway != null && gateway.configured();
+    }
+
+    public boolean operational(PaymentProviderType provider) {
+        PaymentGateway gateway = gateways.get(provider);
+        return gateway != null && (gateway.configured() || gateway.operational());
     }
 
     public PaymentEnvironment environment(PaymentProviderType provider) {

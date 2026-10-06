@@ -30,7 +30,7 @@ public class Ga4BillingService {
         if(first) sub.setAnalyticsFirstPaymentId(invoice.paymentId());
         boolean initial=invoice.paymentId().equals(sub.getAnalyticsFirstPaymentId());
         var params=parameters(initial ? "subscription" : "renewal",sub.getPlan(),null,sub.getProvider(),sub.getCurrency());
-        BigDecimal amount=initial && sub.getWinbackInitialAmount()!=null ? sub.getWinbackInitialAmount():sub.getAmountValue();
+        BigDecimal amount=invoice.amountPaid()!=null ? invoice.amountPaid() : initial && sub.getWinbackInitialAmount()!=null ? sub.getWinbackInitialAmount():sub.getAmountValue();
         commerce(params,sub.getPlan(),sub.getProvider()+"-"+invoice.paymentId(),amount,initial?sub.getWinbackCouponCode():null);
         enqueue(sub.getProvider()+"-payment-"+invoice.paymentId(),initial?"purchase":"subscription_renewal",
                 sub.getProviderEnvironment(),sub.getAnalyticsClientId(),initial?sub.getAnalyticsSessionId():null,params);

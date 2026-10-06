@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface PaymentGateway {
     PaymentProviderType provider();
     boolean configured();
+    default boolean operational() { return configured(); }
+    default void validateCatalog(br.com.nuvemcustomfields.entity.PaymentCatalogPrice price) { }
     boolean supports(Store store);
     BigDecimal amount(PlanType plan);
     default BigDecimal amount(Store store, PlanType plan) { return amount(plan); }

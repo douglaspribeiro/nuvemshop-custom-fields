@@ -57,6 +57,13 @@ public class PaymentSubscriptionService {
     private final PaymentAttemptRepository attempts;
     private final PaddleGateway paddle;
     private final WinbackDiscountService winbackDiscounts;
+    private CreemCheckoutService creemCheckout;
+    private CreemUpgradeService creemUpgrade;
+    @Autowired(required = false)
+    public void setCreemUpgrade(CreemUpgradeService service) { this.creemUpgrade = service; }
+
+    @Autowired(required = false)
+    public void setCreemCheckout(CreemCheckoutService service) { this.creemCheckout = service; }
 
     @Autowired
     public PaymentSubscriptionService(
@@ -115,7 +122,7 @@ public class PaymentSubscriptionService {
     }
 
     public boolean paddleEnabled() { return router.configured(PaymentProviderType.PADDLE); }
-    public boolean anyGatewayEnabled() { return efiEnabled() || mercadoPagoEnabled() || paddleEnabled(); }
+    public boolean anyGatewayEnabled() { return efiEnabled() || mercadoPagoEnabled() || paddleEnabled() || router.configured(PaymentProviderType.CREEM); }
     public Optional<PaymentProviderType> provider(Store store) {
         return router.forStore(store).map(PaymentGateway::provider);
     }
@@ -153,6 +160,9 @@ public class PaymentSubscriptionService {
         if (plan == PlanType.PREMIUM_ULTRA && !efi.planAvailable(store, plan))
             throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local != null && local.getProvider() == PaymentProviderType.CREEM
+                && local.getStatus() == PaymentSubscriptionStatus.PENDING && !hasText(local.getProviderCheckoutId()))
+            throw new IllegalStateException("A tentativa Creem anterior ainda precisa ser conciliada. Contate o suporte.");
         if (local != null && local.getProvider() == PaymentProviderType.EFI
                 && local.getStatus() == PaymentSubscriptionStatus.PENDING) {
             if (pendingExpired(local, Instant.now())) {
@@ -298,7 +308,11 @@ public class PaymentSubscriptionService {
     }
 
     public BigDecimal amount(Store store, PlanType plan) {
-        return priceGateway(store).map(gateway -> amount(gateway, store, plan)).orElse(BigDecimal.ZERO);
+        PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
+        if (existing != null && existing.getProvider() == PaymentProviderType.CREEM && existing.isAccessActive() && existing.getPlan() == plan)
+            return existing.getAmountValue();
+        try { return priceGateway(store).map(gateway -> amount(gateway, store, plan)).orElse(BigDecimal.ZERO); }
+        catch (IllegalArgumentException ex) { return BigDecimal.ZERO; }
     }
 
     public boolean analyticsSandbox(Store store) {
@@ -306,12 +320,14 @@ public class PaymentSubscriptionService {
     }
 
     public String currency(Store store) {
+        PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
+        if (existing != null && existing.getProvider() == PaymentProviderType.CREEM && existing.isAccessActive()) return existing.getCurrency();
         return priceGateway(store).map(gateway -> gateway.currency(store)).orElse(store.getStoreCurrency());
     }
 
     private Optional<PaymentGateway> priceGateway(Store store) {
         PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
-        if (existing != null && existing.isAccessActive() && router.configured(existing.getProvider()))
+        if (existing != null && existing.isAccessActive() && router.operational(existing.getProvider()))
             return Optional.of(router.require(existing.getProvider()));
         return router.forStore(store);
     }
@@ -325,6 +341,8 @@ public class PaymentSubscriptionService {
             PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
             PaymentGateway gateway = existing != null && existing.isAccessActive()
                     ? router.require(existing.getProvider()) : router.requireForStore(store);
+            if (existing != null && existing.isAccessActive() && existing.getProvider() == PaymentProviderType.CREEM
+                    && !existing.getCurrency().equals(gateway.currency(store))) return false;
             return gateway.planAvailable(store, plan);
         } catch (RuntimeException ex) { return false; }
     }
@@ -336,6 +354,11 @@ public class PaymentSubscriptionService {
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void upgrade(Long storeId, PlanType targetPlan, BigDecimal confirmedAmount) {
+        if (creemUpgrade != null && subscriptions.findByStoreId(storeId)
+                .map(local -> local.getProvider() == PaymentProviderType.CREEM).orElse(false)) {
+            creemUpgrade.upgrade(storeId, targetPlan, confirmedAmount);
+            return;
+        }
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
         PaymentSubscription subscription = subscriptions.findByStoreId(storeId)
@@ -375,7 +398,7 @@ public class PaymentSubscriptionService {
             GatewaySubscription remote = gateway.getSubscription(subscription.getProviderSubscriptionId());
             if (!matchesUpgrade(subscription, remote))
                 throw new PaymentGatewayException("A alteração está aguardando confirmação do provedor.");
-            synchronize(subscription, remote, null, "PAYMENT_UPGRADE");
+            synchronize(subscription, remote, gateway.provider() == PaymentProviderType.CREEM ? gateway.getLatestInvoice(remote.id()).orElse(null) : null, "PAYMENT_UPGRADE");
         } catch (RuntimeException ex) {
             throw new PaymentGatewayException("A alteração precisa ser confirmada pelo provedor. Seu acesso atual foi preservado.", ex);
         }
@@ -386,6 +409,11 @@ public class PaymentSubscriptionService {
         if (plan == null || !plan.isBillable()) {
             throw new IllegalArgumentException("Selecione um plano pago.");
         }
+        if (creemCheckout != null) {
+            Store candidate = stores.findByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("Loja não encontrada."));
+            if (router.forStore(candidate).map(g -> g.provider() == PaymentProviderType.CREEM).orElse(false))
+                return creemCheckout.start(storeId, plan);
+        }
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
         refreshProfileIfNeeded(store);
@@ -393,6 +421,8 @@ public class PaymentSubscriptionService {
             throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
         }
         PaymentGateway gateway = router.requireForStore(store);
+        if (gateway.provider() == PaymentProviderType.CREEM)
+            throw new PaymentGatewayException("O perfil da loja foi atualizado. Reabra os planos para iniciar o checkout Creem.");
         PaymentSubscription subscription = subscriptions.findByStoreId(storeId).orElse(null);
         if (plan == PlanType.PREMIUM_ULTRA && !gateway.planAvailable(store, plan))
             throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
@@ -404,7 +434,7 @@ public class PaymentSubscriptionService {
         if (subscription != null && subscription.isAccessActive()) {
             throw new IllegalArgumentException("A loja ja possui uma assinatura ativa.");
         }
-        if (gateway.provider() == PaymentProviderType.PADDLE && attempts != null) {
+        if (attempts != null) {
             Optional<PaymentAttempt> previousAttempt = attempts.findFirstByStoreIdAndStatusInOrderByCreatedAtDesc(storeId,
                     java.util.EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN));
             if (previousAttempt.isPresent()) {
@@ -445,7 +475,7 @@ public class PaymentSubscriptionService {
                 ? UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "") : null;
         PaymentAttempt attempt = null;
         if (checkoutToken != null) {
-            if (attempts == null || paddle == null) throw new IllegalStateException("Persistência de tentativas Paddle indisponível.");
+            if (attempts == null) throw new IllegalStateException("Persistência de tentativas indisponível.");
             attempt = new PaymentAttempt();
             attempt.setStoreId(storeId);
             attempt.setProvider(gateway.provider());
@@ -455,9 +485,9 @@ public class PaymentSubscriptionService {
             attempt.setCurrency(gateway.currency(store));
             attempt.setAmountValue(amount(gateway, store, plan));
             attempt.setExternalReference(reference);
-            attempt.setCheckoutTokenHash(hash(checkoutToken));
+            attempt.setCheckoutTokenHash(hash(checkoutToken == null ? reference : checkoutToken));
             attempt.setStatus(PaymentAttemptStatus.CREATING);
-            attempt.setExpiresAt(Instant.now().plus(paddle.checkoutTokenMinutes(), ChronoUnit.MINUTES));
+            attempt.setExpiresAt(Instant.now().plus(gateway.provider() == PaymentProviderType.PADDLE ? paddle.checkoutTokenMinutes() : 30, ChronoUnit.MINUTES));
             attempts.saveAndFlush(attempt);
         }
         subscription.applyWinbackCoupon(null, null, null);
@@ -492,7 +522,7 @@ public class PaymentSubscriptionService {
                 attempt.setProviderTransactionId(checkout.checkoutResourceId());
                 attempt.setStatus(PaymentAttemptStatus.OPEN);
                 attempts.save(attempt);
-                checkoutUrl = nuvemshopProperties.appBaseUrl() + "/checkout/paddle?token=" + checkoutToken;
+                if (checkoutToken != null) checkoutUrl = nuvemshopProperties.appBaseUrl() + "/checkout/paddle?token=" + checkoutToken;
             }
             subscription.setCheckoutUrl(checkoutUrl);
             subscription.setProviderStatus(checkout.providerStatus());
@@ -537,6 +567,8 @@ public class PaymentSubscriptionService {
         PaymentSubscription local = subscriptions.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura local nao encontrada."));
         if (local.getProviderSubscriptionId() == null) {
+            if (local.getProvider() == PaymentProviderType.CREEM && hasText(local.getProviderCheckoutId()))
+                return synchronizeCreemCheckout(local.getProviderCheckoutId());
             return local;
         }
         PaymentGateway gateway = router.require(local.getProvider());
@@ -638,6 +670,7 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
         PaymentSubscription local = locate(remote);
+        if (provider == PaymentProviderType.CREEM) requireProvider(local, provider);
         return synchronize(local, remote, latestInvoice(gateway, local, remote).orElse(null), "PAYMENT_WEBHOOK");
     }
 
@@ -646,6 +679,7 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
         PaymentSubscription local = locate(remote);
+        if (provider == PaymentProviderType.CREEM) requireProvider(local, provider);
         return synchronize(local, remote, null, "PAYMENT_WEBHOOK");
     }
 
@@ -665,6 +699,7 @@ public class PaymentSubscriptionService {
         GatewayInvoice invoice = gateway.getInvoice(invoiceId);
         GatewaySubscription remote = gateway.getSubscription(invoice.subscriptionId());
         PaymentSubscription local = locate(remote);
+        if (provider == PaymentProviderType.CREEM) requireProvider(local, provider);
         return synchronize(local, remote, invoice, "PAYMENT_WEBHOOK");
     }
 
@@ -764,6 +799,13 @@ public class PaymentSubscriptionService {
             String source
     ) {
         validateRemote(local, remote);
+        if (local.getProvider() == PaymentProviderType.CREEM && invoice != null
+                && (!Objects.equals(local.getProviderSubscriptionId() == null ? remote.id() : local.getProviderSubscriptionId(), invoice.subscriptionId())
+                    || !Objects.equals(local.getCurrency(), invoice.currency())))
+            throw new IllegalArgumentException("Pagamento Creem divergente da assinatura.");
+        if (local.getProvider() == PaymentProviderType.CREEM && matchesUpgrade(local, remote)
+                && (invoice == null || !invoice.approved() || Objects.equals(invoice.paymentId(), local.getLastPaymentId())))
+            throw new PaymentGatewayException("Aguardando confirmação do pagamento proporcional Creem.");
         PlanType sourcePlan = local.getPlan();
         boolean upgraded = matchesUpgrade(local, remote);
         if (upgraded) {
@@ -805,10 +847,23 @@ public class PaymentSubscriptionService {
         paymentNotifications.paymentFailed(local, invoice);
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
         if (remote.cancellationEffectiveAt() != null) {
+            if (local.getProvider() == PaymentProviderType.CREEM && invoice != null && invoice.approved()
+                    && Instant.now().isBefore(remote.cancellationEffectiveAt())) {
+                activate(local, store, source); paymentNotifications.enqueue(local, invoice);
+            }
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
             local.setCancellationPending(false);
             local.setCancellationEffectiveAt(remote.cancellationEffectiveAt());
             local.setNextPaymentAt(remote.cancellationEffectiveAt());
+        } else if (local.getProvider() == PaymentProviderType.CREEM && "active".equals(status)
+                && invoice != null && invoice.approved()
+                && (remote.currentPeriodEnd() == null || !Instant.now().isBefore(remote.currentPeriodEnd()))) {
+            local.setStatus(PaymentSubscriptionStatus.PAUSED); deactivate(local, store, source);
+        } else if (local.getProvider() == PaymentProviderType.CREEM &&
+                ("unpaid".equals(status) || "expired".equals(status) || "trialing".equals(status)
+                 || (invoice != null && java.util.Set.of("refunded", "chargedBack").contains(invoice.paymentStatus())))) {
+            local.setStatus(PaymentSubscriptionStatus.PAUSED);
+            deactivate(local, store, source);
         } else if ("past_due".equals(status) || (local.isAccessActive() && invoice != null && !invoice.approved())) {
             local.setStatus(PaymentSubscriptionStatus.PAST_DUE);
             if (local.getGraceUntil() == null) {
@@ -821,7 +876,11 @@ public class PaymentSubscriptionService {
             local.setGraceUntil(null);
             local.setCancellationPending(false);
             activate(local, store, source);
-            paymentNotifications.enqueue(local, invoice);
+            if (upgraded && local.getProvider() == PaymentProviderType.CREEM) {
+                paymentNotifications.enqueueUpgrade(store, local, sourcePlan, invoice);
+            } else {
+                paymentNotifications.enqueue(local, invoice);
+            }
             if (attempts != null) attempts.findByExternalReference(local.getExternalReference()).ifPresent(attempt -> {
                 attempt.setStatus(PaymentAttemptStatus.COMPLETED);
                 attempts.save(attempt);
@@ -830,6 +889,9 @@ public class PaymentSubscriptionService {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
             deactivate(local, store, source);
         } else if (canceled(status)) {
+            if (local.getProvider() == PaymentProviderType.CREEM) {
+                local.setNextPaymentAt(Instant.now()); deactivate(local, store, source);
+            }
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
             local.setCancellationPending(false);
             if (local.getNextPaymentAt() == null || !Instant.now().isBefore(local.getNextPaymentAt())) {
@@ -848,6 +910,44 @@ public class PaymentSubscriptionService {
         }
         stores.save(store);
         return subscriptions.save(local);
+    }
+
+    @Transactional
+    public PaymentSubscription synchronizeCreemCheckout(String checkoutId) {
+        var gateway = (br.com.nuvemcustomfields.payment.CreemGateway) router.require(PaymentProviderType.CREEM);
+        var checkout = gateway.getCheckout(checkoutId);
+        String reference = br.com.nuvemcustomfields.payment.CreemGateway.required(checkout, "request_id");
+        PaymentSubscription local = subscriptions.findByExternalReference(reference)
+                .orElseThrow(() -> new IllegalArgumentException("Checkout Creem sem tentativa local."));
+        requireProvider(local, PaymentProviderType.CREEM);
+        if (local.getProviderEnvironment() != gateway.environment()
+                || (hasText(local.getProviderCheckoutId()) && !Objects.equals(local.getProviderCheckoutId(), checkoutId))
+                || !Objects.equals(local.getProviderPriceId(), br.com.nuvemcustomfields.payment.CreemGateway.resourceId(checkout.path("product")))
+                || !Objects.equals(local.getStoreId().toString(), br.com.nuvemcustomfields.payment.CreemGateway.text(checkout.path("metadata"), "store_id")))
+            throw new IllegalArgumentException("Checkout Creem divergente da tentativa local.");
+        local.setProviderCheckoutId(checkoutId);
+        if (attempts != null) attempts.findByExternalReference(reference).ifPresent(attempt -> {
+            attempt.setProviderTransactionId(checkoutId);
+            if (attempt.getStatus() != PaymentAttemptStatus.COMPLETED) attempt.setStatus(PaymentAttemptStatus.OPEN);
+            attempts.save(attempt);
+        });
+        String id = br.com.nuvemcustomfields.payment.CreemGateway.resourceId(checkout.path("subscription"));
+        if (hasText(id)) {
+            GatewaySubscription remote = gateway.getSubscription(id);
+            return synchronize(local, remote, gateway.getLatestInvoice(id).orElse(null), "CREEM_CHECKOUT");
+        }
+        if ("expired".equals(br.com.nuvemcustomfields.payment.CreemGateway.text(checkout, "status"))) {
+            local.setStatus(PaymentSubscriptionStatus.CANCELED); local.setCheckoutUrl(null);
+            if (attempts != null) attempts.findByExternalReference(reference).ifPresent(attempt -> {
+                attempt.setStatus(PaymentAttemptStatus.CANCELED); attempts.save(attempt);
+            });
+        }
+        return subscriptions.save(local);
+    }
+
+    private void requireProvider(PaymentSubscription local, PaymentProviderType provider) {
+        if (local.getProvider() != provider || local.getProviderEnvironment() != router.require(provider).environment())
+            throw new IllegalArgumentException("Gateway ou ambiente da assinatura divergente.");
     }
 
     private PaymentSubscription locate(GatewaySubscription remote) {
@@ -871,6 +971,9 @@ public class PaymentSubscriptionService {
                 throw new IllegalArgumentException("Referencia externa da assinatura divergente.");
             return;
         }
+        if (local.getProvider() == PaymentProviderType.CREEM
+                && !Objects.equals(local.getProviderPriceId(), remote.priceId()))
+            throw new IllegalArgumentException("Produto Creem divergente da assinatura.");
         String expectedResource = hasText(local.getProviderPriceId()) ? local.getProviderPriceId() : local.getProviderCheckoutId();
         if (hasText(expectedResource) && hasText(remote.checkoutResourceId())
                 && !Objects.equals(expectedResource, remote.checkoutResourceId())) {
@@ -896,7 +999,7 @@ public class PaymentSubscriptionService {
                 || local.getUpgradeAmount().compareTo(remote.amount()) != 0
                 || (!"active".equalsIgnoreCase(remote.status()) && !"authorized".equalsIgnoreCase(remote.status())
                     && !"new_charge".equalsIgnoreCase(remote.status()))) return false;
-        String remotePrice = local.getProvider() == PaymentProviderType.PADDLE ? remote.priceId() : remote.checkoutResourceId();
+        String remotePrice = local.getProvider() == PaymentProviderType.PADDLE || local.getProvider() == PaymentProviderType.CREEM ? remote.priceId() : remote.checkoutResourceId();
         return !hasText(local.getUpgradePriceId()) || Objects.equals(local.getUpgradePriceId(), remotePrice);
     }
 
@@ -971,12 +1074,15 @@ public class PaymentSubscriptionService {
         return "cancelled".equalsIgnoreCase(status) || "canceled".equalsIgnoreCase(status);
     }
     private BigDecimal amount(PaymentGateway gateway, Store store, PlanType plan) {
-        return gateway.provider() == PaymentProviderType.PADDLE ? gateway.amount(store, plan) : gateway.amount(plan);
+        return gateway.provider() == PaymentProviderType.PADDLE || gateway.provider() == PaymentProviderType.CREEM
+                ? gateway.amount(store, plan) : gateway.amount(plan);
     }
     private int graceDays(PaymentProviderType provider) {
+        if (provider == PaymentProviderType.CREEM) return ((br.com.nuvemcustomfields.payment.CreemGateway) router.require(provider)).graceDays();
         return provider == PaymentProviderType.PADDLE && paddle != null ? paddle.graceDays() : mercadoPagoProperties.safeGraceDays();
     }
     private boolean reusableCheckout(PaymentSubscription subscription) {
+        if (subscription.getProvider() == PaymentProviderType.CREEM) return true; // Reuse until provider confirms expiration.
         if (subscription.getProvider() != PaymentProviderType.PADDLE || attempts == null) return true;
         PaymentAttempt attempt = attempts.findByExternalReference(subscription.getExternalReference()).orElse(null);
         if (attempt != null && attempt.getStatus() == PaymentAttemptStatus.OPEN

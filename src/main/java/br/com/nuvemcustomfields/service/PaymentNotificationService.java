@@ -56,8 +56,8 @@ public class PaymentNotificationService {
         notification.setPaymentId(invoice.paymentId());
         notification.setStoreId(subscription.getStoreId());
         notification.setPlan(subscription.getPlan());
-        notification.setCurrency(subscription.getCurrency());
-        notification.setAmountValue(subscription.getWinbackInitialAmount() != null
+        notification.setCurrency(invoice.currency() == null ? subscription.getCurrency() : invoice.currency());
+        notification.setAmountValue(invoice.amountPaid() != null ? invoice.amountPaid() : subscription.getWinbackInitialAmount() != null
                 && invoice.paymentId().equals(subscription.getWinbackFirstPaymentId())
                 ? subscription.getWinbackInitialAmount() : subscription.getAmountValue());
         outbox.save(notification);
@@ -84,6 +84,30 @@ public class PaymentNotificationService {
         notification.setCouponCode(adjustment.getCouponCode());
         notification.setSubscriptionId(adjustment.getSubscriptionId());
         notification.setChargeId(adjustment.getChargeId());
+        outbox.save(notification);
+    }
+
+    /** Ajuste proporcional confirmado pelo gateway, preservando o valor real da transação. */
+    @Transactional
+    public void enqueueUpgrade(Store store, PaymentSubscription subscription, br.com.nuvemcustomfields.entity.PlanType sourcePlan,
+                               GatewayInvoice invoice) {
+        if (invoice == null || !invoice.approved() || invoice.amountPaid() == null
+                || invoice.paymentId() == null || invoice.paymentId().isBlank()) return;
+        if (outbox.existsByProviderAndPaymentId(subscription.getProvider(), invoice.paymentId())) return;
+        if (analytics != null) analytics.payment(subscription, invoice);
+        var notification = new PaymentNotificationOutbox();
+        notification.setEventType(PaymentNotificationOutbox.EventType.UPGRADE);
+        notification.setProvider(subscription.getProvider());
+        notification.setPaymentId(invoice.paymentId());
+        notification.setStoreId(store.getStoreId());
+        notification.setStoreName(store.getStoreName());
+        notification.setSourcePlan(sourcePlan);
+        notification.setPlan(subscription.getPlan());
+        notification.setCurrency(invoice.currency() == null ? subscription.getCurrency() : invoice.currency());
+        notification.setAmountValue(invoice.amountPaid());
+        notification.setRecurringAmount(subscription.getAmountValue());
+        notification.setSubscriptionId(subscription.getProviderSubscriptionId());
+        notification.setChargeId(invoice.paymentId());
         outbox.save(notification);
     }
 

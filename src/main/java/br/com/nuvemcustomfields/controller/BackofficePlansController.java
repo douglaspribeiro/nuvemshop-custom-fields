@@ -21,6 +21,10 @@ import java.util.stream.Collectors;
 public class BackofficePlansController {
     private static final String TOKEN_KEY = "planActionToken";
     private final PlanCatalogService catalog;
+    private br.com.nuvemcustomfields.service.CreemCatalogService creem;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCreem(br.com.nuvemcustomfields.service.CreemCatalogService creem) { this.creem = creem; }
 
     public BackofficePlansController(PlanCatalogService catalog) { this.catalog = catalog; }
 
@@ -34,6 +38,11 @@ public class BackofficePlansController {
         model.addAttribute("today", catalog.today());
         model.addAttribute("currentPlanIds", catalog.activePlansByType().values().stream()
                 .map(p -> p.getId()).collect(Collectors.toSet()));
+        model.addAttribute("creemConfigured", creem != null && creem.apiConfigured());
+        model.addAttribute("creemEnvironment", creem == null ? br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX : creem.environment());
+        model.addAttribute("creemPrices", creem == null ? java.util.List.of() : creem.prices());
+        model.addAttribute("creemPublications", creem == null ? java.util.List.of() : creem.publications());
+        model.addAttribute("billablePlans", java.util.Arrays.stream(PlanType.values()).filter(PlanType::isBillable).toList());
         return "backoffice/plans";
     }
 

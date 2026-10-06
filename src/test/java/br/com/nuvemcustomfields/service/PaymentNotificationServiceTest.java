@@ -9,6 +9,8 @@ import br.com.nuvemcustomfields.entity.UpgradeAdjustment;
 import br.com.nuvemcustomfields.payment.GatewayInvoice;
 import br.com.nuvemcustomfields.repository.PaymentNotificationOutboxRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
@@ -51,10 +53,11 @@ class PaymentNotificationServiceTest {
         verifyNoInteractions(outbox);
     }
 
-    @Test
-    void retriesFailedDiscordDeliveryWithoutLosingPayment() {
+    @ParameterizedTest
+    @EnumSource(value = PaymentProviderType.class, names = {"EFI", "CREEM"})
+    void retriesFailedDiscordDeliveryWithoutLosingPayment(PaymentProviderType provider) {
         PaymentNotificationOutbox notification = new PaymentNotificationOutbox();
-        notification.setProvider(PaymentProviderType.EFI);
+        notification.setProvider(provider);
         notification.setPaymentId("charge-1");
         when(discord.configured()).thenReturn(true);
         when(outbox.findDue(any(), any())).thenReturn(List.of(notification));
@@ -68,10 +71,11 @@ class PaymentNotificationServiceTest {
         assertThat(notification.getNextAttemptAt()).isAfter(before);
     }
 
-    @Test
-    void marksSuccessfulDelivery() {
+    @ParameterizedTest
+    @EnumSource(value = PaymentProviderType.class, names = {"EFI", "CREEM"})
+    void marksSuccessfulDelivery(PaymentProviderType provider) {
         PaymentNotificationOutbox notification = new PaymentNotificationOutbox();
-        notification.setProvider(PaymentProviderType.EFI);
+        notification.setProvider(provider);
         notification.setPaymentId("charge-1");
         when(discord.configured()).thenReturn(true);
         when(outbox.findDue(any(), any())).thenReturn(List.of(notification));
@@ -80,6 +84,60 @@ class PaymentNotificationServiceTest {
 
         assertThat(notification.getDeliveredAt()).isNotNull();
         verify(discord).send(notification);
+    }
+
+    @Test
+    void creemPaymentsAndRenewalsUseActualPaidAmountAndDeduplicateEachTransaction() {
+        var subscription = creemSubscription();
+        var first = new GatewayInvoice("tran_first", "sub_1", "tran_first", "paid", "USD", new BigDecimal("6.50"));
+        var renewal = new GatewayInvoice("tran_renewal", "sub_1", "tran_renewal", "paid", "USD", new BigDecimal("19.99"));
+        service.enqueue(subscription, first);
+        when(outbox.existsByProviderAndPaymentId(PaymentProviderType.CREEM, "tran_first")).thenReturn(true);
+        service.enqueue(subscription, first);
+        service.enqueue(subscription, renewal);
+
+        var saved = ArgumentCaptor.forClass(PaymentNotificationOutbox.class);
+        verify(outbox, times(2)).save(saved.capture());
+        assertThat(saved.getAllValues()).extracting(PaymentNotificationOutbox::getPaymentId)
+                .containsExactly("tran_first", "tran_renewal");
+        assertThat(saved.getAllValues().getFirst().getAmountValue()).isEqualByComparingTo("6.50");
+        assertThat(saved.getAllValues().getLast().getAmountValue()).isEqualByComparingTo("19.99");
+        assertThat(saved.getAllValues()).allSatisfy(n -> {
+            assertThat(n.getProvider()).isEqualTo(PaymentProviderType.CREEM);
+            assertThat(n.getCurrency()).isEqualTo("USD");
+        });
+    }
+
+    @Test
+    void creemUpgradeSnapshotsAdjustmentAndNewMonthlyPriceOnlyAfterConfirmation() {
+        var store = new Store(); store.setStoreId(123L); store.setStoreName("Minha loja");
+        var subscription = creemSubscription();
+        service.enqueueUpgrade(store, subscription, PlanType.PREMIUM,
+                new GatewayInvoice("tran_upgrade", "sub_1", "tran_upgrade", "waiting", "USD", new BigDecimal("3.25")));
+        verifyNoInteractions(outbox);
+        var invoice = new GatewayInvoice("tran_upgrade", "sub_1", "tran_upgrade", "paid", "USD", new BigDecimal("3.25"));
+        service.enqueueUpgrade(store, subscription, PlanType.PREMIUM, invoice);
+        when(outbox.existsByProviderAndPaymentId(PaymentProviderType.CREEM, "tran_upgrade")).thenReturn(true);
+        service.enqueueUpgrade(store, subscription, PlanType.PREMIUM, invoice);
+        var saved = ArgumentCaptor.forClass(PaymentNotificationOutbox.class);
+        verify(outbox).save(saved.capture());
+        var n = saved.getValue();
+        assertThat(n.getEventType()).isEqualTo(PaymentNotificationOutbox.EventType.UPGRADE);
+        assertThat(n.getSourcePlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(n.getPlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(n.getAmountValue()).isEqualByComparingTo("3.25");
+        assertThat(n.getRecurringAmount()).isEqualByComparingTo("19.99");
+        assertThat(n.getStoreName()).isEqualTo("Minha loja");
+        assertThat(n.getSubscriptionId()).isEqualTo("sub_1");
+        assertThat(n.getChargeId()).isEqualTo("tran_upgrade");
+    }
+
+    private PaymentSubscription creemSubscription() {
+        var subscription = new PaymentSubscription();
+        subscription.setStoreId(123L); subscription.setProvider(PaymentProviderType.CREEM);
+        subscription.setProviderSubscriptionId("sub_1"); subscription.setPlan(PlanType.PREMIUM_PLUS);
+        subscription.setCurrency("USD"); subscription.setAmountValue(new BigDecimal("19.99"));
+        return subscription;
     }
     @Test
     void queuesOnlyCompletedUpgradeAndSnapshotsItsActualAdjustmentAmount() {

@@ -61,6 +61,7 @@ public class PaymentConfigurationService {
         }
         try {
             if (price.getProvider()==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
+            if (price.getProvider()==PaymentProviderType.CREEM) router.require(PaymentProviderType.CREEM).validateCatalog(price);
             price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
             return new PriceSaveResult(true, true, "Preço validado e habilitado.");
         } catch (RuntimeException ex) {
@@ -74,10 +75,14 @@ public class PaymentConfigurationService {
         if (!router.configured(provider)) throw new IllegalArgumentException("O gateway não possui credenciais completas.");
         if (router.environment(provider)!=environment) throw new IllegalArgumentException("O ambiente da regra difere do gateway configurado.");
         List<PaymentCatalogPrice> prices=catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseOrderByPlan(provider,environment,country);
+        if (provider == PaymentProviderType.CREEM && prices.stream().filter(PaymentCatalogPrice::isEnabled)
+                .map(PaymentCatalogPrice::getCurrency).distinct().count() > 1)
+            throw new IllegalArgumentException("Os planos Creem do país devem usar a mesma moeda.");
         for (PlanType plan : List.of(PlanType.PREMIUM,PlanType.PREMIUM_PLUS)) {
             PaymentCatalogPrice price=prices.stream().filter(p->p.getPlan()==plan && p.isEnabled() && p.isRecurring() && p.isValidated()).findFirst()
                     .orElseThrow(()->new IllegalArgumentException("Catálogo incompleto para "+plan.getDisplayName()+"."));
             if (provider==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
+            if (provider==PaymentProviderType.CREEM) router.require(provider).validateCatalog(price);
         }
     }
     private static String country(String value) {
@@ -86,7 +91,7 @@ public class PaymentConfigurationService {
     }
     private static boolean blank(String value){return value==null||value.isBlank();}
     private static String truncate(String value) {
-        if (value==null || value.isBlank()) return "Não foi possível validar o preço no Paddle.";
+        if (value==null || value.isBlank()) return "Não foi possível validar o preço no gateway.";
         return value.length()<=500?value:value.substring(0,500);
     }
     public record PriceSaveResult(boolean validated, boolean enabled, String message) { }

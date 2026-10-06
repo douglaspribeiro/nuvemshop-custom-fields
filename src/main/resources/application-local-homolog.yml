@@ -24,6 +24,9 @@ payments:
     premium-ultra-amount: ${EFI_PREMIUM_ULTRA_AMOUNT:59.90}
   mercado-pago:
     enabled: false
+  creem:
+    enabled: false
+    sandbox: true
   paddle:
     enabled: false
 notifications:

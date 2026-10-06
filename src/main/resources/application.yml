@@ -147,6 +147,13 @@ payments:
     premium-amount: ${MERCADO_PAGO_PREMIUM_AMOUNT:19.99}
     premium-plus-amount: ${MERCADO_PAGO_PREMIUM_PLUS_AMOUNT:29.99}
     premium-ultra-amount: ${MERCADO_PAGO_PREMIUM_ULTRA_AMOUNT:59.90}
+  creem:
+    enabled: ${CREEM_ENABLED:false}
+    sandbox: ${CREEM_SANDBOX:true}
+    api-key: ${CREEM_API_KEY:}
+    webhook-secret: ${CREEM_WEBHOOK_SECRET:}
+    grace-days: ${CREEM_GRACE_DAYS:3}
+    timeout-seconds: ${CREEM_TIMEOUT_SECONDS:20}
   paddle:
     enabled: ${PADDLE_ENABLED:false}
     sandbox: ${PADDLE_SANDBOX:true}

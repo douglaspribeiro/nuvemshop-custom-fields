@@ -10,7 +10,8 @@
     <h1 th:text="#{admin.billing.upgrade.heading(${targetPlan.displayName})}">Trocar para Ultra</h1>
     <p th:text="#{admin.billing.upgrade.current(${store.plan.displayName}, ${currentPrice})}">Plano atual</p>
     <p th:text="#{admin.billing.upgrade.price(${targetPrice})}">Nova mensalidade</p>
-    <p th:text="#{admin.billing.upgrade.detail}">Detalhes da alteração</p>
+    <p th:unless="${creemUpgrade == true}" th:text="#{admin.billing.upgrade.detail}">Detalhes da alteração</p>
+    <p th:if="${creemUpgrade == true}" th:text="#{admin.billing.upgrade.creem.detail}"></p>
     <p th:if="${nextPaymentAt != null}" th:attr="data-local-time=${nextPaymentAt},data-time-fallback=${#temporals.format(nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}" data-time-format="date" th:text="#{admin.billing.upgrade.next(${#temporals.format(nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')})}">Próxima cobrança</p>
     <form class="row-actions" method="post" th:action="@{/admin/billing/upgrade}"><input type="hidden" name="plan" th:value="${targetPlan.name()}">
         <input type="hidden" name="amount" th:value="${amount}">
