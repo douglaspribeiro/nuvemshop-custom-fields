@@ -143,7 +143,7 @@ payments:
     api-base-url: ${MERCADO_PAGO_API_BASE_URL:https://api.mercadopago.com}
     access-token: ${MERCADO_PAGO_ACCESS_TOKEN:}
     webhook-secret: ${MERCADO_PAGO_WEBHOOK_SECRET:}
-    grace-days: ${MERCADO_PAGO_GRACE_DAYS:3}
+    grace-days: ${MERCADO_PAGO_GRACE_DAYS:0}
     premium-amount: ${MERCADO_PAGO_PREMIUM_AMOUNT:19.99}
     premium-plus-amount: ${MERCADO_PAGO_PREMIUM_PLUS_AMOUNT:29.99}
     premium-ultra-amount: ${MERCADO_PAGO_PREMIUM_ULTRA_AMOUNT:59.90}
