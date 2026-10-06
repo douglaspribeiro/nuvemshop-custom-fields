@@ -3,6 +3,17 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.28.0] - 2026-10-06
+
+### Features
+
+- melhore a comparação dos planos na página de preços (`62da937`)
+- preserve configurações de lojas desinstaladas para diagnóstico (`a331a8c`)
+
+### Correções
+
+- explique os bloqueios no envio de reconquista (`f975526`)
+
 ## [1.27.0] - 2026-10-06
 
 ### Features
