@@ -1,0 +1,13 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org"><body>
+<form th:fragment="selector" class="public-market-selector" method="get">
+    <label for="public-country">País da loja</label>
+    <select id="public-country" name="country">
+        <option th:each="entry : ${countryOptions}" th:value="${entry.key}"
+                th:text="${entry.value}" th:selected="${entry.key == publicMarket.country}"></option>
+    </select>
+    <button class="button small" type="submit">Atualizar</button>
+</form>
+<p th:fragment="provider" class="muted" th:if="${publicMarket.country == 'BR'}">No Brasil, os pagamentos são processados pela Efí.</p>
+<p th:fragment="internationalProvider" class="muted" th:if="${publicMarket.country != 'BR'}">Fora do Brasil, o provedor previsto para pagamentos é a Creem. A contratação será disponibilizada após a ativação dessa modalidade.</p>
+</body></html>

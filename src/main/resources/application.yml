@@ -35,7 +35,7 @@ analytics:
 legal:
   operator-name: ${LEGAL_OPERATOR_NAME:}
   document: ${LEGAL_DOCUMENT:}
-  support-email: ${SUPPORT_EMAIL:contato@wzhub.com.br}
+  support-email: ${SUPPORT_EMAIL:contato@wzhub.pro}
 
 server:
   forward-headers-strategy: framework

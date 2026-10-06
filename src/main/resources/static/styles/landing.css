@@ -16,3 +16,18 @@
 .landing-final { margin:80px auto; text-align:center; background:#176b57; border-radius:18px; padding-top:65px; padding-bottom:65px; color:#fff; }.landing-final p { font-size:.78rem; text-transform:uppercase; letter-spacing:.11em; opacity:.7; font-weight:800; }.landing-final h2 { max-width:570px; margin:14px auto 28px; }.landing-cta.light { background:#fff; color:#176b57; box-shadow:none; }.landing-footer { display:flex; align-items:center; gap:20px; color:#789088; font-size:.8rem; padding-bottom:32px; }.landing-footer a { color:#527067; text-decoration:none; }.landing-footer a:first-of-type { margin-left:auto; }
 @media (max-width: 760px) { .landing-header, .landing-hero, .landing-section, .landing-footer { padding-left:20px; padding-right:20px; }.landing-nav > a:not(.button) { display:none; }.landing-hero { grid-template-columns:1fr; padding-top:40px; gap:48px; }.landing-preview { width:93%; }.landing-product { padding:15px; }.landing-product-image { min-height:220px; }.landing-step-grid, .landing-benefits { grid-template-columns:1fr; }.landing-benefits { gap:35px; padding-left:20px; padding-right:20px; }.landing-price-callout { display:grid; }.landing-price-summary { min-width:0; }.landing-section { padding-top:62px; padding-bottom:62px; }.landing-final { margin:45px 20px; padding:48px 20px; }.landing-footer { flex-wrap:wrap; }.landing-footer a:first-of-type { margin-left:0; } }
 @media (max-width: 760px) { .marketing-price-grid { grid-template-columns:1fr; } }
+.public-market-selector {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .65rem;
+    margin: 1rem 0;
+}
+.public-market-selector select {
+    width: auto;
+    max-width: 100%;
+}
+.landing-price-summary strong > span {
+    font: inherit;
+    color: inherit;
+}

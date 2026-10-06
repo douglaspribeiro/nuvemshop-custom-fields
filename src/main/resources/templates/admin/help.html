@@ -21,6 +21,8 @@
         <a class="button primary" th:href="@{/support/}" th:text="#{merchant.support}">Falar com o suporte</a>
     </section>
 
+    <p class="muted" th:if="${!#strings.isEmpty(supportEmail)}"><span th:text="#{common.support}">Suporte</span>: <a th:href="${'mailto:' + supportEmail}" th:text="${supportEmail}">contato@wzhub.pro</a></p>
+
     <section class="grid two">
         <div class="panel">
             <h2 th:text="#{admin.help.checklist}">Checklist</h2>

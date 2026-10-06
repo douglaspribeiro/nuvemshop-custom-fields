@@ -18,6 +18,8 @@
         <a class="button" th:if="${store}" th:href="@{/admin}" th:text="#{support.back.app}">Voltar ao aplicativo</a>
     </section>
 
+    <p class="muted" th:if="${!#strings.isEmpty(supportEmail)}"><span th:text="#{common.support}">Suporte</span>: <a th:href="${'mailto:' + supportEmail}" th:text="${supportEmail}">contato@wzhub.pro</a></p>
+
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 

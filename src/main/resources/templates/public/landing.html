@@ -78,7 +78,7 @@
 
     <section class="landing-section landing-price-callout">
         <div><p class="landing-kicker">Planos transparentes</p><h2>Comece no seu ritmo.</h2><p>Assinaturas mensais para lojas que precisam vender produtos personalizados com clareza.</p></div>
-        <div class="landing-price-summary"><span>Essencial</span><strong>R$ 19,99 <small>/mês</small></strong><p>10 produtos personalizados · 3 campos por produto</p><a class="landing-secondary" th:href="@{/precos/}">Ver todos os planos →</a></div>
+        <div class="landing-price-summary"><th:block th:replace="~{fragments/public-market :: selector}"></th:block><span>Essencial</span><strong><span th:text="${publicMarket.essentialPrice}"></span> <small>/mês</small></strong><p>10 produtos personalizados · 3 campos por produto</p><a class="landing-secondary" th:href="@{/precos/}">Ver todos os planos →</a></div>
     </section>
 
     <section class="landing-final"><p th:text="#{landing.final.eyebrow}">Campos Personalizados para Nuvemshop</p><h2 th:text="#{landing.final.title}">Deixe cada pedido pronto para produzir.</h2><a class="landing-cta light" th:href="@{/install}"><span th:text="#{landing.install}">Instalar na Nuvemshop</span><span aria-hidden="true">→</span></a></section>
