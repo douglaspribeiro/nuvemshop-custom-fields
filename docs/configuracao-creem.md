@@ -69,6 +69,17 @@ não são publicados automaticamente.
 O checkout abre na página hospedada da Creem, fora do iframe. O retorno ao app
 não concede acesso: consulta ao servidor e pagamento confirmado concedem acesso.
 Uma tentativa sem resposta permanece bloqueada para evitar outra cobrança.
+Ao abrir os planos ou clicar em **Assinar**, o app trata a pendência anterior
+automaticamente, sem pedir que o lojista escolha entre retomar e recomeçar.
+Contratações Paddle abandonadas há pelo menos 30 minutos são verificadas e
+canceladas na API antes de liberar outra tentativa, inclusive em outro gateway.
+Uma tentativa Paddle sandbox expirada, sem assinatura nem pagamento confirmado,
+pode ser encerrada localmente se as credenciais antigas não estiverem disponíveis
+ou se a Paddle tiver mudado de ambiente. A transação remota de teste é preservada
+para auditoria; essa exceção nunca se aplica a compras de produção.
+Na Creem, um checkout ainda aberto é reutilizado; um checkout confirmado como
+expirado libera nova contratação. O tempo local sozinho não invalida um link
+que ainda pode receber pagamento no gateway.
 Recupere-a pelo webhook (inclusive reenvio pelo painel Creem); se o ID do checkout
 já estiver salvo, a consulta no retorno/job também concilia. Checkouts com
 resultado desconhecido não são recriados automaticamente.

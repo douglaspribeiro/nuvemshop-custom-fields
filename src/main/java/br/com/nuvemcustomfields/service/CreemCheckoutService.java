@@ -24,6 +24,12 @@ public class CreemCheckoutService {
     private final CreemGateway gateway;
     private final NuvemshopProperties properties;
     private final TransactionTemplate transaction;
+    private org.springframework.beans.factory.ObjectProvider<PaymentSubscriptionService> subscriptionService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSubscriptionService(org.springframework.beans.factory.ObjectProvider<PaymentSubscriptionService> service) {
+        this.subscriptionService = service;
+    }
 
     public CreemCheckoutService(StoreRepository stores, PaymentSubscriptionRepository subscriptions,
             PaymentAttemptRepository attempts, PaymentGatewayRouter router, CreemGateway gateway,
@@ -34,6 +40,7 @@ public class CreemCheckoutService {
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
     public String start(Long storeId, PlanType plan) {
+        if (subscriptionService != null) subscriptionService.getObject().expirePendingCheckout(storeId);
         Reservation reservation = transaction.execute(status -> reserve(storeId, plan));
         if (reservation.checkoutUrl() != null) return reservation.checkoutUrl();
         try {

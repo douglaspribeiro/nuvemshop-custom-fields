@@ -57,6 +57,25 @@ class UltraBillingPageTest {
 
     @Autowired br.com.nuvemcustomfields.service.PlanCatalogService planCatalog;
 
+    @Test void pendingCheckoutIsHandledAutomaticallyWithoutAdditionalChoices() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        subscription.setStatus(PaymentSubscriptionStatus.PENDING); subscription.setAccessActive(false);
+        subscription.setCheckoutUrl("https://checkout.creem.io/ch_1");
+        String plans = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(plans).contains("/admin/billing/checkout").doesNotContain("/admin/billing/resume", "Continuar contratação");
+        verify(payments).expirePendingCheckout(subscription.getStoreId());
+    }
+
+    @Test void clickingSubscribeStartsCheckoutDirectly() throws Exception {
+        subscription.setProvider(PaymentProviderType.CREEM);
+        subscription.setStatus(PaymentSubscriptionStatus.CANCELED); subscription.setAccessActive(false);
+        when(payments.startCheckout(subscription.getStoreId(), PlanType.PREMIUM))
+                .thenReturn("https://checkout.creem.io/new_checkout");
+        mvc.perform(post("/admin/billing/checkout").session(session).param("plan", "PREMIUM"))
+                .andExpect(redirectedUrl("https://checkout.creem.io/new_checkout"));
+    }
+
     @Test
     @org.springframework.transaction.annotation.Transactional
     void billingComparisonShowsConfiguredLimits() throws Exception {

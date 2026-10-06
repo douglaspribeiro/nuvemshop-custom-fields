@@ -86,6 +86,15 @@ class PaddleGatewayTest {
         PaddleProperties properties=new PaddleProperties(true,true,"https://sandbox-api.paddle.test","api-key","test_token",SECRET,"1",3,300,30);
         return new PaddleGateway(properties,catalog,builder,new ObjectMapper());
     }
+
+    @Test void completedTransactionIsRecognizedAsPaidDuringPendingRecovery() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://sandbox-api.paddle.test/transactions/txn_1"))
+                .andRespond(withSuccess(transaction("USD", "499").replace("\"subscription_id\":null", "\"subscription_id\":\"sub_1\""), MediaType.APPLICATION_JSON));
+        assertThat(gateway(builder, mock(PaymentCatalogPriceRepository.class)).getInvoice("txn_1").approved()).isTrue();
+        server.verify();
+    }
     private static PaymentCatalogPrice price(String country,String currency,String amount,String id) {
         PaymentCatalogPrice price=new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.PADDLE);
         price.setEnvironment(PaymentEnvironment.SANDBOX); price.setCountryCode(country); price.setPlan(PlanType.PREMIUM);

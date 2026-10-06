@@ -62,16 +62,18 @@ public class PaymentReconciliationJob {
     }
 
     @Scheduled(fixedDelayString = "${payments.pending-expiration-delay-ms:60000}")
-    public void expirePendingEfiPayments() {
-        var expired = repository.findByProviderAndStatusAndAccessActiveFalseAndPendingStartedAtLessThanEqual(
-                PaymentProviderType.EFI, PaymentSubscriptionStatus.PENDING,
-                Instant.now().minus(30, ChronoUnit.MINUTES));
-        for (var subscription : expired) {
-            try {
-                service.expirePendingEfi(subscription.getStoreId());
-            } catch (RuntimeException ex) {
-                LOGGER.warn("payments.efi.pending_expiration_failed store_id={} type={}",
-                        subscription.getStoreId(), ex.getClass().getSimpleName());
+    public void expirePendingPayments() {
+        for (PaymentProviderType provider : java.util.List.of(PaymentProviderType.EFI, PaymentProviderType.PADDLE, PaymentProviderType.CREEM)) {
+            var expired = repository.findByProviderAndStatusAndAccessActiveFalseAndPendingStartedAtLessThanEqual(
+                    provider, PaymentSubscriptionStatus.PENDING,
+                    Instant.now().minus(30, ChronoUnit.MINUTES));
+            for (var subscription : expired) {
+                try {
+                    service.expirePendingCheckout(subscription.getStoreId());
+                } catch (RuntimeException ex) {
+                    LOGGER.warn("payments.pending_expiration_failed store_id={} type={}",
+                            subscription.getStoreId(), ex.getClass().getSimpleName());
+                }
             }
         }
     }

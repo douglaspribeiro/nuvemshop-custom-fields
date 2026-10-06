@@ -191,7 +191,9 @@ public class PaddleGateway implements PaymentGateway {
                 .filter(p -> "internal".equalsIgnoreCase(p.getTaxMode())).filter(p -> hasText(p.getProviderPriceId()));
     }
     private GatewayInvoice invoice(JsonNode data) {
-        return new GatewayInvoice(required(data, "id"), required(data, "subscription_id"), required(data, "id"), required(data, "status"));
+        String status = required(data, "status");
+        return new GatewayInvoice(required(data, "id"), required(data, "subscription_id"), required(data, "id"),
+                "completed".equals(status) ? "paid" : status);
     }
     private JsonNode get(String path) { return request(client.get().uri(properties.apiBaseUrl() + path)); }
     private JsonNode post(String path, Object body) { return request(client.post().uri(properties.apiBaseUrl() + path).contentType(MediaType.APPLICATION_JSON).body(body)); }

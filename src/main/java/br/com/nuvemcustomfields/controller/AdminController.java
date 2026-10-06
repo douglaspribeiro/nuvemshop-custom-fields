@@ -191,7 +191,7 @@ public class AdminController {
     public String billing(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
         boolean available = paymentSubscriptionService.available(store);
-        boolean expired = expirePendingEfiIfDue(store.getStoreId());
+        boolean expired = expirePendingCheckoutIfDue(store.getStoreId());
         boolean reconciled = reconcilePendingEfi(store.getStoreId(), false);
         if (expired || reconciled) {
             store = adminStoreService.requireCurrentStore(session);
@@ -368,7 +368,7 @@ public class AdminController {
     public Map<String, String> paymentStatus(HttpSession session, HttpServletResponse response) {
         Store store = adminStoreService.requireCurrentStore(session);
         response.setHeader("Cache-Control", "no-store");
-        expirePendingEfiIfDue(store.getStoreId());
+        expirePendingCheckoutIfDue(store.getStoreId());
         reconcilePendingEfi(store.getStoreId(), false);
         var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
         if (subscription == null) return Map.of("state", "failed");
@@ -748,11 +748,11 @@ public class AdminController {
         }
     }
 
-    private boolean expirePendingEfiIfDue(Long storeId) {
+    private boolean expirePendingCheckoutIfDue(Long storeId) {
         try {
-            return paymentSubscriptionService.expirePendingEfi(storeId);
+            return paymentSubscriptionService.expirePendingCheckout(storeId);
         } catch (RuntimeException ex) {
-            LOGGER.warn("payments.efi.pending_expiration_deferred store_id={} type={}",
+            LOGGER.warn("payments.pending_expiration_deferred store_id={} type={}",
                     storeId, ex.getClass().getSimpleName());
             return false;
         }

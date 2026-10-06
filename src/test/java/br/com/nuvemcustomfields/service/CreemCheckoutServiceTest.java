@@ -66,4 +66,25 @@ class CreemCheckoutServiceTest {
         assertThatThrownBy(() -> service.start(42L,PlanType.PREMIUM)).hasMessageContaining("assinatura anterior");
         verify(gateway,never()).createCheckout(any(),any(),anyString(),anyString());
     }
+
+    @Test void retiresOldProviderBeforeReservingCreemCheckout() {
+        local = new PaymentSubscription(); local.setStoreId(42L); local.setProvider(PaymentProviderType.PADDLE);
+        local.setPlan(PlanType.PREMIUM); local.setStatus(PaymentSubscriptionStatus.PENDING);
+        var coordinator = mock(PaymentSubscriptionService.class);
+        @SuppressWarnings("unchecked")
+        var provider = (org.springframework.beans.factory.ObjectProvider<PaymentSubscriptionService>)
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(provider.getObject()).thenReturn(coordinator);
+        service.setSubscriptionService(provider);
+        when(coordinator.expirePendingCheckout(42L)).thenAnswer(i -> {
+            local.setStatus(PaymentSubscriptionStatus.CANCELED); return true;
+        });
+        when(gateway.createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(), anyString()))
+                .thenReturn(new GatewayCheckout(null, "ch_1", "https://checkout.creem.io/ch_1", "pending"));
+        assertThat(service.start(42L, PlanType.PREMIUM)).isEqualTo("https://checkout.creem.io/ch_1");
+        var order = inOrder(coordinator, gateway);
+        order.verify(coordinator).expirePendingCheckout(42L);
+        order.verify(gateway).createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(), anyString());
+        assertThat(local.getProvider()).isEqualTo(PaymentProviderType.CREEM);
+    }
 }

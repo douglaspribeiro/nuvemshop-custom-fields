@@ -596,6 +596,81 @@ public class PaymentSubscriptionService {
         return synchronize(local, remote, invoice.orElse(null), "PAYMENT_RECONCILE");
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public boolean expirePendingCheckout(Long storeId) {
+        if (stores.findActiveByStoreIdForUpdate(storeId).isEmpty()) return false;
+        PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local == null || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()) return false;
+        if (local.getProvider() == PaymentProviderType.EFI) return expirePendingEfi(storeId);
+        if (local.getProvider() == PaymentProviderType.CREEM) {
+            if (!hasText(local.getProviderCheckoutId())) return false; // Unknown response must be reconciled, never replayed.
+            PaymentSubscription reconciled = synchronizeCreemCheckout(local.getProviderCheckoutId());
+            return reconciled.getStatus() != PaymentSubscriptionStatus.PENDING;
+        }
+        if (local.getProvider() != PaymentProviderType.PADDLE) return false;
+        boolean expired = pendingExpired(local, Instant.now());
+        if (attempts != null) {
+            PaymentAttempt attempt = attempts.findByExternalReference(local.getExternalReference()).orElse(null);
+            expired = expired || (attempt != null && attempt.getExpiresAt() != null
+                    && !Instant.now().isBefore(attempt.getExpiresAt()));
+        }
+        if (!expired) return false;
+        if (!hasText(local.getProviderCheckoutId()))
+            throw new PaymentGatewayException("A tentativa anterior ainda precisa ser conciliada. Nenhuma nova cobrança foi iniciada.");
+        if (paddle == null || !paddle.configured() || local.getProviderEnvironment() != paddle.environment()) {
+            // An abandoned test checkout cannot cause a real charge. Do not let old sandbox
+            // credentials block a new gateway, but never apply this exception to production.
+            if (local.getProviderEnvironment() == br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX
+                    && !hasText(local.getProviderSubscriptionId())
+                    && !new GatewayInvoice(null, null, null, local.getLastPaymentStatus()).approved()
+                    && !"completed".equalsIgnoreCase(local.getLastPaymentStatus())) {
+                markExpiredCheckout(local, "sandbox_timeout",
+                        "O checkout antigo de teste expirou localmente. As credenciais desse ambiente não estão mais disponíveis.");
+                return true;
+            }
+            throw new PaymentGatewayException("Não foi possível verificar o checkout anterior na Paddle. Tente novamente mais tarde.");
+        }
+        PaddleGateway.PaddleTransaction remote = paddle.getTransaction(local.getProviderCheckoutId());
+        validatePendingPaddle(local, remote);
+        if (hasText(remote.subscriptionId()) || java.util.Set.of("paid", "completed").contains(remote.status())) {
+            if (hasText(remote.subscriptionId())) synchronizeFromPaddleTransaction(remote.id());
+            else throw new PaymentGatewayException("O pagamento anterior foi recebido e está aguardando confirmação da assinatura.");
+            return local.getStatus() != PaymentSubscriptionStatus.PENDING;
+        }
+        if (!"canceled".equals(remote.status())) {
+            if (!java.util.Set.of("draft", "ready", "past_due").contains(remote.status()))
+                throw new PaymentGatewayException("O checkout anterior ainda precisa ser verificado pela Paddle.");
+            paddle.cancelCheckout(remote.id());
+            remote = paddle.getTransaction(remote.id());
+            validatePendingPaddle(local, remote);
+            if (!"canceled".equals(remote.status()) || hasText(remote.subscriptionId()))
+                throw new PaymentGatewayException("Aguardando confirmação do encerramento do checkout anterior.");
+        }
+        markExpiredCheckout(local, "canceled", EXPIRED_ATTEMPT_MESSAGE);
+        return true;
+    }
+
+    private void markExpiredCheckout(PaymentSubscription local, String providerStatus, String message) {
+        local.setStatus(PaymentSubscriptionStatus.CANCELED);
+        local.setProviderStatus(providerStatus);
+        local.setCheckoutUrl(null);
+        local.setLastError(message);
+        local.setTechnicalError(null);
+        if (attempts != null) attempts.findByExternalReference(local.getExternalReference()).ifPresent(attempt -> {
+            attempt.setStatus(PaymentAttemptStatus.CANCELED); attempts.save(attempt);
+        });
+        subscriptions.save(local);
+        LOGGER.info("payments.checkout.expired store_id={} provider={} checkout_id={} status={}",
+                local.getStoreId(), local.getProvider(), local.getProviderCheckoutId(), providerStatus);
+    }
+
+    private void validatePendingPaddle(PaymentSubscription local, PaddleGateway.PaddleTransaction remote) {
+        if (!Objects.equals(local.getProviderCheckoutId(), remote.id())
+                || !Objects.equals(local.getExternalReference(), remote.externalReference())
+                || !Objects.equals(local.getCurrency(), remote.currency()))
+            throw new PaymentGatewayException("Checkout Paddle divergente da tentativa local.");
+    }
+
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public boolean expirePendingEfi(Long storeId) {
         if (stores.findActiveByStoreIdForUpdate(storeId).isEmpty()) return false;
