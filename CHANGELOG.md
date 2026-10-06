@@ -3,6 +3,26 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.27.0] - 2026-10-06
+
+### Features
+
+- simplifique a configuração de produtos e atualize a loja de aplicativos (`315709f`)
+- show country-specific public prices and support contact (`a412b66`)
+- track and display merchant last access (`d4ee88e`)
+
+### Correções
+
+- disable Mercado Pago grace period by default (`597ad28`)
+
+### Documentação
+
+- add app store gallery and buyer image upload roadmap (`5e46d2c`)
+
+### Outros
+
+- melhorias de infra (`3ea7ed2`)
+
 ## [1.26.0] - 2026-10-05
 
 ### Features
