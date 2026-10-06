@@ -47,22 +47,24 @@ public class WinbackCampaignService {
 
     @Transactional
     public String prepareManual(Long storeId, boolean authorizeErasureContact) {
-        if (!smtp.configured() || !StringUtils.hasText(ses.configurationSet()))
-            throw new IllegalStateException("Configure SES e Configuration Set antes de disparar a reconquista.");
+        if (!smtp.configured())
+            throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: a configuração SMTP do SES está incompleta. Confira AWS_SES_SMTP_HOST, AWS_SES_SMTP_PORT, AWS_SES_SMTP_USERNAME, AWS_SES_SMTP_PASSWORD e AWS_SES_FROM_EMAIL.");
+        if (!StringUtils.hasText(ses.configurationSet()))
+            throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: falta configurar AWS_SES_CONFIGURATION_SET com o nome do Configuration Set existente no SES.");
         var store = stores.findByStoreIdForUpdate(storeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (store.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está ativa.");
         if (store.isErasurePending() && !authorizeErasureContact)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Confirme a autorização do contato manual para esta exclusão pendente.");
-        if (!StringUtils.hasText(store.getStoreEmail())) throw new IllegalStateException("A loja não possui e-mail cadastrado.");
+        if (!StringUtils.hasText(store.getStoreEmail())) throw new WinbackPreparationException("A loja não possui e-mail cadastrado.");
         if (campaigns.existsByStoreIdAndOptedOutAtIsNotNull(storeId))
-            throw new IllegalStateException("A loja optou por não receber contatos.");
+            throw new WinbackPreparationException("A loja optou por não receber contatos.");
         var campaign = campaigns.findByStoreIdAndUninstalledAt(storeId, store.getUninstalledAt()).orElseGet(() -> {
             var c = new WinbackCampaign(storeId, store.getUninstalledAt());
             c.setPaidBeforeDeparture(discounts.hasPaidHistory(storeId));
             return campaigns.saveAndFlush(c);
         });
         if (campaign.getReinstalledAt() != null || campaign.getOptedOutAt() != null)
-            throw new IllegalStateException("Esta campanha não permite novos contatos.");
+            throw new WinbackPreparationException("Esta campanha não permite novos contatos.");
         var existing = emails.findByCampaignIdAndStep(campaign.getId(), "FEEDBACK").orElse(null);
         if (existing != null) return null;
         var mail = new WinbackEmail(campaign.getId(), "FEEDBACK");

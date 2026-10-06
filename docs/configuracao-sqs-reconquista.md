@@ -56,3 +56,16 @@ mensagens: SQS distribui cada mensagem para um consumidor.
 
 Mantenha `WINBACK_DISCOUNT_ENABLED=false` e
 `WINBACK_DISCOUNT_ALLOW_PRODUCTION=false` até a aprovação operacional.
+
+## Diagnóstico do envio manual
+
+O e-mail inicial de feedback exige `WINBACK_MAIL_ENABLED=true`, SMTP completo e
+`AWS_SES_CONFIGURATION_SET` preenchido com um Configuration Set existente no SES.
+As variáveis `WINBACK_DISCOUNT_ENABLED` e `WINBACK_DISCOUNT_ALLOW_PRODUCTION`
+controlam os descontos e não bloqueiam esse e-mail.
+
+O backoffice informa qual requisito falta antes de preparar a tentativa. Lojas
+com exclusão pendente exigem a confirmação de autorização do contato manual.
+Uma falha durante o SMTP mostra o ID da tentativa; consulte Reconquistas antes de
+novo envio. O registro `winback.manual.failed` contém o ID da loja, da tentativa,
+a etapa e o tipo de exceção, sem credenciais ou endereço do destinatário.
