@@ -8,6 +8,7 @@
         <p th:text="${detail.store != null ? detail.store.storeName : detail.campaign.storeId}"></p></div>
         <a class="button" th:href="@{/backoffice/winback}">Voltar</a></section>
     <section class="panel"><h2>Campanha</h2>
+        <a class="button" th:if="${detail.store != null}" th:href="@{/backoffice/stores/{storeId}/configuration(storeId=${detail.campaign.storeId},departure=${detail.campaign.uninstalledAt})}">Ver configuração da loja</a>
         <p>Desinstalação: <span th:attr="data-local-time=${detail.campaign.uninstalledAt}" data-time-format="datetime" th:text="${#temporals.format(detail.campaign.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
         <p>Reinstalação: <span th:attr="data-local-time=${detail.campaign.reinstalledAt}" data-time-format="datetime" th:text="${detail.campaign.reinstalledAt != null ? #temporals.format(detail.campaign.reinstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo') : 'Ainda não registrada'}"></span></p>
         <p>Motivo: <span th:text="${detail.campaign.reasonLabel}"></span></p>

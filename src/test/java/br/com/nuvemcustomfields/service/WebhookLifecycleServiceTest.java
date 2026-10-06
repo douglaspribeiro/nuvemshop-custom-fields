@@ -29,7 +29,8 @@ class WebhookLifecycleServiceTest {
             paymentSubscriptionService,
             mock(StoreDepartureService.class),
             mock(WinbackQueueService.class),
-            mock(OptionImageService.class)
+            mock(OptionImageService.class),
+            mock(StoreConfigurationHistoryService.class)
     );
 
     @Test

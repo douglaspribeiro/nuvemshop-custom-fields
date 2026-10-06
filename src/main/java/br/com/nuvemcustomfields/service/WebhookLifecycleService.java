@@ -17,6 +17,7 @@ public class WebhookLifecycleService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebhookLifecycleService.class);
 
+    private final StoreConfigurationHistoryService configurationHistory;
     private final OptionImageService images;
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
@@ -34,8 +35,10 @@ public class WebhookLifecycleService {
             PaymentSubscriptionService paymentSubscriptionService,
             StoreDepartureService departures,
             WinbackQueueService winback,
-            OptionImageService images
+            OptionImageService images,
+            StoreConfigurationHistoryService configurationHistory
     ) {
+        this.configurationHistory = configurationHistory;
         this.images = images;
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
@@ -67,6 +70,7 @@ public class WebhookLifecycleService {
             LOGGER.warn("webhook.app_uninstalled.ignored reason=missing_store_id");
             return;
         }
+        configurationHistory.captureDeparture(storeId, Instant.now());
         departures.record(storeId, false);
         paymentSubscriptionService.revokeAccessAfterUninstall(storeId);
         storeRepository.findByStoreId(storeId).ifPresent(store -> {

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Configuração da loja · Backoffice</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
+<body class="backoffice-page">
+<main class="shell configuration-inspection" th:with="store=${inspection.store},config=${inspection.configuration}">
+    <section class="page-header">
+        <div><p class="eyebrow">Diagnóstico da configuração</p>
+            <h1 th:text="${store.storeName ?: 'Loja sem nome'}"></h1>
+            <p class="muted" th:text="${'Store ID ' + store.storeId}"></p>
+        </div>
+        <nav class="row-actions">
+            <a class="button" th:href="@{/backoffice/stores/{id}(id=${store.storeId})}">Gerenciar loja</a>
+            <a class="button" th:href="@{/backoffice/stores(status='uninstalled')}">Lojas desinstaladas</a>
+        </nav>
+    </section>
+    <section class="panel">
+        <h2 th:text="${inspection.selected != null ? 'Configuração no momento da desinstalação' : 'Configuração ainda disponível no banco'}"></h2>
+        <p th:if="${inspection.selected != null}">Cópia preservada em
+            <span th:attr="data-local-time=${inspection.selected.uninstalledAt}" data-time-format="datetime"
+                  th:text="${#temporals.format(inspection.selected.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span>.
+            Reinstalações e edições posteriores não alteram este registro.</p>
+        <p class="notice warning" th:if="${inspection.selected == null and inspection.departure != null}">
+            Esta desinstalação não tem uma cópia histórica. Os dados abaixo são os que ainda estão salvos;
+            não é possível confirmar se estavam assim no momento da saída.</p>
+        <p class="muted" th:if="${inspection.selected == null and inspection.departure == null}">A loja está instalada. Esta é a configuração atual salva no aplicativo.</p>
+        <p class="muted">Este registro ajuda a revisar a configuração. Para confirmar por que um campo não apareceu, confira também os eventos de integração e o relato da loja.</p>
+        <div class="configuration-summary">
+            <p><strong th:text="${#lists.size(config.products)}"></strong> produtos cadastrados · <strong th:text="${config.fieldCount()}"></strong> campos</p>
+            <p>Plano <span th:text="${inspection.selected != null ? 'na saída' : 'atual'}"></span>: <strong th:text="${config.plan.displayName}"></strong></p>
+        </div>
+        <p class="notice warning" th:if="${config.billingSuspended}">O aplicativo estava marcado como suspenso na configuração exibida.</p>
+        <details th:if="${!#lists.isEmpty(inspection.snapshots)}" class="configuration-history">
+            <summary>Histórico de desinstalações</summary>
+            <p th:each="snapshot : ${inspection.snapshots}">
+                <a th:href="@{/backoffice/stores/{id}/configuration(id=${store.storeId},snapshotId=${snapshot.id})}">
+                    Configuração de <span th:attr="data-local-time=${snapshot.uninstalledAt}" data-time-format="datetime"
+                        th:text="${#temporals.format(snapshot.uninstalledAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span>
+                </a>
+            </p>
+        </details>
+    </section>
+    <section class="panel">
+        <h2>Motivo e descrição informados</h2>
+        <h3>Resposta da loja</h3>
+        <p><strong>Motivo: </strong><span th:text="${inspection.merchantReason}"></span></p>
+        <p class="configuration-text" th:text="${inspection.merchantDetail ?: 'A loja ainda não enviou um comentário.'}"></p>
+        <div th:if="${inspection.manualReason != null}">
+            <h3>Anotação no backoffice</h3>
+            <p><strong>Motivo: </strong><span th:text="${inspection.manualReason}"></span></p>
+            <p class="configuration-text" th:text="${inspection.manualDetail ?: 'Sem justificativa adicional.'}"></p>
+        </div>
+    </section>
+    <section class="panel">
+        <h2>Produtos e campos configurados</h2>
+        <p class="empty" th:if="${#lists.isEmpty(config.products)}">Nenhum produto cadastrado na configuração exibida.</p>
+        <details class="configuration-product" th:each="product : ${config.products}" open>
+            <summary><strong th:text="${product.productName ?: 'Produto sem nome'}"></strong>
+                <span class="muted" th:text="${' · ID ' + product.productId + ' · ' + #lists.size(product.fields) + ' campos'}"></span>
+            </summary>
+            <p class="notice warning" th:unless="${product.enabled}">A personalização deste produto estava desativada.</p>
+            <p class="notice warning" th:if="${#lists.isEmpty(product.fields)}">Produto selecionado, mas sem campos configurados.</p>
+            <article class="configuration-field" th:each="field : ${product.fields}">
+                <h3><span class="badge" th:text="${field.sortOrder + 1}"></span> <span th:text="${field.label}"></span></h3>
+                <dl class="configuration-properties">
+                    <div><dt>Tipo</dt><dd th:text="#{'field.type.' + ${field.fieldType}}"></dd></div>
+                    <div><dt>Obrigatório</dt><dd th:text="${field.required ? 'Sim' : 'Não'}"></dd></div>
+                    <div><dt>Limite de caracteres</dt><dd th:text="${field.maxLength}"></dd></div>
+                    <div><dt>Exemplo de preenchimento</dt><dd th:text="${field.placeholder ?: 'Não informado'}"></dd></div>
+                    <div><dt>Regra de validação</dt><dd><code th:text="${field.validationPattern ?: 'Sem restrição adicional'}"></code></dd></div>
+                </dl>
+                <div th:if="${field.optionsText != null and !#strings.isEmpty(field.optionsText)}"><strong>Opções cadastradas</strong><p class="configuration-text" th:text="${field.optionsText}"></p></div>
+                <div th:if="${field.fieldType.name() == 'IMAGE_SELECT'}"><strong>Opções com imagens</strong><ul><li th:each="label : ${field.imageLabels()}" th:text="${label}"></li></ul></div>
+            </article>
+        </details>
+    </section>
+    <section class="panel">
+        <h2>Eventos de integração <span th:text="${inspection.selected != null ? 'preservados na saída' : 'recentes'}"></span></h2>
+        <p class="empty" th:if="${#lists.isEmpty(config.logs)}">Nenhum evento disponível.</p>
+        <p class="muted">Até 20 eventos locais. A ausência de erro registrado não confirma que os campos foram exibidos na vitrine.</p>
+        <div class="configuration-log" th:each="log : ${config.logs}">
+            <p><span th:attr="data-local-time=${log.createdAt}" data-time-format="datetime" th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span> · <strong th:text="${log.level + ' · ' + log.eventType}"></strong></p>
+            <p class="configuration-text" th:text="${log.message}"></p>
+        </div>
+    </section>
+    <details class="panel">
+        <summary>Permissões e aparência registradas</summary>
+        <dl class="configuration-properties">
+            <div><dt>Permissões na saída / configuração atual</dt><dd th:text="${config.scope ?: 'Não disponíveis'}"></dd></div>
+            <div><dt>Cor no produto</dt><dd th:text="${config.productTextColor ?: 'Automática'}"></dd></div>
+            <div><dt>Cor no carrinho</dt><dd th:text="${config.cartTextColor ?: 'Automática'}"></dd></div>
+            <div><dt>Cor no checkout</dt><dd th:text="${config.checkoutTextColor ?: 'Automática'}"></dd></div>
+        </dl>
+    </details>
+</main>
+</body>
+</html>

@@ -23,3 +23,17 @@
 @media(max-width:900px) { .coupon-form { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:550px) { .coupon-form { grid-template-columns:1fr; } }
 .adoption-section{margin-bottom:24px}.adoption-metrics{margin:24px 0 16px}.adoption-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}.adoption-filters label{display:flex;flex:1 1 170px;flex-direction:column;gap:6px;font-size:.8rem;color:#526962}.adoption-filters input,.adoption-filters select{width:100%;box-sizing:border-box;min-height:42px}.adoption-note{color:#647873;font-size:.82rem;line-height:1.65}.adoption-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px}.adoption-table{width:100%;border-collapse:collapse;text-align:left}.adoption-table th,.adoption-table td{padding:12px 10px;border-bottom:1px solid #e7eeeb;vertical-align:top;font-size:.85rem}.adoption-table th{color:#647873;font-size:.76rem}.adoption-table td small{display:block;margin-top:5px;color:#647873;font-size:.75rem}.adoption-table a{color:#176b57;font-weight:700}.adoption-detail{min-width:1050px}.adoption-detail td:first-child{min-width:150px}.adoption-detail td:last-child{min-width:190px;max-width:300px;overflow-wrap:anywhere}.adoption-detail details p{white-space:pre-wrap}.adoption-detail summary{margin-top:8px;color:#176b57;cursor:pointer}@media(max-width:800px){.adoption-columns{grid-template-columns:1fr;gap:0}.adoption-filters .button{flex:1 1 120px}}
+
+.configuration-inspection .panel { margin-bottom:20px; }
+.configuration-inspection summary { cursor:pointer; line-height:1.5; }
+.configuration-summary { display:flex; flex-wrap:wrap; gap:12px 30px; }
+.configuration-text { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+.configuration-product { border-top:1px solid #dce6e0; margin-top:18px; padding-top:18px; }
+.configuration-field { background:#f7faf8; border:1px solid #dce6e0; border-radius:10px; padding:18px; margin-top:15px; }
+.configuration-field h3 { margin-top:0; }
+.configuration-properties { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 24px; }
+.configuration-properties dt { color:#63746e; font-size:.82rem; margin-bottom:5px; }
+.configuration-properties dd { margin:0; overflow-wrap:anywhere; }
+.configuration-history { margin-top:18px; }
+.configuration-log { border-top:1px solid #dce6e0; padding:12px 0; }
+@media(max-width:600px) { .configuration-properties { grid-template-columns:1fr; } }

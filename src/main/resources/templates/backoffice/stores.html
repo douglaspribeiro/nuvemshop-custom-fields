@@ -103,6 +103,7 @@
                     <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
                         <button class="button small primary" type="submit">Abrir como loja</button>
                     </form>
+                    <a class="button small" th:href="@{/backoffice/stores/{storeId}/configuration(storeId=${store.storeId})}">Ver configuração</a>
                     <a class="button small" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Gerenciar</a>
                 </div>
                 <div th:if="${uninstalledOnly}" class="store-departure-details" th:with="campaign=${departureCampaigns[store.storeId]}">

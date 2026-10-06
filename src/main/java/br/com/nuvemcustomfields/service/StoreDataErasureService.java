@@ -50,6 +50,7 @@ public class StoreDataErasureService {
                 storeId
         );
         jdbcTemplate.update("delete from personalization_rules where store_id = ?", storeId);
+        jdbcTemplate.update("delete from store_configuration_snapshots where store_id = ?", storeId);
         jdbcTemplate.update("delete from integration_logs where store_id = ?", storeId);
         jdbcTemplate.update("delete from plan_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_webhook_events where store_id = ?", storeId);

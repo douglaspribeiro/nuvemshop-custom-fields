@@ -11,18 +11,22 @@ import java.time.Instant;
 /** Fila de revisão manual: receber redact não apaga nem autoriza contatos. */
 @Service
 public class StoreErasureRequestService {
+    private final StoreConfigurationHistoryService configurationHistory;
     private final StoreRepository stores;
     private final StoreDepartureService departures;
     private final PaymentSubscriptionService payments;
     private final StoreDataErasureService erasure;
     public StoreErasureRequestService(StoreRepository stores, StoreDepartureService departures,
-            PaymentSubscriptionService payments, StoreDataErasureService erasure) {
+            PaymentSubscriptionService payments, StoreDataErasureService erasure,
+            StoreConfigurationHistoryService configurationHistory) {
+        this.configurationHistory = configurationHistory;
         this.stores = stores; this.departures = departures; this.payments = payments; this.erasure = erasure;
     }
     @Transactional
     public void receive(Long storeId, Instant receivedAt) {
         if (storeId == null || receivedAt == null) throw new IllegalArgumentException("Evento incompleto.");
         stores.findByStoreIdForUpdate(storeId).ifPresent(store -> {
+            configurationHistory.captureDeparture(storeId, receivedAt);
             departures.record(storeId, true);
             if (!store.isErasurePending()) store.setErasureRequestedAt(receivedAt);
             if (store.getUninstalledAt() == null) store.setUninstalledAt(receivedAt);
@@ -45,6 +49,7 @@ public class StoreErasureRequestService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe motivo até 160 caracteres e justificativa até 2.000.");
         store.setDepartureReason(value);
         store.setDepartureJustification(detail.isBlank() ? null : detail);
+        configurationHistory.recordReason(store);
         stores.save(store);
     }
     @Transactional

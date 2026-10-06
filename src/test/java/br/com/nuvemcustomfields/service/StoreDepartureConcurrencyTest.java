@@ -17,6 +17,8 @@ class StoreDepartureConcurrencyTest {
     @Autowired StoreRepository stores;
     @Autowired StoreDepartureService departures;
     @Autowired StoreDataErasureService erasure;
+    @Autowired WebhookLifecycleService webhooks;
+    @Autowired br.com.nuvemcustomfields.repository.StoreConfigurationSnapshotRepository snapshots;
     @Autowired JdbcTemplate jdbc;
 
     @Test
@@ -45,4 +47,28 @@ class StoreDepartureConcurrencyTest {
         assertThat(jdbc.queryForObject("select count(*) from stores where store_id = ?",
                 Long.class, store.getStoreId())).isZero();
     }
+    @Test
+    void repeatedConcurrentWebhooksPreserveOneConfigurationAndDoNotRecreateErasedData() throws Exception {
+        long id = 998877666L;
+        Store store = new Store(); store.setStoreId(id); store.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);
+        stores.saveAndFlush(store);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var workers = Executors.newFixedThreadPool(2)) {
+            var first = workers.submit(() -> {
+                start.await(); webhooks.handle(new br.com.nuvemcustomfields.dto.WebhookPayload(id, "app/uninstalled", null)); return null;
+            });
+            var duplicate = workers.submit(() -> {
+                start.await(); webhooks.handle(new br.com.nuvemcustomfields.dto.WebhookPayload(id, "app/uninstalled", null)); return null;
+            });
+            start.countDown(); first.get(20, TimeUnit.SECONDS); duplicate.get(20, TimeUnit.SECONDS);
+        }
+        var copies = snapshots.findByStoreIdOrderByUninstalledAtDesc(id);
+        assertThat(copies).hasSize(1);
+        assertThat(copies.getFirst().getUninstalledAt()).isEqualTo(stores.findByStoreId(id).orElseThrow().getUninstalledAt());
+        assertThat(copies.getFirst().getConfigurationJson()).contains("PREMIUM_PLUS");
+        erasure.erase(id);
+        webhooks.handle(new br.com.nuvemcustomfields.dto.WebhookPayload(id, "app/uninstalled", null));
+        assertThat(snapshots.findByStoreIdOrderByUninstalledAtDesc(id)).isEmpty();
+    }
+
 }
