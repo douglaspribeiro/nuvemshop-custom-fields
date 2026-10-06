@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.controller;
 import br.com.nuvemcustomfields.service.StoreErasureRequestService;
 import br.com.nuvemcustomfields.service.WinbackCampaignService;
 import br.com.nuvemcustomfields.service.WinbackPreparationException;
+import br.com.nuvemcustomfields.service.WinbackMailFailureDiagnostic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.servlet.http.HttpSession;
@@ -74,11 +75,15 @@ public class BackofficeStoreDepartureController {
             flash.addFlashAttribute("error", ex.getReason() == null ? "A loja não foi encontrada para o envio de reconquista." : ex.getReason());
         } catch (Exception ex) {
             // SMTP exception messages may contain credentials or recipient data.
-            LOGGER.error("winback.manual.failed storeId={} emailId={} phase={} type={}",
-                    storeId, emailId, emailId == null ? "prepare" : "send", ex.getClass().getSimpleName());
+            var diagnostic = WinbackMailFailureDiagnostic.inspect(ex);
+            LOGGER.error("winback.manual.failed storeId={} emailId={} phase={} type={} reason={} smtpCode={}",
+                    storeId, emailId, emailId == null ? "prepare" : "send", ex.getClass().getSimpleName(),
+                    diagnostic.reason(), diagnostic.smtpCode());
             flash.addFlashAttribute("error", emailId == null
                     ? "Não foi possível preparar a reconquista. Consulte os logs pelo ID da loja " + storeId + "."
-                    : "Não foi possível confirmar o envio do e-mail. A tentativa foi registrada em Reconquistas (ID " + emailId + "). Confira o status antes de qualquer novo envio.");
+                    : "Não foi possível confirmar o envio do e-mail. "
+                            + (diagnostic.detail().isEmpty() ? "" : diagnostic.detail() + " ")
+                            + "A tentativa foi registrada em Reconquistas (ID " + emailId + "). Confira o status antes de qualquer novo envio.");
         }
         return "redirect:/backoffice/stores?status=uninstalled";
     }

@@ -69,3 +69,7 @@ com exclusão pendente exigem a confirmação de autorização do contato manual
 Uma falha durante o SMTP mostra o ID da tentativa; consulte Reconquistas antes de
 novo envio. O registro `winback.manual.failed` contém o ID da loja, da tentativa,
 a etapa e o tipo de exceção, sem credenciais ou endereço do destinatário.
+Também registra `reason` e `smtpCode`, extraídos das exceções SMTP internas.
+Rejeições conhecidas mostram uma orientação específica no backoffice, sem
+publicar o texto bruto do provedor. Esse diagnóstico vale para novas tentativas;
+não recupera detalhes omitidos por versões anteriores nem dispara reenvios.

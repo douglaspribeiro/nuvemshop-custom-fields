@@ -12,6 +12,8 @@ import org.springframework.mail.MailSendException;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
+import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -77,5 +79,16 @@ class BackofficeWinbackFailureTest {
         dispatch(true);
         assertThat(flash.getFlashAttributes().get("message").toString()).contains("já foi solicitada");
         verify(campaigns, never()).send(anyString());
+    }
+
+    @Test void providerRejectionExplainsTheConfigurationSetIssueWithoutRetrying() throws Exception {
+        when(campaigns.prepareManual(5538394L, false)).thenReturn("rejected-attempt");
+        var smtp = new SMTPSendFailedException("DATA", 554, "Configuration set private-set does not exist", null, null, null, null);
+        doThrow(new MailSendException("private-recipient", null, Map.of(new Object(), smtp))).when(campaigns).send("rejected-attempt");
+        dispatch(true);
+        assertThat(flash.getFlashAttributes().get("error").toString())
+                .contains("AWS_SES_CONFIGURATION_SET", "região", "rejected-attempt")
+                .doesNotContain("private-set", "private-recipient");
+        verify(campaigns, times(1)).send("rejected-attempt");
     }
 }
