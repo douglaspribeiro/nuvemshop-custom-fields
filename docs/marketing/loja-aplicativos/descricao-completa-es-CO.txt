@@ -18,12 +18,12 @@ Funcionalidades
 
 Planes
 
-Empieza gratis y amplía la capacidad a medida que crece tu tienda. Precios mensuales en Colombia:
+Empieza gratis y amplía la capacidad a medida que crece tu tienda. Precios mensuales en Colombia, en dólares estadounidenses (USD):
 
 - Free: gratis.
-- Esencial: COP 13.146,00/mes.
-- Pro: COP 19.723,00/mes.
-- Ultra: COP 39.446,00/mes.
+- Esencial: USD 4.99/mes.
+- Pro: USD 7.49/mes.
+- Ultra: USD 14.99/mes.
 
 Consulta las funcionalidades de cada plan: https://campos-personalizados.wzhub.pro/precos/?country=CO
 

@@ -7,10 +7,10 @@ O vídeo será produzido pelo responsável usando o sistema.
 
 - `descricao-pt-BR.md`: descrição curta e longa para o Brasil.
 - `descricao-completa.txt` e `descricao-curta.txt`: versões brasileiras em texto simples.
-- `descricao-es-AR.md`: Argentina, em espanhol, com preços em ARS.
-- `descricao-es-MX.md`: México, em espanhol, com preços em MXN.
-- `descricao-es-CL.md`: Chile, em espanhol, com preços em CLP.
-- `descricao-es-CO.md`: Colômbia, em espanhol, com preços em COP.
+- `descricao-es-AR.md`: Argentina, em espanhol, com preços em USD.
+- `descricao-es-MX.md`: México, em espanhol, com preços em USD.
+- `descricao-es-CL.md`: Chile, em espanhol, com preços em USD.
+- `descricao-es-CO.md`: Colômbia, em espanhol, com preços em USD.
 - `descricao-en-US.md`: versão em inglês, com preços em USD para demais países.
 - `descricao-completa-{idioma}.txt` e `descricao-curta-{idioma}.txt`: textos separados para cada uma dessas versões.
 - `imagens/01-personalizacao-na-vitrine.png`: texto, mensagens e escolhas na página do produto.
@@ -32,7 +32,7 @@ são **JPEG, PNG ou WebP**. O pacote usa PNG.
 
 As descrições estão localizadas por país, com nomes e valores dos planos. As imagens
 continuam em português; para publicar em outros países, adaptar também os textos
-das imagens. Usar a descrição e a moeda correspondentes ao mercado.
+das imagens. Usar a descrição correspondente ao mercado. Brasil mantém preços em BRL; os demais países usam USD.
 
 As descrições completas têm no máximo **2.000 caracteres**, contando espaços e
 quebras de linha. Os arquivos `.txt` estão prontos para copiar no Portal; os `.md`
@@ -66,12 +66,11 @@ não faz parte deste material promocional.
 
 Confirmar no ambiente publicado os scripts de vitrine e checkout com suporte às
 imagens. O recurso mostrado precisa funcionar para as lojas que instalarem o app.
-Os valores apresentados correspondem ao `application.yml` atual, na seção
-`nuvemshop.billing.prices` (revisão editorial em 06/10/2026). A página pública não
-pôde ser consultada nesta revisão; confirmar os valores publicados antes de enviar
-as descrições ao Portal. As propostas de
-reajuste para novos assinantes não alteraram esses valores nem criaram uma promessa
-de preço vitalício para os primeiros assinantes.
+Os preços divulgados para o Brasil permanecem em BRL. Fora do Brasil, a cobrança
+pela Creem usa USD: Essencial 4.99, Pro 7.49 e Ultra 14.99 por mês. A página
+pública usa a tabela USD para todos os mercados internacionais. Confirmar que o
+catálogo de produção da Creem corresponde a esses valores antes de publicar
+as descrições no Portal.
 
 Horários de suporte e SLA não foram inventados. Preencher esses dados no Portal e
 na FAQ quando houver uma política operacional definida.

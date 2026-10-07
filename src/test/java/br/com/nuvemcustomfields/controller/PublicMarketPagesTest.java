@@ -41,11 +41,12 @@ class PublicMarketPagesTest {
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
             "BR|R$ 19,99|R$ 29,99|R$ 59,90|Efí",
-            "AR|ARS 5.599,00|ARS 8.399,00|ARS 16.799,00|Creem",
-            "CL|CLP 4.199|CLP 6.299|CLP 12.599|Creem",
-            "MX|MXN 99.00|MXN 149.00|MXN 299.00|Creem",
-            "CO|COP 13.146,00|COP 19.723,00|COP 39.446,00|Creem",
-            "FR|USD 4.99|USD 7.49|USD 14.99|Creem"
+            "AR|USD 4,99|USD 7,49|USD 14,99|Creem",
+            "CL|USD 4,99|USD 7,49|USD 14,99|Creem",
+            "MX|USD 4.99|USD 7.49|USD 14.99|Creem",
+            "CO|USD 4,99|USD 7,49|USD 14,99|Creem",
+            "FR|USD 4.99|USD 7.49|USD 14.99|Creem",
+            "US|USD 4.99|USD 7.49|USD 14.99|Creem"
     })
     void showsConfiguredPricesAndProviderForVisitorCountry(String country, String essential, String pro,
                                                             String ultra, String provider) throws Exception {
@@ -67,11 +68,11 @@ class PublicMarketPagesTest {
         mvc.perform(get("/precos/").session(session).header("CF-IPCountry", "AR"))
                 .andExpect(content().string(containsString("R$ 19,99")));
         mvc.perform(get("/precos/").session(session).param("country", "mx").header("CF-IPCountry", "BR"))
-                .andExpect(content().string(containsString("MXN 99.00")));
+                .andExpect(content().string(containsString("USD 4.99")));
         mvc.perform(get("/termos/").session(session).header("CF-IPCountry", "BR"))
                 .andExpect(content().string(containsString("Creem")));
         mvc.perform(get("/").session(session).param("country", "invalid").header("CF-IPCountry", "BR"))
-                .andExpect(content().string(containsString("MXN 99.00")));
+                .andExpect(content().string(containsString("USD 4.99")));
         assertThat(stores.findByStoreId(store.getStoreId()).orElseThrow().getStoreCountryCode()).isEqualTo("BR");
     }
 
@@ -80,7 +81,7 @@ class PublicMarketPagesTest {
                 .andExpect(content().string(containsString("class=\"pricing-card featured\" aria-labelledby=\"pro-plan-title\"")))
                 .andExpect(content().string(not(containsString("class=\"pricing-card featured\" aria-labelledby=\"essential-plan-title\""))));
         mvc.perform(get("/precos/").header("CF-IPCountry", "XX").header("Accept-Language", "es-CL"))
-                .andExpect(content().string(containsString("CLP 4.199")));
+                .andExpect(content().string(containsString("USD 4,99")));
         for (var path : new String[]{"/contato/", "/termos/", "/support/"}) {
             mvc.perform(get(path)).andExpect(status().isOk())
                     .andExpect(content().string(containsString("mailto:contato@wzhub.pro")));

@@ -18,12 +18,12 @@ Funcionalidades
 
 Planes
 
-Empieza gratis y amplía la capacidad a medida que crece tu tienda. Precios mensuales en Chile:
+Empieza gratis y amplía la capacidad a medida que crece tu tienda. Precios mensuales en Chile, en dólares estadounidenses (USD):
 
 - Free: gratis.
-- Esencial: CLP 4.199/mes.
-- Pro: CLP 6.299/mes.
-- Ultra: CLP 12.599/mes.
+- Esencial: USD 4.99/mes.
+- Pro: USD 7.49/mes.
+- Ultra: USD 14.99/mes.
 
 Consulta las funcionalidades de cada plan: https://campos-personalizados.wzhub.pro/precos/?country=CL
 

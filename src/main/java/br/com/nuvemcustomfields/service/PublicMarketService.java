@@ -47,12 +47,17 @@ public class PublicMarketService {
             }
         }
         String priceCountry = COUNTRIES.containsKey(country) ? country : "US";
+        String catalogueCountry = priceCountry.equals("BR") ? "BR" : "US";
         var prices = billing.prices();
         var price = prices == null ? null : prices.entrySet().stream()
-                .filter(e -> priceCountry.equalsIgnoreCase(e.getKey())).map(Map.Entry::getValue).findFirst().orElse(null);
+                .filter(e -> catalogueCountry.equalsIgnoreCase(e.getKey())).map(Map.Entry::getValue).findFirst().orElse(null);
         if (price == null && priceCountry.equals("BR")) {
             price = new NuvemshopBillingProperties.CountryPrice(billing.currency(), billing.premiumAmount(),
                     billing.premiumPlusAmount(), billing.premiumUltraAmount());
+        }
+        if (price == null && !priceCountry.equals("BR")) {
+            price = new NuvemshopBillingProperties.CountryPrice("USD", new BigDecimal("4.99"),
+                    new BigDecimal("7.49"), new BigDecimal("14.99"));
         }
         return new Market(priceCountry, COUNTRIES.get(priceCountry), priceCountry.equals("BR") ? "Efí" : "Creem",
                 price == null ? "" : price.currency(),

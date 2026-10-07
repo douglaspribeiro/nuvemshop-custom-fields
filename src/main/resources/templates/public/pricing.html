@@ -22,7 +22,7 @@
         </div>
         <div class="pricing-market">
             <th:block th:replace="~{fragments/public-market :: selector}"></th:block>
-            <p>Valores mensais na moeda do país selecionado.</p>
+            <p th:text="${publicMarket.country == 'BR'} ? 'Valores mensais em reais (BRL).' : 'Valores mensais em dólares americanos (USD).'"></p>
         </div>
     </section>
 
@@ -37,7 +37,7 @@
             <p class="pricing-card-tag">Primeiros passos</p>
             <h2 id="essential-plan-title">Essencial</h2>
             <p class="pricing-card-description">Para ampliar a personalização dos seus produtos.</p>
-            <div class="pricing-amount"><strong th:text="${publicMarket.essentialPrice}">CLP 4.199</strong><small>/mês</small></div>
+            <div class="pricing-amount"><strong th:text="${publicMarket.essentialPrice}">USD 4.99</strong><small>/mês</small></div>
             <ul>
                 <li><strong>10</strong> produtos personalizados</li>
                 <li><strong>3</strong> campos por produto</li>
@@ -51,7 +51,7 @@
             <p class="pricing-card-tag">Mais escolhido</p>
             <h2 id="pro-plan-title">Pro</h2>
             <p class="pricing-card-description">Mais produtos e liberdade para criar seus campos.</p>
-            <div class="pricing-amount"><strong th:text="${publicMarket.proPrice}">CLP 6.299</strong><small>/mês</small></div>
+            <div class="pricing-amount"><strong th:text="${publicMarket.proPrice}">USD 7.49</strong><small>/mês</small></div>
             <ul>
                 <li><strong>50</strong> produtos personalizados</li>
                 <li>Campos <strong>ilimitados</strong></li>
@@ -64,7 +64,7 @@
             <p class="pricing-card-tag">Operações maiores</p>
             <h2 id="ultra-plan-title">Ultra</h2>
             <p class="pricing-card-description">Para expandir seu catálogo com atendimento prioritário.</p>
-            <div class="pricing-amount"><strong th:text="${publicMarket.ultraPrice}">CLP 12.599</strong><small>/mês</small></div>
+            <div class="pricing-amount"><strong th:text="${publicMarket.ultraPrice}">USD 14.99</strong><small>/mês</small></div>
             <ul>
                 <li>Produtos personalizados <strong>ilimitados</strong></li>
                 <li>Campos <strong>ilimitados</strong></li>

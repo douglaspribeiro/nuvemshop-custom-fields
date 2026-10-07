@@ -24,12 +24,12 @@ Ideal para papelería, regalos, recuerdos, ropa, accesorios y productos por enca
 
 ## Planes
 
-Empezá gratis y ampliá la capacidad a medida que crece tu tienda. Precios mensuales en Argentina:
+Empezá gratis y ampliá la capacidad a medida que crece tu tienda. Precios mensuales en Argentina, en dólares estadounidenses (USD):
 
 - Free: gratis.
-- Esencial: ARS 5.599,00/mes.
-- Pro: ARS 8.399,00/mes.
-- Ultra: ARS 16.799,00/mes.
+- Esencial: USD 4.99/mes.
+- Pro: USD 7.49/mes.
+- Ultra: USD 14.99/mes.
 
 Consultá las funcionalidades de cada plan: https://campos-personalizados.wzhub.pro/precos/?country=AR
 
