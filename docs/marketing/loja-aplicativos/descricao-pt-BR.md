@@ -1,43 +1,42 @@
-# Campos Personalizados — descrição para a loja de aplicativos
+# Campos Personalizados — pt-BR
 
 Descrição curta:
 
-Venda produtos personalizados com facilidade: o cliente informa nome, número ou mensagem na página do produto, e você recebe tudo no pedido.
+Comece grátis a vender produtos personalizados: seu cliente informa nome, número ou mensagem no produto, e você recebe os detalhes no pedido.
 
-## Personalização do produto ao pedido
+Descrição completa:
 
-Com o Campos Personalizados, seu cliente informa nomes, números, mensagens e escolhas na página do produto. Os detalhes acompanham a compra e ficam registrados no item do pedido na Nuvemshop, para você preparar cada produto como o cliente pediu.
+Comece grátis a vender produtos personalizados
 
-Ideal para papelaria, presentes, lembrancinhas, roupas, acessórios e produtos sob encomenda. Diminua a necessidade de confirmar informações por mensagens separadas.
+Seu cliente informa o nome para uma lembrancinha, o número de uma camiseta ou a mensagem de um presente na página do produto. Com o Campos Personalizados, esses detalhes ficam registrados no item do pedido na Nuvemshop, para você preparar cada encomenda como o cliente pediu.
 
-## Recursos
+Comece com o plano Free: gratuito, com 1 produto e 1 campo de personalização. Amplie conforme precisar.
 
-- Campos de texto curto, texto longo e números.
-- Listas de opções e escolhas com imagens cadastradas pela loja.
-- Campos obrigatórios, exemplos e limites de caracteres.
-- Formatos de resposta prontos e regras personalizadas.
-- Configuração por produto e ordem de exibição dos campos.
-- Modelos por nicho, conforme o plano.
-- Ajuste das cores dos textos no produto, carrinho e checkout.
-- Dados de personalização associados ao item no carrinho, checkout e pedido.
-- Consulta aos pedidos personalizados recentes no aplicativo.
+Ideal para papelaria, presentes, lembrancinhas, roupas, acessórios e produtos sob encomenda. Receba os detalhes junto à compra e reduza a necessidade de confirmar informações por mensagens separadas.
 
-## Planos
+O que você pode fazer
 
-Comece gratuitamente e amplie conforme sua loja cresce. Valores mensais no Brasil:
+- Criar campos de texto curto, texto longo e números.
+- Oferecer listas de opções e escolhas com imagens cadastradas pela loja.
+- Definir campos obrigatórios, exemplos e limites de caracteres.
+- Organizar os campos por produto e usar modelos por nicho, conforme o plano.
+- Ajustar as cores dos textos no produto, carrinho e checkout.
+- Consultar pedidos personalizados recentes no aplicativo.
 
-- Free: gratuito.
+Planos mensais no Brasil
+
+- Free: gratuito, com 1 produto e 1 campo.
 - Essencial: R$ 19,99/mês.
 - Pro: R$ 29,99/mês.
 - Ultra: R$ 59,90/mês.
 
-Confira os recursos de cada plano: https://campos-personalizados.wzhub.pro/precos/?country=BR
+Compare os recursos e limites: https://campos-personalizados.wzhub.pro/precos/?country=BR
 
-## Como começar
+Como começar
 
-Instale o aplicativo, autorize a conexão com a Nuvemshop, escolha um produto e configure seus campos ou use um modelo. Salve e confira o resultado na vitrine. A compra continua no fluxo da sua loja.
+Instale o aplicativo, autorize a conexão com a Nuvemshop e configure um campo no seu produto. Salve e confira o resultado na vitrine. As informações acompanham o item no carrinho, checkout e pedido.
 
-## Suporte
+Suporte
 
-Central de suporte no aplicativo: https://campos-personalizados.wzhub.pro/support/
+Central no aplicativo: https://campos-personalizados.wzhub.pro/support/
 E-mail: contato@wzhub.pro

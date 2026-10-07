@@ -1,35 +1,32 @@
-Personalization from product to order
+Start selling personalized products for free
 
-With Campos Personalizados, customers enter names, numbers, messages and preferences on the product page. The details follow the purchase and are saved with the order item in Tiendanube, so you can prepare each product as requested.
+Let customers enter a name for a party favor, a number for a shirt or a message for a gift on the product page. Campos Personalizados saves these details with the order item in Tiendanube, so you can prepare each order as requested.
 
-Ideal for stationery, gifts, party favors, clothing, accessories and made-to-order products. Reduce the need to confirm information through separate messages.
+Start with the Free plan: 1 product and 1 personalization field, free of charge. Upgrade as your needs grow.
 
-Features
+Ideal for stationery, gifts, party favors, clothing, accessories and made-to-order products. Receive the details with the purchase and reduce the need to confirm information through separate messages.
 
-- Short text, long text and number fields.
-- Selection lists and choices with images added by your store.
-- Required fields, examples and character limits.
-- Ready-to-use response formats and custom rules.
-- Configuration by product and field display order.
-- Category templates, depending on your plan.
-- Field text color settings on the product page, in the cart and at checkout.
-- Personalization details linked to the item in the cart, at checkout and in the order.
-- Recent personalized orders in the app dashboard.
+What you can do
 
-Plans
+- Create short text, long text and number fields.
+- Offer selection lists and choices with images added by your store.
+- Set required fields, examples and character limits.
+- Organize fields by product and use category templates, depending on your plan.
+- Adjust text colors on the product page, in the cart and at checkout.
+- View recent personalized orders in the app.
 
-Start for free and increase your capacity as your store grows. Monthly prices in US dollars:
+Monthly plans in US dollars (USD)
 
-- Free: free of charge.
+- Free: free of charge, with 1 product and 1 field.
 - Essential: USD 4.99/month.
 - Pro: USD 7.49/month.
 - Ultra: USD 14.99/month.
 
-Explore each plan's features: https://campos-personalizados.wzhub.pro/precos/?country=US
+Compare features and limits: https://campos-personalizados.wzhub.pro/precos/?country=US
 
 Getting started
 
-Install the app, authorize the connection to Tiendanube, choose a product and configure its fields or use a template. Save and check the result on your storefront. Purchases continue through your store's checkout.
+Install the app, authorize the connection to Tiendanube and configure a field on your product. Save and check the result on your storefront. The details stay linked to the item in the cart, at checkout and in the order.
 
 Support
 
