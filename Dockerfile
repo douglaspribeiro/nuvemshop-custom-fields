@@ -28,11 +28,13 @@ RUN java -Djarmode=tools -jar /tmp/app.jar extract --layers --launcher --destina
 
 # --- Stage 2: runtime Java 25 com Tomcat embarcado pelo Spring Boot ----------
 FROM eclipse-temurin:25-jre
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG APP_VERSION=unknown
 ENV APP_VERSION=${APP_VERSION}
 # Infra refuses to enable B on images without scheduler isolation.
-LABEL app.background-control="true"
+LABEL app.background-control="true" app.deploy.protocol="1"
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV JAVA_OPTS=""
 

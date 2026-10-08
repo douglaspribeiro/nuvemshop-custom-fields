@@ -14,6 +14,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  session:
+    jdbc:
+      initialize-schema: never
+      cleanup-cron: ${SPRING_SESSION_JDBC_CLEANUP_CRON:0 * * * * *}
   servlet:
     multipart:
       max-file-size: 5MB
@@ -38,6 +42,7 @@ legal:
   support-email: ${SUPPORT_EMAIL:contato@wzhub.pro}
 
 server:
+  shutdown: graceful
   forward-headers-strategy: framework
   servlet:
     session:

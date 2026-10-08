@@ -42,6 +42,9 @@ public class BackofficeSalesService {
     private final StoreOrderSalesRepository orderSales;
     private final StoreSalesSyncRepository syncStates;
     private final NuvemshopApiClient apiClient;
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("deploymentBackgroundExecutor")
+    private java.util.concurrent.ExecutorService backgroundExecutor;
     private final AtomicBoolean running = new AtomicBoolean();
 
     public BackofficeSalesService(StoreRepository stores, StoreOrderSalesRepository orderSales,
@@ -92,7 +95,7 @@ public class BackofficeSalesService {
             return;
         }
         // A importacao historica pode durar minutos; ela nao deve bloquear os jobs de pagamento.
-        Thread.ofVirtual().name("backoffice-sales-sync").start(() -> {
+        backgroundExecutor.execute(() -> {
             try {
                 syncOnePendingStore();
             } catch (RuntimeException ex) {
