@@ -79,7 +79,11 @@ function input(
 			<Select
 				name={key}
 				label={label}
-				options={field.options.map((option) => ({ label: option, value: option }))}
+				value={selected ?? ""}
+				options={[
+					{ label: locale?.toLowerCase().startsWith("es") ? "Seleccioná una opción" : "Selecione uma opção", value: "" },
+					...field.options.map((option) => ({ label: option, value: option })),
+				]}
 				onChange={handle}
 				style={{ label: labelStyle }}
 			/>

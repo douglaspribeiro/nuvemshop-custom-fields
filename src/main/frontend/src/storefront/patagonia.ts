@@ -122,7 +122,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 			input.className = "form-control";
 			input.required = field.required;
 			if (input instanceof HTMLSelectElement) {
-				input.append(new Option("—", ""));
+				input.append(new Option(langOf(config?.locale) === "pt" ? "Selecione uma opção" : "Seleccioná una opción", ""));
 				for (const option of field.options) input.append(new Option(option, option));
 			} else {
 				input.placeholder = field.placeholder ?? "";

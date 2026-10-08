@@ -853,7 +853,8 @@
             const select = document.createElement("select");
             const empty = document.createElement("option");
             empty.value = "";
-            empty.textContent = "";
+            empty.textContent = document.documentElement.lang.toLowerCase().startsWith("es")
+                ? "Seleccioná una opción" : "Selecione uma opção";
             select.appendChild(empty);
             (field.options || []).forEach((optionValue) => {
                 const option = document.createElement("option");
