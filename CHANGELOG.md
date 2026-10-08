@@ -3,6 +3,20 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.31.0] - 2026-10-08
+
+### Features
+
+- support validated deployment and coordinated shutdown (`dd1d121`)
+
+### Correções
+
+- show a selection prompt in product option fields (`9aad089`)
+
+### Outros
+
+- docs (`a2f619b`)
+
 ## [1.30.0] - 2026-10-06
 
 ### Features
