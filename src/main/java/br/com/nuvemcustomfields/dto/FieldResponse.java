@@ -23,7 +23,7 @@ public record FieldResponse(
         return new FieldResponse(
                 field.getLabel(),
                 field.getFieldType(),
-                field.isRequired(),
+                field.isRequired() || field.getFieldType() == FieldType.SELECT,
                 field.getMaxLength(),
                 field.getPlaceholder(),
                 field.getValidationPattern(),

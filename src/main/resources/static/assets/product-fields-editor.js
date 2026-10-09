@@ -2,6 +2,8 @@
     document.querySelectorAll('.field-editor-form').forEach(form => {
         const get = name => form.querySelector(`[name="${name}"]`);
         const type = get('fieldType');
+        let previousRequired = get('required').checked;
+        let wasSelect = false;
         const position = form.querySelector('.field-position');
         if (position) {
             position.addEventListener('input', () => {
@@ -41,7 +43,23 @@
         custom.addEventListener('input', () => { syncFormat(); render(); });
         function visibility() {
             const text = ['TEXT', 'TEXTAREA', 'NUMBER'].includes(type.value);
-            ['maxLength', 'placeholder'].forEach(name => get(name).closest('label').hidden = !text);
+            const required = get('required');
+            if (type.value === 'SELECT') {
+                if (!wasSelect) previousRequired = required.checked;
+                required.checked = true;
+            } else if (wasSelect) {
+                required.checked = previousRequired;
+            }
+            required.disabled = type.value === 'SELECT';
+            wasSelect = type.value === 'SELECT';
+            const requiredHelp = form.querySelector('.field-select-required');
+            if (requiredHelp) requiredHelp.hidden = !wasSelect;
+            get('maxLength').closest('label').hidden = !text;
+            const placeholderLabel = get('placeholder').closest('label');
+            placeholderLabel.hidden = !text && type.value !== 'SELECT';
+            placeholderLabel.querySelectorAll('[data-select-text]').forEach(element => {
+                element.textContent = type.value === 'SELECT' ? element.dataset.selectText : element.dataset.text;
+            });
             get('optionsText').closest('label').hidden = type.value !== 'SELECT';
             form.querySelector('.field-validation').hidden = !text;
             // Hidden controls retain their saved values when changing field types.
@@ -82,7 +100,7 @@
             if (type.value === 'SELECT') {
                 input = document.createElement('select');
                 const prompt = document.createElement('option');
-                prompt.value = ''; prompt.textContent = preview.dataset.selectPrompt; input.append(prompt);
+                prompt.value = ''; prompt.textContent = get('placeholder').value.trim() || preview.dataset.selectPrompt; input.append(prompt);
                 get('optionsText').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean).forEach(value => {
                     const option = document.createElement('option'); option.textContent = value; input.append(option);
                 });

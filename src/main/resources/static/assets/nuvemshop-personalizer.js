@@ -389,11 +389,33 @@
             return;
         }
         targetForm.dataset.ncfSnapshotBound = "true";
-        targetForm.addEventListener("submit", () => rememberCartSnapshot(targetForm, fields), true);
-        const submit = targetForm.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
-        if (submit) {
-            submit.addEventListener("click", () => rememberCartSnapshot(targetForm, fields), true);
-        }
+        const validateAndRemember = (event) => {
+            for (const field of fields) {
+                const name = "properties[" + (field.propertyName || field.label) + "]";
+                const input = Array.from(targetForm.elements).find(element => element.name === name);
+                if (!input) continue;
+                if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") {
+                    const invalid = input.value && !(field.options || []).includes(input.value);
+                    input.setCustomValidity(invalid
+                        ? (document.documentElement.lang.toLowerCase().startsWith("es")
+                            ? "Seleccioná una opción válida." : "Selecione uma opção válida.") : "");
+                }
+                if (!input.checkValidity()) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    input.focus();
+                    input.reportValidity();
+                    return;
+                }
+            }
+            rememberCartSnapshot(targetForm, fields);
+        };
+        targetForm.addEventListener("submit", validateAndRemember, true);
+        targetForm.addEventListener("click", event => {
+            if (event.target.closest("button[type='submit'], input[type='submit'], .js-addtocart, .js-buy-now")) {
+                validateAndRemember(event);
+            }
+        }, true);
     }
 
     function rememberCartSnapshot(targetForm, fields) {
@@ -824,7 +846,7 @@
 
         const input = createInput(field);
         input.name = "properties[" + (field.propertyName || field.label) + "]";
-        input.required = Boolean(field.required);
+        input.required = Boolean(field.required) || field.fieldType === "SELECT";
 
         if (field.maxLength) {
             input.maxLength = field.maxLength;
@@ -853,8 +875,9 @@
             const select = document.createElement("select");
             const empty = document.createElement("option");
             empty.value = "";
-            empty.textContent = document.documentElement.lang.toLowerCase().startsWith("es")
-                ? "Seleccioná una opción" : "Selecione uma opção";
+            empty.textContent = (field.placeholder || "").trim()
+                || (document.documentElement.lang.toLowerCase().startsWith("es")
+                    ? "Seleccioná una opción" : "Selecione uma opção");
             select.appendChild(empty);
             (field.options || []).forEach((optionValue) => {
                 const option = document.createElement("option");

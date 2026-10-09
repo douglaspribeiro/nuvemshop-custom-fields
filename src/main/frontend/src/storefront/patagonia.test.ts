@@ -40,6 +40,22 @@ describe("Patagonia transition", () => {
 	});
 	afterEach(() => { dispose?.(); dispose = undefined; vi.useRealTimers(); });
 
+	it("shows a custom select prompt and requires a choice even for previously optional lists", async () => {
+        dispose = startPatagonia(runtime, vi.fn().mockResolvedValue({ ...configuration, fields: [{
+            ...configuration.fields[0], fieldType: "SELECT", required: false,
+            placeholder: "Elegí la molienda", options: ["Grano", "Molido"] }]}));
+        await ready();
+        const select = field() as unknown as HTMLSelectElement;
+        expect(select.options[0].textContent).toBe("Elegí la molienda");
+        expect(select.value).toBe("");
+        click();
+        expect(runtime.send).not.toHaveBeenCalled();
+        select.value = "Molido";
+        click();
+        expect(runtime.send).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({ cart: { items: [{ properties: { Nombre: "Molido" } }] } });
+    });
+
 	it("renders outside the SDK slot and blocks native add when required values are absent", async () => {
 		const nativeAdd = vi.fn();
 		button().addEventListener("click", nativeAdd);

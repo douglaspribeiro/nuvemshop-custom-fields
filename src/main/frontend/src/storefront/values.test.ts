@@ -46,6 +46,8 @@ describe("validate", () => {
 
 	it("valida SELECT contra as opcoes", () => {
 		const select = field({ fieldType: "SELECT", options: ["P", "M", "G"] });
+		expect(validate([select], {})).toHaveLength(1);
+		expect(validate([select], { Nome: "   " })).toHaveLength(1);
 		expect(validate([select], { Nome: "M" })).toEqual([]);
 		expect(validate([select], { Nome: "XG" })).toHaveLength(1);
 	});

@@ -82,14 +82,15 @@
                         <label class="checkbox">
                             <input name="required" type="checkbox" value="true" th:checked="${draft.required}">
                             <span th:text="#{admin.fields.required}">Obrigatorio</span>
+                            <small class="field-help field-select-required" hidden th:text="#{editor.select.required}"></small>
                         </label>
                         <label>
                             <span th:text="#{admin.fields.maxlength.short}">Maximo</span>
                             <input name="maxLength" th:value="${draft.maxLength}" type="number" min="1" max="500" required>
                         </label>
                         <label>
-                            <span th:text="#{admin.fields.placeholder}">Placeholder</span>
-                    <small class="field-help" th:text="#{editor.placeholder.help}"></small>
+                            <span th:text="#{admin.fields.placeholder}" th:attr="data-text=#{admin.fields.placeholder},data-select-text=#{editor.select.prompt}">Placeholder</span>
+                    <small class="field-help" th:text="#{editor.placeholder.help}" th:attr="data-text=#{editor.placeholder.help},data-select-text=#{editor.select.prompt.help}"></small>
                             <input name="placeholder" th:value="${draft.placeholder}" maxlength="150">
                         </label>
                         <input type="hidden" name="validationPattern" th:value="${draft.validationPattern}">
@@ -151,14 +152,15 @@
                 <label class="checkbox">
                     <input th:field="*{required}" type="checkbox">
                     <span th:text="#{admin.fields.required}">Obrigatorio</span>
+                            <small class="field-help field-select-required" hidden th:text="#{editor.select.required}"></small>
                 </label>
                 <label>
                     <span th:text="#{admin.fields.maxlength}">Maximo de caracteres</span>
                     <input th:field="*{maxLength}" type="number" min="1" max="500" required>
                 </label>
                 <label>
-                    <span th:text="#{admin.fields.placeholder}">Placeholder</span>
-                    <small class="field-help" th:text="#{editor.placeholder.help}"></small>
+                    <span th:text="#{admin.fields.placeholder}" th:attr="data-text=#{admin.fields.placeholder},data-select-text=#{editor.select.prompt}">Placeholder</span>
+                    <small class="field-help" th:text="#{editor.placeholder.help}" th:attr="data-text=#{editor.placeholder.help},data-select-text=#{editor.select.prompt.help}"></small>
                     <input th:field="*{placeholder}" maxlength="150">
                 </label>
                 <input type="hidden" th:field="*{validationPattern}">

@@ -68,3 +68,44 @@ it("renders image selection in traditional themes with native form properties", 
     expect(dom.window.document.querySelector(".ncf-field a")?.getAttribute("href"))
         .toBe("https://campos-personalizados.wzhub.pro/public/large");
 });
+
+async function bootSelect(placeholder: string | null, lang = "es-AR") {
+    dom = new JSDOM(`<html lang="${lang}"><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" data-product-id="456"><button class="js-addtocart" type="submit"><span>Comprar</span></button></form></body></html>`,
+        { url: "https://store.test/productos/example", runScripts: "outside-only" });
+    Object.assign(dom.window, { fetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({ enabled: true,
+        fields: [{ label: "Moagem", fieldType: "SELECT", required: false, placeholder, options: ["Grano", "Molido"] }], style: {} }) }) });
+    Object.defineProperty(dom.window.document, "readyState", { value: "complete", configurable: true });
+    dom.window.eval(source);
+    await vi.waitFor(() => expect(dom.window.document.querySelector(".ncf-field select")).not.toBeNull());
+    return dom.window.document.querySelector<HTMLSelectElement>(".ncf-field select")!;
+}
+
+it("renders the configured prompt as an empty value and uses translated defaults", async () => {
+    const select = await bootSelect("Elegí la molienda");
+    expect(select.options[0].textContent).toBe("Elegí la molienda");
+    expect(select.value).toBe("");
+    dom.window.close();
+    expect((await bootSelect("   ")).options[0].textContent).toBe("Seleccioná una opción");
+    dom.window.close();
+    expect((await bootSelect(null, "pt-BR")).options[0].textContent).toBe("Selecione uma opção");
+});
+
+it("blocks AJAX purchase clicks and form submissions until a list item is selected", async () => {
+    const select = await bootSelect("Elegí la molienda");
+    const button = dom.window.document.querySelector<HTMLButtonElement>(".js-addtocart")!;
+    const nativeAdd = vi.fn();
+    button.addEventListener("click", event => { event.preventDefault(); nativeAdd(); });
+    const click = () => button.querySelector("span")!.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }));
+    expect(select.required).toBe(true);
+    expect(click()).toBe(false);
+    expect(nativeAdd).not.toHaveBeenCalled();
+    const submit = new dom.window.Event("submit", { bubbles: true, cancelable: true });
+    button.form!.dispatchEvent(submit);
+    expect(submit.defaultPrevented).toBe(true);
+    select.value = "Molido";
+    expect(select.checkValidity()).toBe(true);
+    click();
+    expect(nativeAdd).toHaveBeenCalledTimes(1);
+    expect(select.value).toBe("Molido");
+});

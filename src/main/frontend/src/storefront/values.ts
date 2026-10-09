@@ -21,7 +21,7 @@ export function validate(
 		const key = keyOf(field);
 		const value = (values[key] ?? "").trim();
 
-		if (field.required && !value) {
+		if ((field.required || field.fieldType === "SELECT") && !value) {
 			errors.push({ propertyName: key, label: field.label, message: text.required });
 			continue;
 		}

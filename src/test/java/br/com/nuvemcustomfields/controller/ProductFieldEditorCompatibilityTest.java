@@ -52,4 +52,24 @@ class ProductFieldEditorCompatibilityTest {
         assertThat(saved.getFirst().isRequired()).isTrue();
         assertThat(saved.getFirst().getSortOrder()).isEqualTo(3);
     }
+    @Test void selectPromptIsSavedAndListsRequireAChoiceIncludingExistingOptionalFields() throws Exception {
+        long storeId = 990088780L, productId = 124L;
+        var store = new Store(); store.setStoreId(storeId); store.setStoreCountryCode("BR"); store.setPlan(PlanType.PREMIUM_PLUS);
+        stores.saveAndFlush(store); admin.ensureRule(storeId, productId, "Café");
+        var session = new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, storeId);
+        mvc.perform(post("/admin/products/" + productId + "/fields").session(session)
+                .param("label", "Moagem").param("fieldType", "SELECT")
+                .param("placeholder", "Escolha a moagem").param("optionsText", "Grano\nMolido")
+                .param("maxLength", "100").param("sortOrder", "0"))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush(); entityManager.clear();
+        var saved = admin.requireRuleWithFields(storeId, productId).getFields().getFirst();
+        assertThat(saved.getPlaceholder()).isEqualTo("Escolha a moagem");
+        assertThat(saved.isRequired()).isTrue();
+        var response = br.com.nuvemcustomfields.dto.FieldResponse.from(saved);
+        assertThat(response.placeholder()).isEqualTo("Escolha a moagem");
+        assertThat(response.options()).containsExactly("Grano", "Molido");
+        saved.setRequired(false);
+        assertThat(br.com.nuvemcustomfields.dto.FieldResponse.from(saved).required()).isTrue();
+    }
 }

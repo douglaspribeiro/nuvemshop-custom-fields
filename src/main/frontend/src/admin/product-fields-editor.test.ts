@@ -46,7 +46,8 @@ it('preserves existing custom rules and blocks invalid edits', () => {
 it('shows relevant controls by type while retaining the original values', () => {
     boot('^ABC$');
     select('[name=fieldType]', 'SELECT');
-    expect(input('placeholder').closest('label')!.hidden).toBe(true);
+    expect(input('placeholder').closest('label')!.hidden).toBe(false);
+    expect(dom.window.document.querySelector('.field-preview-control option')!.textContent).toBe('Ana');
     expect(input('optionsText').closest('label')!.hidden).toBe(false);
     expect(dom.window.document.querySelectorAll('.field-preview-control option')).toHaveLength(3);
     select('[name=fieldType]', 'TEXT');
@@ -72,4 +73,16 @@ it('shows positions from one and submits the original zero-based order', () => {
     position.value = '0'; position.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     expect(position.checkValidity()).toBe(false);
     expect(input('sortOrder').value).toBe('3');
+});
+
+it('uses the configured select prompt and falls back when blank', () => {
+    boot();
+    input('placeholder').value = 'Escolha a moagem';
+    select('[name=fieldType]', 'SELECT');
+    const option = () => dom.window.document.querySelector<HTMLOptionElement>('.field-preview-control option')!;
+    expect(option().textContent).toBe('Escolha a moagem');
+    expect(option().value).toBe('');
+    input('placeholder').value = '   ';
+    input('placeholder').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    expect(option().textContent).toBe('Escolha');
 });

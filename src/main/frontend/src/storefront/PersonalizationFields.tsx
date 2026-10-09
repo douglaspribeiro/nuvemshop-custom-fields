@@ -52,7 +52,7 @@ function input(
     selected?: string, locale?: string,
 ): NubeComponent {
 	const key = keyOf(field);
-	const label = field.required ? `${field.label} *` : field.label;
+	const label = (field.required || field.fieldType === "SELECT") ? `${field.label} *` : field.label;
 	const handle = (event: { value?: string }) => onValueChange(key, event.value ?? "");
 	const labelStyle = color ? { color } : undefined;
 
@@ -81,7 +81,7 @@ function input(
 				label={label}
 				value={selected ?? ""}
 				options={[
-					{ label: locale?.toLowerCase().startsWith("es") ? "Seleccioná una opción" : "Selecione uma opção", value: "" },
+					{ label: field.placeholder?.trim() || (locale?.toLowerCase().startsWith("es") ? "Seleccioná una opción" : "Selecione uma opção"), value: "" },
 					...field.options.map((option) => ({ label: option, value: option })),
 				]}
 				onChange={handle}

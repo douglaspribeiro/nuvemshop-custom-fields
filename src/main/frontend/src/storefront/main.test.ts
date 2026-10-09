@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { DISABLED } from "../shared/config";
 
-type Node = { type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void };
+type Node = { type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void; options?: {label: string; value: string}[]; value?: string };
 
 describe("SDK storefront without a legacy script", () => {
 	let state: NubeSDKState;
@@ -40,7 +40,7 @@ describe("SDK storefront without a legacy script", () => {
 		send.mockClear();
 	}
 	function field(node: Node): Node | undefined {
-		if (node.type === "field") return node;
+		if (node.type === "field" || node.type === "select") return node;
 		for (const child of node.children ?? []) {
 			const found = field(child);
 			if (found) return found;
@@ -63,6 +63,23 @@ describe("SDK storefront without a legacy script", () => {
 			"https://app.test/public/stores/7278258/personalization?productId=341531127",
 			{ headers: { Accept: "application/json" } });
 	});
+
+	it("shows the custom list prompt, blocks empty choice and sends a real option", async () => {
+        vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ ...DISABLED, enabled: true,
+            fields: [{ label: "Moagem", propertyName: "Moagem", fieldType: "SELECT", required: false,
+                maxLength: null, placeholder: "Escolha a moagem", validationPattern: null, options: ["Grano", "Molido"] }] }) } as Response);
+        await boot();
+        const select = field(render.mock.calls[0][1])!;
+        expect(select.options?.[0]).toEqual({label: "Escolha a moagem", value: ""});
+        expect(select.value).toBe("");
+        add();
+        expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        select.onChange!({value: "Molido"});
+        expect(field(render.mock.calls[render.mock.calls.length - 1][1])!.value).toBe("Molido");
+        send.mockClear();
+        add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Moagem: "Molido"});
+    });
 
 	it("blocks a native add with an empty required field", async () => {
 		await boot();

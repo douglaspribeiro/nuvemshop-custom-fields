@@ -113,16 +113,16 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		if (color) container.style.color = color;
 		config.fields.forEach((field, index) => {
 			const label = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
-			label.textContent = field.label + (field.required ? " *" : "");
+			label.textContent = field.label + ((field.required || field.fieldType === "SELECT") ? " *" : "");
 			label.style.cssText = "display:flex;flex-direction:column;gap:4px";
 			const input = document.createElement((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") ? "select"
 				: field.fieldType === "TEXTAREA" ? "textarea" : "input");
 			input.id = `ncf-patagonia-${index}`;
 			input.name = `properties[${keyOf(field)}]`;
 			input.className = "form-control";
-			input.required = field.required;
+			input.required = field.required || field.fieldType === "SELECT";
 			if (input instanceof HTMLSelectElement) {
-				input.append(new Option(langOf(config?.locale) === "pt" ? "Selecione uma opção" : "Seleccioná una opción", ""));
+				input.append(new Option(field.placeholder?.trim() || (langOf(config?.locale) === "pt" ? "Selecione uma opção" : "Seleccioná una opción"), ""));
 				for (const option of field.options) input.append(new Option(option, option));
 			} else {
 				input.placeholder = field.placeholder ?? "";
