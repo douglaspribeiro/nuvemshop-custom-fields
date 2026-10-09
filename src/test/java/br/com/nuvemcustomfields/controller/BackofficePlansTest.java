@@ -10,7 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -28,7 +27,7 @@ class BackofficePlansTest {
         mvc.perform(post("/backoffice/plans").session(session).param("actionToken", "invalid")
                 .param("planType", "PREMIUM").param("displayName", "Essencial").param("billingExternalId", "PREMIUM")
                 .param("currency", "BRL").param("amount", "19.99").param("productLimit", "25")
-                .param("fieldLimit", "3").param("imageProductLimit", "1").param("imageOptionLimit", "3").param("effectiveFrom", LocalDate.now().toString())).andExpect(status().isForbidden());
+                .param("fieldLimit", "3").param("imageProductLimit", "1").param("imageOptionLimit", "3").param("effectiveFrom", catalog.today().toString())).andExpect(status().isForbidden());
     }
 
     @Test void rendersPlansCreatesVersionAndRendersReport() throws Exception {
@@ -39,7 +38,7 @@ class BackofficePlansTest {
         mvc.perform(post("/backoffice/plans").session(session).param("actionToken", token)
                 .param("planType", "PREMIUM").param("displayName", "Essencial").param("billingExternalId", "PREMIUM")
                 .param("currency", "BRL").param("amount", "19.99").param("productLimit", "25")
-                .param("fieldLimit", "3").param("imageProductLimit", "1").param("imageOptionLimit", "3").param("effectiveFrom", LocalDate.now().toString()))
+                .param("fieldLimit", "3").param("imageProductLimit", "1").param("imageOptionLimit", "3").param("effectiveFrom", catalog.today().toString()))
                 .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("message"));
         assertThat(catalog.activePlan(PlanType.PREMIUM).getProductLimit()).isEqualTo(25);
         assertThat(catalog.activePlan(PlanType.PREMIUM).getImageProductLimit()).isEqualTo(1);
