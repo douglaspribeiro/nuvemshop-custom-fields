@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.32.0] - 2026-10-08
+
+### Features
+
+- customize select prompts and require product option selection (`bd9685f`)
+
+### Outros
+
+- fix test (`04a40be`)
+
 ## [1.31.0] - 2026-10-08
 
 ### Features
