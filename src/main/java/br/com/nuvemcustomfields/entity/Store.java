@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.entity;
 
+import br.com.nuvemcustomfields.config.StorefrontCacheEntityListener;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,6 +17,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
+@EntityListeners(StorefrontCacheEntityListener.class)
 @Table(name = "stores")
 public class Store {
 

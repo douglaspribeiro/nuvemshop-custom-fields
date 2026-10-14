@@ -16,7 +16,7 @@ class StorefrontTrafficMetricsFilterTest {
     @Test
     void countsOnlyValidatedConfiguredProductsAndSuccessfulGets() throws Exception {
         var registry=new SimpleMeterRegistry();
-        var filter=new StorefrontTrafficMetricsFilter(registry,mock(StoreRepository.class));
+        var filter=new StorefrontTrafficMetricsFilter(registry,mock(StoreRepository.class), cache(registry));
         var request=new MockHttpServletRequest("GET","/public/stores/123/personalization");
         filter.doFilter(request,new MockHttpServletResponse(),(r,s)->{
             r.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE,123L);
@@ -42,7 +42,7 @@ class StorefrontTrafficMetricsFilterTest {
     @Test
     void countsStorefrontConfigurationRequestsWithBoundedTags() throws Exception {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class));
+        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class), cache(registry));
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/public/stores/123/personalization");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -57,7 +57,7 @@ class StorefrontTrafficMetricsFilterTest {
     @Test
     void usesOnlyValidatedStoreIdFromController() throws Exception {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class));
+        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class), cache(registry));
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/public/stores/123/personalization");
 
         filter.doFilter(request, new MockHttpServletResponse(), (servletRequest, ignoredResponse) ->
@@ -70,8 +70,8 @@ class StorefrontTrafficMetricsFilterTest {
     void validatesLegacyScriptStoreBeforeTagging() throws Exception {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         StoreRepository stores = mock(StoreRepository.class);
-        when(stores.existsByStoreIdAndUninstalledAtIsNull(123L)).thenReturn(true);
-        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, stores);
+        when(stores.findActiveByStoreId(123L)).thenReturn(java.util.Optional.of(new br.com.nuvemcustomfields.entity.Store()));
+        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, stores, cache(registry));
         MockHttpServletRequest valid = new MockHttpServletRequest("GET", "/assets/nuvemshop-personalizer.js");
         valid.setParameter("store", "123");
         MockHttpServletRequest invalid = new MockHttpServletRequest("GET", "/assets/nuvemshop-personalizer.js");
@@ -87,7 +87,7 @@ class StorefrontTrafficMetricsFilterTest {
     @Test
     void leavesAdminTrafficOutOfTheStorefrontCounter() throws Exception {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class));
+        StorefrontTrafficMetricsFilter filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class), cache(registry));
         AtomicBoolean chainCalled = new AtomicBoolean();
 
         filter.doFilter(
@@ -98,5 +98,8 @@ class StorefrontTrafficMetricsFilterTest {
 
         assertThat(chainCalled).isTrue();
         assertThat(registry.find("ncf.storefront.http.requests").counter()).isNull();
+    }
+    private static br.com.nuvemcustomfields.service.StorefrontCache cache(SimpleMeterRegistry registry) {
+        return new br.com.nuvemcustomfields.service.StorefrontCache(registry, java.time.Duration.ofSeconds(25), 10000);
     }
 }

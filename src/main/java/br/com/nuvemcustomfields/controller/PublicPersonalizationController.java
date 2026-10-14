@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.controller;
 
+import br.com.nuvemcustomfields.service.StorefrontCache;
 import br.com.nuvemcustomfields.config.StorefrontTrafficMetricsFilter;
 import br.com.nuvemcustomfields.dto.FieldResponse;
 import br.com.nuvemcustomfields.dto.PersonalizationResponse;
@@ -26,6 +27,7 @@ public class PublicPersonalizationController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicPersonalizationController.class);
 
+    private final StorefrontCache cache;
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
     private final PlanLimitService planLimitService;
@@ -35,8 +37,10 @@ public class PublicPersonalizationController {
             StoreRepository storeRepository,
             PersonalizationRuleRepository ruleRepository,
             PlanLimitService planLimitService,
-            IntegrationLogService integrationLogService
+            IntegrationLogService integrationLogService,
+            StorefrontCache cache
     ) {
+        this.cache = cache;
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.planLimitService = planLimitService;
@@ -50,19 +54,27 @@ public class PublicPersonalizationController {
             @RequestParam(required = false) String path,
             HttpServletRequest request
     ) {
+        CachedPersonalization cached = cache.get("personalization", storeId, productId,
+                () -> loadPersonalization(storeId, productId, path));
+        if (cached.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
+        if (cached.response().enabled() && !cached.response().fields().isEmpty())
+            request.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE, productId);
+        return cached.response();
+    }
+
+    private record CachedPersonalization(boolean active, PersonalizationResponse response) {}
+
+    private CachedPersonalization loadPersonalization(Long storeId, Long productId, String path) {
         LOGGER.info("public.personalization.open store_id={} product_id={} path={}", storeId, productId, path);
         Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
-        if (store != null) {
-            request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
-        }
         if (productId == null) {
             LOGGER.warn("public.personalization.disabled store_id={} reason=missing_product_id path={}", storeId, path);
-            return PersonalizationResponse.disabled();
+            return new CachedPersonalization(store != null, PersonalizationResponse.disabled());
         }
 
         if (store == null) {
             LOGGER.warn("public.personalization.disabled store_id={} product_id={} reason=store_not_active", storeId, productId);
-            return PersonalizationResponse.disabled();
+            return new CachedPersonalization(store != null, PersonalizationResponse.disabled());
         }
 
         PersonalizationRule rule = ruleRepository.findWithFieldsByStoreIdAndProductId(storeId, productId)
@@ -70,14 +82,13 @@ public class PublicPersonalizationController {
                 .orElse(null);
         if (rule == null) {
             LOGGER.info("public.personalization.disabled store_id={} product_id={} reason=rule_not_found_or_disabled", storeId, productId);
-            return PersonalizationResponse.disabled();
+            return new CachedPersonalization(store != null, PersonalizationResponse.disabled());
         }
 
         int imageOptionLimit = planLimitService.imageOptionLimit(store.getEffectivePlan());
         var fields = planLimitService.storefrontFields(store, rule.getFields()).stream()
                 .map(field -> FieldResponse.from(field, imageOptionLimit))
                 .toList();
-        if (!fields.isEmpty()) request.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE, productId);
         LOGGER.info(
                 "public.personalization.enabled store_id={} product_id={} rule_id={} fields_count={} country={} locale={}",
                 storeId,
@@ -87,30 +98,26 @@ public class PublicPersonalizationController {
                 store.getStoreCountryCode(),
                 StoreLocale.tagFor(store.getStoreCountryCode())
         );
-        return new PersonalizationResponse(
+        return new CachedPersonalization(true, new PersonalizationResponse(
                 true,
                 fields,
                 PersonalizationStyleResponse.from(store),
                 StoreLocale.tagFor(store.getStoreCountryCode())
-        );
+        ));
     }
 
     @GetMapping("/public/stores/{storeId}/style")
     public PersonalizationStyleResponse getStyle(@PathVariable Long storeId, HttpServletRequest request) {
-        Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
-        if (store == null) {
-            LOGGER.warn("public.style.disabled store_id={} reason=store_not_active", storeId);
-            return PersonalizationStyleResponse.empty();
-        }
-        request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
-        LOGGER.info(
-                "public.style.enabled store_id={} country={} locale={}",
-                storeId,
-                store.getStoreCountryCode(),
-                StoreLocale.tagFor(store.getStoreCountryCode())
-        );
-        return PersonalizationStyleResponse.from(store);
+        CachedStyle cached = cache.get("style", storeId, null, () -> {
+            Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
+            return new CachedStyle(store != null,
+                    store == null ? PersonalizationStyleResponse.empty() : PersonalizationStyleResponse.from(store));
+        });
+        if (cached.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
+        return cached.response();
     }
+
+    private record CachedStyle(boolean active, PersonalizationStyleResponse response) {}
 
     @GetMapping("/public/script-events")
     public void scriptEvent(
@@ -131,7 +138,7 @@ public class PublicPersonalizationController {
                 path,
                 scriptSrc
         );
-        boolean activeStore = storeId != null && storeRepository.existsByStoreIdAndUninstalledAtIsNull(storeId);
+        boolean activeStore = storeId != null && cache.get("active", storeId, null, () -> storeRepository.findActiveByStoreId(storeId).isPresent());
         if (activeStore) {
             request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
         }

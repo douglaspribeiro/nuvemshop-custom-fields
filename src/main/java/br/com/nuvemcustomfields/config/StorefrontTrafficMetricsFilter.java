@@ -1,5 +1,6 @@
 package br.com.nuvemcustomfields.config;
 
+import br.com.nuvemcustomfields.service.StorefrontCache;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import org.springframework.dao.DataAccessException;
 import io.micrometer.core.instrument.Counter;
@@ -26,10 +27,13 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
     public static final String PERSONALIZED_PRODUCT_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".personalizedProductId";
     public static final String PRODUCT_REQUEST_METRIC = "ncf.storefront.personalized.product.requests";
 
+    private final StorefrontCache cache;
     private final MeterRegistry meterRegistry;
     private final StoreRepository storeRepository;
 
-    public StorefrontTrafficMetricsFilter(MeterRegistry meterRegistry, StoreRepository storeRepository) {
+    public StorefrontTrafficMetricsFilter(MeterRegistry meterRegistry, StoreRepository storeRepository,
+            StorefrontCache cache) {
+        this.cache = cache;
         this.meterRegistry = meterRegistry;
         this.storeRepository = storeRepository;
     }
@@ -79,7 +83,7 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
         }
         try {
             long id = Long.parseLong(request.getParameter("store"));
-            return id > 0 && storeRepository.existsByStoreIdAndUninstalledAtIsNull(id)
+            return id > 0 && cache.get("active", id, null, () -> storeRepository.findActiveByStoreId(id).isPresent())
                     ? Long.toString(id) : "unknown";
         } catch (NumberFormatException | DataAccessException ignored) {
             return "unknown";

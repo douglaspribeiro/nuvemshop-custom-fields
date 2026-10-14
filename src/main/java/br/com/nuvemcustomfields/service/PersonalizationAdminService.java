@@ -18,6 +18,9 @@ import java.util.List;
 @Service
 public class PersonalizationAdminService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private StorefrontCache storefrontCache;
+
     private final OptionImageService images;
     private final PlanLimitService limits;
     private final StoreRepository stores;
@@ -105,6 +108,7 @@ public class PersonalizationAdminService {
         images.lockStore(storeId);
         images.deleteField(storeId, productId, fieldId);
         int deleted = fieldRepository.deleteByIdAndStoreIdAndProductId(fieldId, storeId, productId);
+        if (storefrontCache != null) storefrontCache.invalidateAfterCommit();
         if (deleted == 0) {
             throw new IllegalArgumentException("Campo nao encontrado para esta loja/produto.");
         }

@@ -216,3 +216,9 @@ images:
     region: ${IMAGES_S3_REGION:us-east-2}
     prefix: ${IMAGES_S3_PREFIX:production/options}
   cleanup-delay-ms: ${IMAGES_CLEANUP_DELAY_MS:60000}
+
+# Cache local por instância; sem Redis nesta etapa.
+storefront:
+  cache:
+    ttl: ${STOREFRONT_CACHE_TTL:25s}
+    maximum-size: ${STOREFRONT_CACHE_MAXIMUM_SIZE:10000}

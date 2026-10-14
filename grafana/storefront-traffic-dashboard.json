@@ -19,12 +19,12 @@
   "panels": [
     {
       "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "id": 1,
       "options": { "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [
-        { "expr": "sum by (kind) (rate(ncf_storefront_http_requests_total[$__rate_interval])) * 60", "legendFormat": "{{kind}}", "refId": "A" }
+        { "expr": "sum by (kind) (rate(ncf_storefront_http_requests_total[$__rate_interval])) * 60", "interval": "1m", "legendFormat": "{{kind}}", "refId": "A" }
       ],
       "title": "Tráfego da vitrine e checkout por minuto",
       "type": "timeseries"
@@ -34,9 +34,10 @@
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
       "id": 2,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "description": "Total estimado pelo Prometheus no intervalo selecionado. Consulta instantânea no fim do período; falhas de coleta podem subcontar chamadas.",
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [
-        { "expr": "sum(increase(ncf_storefront_http_requests_total[$__range]))", "refId": "A" }
+        { "expr": "sum(increase(ncf_storefront_http_requests_total[$__range]))", "instant": true, "range": false, "refId": "A" }
       ],
       "title": "Chamadas no período",
       "type": "stat"
@@ -95,6 +96,23 @@
     },
     {
       "datasource": "${DS_PROMETHEUS}",
+      "description": "Acumula incrementos estimados em blocos sem sobreposição desde o início do intervalo selecionado. Não é uma janela móvel de 24h. Blocos completos têm no mínimo 4 minutos para a coleta de 60s; frações nas bordas e dados ausentes não são reconstruídos. O valor final pode diferir do cartão de total do período.",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short", "min": 0, "decimals": 0, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 15, "spanNulls": false } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+      "id": 9,
+      "interval": "4m",
+      "options": { "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        { "expr": "sum(clamp_min(increase(ncf_storefront_http_requests_total[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))", "interval": "4m", "instant": false, "range": true, "legendFormat": "Chamadas", "refId": "A" }
+      ],
+      "transformations": [
+        { "id": "calculateField", "options": { "mode": "cumulativeFunctions", "cumulative": { "reducer": "sum" }, "alias": "Acumulado", "replaceFields": true } }
+      ],
+      "title": "Chamadas acumuladas no período · estimativa",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
       "description": "Top 10 lojas por chamadas recebidas no período. Os nomes vêm do cadastro, associados por store_id. Requisições sem loja validada e downloads servidos pela CDN não entram. Requer a métrica ncf_store_info da nova versão do app.",
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "decimals": 0, "unit": "short" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
@@ -121,7 +139,9 @@
         { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "store_id": true, "product_id": true }, "indexByName": { "store_name": 0, "product_name": 1, "Value": 2 }, "renameByName": { "store_name": "Loja", "product_name": "Produto", "Value": "Quantidade" } } }
       ],
       "type": "table"
-    }
+    },
+    {"datasource": "${DS_PROMETHEUS}", "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 42}, "id": 12, "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single"}}, "targets": [{"expr": "100 * sum(rate(cache_gets_total{job=\"app-custom-fields\",cache=\"storefront\",result=\"hit\"}[$__rate_interval])) / clamp_min(sum(rate(cache_gets_total{job=\"app-custom-fields\",cache=\"storefront\"}[$__rate_interval])), 0.000001)", "interval": "1m", "legendFormat": "Acertos", "refId": "A"}], "title": "Cache Caffeine · acertos (%)", "description": "Cache local com expiração após 25 segundos da gravação. Sem consultas, mostra zero. As métricas de tráfego continuam contando respostas servidas pelo cache.", "type": "timeseries"},
+    {"datasource": "${DS_PROMETHEUS}", "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 42}, "id": 13, "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}}, "targets": [{"expr": "sum(cache_size{job=\"app-custom-fields\",cache=\"storefront\"})", "legendFormat": "Entradas estimadas", "refId": "A"}], "title": "Cache Caffeine · entradas estimadas", "description": "Tamanho estimado; entradas expiradas podem aguardar manutenção para serem removidas. Limite de 10.000 por instância.", "type": "timeseries"}
   ],
   "refresh": "30s",
   "schemaVersion": 39,
@@ -132,6 +152,6 @@
   "timezone": "browser",
   "title": "Nuvemshop · Tráfego de Vitrine",
   "uid": "ncf-storefront-traffic",
-  "version": 2,
+  "version": 4,
   "weekStart": ""
 }

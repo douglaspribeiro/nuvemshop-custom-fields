@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.entity;
 
+import br.com.nuvemcustomfields.config.StorefrontCacheEntityListener;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@EntityListeners(StorefrontCacheEntityListener.class)
 @Table(
         name = "personalization_rules",
         uniqueConstraints = @UniqueConstraint(name = "uq_store_product", columnNames = {"store_id", "product_id"})

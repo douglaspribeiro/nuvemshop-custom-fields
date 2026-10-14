@@ -1,5 +1,7 @@
 package br.com.nuvemcustomfields.entity;
 
+import br.com.nuvemcustomfields.config.StorefrontCacheEntityListener;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Entity
+@EntityListeners(StorefrontCacheEntityListener.class)
 @Table(name = "personalization_fields")
 public class PersonalizationField {
 

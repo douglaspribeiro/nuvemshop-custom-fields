@@ -1,5 +1,13 @@
 # Tráfego de vitrine no Grafana
 
+## Fonte oficial após centralização
+
+O catálogo gerenciado fica no repositório `server-docker-1`, em
+`grafana/dashboards/ncf-storefront-traffic.json`. Novas alterações devem ser feitas
+nesse arquivo e seguir o reconciliador da infraestrutura. O JSON neste repositório
+é uma referência de exportação; não é uma segunda fonte para o sync automático.
+As instruções de importação manual abaixo continuam úteis antes da ativação do sync.
+
 O app publica métricas Prometheus em `GET /actuator/prometheus`. O endpoint precisa ficar
 restrito à rede do Prometheus ou a um proxy autenticado; ele não deve ser público.
 
@@ -62,6 +70,21 @@ a nova tabela mostra **Loja · Produto · Quantidade**, com os 20 produtos mais 
 Publique também a aplicação desta versão: importar somente o JSON não cria as novas métricas.
 Não há preenchimento retroativo de consultas anteriores à implantação.
 
+O cartão **Chamadas no período** usa uma consulta instantânea no fim do intervalo selecionado,
+sem a antiga linha de fundo. Essa linha mostrava totais em janelas móveis e não um acumulado
+desde o início do período. O painel **Chamadas acumuladas no período · estimativa** soma os
+incrementos em blocos sem sobreposição, usando a transformação cumulativa do Grafana.
+Cada bloco tem no mínimo quatro minutos, para haver amostras suficientes com a coleta de 60s.
+Somente blocos completos após o início entram na curva; frações nas bordas e lacunas de coleta
+não são reconstruídas. Por isso, o final da curva pode diferir do cartão, que usa `increase`
+em todo o intervalo. A curva é uma estimativa dos incrementos observados, não um registro
+exato de todas as chamadas nem um indicador de disponibilidade da coleta.
+
+O gráfico de chamadas por minuto declara **Min step = 1m**, alinhado ao scrape do Alloy.
+Assim, `$__rate_interval` usa uma janela de pelo menos quatro minutos. O refresh de 30s
+do dashboard não altera a frequência de coleta. A unidade desse gráfico é quantidade
+por minuto, pois a consulta multiplica a taxa por segundo por 60.
+
 “Quantidade” significa consultas à configuração de personalização, não visitantes únicos nem
 visualizações de qualquer produto da loja. Recargas, robôs e consultas repetidas podem incrementar
 o contador; respostas servidas por cache fora do app não entram. O Prometheus precisa observar
@@ -79,3 +102,27 @@ CDN. Já o beacon indica que o JavaScript de fato executou no navegador, mas pod
 cliente bloqueia requisições de telemetria.
 
 As telas administrativas já carregam GA4. Elas não entram no contador `ncf_storefront_http_requests_total`.
+
+## Cache e orçamento de séries
+
+O Caffeine guarda respostas de personalização por loja/produto, estilo por loja e
+validação de loja ativa para beacons e script legado. Expira 25 segundos após a
+gravação (`STOREFRONT_CACHE_TTL`), com limite compartilhado de 10.000 entradas por
+instância (`STOREFRONT_CACHE_MAXIMUM_SIZE`). Não guarda entidades JPA nem elimina
+gravações de beacons. Requests continuam sendo contados nos acertos do cache.
+
+Alterações em lojas, planos, regras e campos invalidam o cache local após commit;
+rollback não invalida. A exclusão de campo em lote invalida explicitamente.
+Nesta etapa a invalidação limpa todo o cache da instância, cobrindo limites de
+plano que dependem de outros produtos. SQL externo e alterações em outra
+instância são percebidos pela expiração de 25 segundos.
+
+Os novos painéis mostram taxa de acertos e tamanho estimado com `cache_gets_total`
+e `cache_size`, etiqueta fixa `cache="storefront"`, sem loja/produto/URL.
+
+O filtro `custom_fields_budget` no Alloy da infraestrutura descarta somente para
+`job="app-custom-fields"`: `tasks_scheduled_execution_(active_)?seconds_(count|sum|max)`,
+`http_client_requests_active_seconds_(count|sum|max)` e `http_client_requests_seconds_max`.
+Economia estimada: 184 séries antes das poucas séries novas do cache. Preserva
+`ncf_*`, latência HTTP por soma/contagem, JVM e banco. O filtro precisa ser
+publicado/recarregado na infraestrutura para afetar o envio.
