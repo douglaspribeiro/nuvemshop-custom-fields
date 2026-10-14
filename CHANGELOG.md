@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.35.0] - 2026-10-14
+
+### Features
+
+- measure average storefront response time by request type (`2ef6207`)
+
+### Testes
+
+- cover product and custom field cache invalidation (`fd7f0b8`)
+
 ## [1.34.0] - 2026-10-14
 
 ### Features
