@@ -18,6 +18,8 @@ class StorefrontCacheIntegrationTest {
     @Autowired br.com.nuvemcustomfields.repository.PersonalizationRuleRepository rules;
     @Autowired br.com.nuvemcustomfields.repository.PersonalizationFieldRepository fields;
     @Autowired StorefrontCache cache;
+    @Autowired PlanCatalogService catalog;
+    @Autowired br.com.nuvemcustomfields.repository.PlanAssetRepository planAssets;
     @Autowired PublicPersonalizationController controller;
     @Autowired PlatformTransactionManager transactions;
 
@@ -67,6 +69,40 @@ class StorefrontCacheIntegrationTest {
         } finally {
             fields.deleteById(field.getId()); rules.deleteById(rule.getId());
             stores.findByStoreId(998878L).ifPresent(stores::delete);
+        }
+    }
+
+    @Test void planChangesInvalidatePlanAndStorefrontCachesOnlyAfterCommit() {
+        var type = br.com.nuvemcustomfields.entity.PlanType.PREMIUM;
+        var original = catalog.activePlan(type);
+        long originalLimit = original.getProductLimit();
+        String originalName = original.getDisplayName();
+        var tx = new TransactionTemplate(transactions);
+        try {
+            original.setProductLimit(9999);
+            assertThat(catalog.activePlan(type).getProductLimit()).isEqualTo(originalLimit);
+            tx.executeWithoutResult(status -> {
+                var managed = planAssets.findById(original.getId()).orElseThrow();
+                managed.setProductLimit(777); planAssets.saveAndFlush(managed);
+                assertThat(catalog.activePlan(type).getProductLimit()).isEqualTo(777);
+                status.setRollbackOnly();
+            });
+            assertThat(catalog.activePlan(type).getProductLimit()).isEqualTo(originalLimit);
+            cache.get("plan-dependent-response", 1L, null, () -> "old");
+            tx.executeWithoutResult(status -> {
+                var managed = planAssets.findById(original.getId()).orElseThrow();
+                managed.setDisplayName("Updated catalog"); managed.setProductLimit(888);
+                planAssets.saveAndFlush(managed);
+            });
+            assertThat(catalog.activePlan(type).getProductLimit()).isEqualTo(888);
+            assertThat(catalog.activePlan(type).getDisplayName()).isEqualTo("Updated catalog");
+            assertThat(cache.get("plan-dependent-response", 1L, null, () -> "new")).isEqualTo("new");
+        } finally {
+            tx.executeWithoutResult(status -> {
+                var managed = planAssets.findById(original.getId()).orElseThrow();
+                managed.setProductLimit(originalLimit); managed.setDisplayName(originalName);
+                planAssets.saveAndFlush(managed);
+            });
         }
     }
 }

@@ -21,15 +21,20 @@ public class StorefrontCache {
 
     @org.springframework.beans.factory.annotation.Autowired
     public StorefrontCache(MeterRegistry registry,
-            @Value("${storefront.cache.ttl:25s}") Duration ttl,
+            @Value("${storefront.cache.ttl:1m}") Duration ttl,
             @Value("${storefront.cache.maximum-size:10000}") long maximumSize) {
         this(registry, ttl, maximumSize, com.github.benmanes.caffeine.cache.Ticker.systemTicker());
     }
 
     StorefrontCache(MeterRegistry registry, Duration ttl, long maximumSize,
             com.github.benmanes.caffeine.cache.Ticker ticker) {
+        this(registry, ttl, maximumSize, ticker, "storefront");
+    }
+
+    StorefrontCache(MeterRegistry registry, Duration ttl, long maximumSize,
+            com.github.benmanes.caffeine.cache.Ticker ticker, String name) {
         entries = Caffeine.newBuilder().expireAfterWrite(ttl).maximumSize(maximumSize).ticker(ticker).recordStats().build();
-        CaffeineCacheMetrics.monitor(registry, entries, "storefront");
+        CaffeineCacheMetrics.monitor(registry, entries, name);
     }
 
     @SuppressWarnings("unchecked")

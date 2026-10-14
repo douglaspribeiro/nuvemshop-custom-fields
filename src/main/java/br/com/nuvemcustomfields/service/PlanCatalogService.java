@@ -18,8 +18,11 @@ import java.util.stream.Collectors;
 public class PlanCatalogService {
 
     private final PlanAssetRepository planAssetRepository;
+    private final org.springframework.beans.factory.ObjectProvider<PlanCatalogCache> cache;
 
-    public PlanCatalogService(PlanAssetRepository planAssetRepository) {
+    public PlanCatalogService(PlanAssetRepository planAssetRepository,
+            org.springframework.beans.factory.ObjectProvider<PlanCatalogCache> cache) {
+        this.cache = cache;
         this.planAssetRepository = planAssetRepository;
     }
 
@@ -29,6 +32,12 @@ public class PlanCatalogService {
 
     public PlanAsset activePlan(PlanType planType) {
         LocalDate today = today();
+        var available = cache.getIfAvailable();
+        return available == null ? loadActivePlan(planType, today)
+                : available.activePlan(planType, today, () -> loadActivePlan(planType, today));
+    }
+
+    private PlanAsset loadActivePlan(PlanType planType, LocalDate today) {
         return planAssetRepository.findActiveByPlanTypeOnDate(planType, today).stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Plano ativo nao encontrado para " + planType + "."));

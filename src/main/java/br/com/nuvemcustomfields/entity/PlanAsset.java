@@ -176,4 +176,27 @@ public class PlanAsset {
                 && !effectiveFrom.isAfter(date)
                 && (effectiveUntil == null || !effectiveUntil.isBefore(date));
     }
+
+    /** Immutable cache value. Each caller receives an independent detached copy. */
+    public Snapshot snapshot() {
+        return new Snapshot(id, planType, displayName, description, billingExternalId, currency, amount,
+                productLimit, fieldLimit, imageProductLimit, imageOptionLimit, effectiveFrom, effectiveUntil,
+                active, createdAt);
+    }
+
+    public record Snapshot(Long id, PlanType planType, String displayName, String description,
+            String billingExternalId, String currency, BigDecimal amount, long productLimit, long fieldLimit,
+            long imageProductLimit, int imageOptionLimit, LocalDate effectiveFrom, LocalDate effectiveUntil,
+            boolean active, Instant createdAt) {
+        public PlanAsset toAsset() {
+            PlanAsset asset = new PlanAsset();
+            asset.id = id; asset.planType = planType; asset.displayName = displayName;
+            asset.description = description; asset.billingExternalId = billingExternalId;
+            asset.currency = currency; asset.amount = amount; asset.productLimit = productLimit;
+            asset.fieldLimit = fieldLimit; asset.imageProductLimit = imageProductLimit;
+            asset.imageOptionLimit = imageOptionLimit; asset.effectiveFrom = effectiveFrom;
+            asset.effectiveUntil = effectiveUntil; asset.active = active; asset.createdAt = createdAt;
+            return asset;
+        }
+    }
 }

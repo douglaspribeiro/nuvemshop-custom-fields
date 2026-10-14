@@ -100,6 +100,6 @@ class StorefrontTrafficMetricsFilterTest {
         assertThat(registry.find("ncf.storefront.http.requests").counter()).isNull();
     }
     private static br.com.nuvemcustomfields.service.StorefrontCache cache(SimpleMeterRegistry registry) {
-        return new br.com.nuvemcustomfields.service.StorefrontCache(registry, java.time.Duration.ofSeconds(25), 10000);
+        return new br.com.nuvemcustomfields.service.StorefrontCache(registry, java.time.Duration.ofMinutes(1), 10000);
     }
 }

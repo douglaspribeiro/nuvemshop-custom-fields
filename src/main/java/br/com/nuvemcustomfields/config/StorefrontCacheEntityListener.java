@@ -11,11 +11,18 @@ import org.springframework.beans.factory.ObjectProvider;
 @Component
 public class StorefrontCacheEntityListener {
     private final ObjectProvider<StorefrontCache> cache;
-    public StorefrontCacheEntityListener(ObjectProvider<StorefrontCache> cache) { this.cache = cache; }
+    private final ObjectProvider<br.com.nuvemcustomfields.service.PlanCatalogCache> plans;
+    public StorefrontCacheEntityListener(ObjectProvider<StorefrontCache> cache,
+            ObjectProvider<br.com.nuvemcustomfields.service.PlanCatalogCache> plans) {
+        this.cache = cache;
+        this.plans = plans;
+    }
 
     @PostPersist @PostUpdate @PostRemove
     public void changed(Object entity) {
         // Persistence-only contexts can operate without the storefront cache.
         cache.ifAvailable(StorefrontCache::invalidateAfterCommit);
+        if (entity instanceof br.com.nuvemcustomfields.entity.PlanAsset)
+            plans.ifAvailable(br.com.nuvemcustomfields.service.PlanCatalogCache::invalidateAfterCommit);
     }
 }

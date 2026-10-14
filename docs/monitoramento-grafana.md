@@ -106,7 +106,7 @@ As telas administrativas já carregam GA4. Elas não entram no contador `ncf_sto
 ## Cache e orçamento de séries
 
 O Caffeine guarda respostas de personalização por loja/produto, estilo por loja e
-validação de loja ativa para beacons e script legado. Expira 25 segundos após a
+validação de loja ativa para beacons e script legado. Expira 1 minuto após a
 gravação (`STOREFRONT_CACHE_TTL`), com limite compartilhado de 10.000 entradas por
 instância (`STOREFRONT_CACHE_MAXIMUM_SIZE`). Não guarda entidades JPA nem elimina
 gravações de beacons. Requests continuam sendo contados nos acertos do cache.
@@ -115,10 +115,11 @@ Alterações em lojas, planos, regras e campos invalidam o cache local após com
 rollback não invalida. A exclusão de campo em lote invalida explicitamente.
 Nesta etapa a invalidação limpa todo o cache da instância, cobrindo limites de
 plano que dependem de outros produtos. SQL externo e alterações em outra
-instância são percebidos pela expiração de 25 segundos.
+instância são percebidos pela expiração de 1 minuto.
 
 Os novos painéis mostram taxa de acertos e tamanho estimado com `cache_gets_total`
-e `cache_size`, etiqueta fixa `cache="storefront"`, sem loja/produto/URL.
+e `cache_size`, separadas pelas etiquetas fixas `cache="storefront"` e
+`cache="plans"`, sem loja/produto/URL.
 
 O filtro `custom_fields_budget` no Alloy da infraestrutura descarta somente para
 `job="app-custom-fields"`: `tasks_scheduled_execution_(active_)?seconds_(count|sum|max)`,
@@ -126,3 +127,12 @@ O filtro `custom_fields_budget` no Alloy da infraestrutura descarta somente para
 Economia estimada: 184 séries antes das poucas séries novas do cache. Preserva
 `ncf_*`, latência HTTP por soma/contagem, JVM e banco. O filtro precisa ser
 publicado/recarregado na infraestrutura para afetar o envio.
+
+O catálogo de planos ativos tem cache Caffeine separado de **30 minutos**
+(`PLANS_CACHE_TTL`), com limite de 128 entradas e métricas `cache="plans"`.
+A chave inclui o tipo e a data de vigência em São Paulo, respeitando a virada do
+dia para versões agendadas. Alterações no catálogo invalidam os caches de planos
+e vitrine após commit. Leituras transacionais consultam o banco diretamente;
+fora de transações, cada consumidor recebe uma cópia independente do plano.
+O histórico administrativo de versões continua consultando o banco. Alterações
+por SQL externo ou em outra instância dependem do TTL para atualizar os planos.
