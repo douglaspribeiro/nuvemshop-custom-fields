@@ -4,6 +4,7 @@ import br.com.nuvemcustomfields.service.StorefrontCache;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import org.springframework.dao.DataAccessException;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,6 +26,7 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
 
     public static final String ACTIVE_STORE_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".activeStoreId";
     public static final String PERSONALIZED_PRODUCT_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".personalizedProductId";
+    public static final String DURATION_METRIC = "ncf.storefront.http.duration";
     public static final String PRODUCT_REQUEST_METRIC = "ncf.storefront.personalized.product.requests";
 
     private final StorefrontCache cache;
@@ -47,9 +49,15 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String kind = trafficKind(request.getRequestURI());
+        Timer.Sample duration = Timer.start(meterRegistry);
         try {
             filterChain.doFilter(request, response);
         } finally {
+            duration.stop(Timer.builder(DURATION_METRIC)
+                    .description("Server processing time of storefront and checkout requests by kind")
+                    .tag("kind", kind)
+                    .publishPercentileHistogram(false)
+                    .register(meterRegistry));
             String storeId = activeStoreId(request);
             Counter.builder("ncf.storefront.http.requests")
                     .description("HTTP requests made by storefront and checkout scripts")

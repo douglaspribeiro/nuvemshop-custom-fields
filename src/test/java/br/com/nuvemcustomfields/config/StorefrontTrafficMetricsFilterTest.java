@@ -98,7 +98,46 @@ class StorefrontTrafficMetricsFilterTest {
 
         assertThat(chainCalled).isTrue();
         assertThat(registry.find("ncf.storefront.http.requests").counter()).isNull();
+        assertThat(registry.find(StorefrontTrafficMetricsFilter.DURATION_METRIC).timer()).isNull();
     }
+    @Test
+    void recordsMeanDurationByKindWithoutStoreOrProductLabels() throws Exception {
+        var clock = new io.micrometer.core.instrument.MockClock();
+        var registry = new SimpleMeterRegistry(io.micrometer.core.instrument.simple.SimpleConfig.DEFAULT, clock);
+        var filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class), cache(registry));
+        filter.doFilter(new MockHttpServletRequest("GET", "/public/stores/123/personalization"),
+                new MockHttpServletResponse(), (request, response) -> clock.add(java.time.Duration.ofMillis(100)));
+        filter.doFilter(new MockHttpServletRequest("GET", "/public/stores/456/personalization"),
+                new MockHttpServletResponse(), (request, response) -> clock.add(java.time.Duration.ofMillis(300)));
+        filter.doFilter(new MockHttpServletRequest("GET", "/public/script-events"),
+                new MockHttpServletResponse(), (request, response) -> clock.add(java.time.Duration.ofMillis(50)));
+        var timer = registry.get(StorefrontTrafficMetricsFilter.DURATION_METRIC)
+                .tag("kind", "storefront_personalization").timer();
+        assertThat(timer.count()).isEqualTo(2);
+        assertThat(timer.mean(java.util.concurrent.TimeUnit.MILLISECONDS)).isEqualTo(200);
+        assertThat(timer.getId().getTags()).extracting(io.micrometer.core.instrument.Tag::getKey)
+                .containsExactly("kind");
+        assertThat(registry.get(StorefrontTrafficMetricsFilter.DURATION_METRIC)
+                .tag("kind", "storefront_script_beacon").timer().mean(java.util.concurrent.TimeUnit.MILLISECONDS))
+                .isEqualTo(50);
+    }
+
+    @Test
+    void recordsDurationEvenWhenRequestProcessingThrows() {
+        var clock = new io.micrometer.core.instrument.MockClock();
+        var registry = new SimpleMeterRegistry(io.micrometer.core.instrument.simple.SimpleConfig.DEFAULT, clock);
+        var filter = new StorefrontTrafficMetricsFilter(registry, mock(StoreRepository.class), cache(registry));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> filter.doFilter(
+                new MockHttpServletRequest("GET", "/public/stores/123/style"), new MockHttpServletResponse(),
+                (request, response) -> {
+                    clock.add(java.time.Duration.ofMillis(80));
+                    throw new jakarta.servlet.ServletException("Failure");
+                })).isInstanceOf(jakarta.servlet.ServletException.class);
+        var timer = registry.get(StorefrontTrafficMetricsFilter.DURATION_METRIC).tag("kind", "checkout_style").timer();
+        assertThat(timer.count()).isEqualTo(1);
+        assertThat(timer.totalTime(java.util.concurrent.TimeUnit.MILLISECONDS)).isEqualTo(80);
+    }
+
     private static br.com.nuvemcustomfields.service.StorefrontCache cache(SimpleMeterRegistry registry) {
         return new br.com.nuvemcustomfields.service.StorefrontCache(registry, java.time.Duration.ofMinutes(1), 10000);
     }

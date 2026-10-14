@@ -136,3 +136,17 @@ e vitrine após commit. Leituras transacionais consultam o banco diretamente;
 fora de transações, cada consumidor recebe uma cópia independente do plano.
 O histórico administrativo de versões continua consultando o banco. Alterações
 por SQL externo ou em outra instância dependem do TTL para atualizar os planos.
+
+## Tempo médio por tipo de chamada
+
+O gráfico de chamadas/minuto também mostra o tempo médio no eixo direito em ms.
+O timer `ncf_storefront_http_duration_seconds` usa somente `kind` (os sete tipos
+fixos de tráfego), sem loja/produto/URL, sem histogramas ou percentis por padrão.
+A média usa soma das durações dividida pela quantidade de chamadas na mesma
+janela de `rate`, ponderando corretamente entre instâncias. Intervalos sem
+chamadas não mostram um tempo médio artificial de zero.
+
+A medição abrange o processamento dentro da cadeia do filtro, inclusive acertos
+do cache e erros. Exclui a rede até o comprador, a renderização do navegador e o
+trabalho posterior de registro das métricas. Os dados começam após publicar a
+aplicação instrumentada; o contador de tráfego anterior permanece preservado.
