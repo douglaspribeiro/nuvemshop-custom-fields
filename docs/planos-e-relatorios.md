@@ -23,3 +23,13 @@ Decisão de 05/10/2026: manter o preço do Ultra visível e permitir assinatura/
 Reavaliar essa decisão quando houver dados suficientes do funil no GA4. Comparar conversão do Ultra, conversão dos demais planos e receita por loja que visualizou os planos; considerar também dúvidas recebidas, tempo de atendimento e tempo até a contratação. Cliques em contato, isoladamente, não indicam melhora na conversão.
 
 A alternativa a avaliar no futuro é substituir a contratação direta por “Entre em contato” e liberar a visualização do preço após conversar com a loja. Essa hipótese fica registrada para revisão; não foi implementada. Antes de adotar essa alternativa, verificar se o contato ajuda a orientar a escolha ou negociar condições e se compensa a etapa adicional para contratar.
+
+## Uso gratuito e pedidos por plano
+
+`/backoffice/reports` inclui a posição atual das lojas ativas (sem desinstalação nem exclusão pendente), separando Free e Plano Grátis na comparação e somando os dois nos indicadores gratuitos. Uma loja é considerada configurada quando tem pelo menos um produto distinto com campo cadastrado e regra habilitada. Isso não comprova a exibição na vitrine. Regras sem campos e produtos desabilitados não contam.
+
+O período, com padrão de 30 dias até hoje, filtra a criação dos pedidos no fuso de São Paulo, incluindo os dias inicial e final. Conta pedidos distintos e quantidades de itens personalizados; pedidos sem data ou sem itens personalizados ficam fora. Os pedidos são agrupados pelo plano **atual** da loja: o relatório não reconstrói o plano no momento da compra. As taxas de ativação e participação com pedidos usam todas as lojas ativas de cada plano como denominador; sem lojas, a taxa aparece como “—”.
+
+Os pedidos registrados não comprovam pagamento e não descontam cancelamentos. A cobertura informa quantas lojas têm sincronização completa. Históricos incompletos podem ter pedidos já conhecidos, mas ausência de registro nesses históricos não significa ausência de venda. MRR e próximas cobranças são uma posição atual, independente do filtro de pedidos.
+
+A lista de lojas gratuitas é ordenada por pedidos no período e permite abrir o cadastro. A exportação `/backoffice/reports/free.csv` usa o mesmo período, inclui configuração, pedidos, itens e situação do histórico, exige a sessão do backoffice e protege nomes contra fórmulas de planilha. Não inclui dados pessoais de compradores. A contagem total de campos usa agregação direta, evitando consultas por regra.

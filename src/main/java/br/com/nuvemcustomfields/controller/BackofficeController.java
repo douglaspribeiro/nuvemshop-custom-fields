@@ -16,7 +16,6 @@ import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.service.BackofficeService;
 import br.com.nuvemcustomfields.service.StoreDepartureService;
 import br.com.nuvemcustomfields.service.BackofficeSalesService;
-import br.com.nuvemcustomfields.service.ManagementReportService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
 import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
@@ -55,7 +54,6 @@ public class BackofficeController {
     private final IntegrationLogRepository integrationLogRepository;
     private final BackofficeService backofficeService;
     private final BackofficeSalesService backofficeSalesService;
-    private final ManagementReportService managementReportService;
     private final SupportService supportService;
     private final ScriptInstallService scriptInstallService;
     private final PaymentSubscriptionRepository paymentSubscriptionRepository;
@@ -73,7 +71,6 @@ public class BackofficeController {
             IntegrationLogRepository integrationLogRepository,
             BackofficeService backofficeService,
             BackofficeSalesService backofficeSalesService,
-            ManagementReportService managementReportService,
             SupportService supportService,
             ScriptInstallService scriptInstallService,
             PaymentSubscriptionRepository paymentSubscriptionRepository,
@@ -90,7 +87,6 @@ public class BackofficeController {
         this.integrationLogRepository = integrationLogRepository;
         this.backofficeService = backofficeService;
         this.backofficeSalesService = backofficeSalesService;
-        this.managementReportService = managementReportService;
         this.supportService = supportService;
         this.scriptInstallService = scriptInstallService;
         this.paymentSubscriptionRepository = paymentSubscriptionRepository;
@@ -305,13 +301,6 @@ public class BackofficeController {
         model.addAttribute("flags", flags);
         LOGGER.info("backoffice.flags.loaded flags_count={}", flags.size());
         return "backoffice/flags";
-    }
-
-    @GetMapping("/backoffice/reports")
-    public String reports(Model model) {
-        LOGGER.info("backoffice.reports.open");
-        model.addAttribute("report", managementReportService.report());
-        return "backoffice/reports";
     }
 
     @GetMapping("/backoffice/payments")

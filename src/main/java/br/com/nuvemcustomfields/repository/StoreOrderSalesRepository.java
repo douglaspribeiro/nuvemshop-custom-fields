@@ -9,6 +9,13 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface StoreOrderSalesRepository extends JpaRepository<StoreOrderSales, StoreOrderSalesId> {
 
+    @Query("select new br.com.nuvemcustomfields.dto.StoreSalesCount(r.id.storeId, count(r), sum(r.personalizedItems)) "
+            + "from StoreOrderSales r where r.personalizedItems > 0 and r.createdAt >= :from and r.createdAt < :until "
+            + "group by r.id.storeId")
+    java.util.List<br.com.nuvemcustomfields.dto.StoreSalesCount> summarizeByStore(
+            @org.springframework.data.repository.query.Param("from") java.time.Instant from,
+            @org.springframework.data.repository.query.Param("until") java.time.Instant until);
+
     @Query("select new br.com.nuvemcustomfields.dto.StoreMetricCount(r.id.storeId, count(r)) "
             + "from StoreOrderSales r where r.personalizedItems > 0 group by r.id.storeId")
     java.util.List<br.com.nuvemcustomfields.dto.StoreMetricCount> countPersonalizedOrdersByStore();

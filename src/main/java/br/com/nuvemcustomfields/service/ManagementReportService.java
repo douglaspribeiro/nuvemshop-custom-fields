@@ -81,7 +81,7 @@ public class ManagementReportService {
                 projectedCounts.merge(currency, 1L, Long::sum);
             }
         }
-        long fieldCount = rules.findAll().stream().mapToLong(rule -> fields.countByRuleId(rule.getId())).sum();
+        long fieldCount = fields.count();
         return new ManagementReport(
                 all.stream().filter(s -> !s.getPlan().isBillable()).count(),
                 all.stream().filter(s -> s.getPlan() == PlanType.PREMIUM).count(),

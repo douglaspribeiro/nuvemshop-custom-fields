@@ -4,43 +4,71 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
-    <title>Backoffice - Relatorios</title>
+    <title>Backoffice - Relatórios</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
 </head>
 <body>
-<main class="shell">
+<main class="shell reports-shell">
     <section class="page-header">
         <div>
             <p class="eyebrow">Backoffice</p>
-            <h1>Relatorios gerenciais</h1>
+            <h1>Relatórios gerenciais</h1>
+            <p class="report-muted">Acompanhe a ativação das lojas, o uso dos planos gratuitos e os pedidos personalizados.</p>
         </div>
         <a class="button" th:href="@{/backoffice}">Voltar</a>
     </section>
-    <section class="panel">
-        <h2>Adoção, assinaturas e desinstalações</h2>
-        <p>Compare lojas ativas e desinstaladas, configuração de produtos, vendas personalizadas registradas e motivos de saída.</p>
-        <a class="button primary" th:href="@{/backoffice/reports/adoption}">Analisar adoção e saídas</a>
+    <nav class="report-nav" aria-label="Seções do relatório">
+        <a href="#free">Planos gratuitos</a><a href="#plans">Vendas por plano</a><a href="#revenue">Receita do app</a>
+        <a th:href="@{/backoffice/reports/adoption}">Adoção e desinstalações →</a>
+    </nav>
+    <section class="panel report-filter">
+        <div><h2>Período dos pedidos</h2><p class="report-muted">Últimos 30 dias por padrão · fuso de São Paulo</p></div>
+        <form method="get" th:action="@{/backoffice/reports}" class="report-dates">
+            <label>De<input type="date" name="from" required th:value="${performance.from}"></label>
+            <label>Até<input type="date" name="to" required th:value="${performance.to}"></label>
+            <button class="button primary" type="submit">Aplicar período</button>
+        </form>
     </section>
-    <section class="details metrics">
-        <div>
-            <dt>MRR estimado · BRL</dt>
-            <dd th:text="'R$ ' + ${report.estimatedMrr}">R$ 0</dd>
+    <section id="free" aria-labelledby="free-title">
+        <div class="report-section-title"><div><p class="eyebrow">Ativação e oportunidade</p><h2 id="free-title">O que acontece nos planos gratuitos?</h2></div>
+            <span class="badge">Free + Plano Grátis</span></div>
+        <div class="report-kpis">
+            <article class="panel"><p>Lojas gratuitas ativas</p><strong th:text="${performance.freeStores}">0</strong><small>Base atual com o app instalado</small></article>
+            <article class="panel"><p>Com produto habilitado</p><strong th:text="${performance.freeConfigured}">0</strong><small th:text="${performance.freeActivationRate != null ? #numbers.formatDecimal(performance.freeActivationRate, 1, 1) + '% da base gratuita' : 'Sem base para calcular a taxa'}">Taxa</small></article>
+            <article class="panel report-kpi-accent"><p>Com pedidos personalizados</p><strong th:text="${performance.freeSelling}">0</strong><small th:text="${performance.freeSellingRate != null ? #numbers.formatDecimal(performance.freeSellingRate, 1, 1) + '% da base gratuita no período' : 'Sem base para calcular a taxa'}">Taxa</small></article>
+            <article class="panel"><p>Sem produto habilitado</p><strong th:text="${performance.freeNotConfigured}">0</strong><small>Lojas para acompanhar na ativação</small></article>
         </div>
-        <div>
-            <dt>Free</dt>
-            <dd th:text="${report.freeStores}">0</dd>
-        </div>
-        <div>
-            <dt>Essencial</dt>
-            <dd th:text="${report.premiumStores}">0</dd>
-        </div>
-        <div>
-            <dt>Pro</dt>
-            <dd th:text="${report.premiumPlusStores}">0</dd>
-        </div>
-        <div><dt>Ultra</dt><dd th:text="${report.premiumUltraStores}">0</dd></div>
+        <p class="report-muted">Produto habilitado = produto com pelo menos um campo cadastrado e personalização habilitada. Esse indicador mostra a configuração atual, não comprova exibição na vitrine.</p>
+    </section>
+    <section id="plans" class="panel">
+        <div class="report-section-title"><div><p class="eyebrow">Comparação de desempenho</p><h2>Pedidos personalizados × plano atual</h2></div>
+            <span th:text="|${performance.sellingStores} de ${performance.activeStores} lojas ativas com pedidos|">Resumo</span></div>
+        <p class="report-muted">A base e a configuração são atuais. O período filtra a data de criação dos pedidos. Pedidos anteriores a uma troca de plano aparecem no plano atual; não indicam o plano no momento da venda.</p>
+        <div class="report-table-scroll"><table class="table report-table">
+            <thead><tr><th>Plano atual</th><th>Lojas ativas</th><th>Com produto habilitado</th><th>Ativação</th><th>Com pedidos</th><th>Participação com pedidos</th><th>Pedidos</th><th>Itens personalizados</th><th>Histórico completo</th></tr></thead>
+            <tbody><tr th:each="row : ${performance.plans}">
+                <th scope="row" th:text="${row.plan.displayName}">Free</th><td th:text="${row.stores}">0</td><td th:text="${row.configured}">0</td>
+                <td th:text="${row.activationRate != null ? #numbers.formatDecimal(row.activationRate, 1, 1) + '%' : '—'}">—</td>
+                <td th:text="${row.selling}">0</td><td th:text="${row.sellingRate != null ? #numbers.formatDecimal(row.sellingRate, 1, 1) + '%' : '—'}">—</td>
+                <td th:text="${row.orders}">0</td><td th:text="${row.items}">0</td><td th:text="|${row.synced} de ${row.stores}|">0</td>
+            </tr></tbody>
+        </table></div>
+        <p class="report-note">São pedidos com itens personalizados registrados pelo app, sem confirmação de pagamento ou desconto de cancelamentos. Lojas com histórico incompleto podem ter mais pedidos do que os exibidos. Pedidos sem data não entram no período. As taxas usam todas as lojas ativas de cada plano como base.</p>
     </section>
     <section class="panel">
+        <div class="report-section-title"><div><p class="eyebrow">Detalhamento para acompanhamento</p><h2>Lojas gratuitas: configuração e pedidos</h2></div>
+            <a class="button" th:href="@{/backoffice/reports/free.csv(from=${performance.from},to=${performance.to})}">Exportar CSV</a></div>
+        <p class="report-muted">Ordenadas por quantidade de pedidos no período. Abra uma loja para analisar sua configuração.</p>
+        <div class="report-table-scroll report-store-list"><table class="table report-table">
+            <thead><tr><th>Loja</th><th>Plano atual</th><th>Produtos habilitados</th><th>Pedidos</th><th>Itens personalizados</th><th>Histórico de pedidos</th></tr></thead>
+            <tbody><tr th:each="row : ${performance.freeDetails}">
+                <td><a th:href="@{/backoffice/stores/{id}(id=${row.id})}" th:text="${row.name ?: 'Loja sem nome'}">Loja</a><small th:text="${row.id}">ID</small></td>
+                <td th:text="${row.plan.displayName}">Free</td><td th:text="${row.products}">0</td><td th:text="${row.orders}">0</td><td th:text="${row.items}">0</td><td th:text="${row.salesStatus}">Histórico</td>
+            </tr><tr th:if="${#lists.isEmpty(performance.freeDetails)}"><td colspan="6">Nenhuma loja gratuita ativa no momento.</td></tr></tbody>
+        </table></div>
+    </section>
+    <section id="revenue" class="panel">
+        <p class="eyebrow">Receita do aplicativo · posição atual</p>
         <h2>Receita recorrente e próximas cobranças</h2>
         <p>Estimativa para lojas ativas pagas, sem cortesia ou cobrança suspensa. Assinaturas de teste, pendentes, canceladas e com cancelamento solicitado são excluídas. Valores separados por moeda, sem conversão.</p>
         <p th:text="|Projeção de cobranças restantes de ${report.projectedMonth}: de hoje até o fim do mês, conforme a próxima cobrança registrada. Não inclui cobranças vencidas ou ajustes de upgrade.|">Projeção</p>
@@ -52,20 +80,21 @@
                 <td th:text="${report.projectedStoresByCurrency[entry.key] ?: 0}">0</td>
             </tr></tbody>
         </table>
+        <p th:if="${#maps.isEmpty(report.mrrByCurrency)}" class="report-muted">Nenhuma receita recorrente elegível no momento.</p>
         <p>O MRR usa o valor recorrente contratado; em reconquistas com desconto inicial, usa a mensalidade regular. Lojas sem valor registrado usam o preço de referência do plano quando a moeda é compatível.</p>
         <a class="button" th:href="@{/backoffice/plans}">Gerenciar planos</a>
     </section>
     <section class="details metrics">
         <div>
-            <dt>Eventos de plano</dt>
+            <dt>Eventos de plano · histórico total</dt>
             <dd th:text="${report.planEvents}">0</dd>
         </div>
         <div>
-            <dt>Produtos com campos</dt>
+            <dt>Regras de produto · base total</dt>
             <dd th:text="${report.configuredProducts}">0</dd>
         </div>
         <div>
-            <dt>Campos configurados</dt>
+            <dt>Campos cadastrados · base total</dt>
             <dd th:text="${report.configuredFields}">0</dd>
         </div>
     </section>

@@ -511,3 +511,43 @@ input[type="color"] {
 }
 
 .store-last-access { display: block; }
+
+/* Management reports */
+.reports-shell { max-width: 1240px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.reports-shell > * { min-width: 0; }
+.reports-shell .page-header { margin-bottom: 0; }
+.report-muted, .report-note { color: #536471; line-height: 1.6; font-size: .9rem; }
+.report-nav { display: flex; flex-wrap: wrap; gap: 12px 24px; border-bottom: 1px solid #d9e2e7; padding-bottom: 16px; }
+.report-nav a { color: #16604a; font-weight: 600; text-decoration: none; }
+.report-filter, .report-section-title { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.report-section-title { margin-bottom: 18px; }
+.report-dates { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.report-dates label { display: grid; gap: 6px; font-size: .85rem; font-weight: 600; }
+.report-dates input { padding: 10px; border: 1px solid #b8c6ce; border-radius: 6px; background: #fff; color: inherit; font: inherit; }
+.report-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.report-kpis article { display: flex; flex-direction: column; align-items: start; gap: 10px; }
+.report-kpis p { margin: 0; color: #536471; font-size: .9rem; }
+.report-kpis strong { font-size: 2.4rem; letter-spacing: -.04em; }
+.report-kpis small { color: #536471; line-height: 1.5; }
+.report-kpis .report-kpi-accent { background: #edf8f3; border-color: #b8d7cb; }
+.report-kpi-accent strong { color: #16604a; }
+.report-table-scroll { overflow: auto; }
+.report-table { width: 100%; font-variant-numeric: tabular-nums; }
+.report-table th { text-align: left; }
+.report-table thead th { background: #f5f7f8; color: #536471; font-size: .8rem; }
+.report-table tbody th { white-space: nowrap; }
+.report-table td small { display: block; margin-top: 4px; color: #536471; }
+.report-store-list { max-height: 480px; }
+.report-store-list thead { position: sticky; top: 0; }
+.report-note { padding: 14px 16px; border-left: 3px solid #b8d7cb; background: #f6faf8; }
+@media (max-width: 1000px) {
+    .report-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .report-filter { align-items: start; flex-direction: column; }
+}
+@media (max-width: 600px) {
+    .report-kpis { grid-template-columns: 1fr; }
+    .report-section-title { align-items: start; flex-direction: column; }
+    .report-dates { width: 100%; }
+    .report-dates label { flex: 1; min-width: 120px; }
+    .report-dates input { min-width: 0; width: 100%; box-sizing: border-box; }
+}
