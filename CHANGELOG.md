@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.36.0] - 2026-10-15
+
+### Features
+
+- aprimora relatórios de uso gratuito e pedidos por plano (`4b725c5`)
+
 ## [1.35.1] - 2026-10-14
 
 ### Correções
