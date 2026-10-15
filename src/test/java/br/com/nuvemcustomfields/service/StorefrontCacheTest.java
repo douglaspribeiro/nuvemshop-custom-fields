@@ -36,4 +36,28 @@ class StorefrontCacheTest {
             TransactionSynchronizationManager.clearSynchronization();
         }
     }
+
+    @Test void invalidationDoesNotWaitForDatabaseLoadAndInflightResultCannotRepopulateNewGeneration() throws Exception {
+        var cache = new StorefrontCache(new SimpleMeterRegistry(), Duration.ofMinutes(1), 100);
+        var loading = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var pending = executor.submit(() -> cache.get("personalization", 1L, 10L, () -> {
+                loading.countDown();
+                try { release.await(); }
+                catch (InterruptedException ex) { Thread.currentThread().interrupt(); throw new IllegalStateException(ex); }
+                return "before-commit";
+            }));
+            try {
+                assertThat(loading.await(2, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                // A committing transaction still owns its JDBC connection here. It must never
+                // wait for a cache reader that could itself be waiting for a JDBC connection.
+                executor.submit(cache::invalidateAfterCommit).get(2, java.util.concurrent.TimeUnit.SECONDS);
+                var fresh = executor.submit(() -> cache.get("personalization", 1L, 10L, () -> "after-commit"));
+                assertThat(fresh.get(2, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo("after-commit");
+            } finally { release.countDown(); }
+            assertThat(pending.get(2, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo("before-commit");
+            assertThat(cache.get("personalization", 1L, 10L, () -> "unexpected")).isEqualTo("after-commit");
+        }
+    }
 }

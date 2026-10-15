@@ -10,14 +10,14 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 /** Only immutable response DTOs and booleans; never managed JPA entities. */
 @Component
 public class StorefrontCache {
     private final Cache<Key, Object> entries;
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final AtomicLong generation = new AtomicLong();
 
     @org.springframework.beans.factory.annotation.Autowired
     public StorefrontCache(MeterRegistry registry,
@@ -41,12 +41,8 @@ public class StorefrontCache {
     public <T> T get(String kind, Long storeId, Long productId, Supplier<T> loader) {
         // A transactional read must not publish uncommitted data into the shared cache.
         if (TransactionSynchronizationManager.isActualTransactionActive()) return loader.get();
-        lock.readLock().lock();
-        try {
-            return (T) entries.get(new Key(kind, storeId, productId), ignored -> loader.get());
-        } finally {
-            lock.readLock().unlock();
-        }
+        long currentGeneration = generation.get();
+        return (T) entries.get(new Key(kind, storeId, productId, currentGeneration), ignored -> loader.get());
     }
 
     public void invalidateAfterCommit() {
@@ -58,10 +54,11 @@ public class StorefrontCache {
     }
 
     private void invalidate() {
-        lock.writeLock().lock();
-        try { entries.invalidateAll(); }
-        finally { lock.writeLock().unlock(); }
+        // Never wait for an in-flight loader here: afterCommit still owns a JDBC connection.
+        // Readers can be waiting for that connection. Advancing the generation makes all
+        // prior values unreachable without locking. TTL and maximumSize reclaim old entries.
+        generation.incrementAndGet();
     }
 
-    private record Key(String kind, Long storeId, Long productId) {}
+    private record Key(String kind, Long storeId, Long productId, long generation) {}
 }

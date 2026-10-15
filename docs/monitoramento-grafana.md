@@ -113,8 +113,10 @@ gravações de beacons. Requests continuam sendo contados nos acertos do cache.
 
 Alterações em lojas, planos, regras e campos invalidam o cache local após commit;
 rollback não invalida. A exclusão de campo em lote invalida explicitamente.
-Nesta etapa a invalidação limpa todo o cache da instância, cobrindo limites de
-plano que dependem de outros produtos. SQL externo e alterações em outra
+A invalidação avança a geração do cache da instância, cobrindo limites de
+plano que dependem de outros produtos, sem bloquear carregamentos em andamento.
+Entradas da geração anterior deixam de ser reutilizadas e são removidas pelo TTL
+ou pelo limite de tamanho. SQL externo e alterações em outra
 instância são percebidos pela expiração de 1 minuto.
 
 Os novos painéis mostram taxa de acertos e tamanho estimado com `cache_gets_total`
