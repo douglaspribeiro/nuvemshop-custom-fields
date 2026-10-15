@@ -83,6 +83,6 @@
 
     <section class="landing-final"><p th:text="#{landing.final.eyebrow}">Campos Personalizados para Nuvemshop</p><h2 th:text="#{landing.final.title}">Deixe cada pedido pronto para produzir.</h2><a class="landing-cta light" th:href="@{/install}"><span th:text="#{landing.install}">Instalar na Nuvemshop</span><span aria-hidden="true">→</span></a></section>
 </main>
-<footer class="landing-footer"><span>© <span th:text="${#dates.year(#dates.createNow())}">2026</span> <span th:text="#{common.app.name}">Campos Personalizados</span></span><span th:if="${!#strings.isEmpty(companyLegalName)}">Responsável pelo serviço: <span th:text="${companyLegalName}">Nome completo</span></span><a th:href="@{/precos/}">Preços</a><a th:href="@{/termos/}">Termos</a><a th:href="@{/privacy/}" th:text="#{landing.privacy}">Privacidade</a><a th:href="@{/contato/}">Contato</a></footer>
+<footer class="landing-footer"><span>© <span th:text="${#dates.year(#dates.createNow())}">2026</span> <span th:text="#{common.app.name}">Campos Personalizados</span></span><span th:if="${!#strings.isEmpty(companyLegalName)}">Responsável pelo serviço: <span th:text="${companyLegalName}">Nome completo</span></span><a th:href="@{/precos/}">Preços</a><a th:href="@{/termos/}">Termos</a><a th:href="@{/privacy/}" th:text="#{landing.privacy}">Privacidade</a><a th:href="@{/contato/}">Contato</a><a th:href="@{/status/}" th:text="#{status.title}">Status do serviço</a></footer>
 </body>
 </html>

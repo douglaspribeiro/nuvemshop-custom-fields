@@ -19,6 +19,7 @@
             <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>
             <a th:href="@{/admin/billing}" th:classappend="${active == 'billing'} ? ' is-active'" th:aria-current="${active == 'billing'} ? 'page'" th:text="#{merchant.nav.billing}">Planos e cobrança</a>
             <a th:href="@{/admin/help}" th:classappend="${active == 'help'} ? ' is-active'" th:aria-current="${active == 'help'} ? 'page'" th:text="#{merchant.nav.help}">Ajuda</a>
+            <a th:href="@{/status/}" th:text="#{status.title}">Status do serviço</a>
         </div>
     </nav>
 </header>

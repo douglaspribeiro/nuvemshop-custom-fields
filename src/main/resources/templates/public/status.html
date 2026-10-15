@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="60">
+    <title th:text="#{status.page.title}">Status do serviço · Campos Personalizados</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/landing.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/status.css(v=${assetVersion})}">
+</head>
+<body class="landing-page">
+<header class="landing-header">
+    <a class="landing-brand" th:href="@{/}"><span class="landing-brand-mark" aria-hidden="true">✦</span><span th:text="#{common.app.name}">Campos Personalizados</span></a>
+    <a class="status-support" th:href="@{/support/}" th:text="#{common.support}">Suporte</a>
+</header>
+<main class="shell status-page">
+    <p class="landing-kicker" th:text="#{status.kicker}">Disponibilidade</p>
+    <h1 th:text="#{status.title}">Status do serviço</h1>
+    <p class="landing-lead" th:text="#{status.subtitle}">Acompanhe a disponibilidade do aplicativo.</p>
+
+    <section class="status-summary" th:classappend="${serviceStatus.stale ? 'unknown' : serviceStatus.state}" aria-labelledby="status-summary-title">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div><h2 id="status-summary-title" th:text="${#messages.msg('status.state.' + (serviceStatus.stale ? 'unknown' : serviceStatus.state))}">Status indisponível</h2>
+            <p th:if="${serviceStatus.updatedAt != null}"><span th:text="#{status.updated}">Última atualização:</span> <time th:datetime="${serviceStatus.updatedAt}" th:text="${#temporals.format(serviceStatus.updatedAt.atZone(T(java.time.ZoneId).of('America/Sao_Paulo')), 'dd/MM/yyyy HH:mm:ss z')}"></time></p>
+            <p th:if="${serviceStatus.state == 'unconfigured'}" th:text="#{status.unconfigured}">O monitoramento público será disponibilizado em breve.</p>
+            <p th:if="${serviceStatus.stale}" th:text="#{status.stale}">Não foi possível atualizar os dados. As informações anteriores podem estar desatualizadas.</p>
+        </div>
+    </section>
+
+    <section class="panel status-component" th:if="${serviceStatus.updatedAt != null}">
+        <strong th:text="#{common.app.name}">Campos Personalizados</strong>
+        <span th:text="${#messages.msg('status.state.' + serviceStatus.state)}"></span>
+        <small th:if="${serviceStatus.stale}" th:text="#{status.previous}">Último estado conhecido</small>
+    </section>
+
+    <section th:if="${!serviceStatus.uptime.isEmpty()}" aria-labelledby="status-uptime-title">
+        <h2 id="status-uptime-title" th:text="#{status.uptime}">Disponibilidade por período</h2>
+        <div class="status-metrics">
+            <article class="panel" th:each="metric : ${serviceStatus.uptime}">
+                <span th:text="${#messages.msg('status.period.' + metric.days)}"></span>
+                <strong th:text="${metric.percent == null ? '—' : metric.percent + '%'}"></strong>
+            </article>
+        </div>
+    </section>
+
+    <section class="panel status-history" aria-labelledby="status-history-title">
+        <h2 id="status-history-title" th:text="#{status.history}">Eventos recentes</h2>
+        <p class="muted" th:if="${serviceStatus.events.isEmpty()}" th:text="#{status.noevents}">Nenhum evento disponível para exibição.</p>
+        <ol th:if="${!serviceStatus.events.isEmpty()}">
+            <li th:each="event : ${serviceStatus.events}">
+                <span th:text="${#messages.msg('status.event.' + event.state)}"></span>
+                <time th:datetime="${event.at}" th:text="${#temporals.format(event.at.atZone(T(java.time.ZoneId).of('America/Sao_Paulo')), 'dd/MM/yyyy HH:mm:ss z')}"></time>
+            </li>
+        </ol>
+        <p class="muted status-footnote" th:text="#{status.history.note}">O histórico exibido depende dos eventos disponibilizados pelo monitoramento.</p>
+    </section>
+    <p class="muted status-footnote" th:text="#{status.refresh}">Atualização automática a cada 60 segundos. Monitoramento por UptimeRobot.</p>
+</main>
+<footer class="landing-footer"><a th:href="@{/}" th:text="#{status.home}">Página inicial</a><a th:href="@{/support/}" th:text="#{common.support}">Suporte</a></footer>
+</body>
+</html>

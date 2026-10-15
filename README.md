@@ -1,5 +1,7 @@
 # Nuvemshop Custom Fields
 
+Página pública de status em `/status/`: [configuração e funcionamento](docs/service-status.md).
+
 Aplicacao Spring Boot para lojistas Nuvemshop/Tiendanube criarem campos personalizados por produto e coletarem esses dados diretamente no carrinho/pedido. O caso principal e atender lojas de produtos personalizados, como camisetas com nome e numero, canecas com mensagem, convites com data, brindes corporativos e itens gravados.
 
 O produto resolve uma lacuna da plataforma: a Nuvemshop nao oferece um fluxo nativo robusto de campos personalizados por produto. O app instala via OAuth, registra um script na vitrine, injeta os campos na pagina do produto e envia os valores usando `properties[...]`, para que a informacao acompanhe o item no carrinho e no pedido.

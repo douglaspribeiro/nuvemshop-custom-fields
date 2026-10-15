@@ -1,0 +1,25 @@
+.status-page { max-width: 900px; padding-top: 54px; padding-bottom: 64px; min-height: 72vh; }
+.status-page h1 { font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.045em; margin: 12px 0; }
+.status-page h2 { font-size: 1.1rem; margin: 0 0 16px; }
+.status-summary { display: flex; gap: 18px; align-items: flex-start; padding: 28px; background: #eef3f1; border: 1px solid #dbe5df; border-radius: 14px; margin: 32px 0 20px; }
+.status-summary h2 { margin: 0 0 8px; font-size: 1.3rem; }
+.status-summary p { margin: 6px 0 0; line-height: 1.6; }
+.status-dot { background: #73847b; border-radius: 50%; width: 14px; height: 14px; flex: 0 0 14px; margin-top: 6px; }
+.status-summary.up { background: #e7f6ee; border-color: #bee2ce; }
+.up .status-dot { background: #198352; }
+.status-summary.down { background: #fff0ef; border-color: #efcac6; }
+.down .status-dot { background: #be3b32; }
+.status-summary.checking { background: #fff7e7; border-color: #edd7a3; }
+.checking .status-dot { background: #ad7417; }
+.status-component { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 32px; }
+.status-component > span { margin-left: auto; }
+.status-component small { flex-basis: 100%; color: #607a71; }
+.status-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
+.status-metrics article { display: grid; gap: 14px; margin: 0; }
+.status-metrics strong { font-size: clamp(1.4rem, 4vw, 2rem); color: #205e4d; overflow-wrap: anywhere; }
+.status-history ol { list-style: none; padding: 0; margin: 0; }
+.status-history li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid #e2ebe6; padding: 16px 0; }
+.status-history time { color: #607a71; font-size: .85rem; }
+.status-footnote { font-size: .8rem; line-height: 1.6; }
+.status-support { color: #176b57; }
+@media (max-width: 580px) { .status-page { padding: 30px 20px; } .status-metrics { grid-template-columns: 1fr; } .status-summary { padding: 20px; } .status-component > span { margin-left: 0; } }

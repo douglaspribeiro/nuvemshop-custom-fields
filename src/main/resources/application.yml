@@ -31,6 +31,9 @@ spring:
 app:
   version: '@project.version@'
 
+uptimerobot:
+  api-key: ${UPTIMEROBOT_API_KEY:}
+
 analytics:
   ga4:
     measurement-id: ${GA4_MEASUREMENT_ID:G-RM8VWNPDT8}
