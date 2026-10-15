@@ -80,10 +80,20 @@ não são reconstruídas. Por isso, o final da curva pode diferir do cartão, qu
 em todo o intervalo. A curva é uma estimativa dos incrementos observados, não um registro
 exato de todas as chamadas nem um indicador de disponibilidade da coleta.
 
-O gráfico de chamadas por minuto declara **Min step = 1m**, alinhado ao scrape do Alloy.
-Assim, `$__rate_interval` usa uma janela de pelo menos quatro minutos. O refresh de 30s
-do dashboard não altera a frequência de coleta. A unidade desse gráfico é quantidade
-por minuto, pois a consulta multiplica a taxa por segundo por 60.
+Todos os gráficos de séries temporais usam **Max data points = 100**, para que o
+Grafana amplie automaticamente o intervalo conforme o período selecionado, sem
+depender da largura do painel. Em 24h, o intervalo calculado é de aproximadamente
+15 minutos; períodos menores recuperam mais detalhe e períodos maiores usam blocos
+maiores. O mínimo dos painéis é **1m**, exceto o acumulado, que preserva **4m**.
+
+As consultas de taxas mantêm **Min step = 1m**, alinhado ao scrape do Alloy.
+`$__rate_interval` amplia também a janela de cálculo, com mínimo de quatro minutos,
+evitando apenas espaçar pontos de uma taxa ainda calculada em uma janela curta.
+Acertos do cache e tempo médio continuam ponderados pelas respectivas quantidades;
+o tamanho do cache mostra a média das amostras em `$__interval`.
+O refresh de 30s não altera a frequência de coleta. A unidade de chamadas continua
+sendo quantidade por minuto, pois a consulta multiplica a taxa por segundo por 60.
+Veja as [opções de consulta do Grafana](https://grafana.com/docs/grafana/latest/visualizations/panels-visualizations/query-transform-data/).
 
 “Quantidade” significa consultas à configuração de personalização, não visitantes únicos nem
 visualizações de qualquer produto da loja. Recargas, robôs e consultas repetidas podem incrementar
@@ -130,10 +140,12 @@ Economia estimada: 184 séries antes das poucas séries novas do cache. Preserva
 `ncf_*`, latência HTTP por soma/contagem, JVM e banco. O filtro precisa ser
 publicado/recarregado na infraestrutura para afetar o envio.
 
-O catálogo de planos ativos tem cache Caffeine separado de **30 minutos**
+O catálogo de planos ativos tem cache Caffeine separado de **24 horas**
 (`PLANS_CACHE_TTL`), com limite de 128 entradas e métricas `cache="plans"`.
 A chave inclui o tipo e a data de vigência em São Paulo, respeitando a virada do
-dia para versões agendadas. Alterações no catálogo invalidam os caches de planos
+dia para versões agendadas. Qualquer criação, alteração ou exclusão de plano invalida
+todo o cache de planos, de todos os tipos e datas, após commit; rollback preserva o cache.
+Alterações no catálogo invalidam os caches de planos
 e vitrine após commit. Leituras transacionais consultam o banco diretamente;
 fora de transações, cada consumidor recebe uma cópia independente do plano.
 O histórico administrativo de versões continua consultando o banco. Alterações

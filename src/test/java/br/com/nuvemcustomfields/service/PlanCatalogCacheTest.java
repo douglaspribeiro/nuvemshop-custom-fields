@@ -12,10 +12,10 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PlanCatalogCacheTest {
-    @Test void cachesForThirtyMinutesWithIndependentCopiesAndDateAwareKeys() {
+    @Test void cachesForTwentyFourHoursWithIndependentCopiesAndDateAwareKeys() {
         AtomicLong clock = new AtomicLong();
         AtomicInteger queries = new AtomicInteger();
-        var cache = new PlanCatalogCache(new SimpleMeterRegistry(), Duration.ofMinutes(30), clock::get);
+        var cache = new PlanCatalogCache(new SimpleMeterRegistry(), Duration.ofHours(24), clock::get);
         var date = LocalDate.of(2026, 10, 14);
         Supplier<PlanAsset> load = () -> {
             queries.incrementAndGet(); var plan = new PlanAsset();
@@ -23,10 +23,10 @@ class PlanCatalogCacheTest {
         };
         var first = cache.activePlan(PlanType.PREMIUM, date, load);
         first.setProductLimit(999);
-        clock.set(Duration.ofMinutes(29).plusSeconds(59).toNanos());
+        clock.set(Duration.ofHours(24).minusSeconds(1).toNanos());
         assertThat(cache.activePlan(PlanType.PREMIUM, date, load).getProductLimit()).isEqualTo(10);
         assertThat(queries).hasValue(1);
-        clock.set(Duration.ofMinutes(30).toNanos());
+        clock.set(Duration.ofHours(24).toNanos());
         cache.activePlan(PlanType.PREMIUM, date, load);
         assertThat(queries).hasValue(2);
         cache.activePlan(PlanType.PREMIUM, date.plusDays(1), load);

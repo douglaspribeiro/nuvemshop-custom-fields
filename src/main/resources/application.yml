@@ -228,4 +228,4 @@ storefront:
 
 plans:
   cache:
-    ttl: ${PLANS_CACHE_TTL:30m}
+    ttl: ${PLANS_CACHE_TTL:24h}

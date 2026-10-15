@@ -14,7 +14,7 @@ public class PlanCatalogCache {
     private final StorefrontCache cache;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public PlanCatalogCache(MeterRegistry registry, @Value("${plans.cache.ttl:30m}") Duration ttl) {
+    public PlanCatalogCache(MeterRegistry registry, @Value("${plans.cache.ttl:24h}") Duration ttl) {
         this(registry, ttl, com.github.benmanes.caffeine.cache.Ticker.systemTicker());
     }
 
@@ -31,5 +31,6 @@ public class PlanCatalogCache {
         return snapshot.toAsset();
     }
 
+    /** Invalidates the whole catalog, across all plan types and effective dates. */
     public void invalidateAfterCommit() { cache.invalidateAfterCommit(); }
 }
