@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.35.1] - 2026-10-14
+
+### Correções
+
+- invalidate caches without holding database transactions on reader locks (`bcbac8b`)
+
 ## [1.35.0] - 2026-10-14
 
 ### Features
