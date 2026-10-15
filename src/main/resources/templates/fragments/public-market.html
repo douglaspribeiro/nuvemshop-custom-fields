@@ -9,5 +9,5 @@
     <button class="button small" type="submit">Atualizar</button>
 </form>
 <p th:fragment="provider" class="muted" th:if="${publicMarket.country == 'BR'}">No Brasil, os pagamentos são processados pela Efí.</p>
-<p th:fragment="internationalProvider" class="muted" th:if="${publicMarket.country != 'BR'}">Fora do Brasil, os pagamentos são processados pela Creem, em dólares americanos (USD).</p>
+<p th:fragment="internationalProvider" class="muted" th:if="${publicMarket.country != 'BR'}" th:text="|Neste mercado, os pagamentos são processados por ${publicMarket.provider}, em ${publicMarket.currency}.|">Pagamentos internacionais.</p>
 </body></html>

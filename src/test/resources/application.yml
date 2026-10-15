@@ -41,3 +41,7 @@ nuvemshop:
 backoffice:
   username: admin
   password: admin
+
+pricing:
+  fx-estimates:
+    enabled: false

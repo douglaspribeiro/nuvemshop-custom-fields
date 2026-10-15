@@ -29,6 +29,16 @@ public interface PaymentWebhookEventRepository extends JpaRepository<PaymentWebh
             "and e.nextAttemptAt <= :now")
     int claimCreem(Long id, Instant now, Instant leaseUntil);
 
+    @Modifying @Transactional
+    @Query("update PaymentWebhookEvent e set e.status = br.com.nuvemcustomfields.entity.PaymentWebhookStatus.PROCESSING, " +
+            "e.processingAttempts = e.processingAttempts + 1, e.nextAttemptAt = :leaseUntil where e.id = :id " +
+            "and e.provider = :provider and e.providerEnvironment = :environment " +
+            "and e.status in (br.com.nuvemcustomfields.entity.PaymentWebhookStatus.RECEIVED, " +
+            "br.com.nuvemcustomfields.entity.PaymentWebhookStatus.FAILED, br.com.nuvemcustomfields.entity.PaymentWebhookStatus.PROCESSING) " +
+            "and e.nextAttemptAt <= :now")
+    int claimProvider(Long id, br.com.nuvemcustomfields.entity.PaymentProviderType provider,
+                      br.com.nuvemcustomfields.entity.PaymentEnvironment environment, Instant now, Instant leaseUntil);
+
     @Modifying
     @Transactional
     @Query("update PaymentWebhookEvent e set e.status = br.com.nuvemcustomfields.entity.PaymentWebhookStatus.PROCESSING, " +

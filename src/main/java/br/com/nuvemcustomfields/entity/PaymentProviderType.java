@@ -4,5 +4,9 @@ public enum PaymentProviderType {
     MERCADO_PAGO,
     EFI,
     PADDLE,
-    CREEM
+    CREEM,
+    DODO,
+    DODO_TEST;
+
+    public boolean isDodo() { return this == DODO || this == DODO_TEST; }
 }

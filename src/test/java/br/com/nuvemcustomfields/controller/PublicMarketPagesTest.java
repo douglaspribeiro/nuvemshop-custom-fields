@@ -37,6 +37,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PublicMarketPagesTest {
     @Autowired MockMvc mvc;
     @Autowired StoreRepository stores;
+    @Autowired br.com.nuvemcustomfields.repository.PaymentCatalogPriceRepository catalog;
+    @Autowired br.com.nuvemcustomfields.repository.PaymentRoutingRuleRepository routes;
+
+    @Test @org.springframework.transaction.annotation.Transactional
+    void onlyValidatedLivePricesReachThePublicPage() throws Exception {
+        var test = new br.com.nuvemcustomfields.entity.PaymentCatalogPrice();
+        test.setProvider(br.com.nuvemcustomfields.entity.PaymentProviderType.DODO_TEST);
+        test.setEnvironment(br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX);
+        test.setCountryCode("CL"); test.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM);
+        test.setCurrency("CLP"); test.setAmountValue(new java.math.BigDecimal("1000"));
+        test.setProviderPriceId("pdt_sandbox"); test.setValidatedAt(java.time.Instant.now()); catalog.saveAndFlush(test);
+        mvc.perform(get("/precos/").param("country","CL")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("USD 4,99"))).andExpect(content().string(not(containsString("CLP 1.000"))));
+        var price = new br.com.nuvemcustomfields.entity.PaymentCatalogPrice();
+        price.setProvider(br.com.nuvemcustomfields.entity.PaymentProviderType.DODO);
+        price.setEnvironment(br.com.nuvemcustomfields.entity.PaymentEnvironment.PRODUCTION);
+        price.setCountryCode("CL"); price.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM);
+        price.setCurrency("CLP"); price.setAmountValue(new java.math.BigDecimal("4199"));
+        price.setProviderPriceId("pdt_live"); price.setValidatedAt(java.time.Instant.now()); catalog.saveAndFlush(price);
+        var route = new br.com.nuvemcustomfields.entity.PaymentRoutingRule(); route.setCountryCode("CL");
+        route.setProvider(br.com.nuvemcustomfields.entity.PaymentProviderType.DODO);
+        route.setEnvironment(br.com.nuvemcustomfields.entity.PaymentEnvironment.PRODUCTION);
+        route.setEnabled(true); route.setUpdatedBy("test"); routes.saveAndFlush(route);
+        mvc.perform(get("/precos/").param("country","CL")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("CLP 4.199")))
+                .andExpect(content().string(not(containsString("USD 4,99"))));
+        mvc.perform(get("/termos/").param("country","CL")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Dodo Payments")));
+    }
+
 
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {

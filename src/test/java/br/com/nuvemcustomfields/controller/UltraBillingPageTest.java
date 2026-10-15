@@ -26,6 +26,7 @@ class UltraBillingPageTest {
     @Autowired MockMvc mvc;
     @Autowired StoreRepository stores;
     @MockitoBean PaymentSubscriptionService payments;
+    @MockitoBean br.com.nuvemcustomfields.service.CurrencyEstimateService fx;
     @MockitoBean br.com.nuvemcustomfields.service.EfiUpgradeService upgrades;
     private MockHttpSession session;
     private PaymentSubscription subscription;
@@ -53,6 +54,32 @@ class UltraBillingPageTest {
         when(payments.amount(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(new BigDecimal("59.90"));
         when(payments.upgradeAmount(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(new BigDecimal("59.90"));
         when(payments.planAvailable(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(true);
+    }
+
+    @Test void dodoTestOnlyShowsThePlanWithTheBoundProduct() throws Exception {
+        subscription.setAccessActive(false); subscription.setStatus(PaymentSubscriptionStatus.CANCELED);
+        when(payments.provider(any())).thenReturn(Optional.of(PaymentProviderType.DODO_TEST));
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM))).thenReturn(true);
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM_PLUS))).thenReturn(false);
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(false);
+        String page = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("billing-plan-essential", "test-plan-selection")
+                .doesNotContain("billing-plan-pro", "billing-plan-ultra", "value=\"PREMIUM_PLUS\"", "value=\"PREMIUM_ULTRA\"");
+    }
+
+    @Test void argentineStoreSeesAnEstimateWithoutChangingTheDollarQuote() throws Exception {
+        var store = stores.findByStoreId(991120L).orElseThrow(); store.setStoreCountryCode("AR"); store.setPlan(PlanType.FREE); stores.saveAndFlush(store);
+        subscription.setAccessActive(false); subscription.setStatus(PaymentSubscriptionStatus.PENDING);
+        when(payments.provider(any())).thenReturn(Optional.of(PaymentProviderType.DODO_TEST));
+        when(payments.currency(any())).thenReturn("USD");
+        when(payments.amount(any(), eq(PlanType.PREMIUM))).thenReturn(new BigDecimal("4.99"));
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM))).thenReturn(true);
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(false);
+        when(fx.estimate("AR", "USD", new BigDecimal("4.99"))).thenReturn(Optional.of(
+                new br.com.nuvemcustomfields.service.CurrencyEstimateService.Estimate("ARS",new BigDecimal("7485"),java.time.LocalDate.of(2026,10,15))));
+        String page = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("USD 4.99", "ARS 7.485", "Cobro en USD", "Rates By Exchange Rate API");
     }
 
     @Autowired br.com.nuvemcustomfields.service.PlanCatalogService planCatalog;

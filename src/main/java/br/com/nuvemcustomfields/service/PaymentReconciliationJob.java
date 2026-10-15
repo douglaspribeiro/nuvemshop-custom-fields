@@ -39,7 +39,7 @@ public class PaymentReconciliationJob {
             if (!router.operational(provider)) continue;
             for (var subscription : repository.findByProviderAndStatusIn(provider, statuses)) {
                 try {
-                    if (subscription.getProviderSubscriptionId() != null || (provider == PaymentProviderType.CREEM && subscription.getProviderCheckoutId() != null)) service.reconcile(subscription.getStoreId());
+                    if (subscription.getProviderSubscriptionId() != null || ((provider == PaymentProviderType.CREEM || provider.isDodo()) && subscription.getProviderCheckoutId() != null)) service.reconcile(subscription.getStoreId());
                 } catch (RuntimeException ex) {
                     subscription.setLastError(ex.getMessage() == null ? null
                             : ex.getMessage().substring(0, Math.min(500, ex.getMessage().length())));

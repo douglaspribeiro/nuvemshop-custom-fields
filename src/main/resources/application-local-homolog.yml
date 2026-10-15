@@ -17,6 +17,10 @@ nuvemshop:
   billing:
     enabled: false
 payments:
+  dodo:
+    enabled: false
+  dodo-test:
+    enabled: false
   efi:
     sandbox: true
     premium-amount: ${EFI_PREMIUM_AMOUNT:19.99}

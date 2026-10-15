@@ -81,11 +81,12 @@
         <a class="button billing-current-link" th:href="@{/admin/products}" th:text="#{billing.current.manage}">Gerenciar meus produtos</a>
     </section>
 
+    <p class="muted" th:if="${billingEstimateDate != null}"><span th:text="#{billing.local.estimate.notice(${billingEstimateDate})}"></span> <a href="https://www.exchangerate-api.com">Rates By Exchange Rate API</a>.</p>
     <header class="billing-section-heading"><div><p class="eyebrow" th:text="#{billing.compare.eyebrow}">Escolha seu próximo passo</p><h2 th:text="#{billing.compare.heading}">Um plano para cada momento da sua loja</h2></div><span th:text="#{billing.compare.note}">Preços por mês</span></header>
-    <section class="grid three billing-grid" th:aria-label="#{billing.compare.heading}">
+    <section th:classappend="${dodoTestGateway} ? 'test-plan-selection'" class="grid three billing-grid" th:aria-label="#{billing.compare.heading}">
 
 
-        <article class="panel plan-card billing-plan billing-plan-essential" th:classappend="${store.effectivePlan.name() == 'PREMIUM'} ? ' is-current'">
+        <article th:if="${essentialAvailable}" class="panel plan-card billing-plan billing-plan-essential" th:classappend="${store.effectivePlan.name() == 'PREMIUM'} ? ' is-current'">
             <div class="billing-plan-header">
                 <p class="billing-plan-kicker" th:text="#{billing.plan.essential.kicker}"></p>
             <h2 th:text="#{plan.PREMIUM}">Essencial</h2>
@@ -95,6 +96,7 @@
             <p class="price" th:if="${billingAvailable}">
                 <span th:text="${premiumPrice}">R$ 19,99</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
+            <p class="muted" th:if="${billingEstimates['PREMIUM'] != null}" th:text="#{billing.local.estimate(${billingEstimates['PREMIUM']})}">Estimativa</p>
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             </div>
             <ul class="feature-list">
@@ -120,7 +122,7 @@
             </div>
         </article>
 
-        <article class="panel plan-card billing-plan billing-plan-pro" th:classappend="${store.effectivePlan.name() == 'PREMIUM_PLUS'} ? ' is-current'">
+        <article th:if="${proAvailable}" class="panel plan-card billing-plan billing-plan-pro" th:classappend="${store.effectivePlan.name() == 'PREMIUM_PLUS'} ? ' is-current'">
             <div class="billing-plan-header">
                 <span class="billing-recommended" th:if="${billingEnabled and billingAvailable and !store.courtesyPremium and store.effectivePlan.name() != 'PREMIUM_ULTRA'}" th:text="#{billing.plan.recommended}">Recomendado</span>
                 <p class="billing-plan-kicker" th:text="#{billing.plan.pro.kicker}"></p>
@@ -131,6 +133,7 @@
             <p class="price" th:if="${billingAvailable}">
                 <span th:text="${premiumPlusPrice}">R$ 29,99</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
+            <p class="muted" th:if="${billingEstimates['PREMIUM_PLUS'] != null}" th:text="#{billing.local.estimate(${billingEstimates['PREMIUM_PLUS']})}">Estimativa</p>
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             </div>
             <ul class="feature-list">
@@ -156,7 +159,7 @@
             </div>
         </article>
 
-        <article class="panel plan-card billing-plan billing-plan-ultra" th:classappend="${store.effectivePlan.name() == 'PREMIUM_ULTRA'} ? ' is-current'">
+        <article th:if="${!dodoTestGateway or ultraAvailable}" class="panel plan-card billing-plan billing-plan-ultra" th:classappend="${store.effectivePlan.name() == 'PREMIUM_ULTRA'} ? ' is-current'">
             <div class="billing-plan-header">
                 <p class="billing-plan-kicker" th:text="#{billing.plan.ultra.kicker}"></p>
             <h2 th:text="#{plan.PREMIUM_ULTRA}">Ultra</h2>
@@ -166,6 +169,7 @@
             <p class="price" th:if="${ultraAvailable}">
                 <span th:text="${premiumUltraPrice}">R$ 59,90</span><span th:text="#{admin.billing.month}">/mês</span>
             </p>
+            <p class="muted" th:if="${billingEstimates['PREMIUM_ULTRA'] != null}" th:text="#{billing.local.estimate(${billingEstimates['PREMIUM_ULTRA']})}">Estimativa</p>
             <p class="price" th:unless="${ultraAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             </div>
             <ul class="feature-list">

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Dodo de teste · Pagamentos</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+</head>
+<body><main class="shell">
+    <header class="page-header"><div><p class="eyebrow">Pagamentos · Dodo</p><h1 th:text="${gatewayName}">Dodo</h1></div><a class="button" th:href="@{/backoffice/payments}">Voltar aos pagamentos</a></header>
+    <div class="flash success" th:if="${message}" th:text="${message}"></div><div class="flash error" th:if="${error}" th:text="${error}"></div>
+    <section class="panel"><h2>Produto e preço por país</h2>
+        <p>Vincule um produto mensal do ambiente selecionado. Chile usa CLP, México usa MXN; Argentina e Colômbia usam USD. O valor deve coincidir com o produto ou seu preço regional fixo no Dodo.</p>
+        <p><strong th:text="${configured ? 'Gateway habilitado' : 'Gateway aguardando configuração no servidor'}">Configuração</strong></p>
+        <p th:if="${testMode}">Lojas autorizadas: <span th:text="${allTestStoresAllowed ? 'Todas as lojas fora do Brasil, nos países e planos com preço de teste habilitado' : allowedStoreIds}">Lojas autorizadas</span></p>
+        <p th:if="${testMode}">Configure no servidor <code>DODO_TEST_ENABLED</code>, <code>DODO_TEST_API_KEY</code>, <code>DODO_TEST_WEBHOOK_KEY</code> e <code>DODO_TEST_ALLOWED_STORE_IDS</code>. Não cole segredos neste formulário.</p>
+        <p th:unless="${testMode}">Produção usa DODO_ENABLED, DODO_API_KEY e DODO_WEBHOOK_KEY, com produtos e rotas próprios. Vincular um produto não habilita novas vendas.</p>
+        <div class="report-table-scroll"><table class="table"><thead><tr><th>País</th><th>Moeda de cobrança</th><th>Essencial · referência</th></tr></thead>
+            <tbody><tr th:each="reference : ${references}"><td th:text="${reference.country}">CL</td><td th:text="${reference.currency}">CLP</td><td th:text="${reference.amount}">4199</td></tr></tbody></table></div>
+        <p>Referências do catálogo atual; vincular exige que o produto Dodo tenha exatamente o valor informado. Estimativas em ARS e COP são apenas informativas, com cobrança em USD. Impostos, quando aplicáveis, aparecem no checkout.</p>
+        <form class="form" method="post" th:action="@{${gatewayPath} + '/bind'}">
+            <input type="hidden" name="actionToken" th:value="${actionToken}">
+            <label>Plano do app<select name="plan" required><option th:each="plan : ${plans}" th:value="${plan}" th:text="${plan.displayName}">Essencial</option></select></label>
+            <label>País da loja<input name="countryCode" maxlength="2" pattern="[A-Za-z]{2}" placeholder="AR" required></label>
+            <label>ID do produto no ambiente selecionado<input name="productId" placeholder="pdt_…" required></label>
+            <label>Moeda<select name="currency"><option value="USD">USD</option><option value="CLP">CLP · Chile</option><option value="MXN">MXN · México</option></select></label>
+            <label>Mensalidade do produto<input type="number" name="amount" min="0.01" step="0.01" required></label>
+            <button class="button primary" type="submit">Validar e vincular produto</button>
+        </form>
+    </section>
+    <section class="panel settings-panel"><h2>Produtos vinculados</h2>
+        <div class="report-table-scroll"><table class="table"><thead><tr><th>País</th><th>Plano</th><th>Produto</th><th>Mensalidade</th><th>Situação</th></tr></thead>
+            <tbody><tr th:each="price : ${prices}"><td th:text="${price.countryCode}">AR</td><td th:text="${price.plan.displayName}">Essencial</td><td th:text="${price.providerPriceId}">pdt</td><td th:text="|${price.currency} ${price.amountValue}|">USD 0</td><td th:text="${price.enabled ? 'Habilitado' : 'Desabilitado'}">Desabilitado</td></tr>
+            <tr th:if="${#lists.isEmpty(prices)}"><td colspan="5">Nenhum produto vinculado.</td></tr></tbody></table></div>
+        <p>Após vincular, habilite o preço em <a th:href="@{/backoffice/payments}">Pagamentos</a>. No teste, somente lojas autorizadas recebem o checkout. No live, habilite a rota DODO/PRODUCTION para o país após validar os preços. Alteração de plano ainda não está disponível.</p>
+    </section>
+</main></body></html>

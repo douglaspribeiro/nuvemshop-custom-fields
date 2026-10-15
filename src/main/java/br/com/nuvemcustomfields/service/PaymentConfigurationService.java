@@ -35,6 +35,8 @@ public class PaymentConfigurationService {
     public void saveRoute(String country, PaymentProviderType provider, PaymentEnvironment environment,
                           boolean enabled, String operator) {
         String code=country(country);
+        if (provider == PaymentProviderType.DODO_TEST)
+            throw new IllegalArgumentException("DODO_TEST é selecionado apenas para lojas autorizadas. Configure o produto na área Dodo de teste, sem alterar a rota do país.");
         if (enabled) validateMarket(code, provider, environment);
         PaymentRoutingRule rule=rules.findByCountryCodeIgnoreCase(code).orElseGet(PaymentRoutingRule::new);
         PaymentRoutingHistory change=new PaymentRoutingHistory();
@@ -62,6 +64,7 @@ public class PaymentConfigurationService {
         try {
             if (price.getProvider()==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
             if (price.getProvider()==PaymentProviderType.CREEM) router.require(PaymentProviderType.CREEM).validateCatalog(price);
+            if (price.getProvider().isDodo()) router.require(price.getProvider()).validateCatalog(price);
             price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
             return new PriceSaveResult(true, true, "Preço validado e habilitado.");
         } catch (RuntimeException ex) {
@@ -75,6 +78,15 @@ public class PaymentConfigurationService {
         if (!router.configured(provider)) throw new IllegalArgumentException("O gateway não possui credenciais completas.");
         if (router.environment(provider)!=environment) throw new IllegalArgumentException("O ambiente da regra difere do gateway configurado.");
         List<PaymentCatalogPrice> prices=catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseOrderByPlan(provider,environment,country);
+        if (provider == PaymentProviderType.DODO) {
+            if (environment != PaymentEnvironment.PRODUCTION) throw new IllegalArgumentException("DODO exige ambiente de produção.");
+            var enabledPrices = prices.stream().filter(PaymentCatalogPrice::isEnabled).toList();
+            if (enabledPrices.isEmpty()) throw new IllegalArgumentException("Vincule e valide pelo menos um produto Dodo para o país.");
+            if (enabledPrices.stream().anyMatch(price -> !price.isValidated() || !price.isRecurring()))
+                throw new IllegalArgumentException("Valide os preços Dodo antes de habilitar a rota.");
+            enabledPrices.forEach(price -> router.require(provider).validateCatalog(price));
+            return;
+        }
         if (provider == PaymentProviderType.CREEM && prices.stream().filter(PaymentCatalogPrice::isEnabled)
                 .map(PaymentCatalogPrice::getCurrency).distinct().count() > 1)
             throw new IllegalArgumentException("Os planos Creem do país devem usar a mesma moeda.");

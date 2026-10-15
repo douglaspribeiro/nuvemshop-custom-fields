@@ -31,6 +31,8 @@ public class LocalHomologationGuard {
                 || env.getProperty("payments.mercado-pago.enabled",Boolean.class,false)
                 || env.getProperty("payments.paddle.enabled",Boolean.class,false)
                 || env.getProperty("payments.creem.enabled",Boolean.class,false)
+                || env.getProperty("payments.dodo-test.enabled",Boolean.class,false)
+                || env.getProperty("payments.dodo.enabled",Boolean.class,false)
                 || env.getProperty("nuvemshop.billing.enabled",Boolean.class,false))
             throw new IllegalStateException("Homologação local exige ambiente LOCAL_HOMOLOG, chave de pelo menos 24 caracteres, banco MySQL em 127.0.0.1 com nome terminado em _homolog e somente pagamentos Efí sandbox.");
     }

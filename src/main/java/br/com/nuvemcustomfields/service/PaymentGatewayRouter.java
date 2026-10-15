@@ -25,6 +25,8 @@ public class PaymentGatewayRouter {
 
     public Optional<PaymentGateway> forStore(Store store) {
         if (store == null || store.getStoreCountryCode() == null) return Optional.empty();
+        PaymentGateway test = gateways.get(PaymentProviderType.DODO_TEST);
+        if (test != null && test.configured() && test.supports(store)) return Optional.of(test);
         return routingRules.findByCountryCodeIgnoreCase(store.getStoreCountryCode())
                 .filter(rule -> rule.isEnabled())
                 .map(rule -> gateways.get(rule.getProvider()))

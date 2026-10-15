@@ -3,6 +3,9 @@ package br.com.nuvemcustomfields.service;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.properties.NuvemshopBillingProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.repository.PaymentCatalogPriceRepository;
+import br.com.nuvemcustomfields.repository.PaymentRoutingRuleRepository;
+import br.com.nuvemcustomfields.entity.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +24,12 @@ public class PublicMarketService {
     private final NuvemshopBillingProperties billing;
     private final StoreRepository stores;
 
-    public PublicMarketService(NuvemshopBillingProperties billing, StoreRepository stores) {
+    private final PaymentCatalogPriceRepository catalog;
+    private final PaymentRoutingRuleRepository routes;
+    private final CurrencyEstimateService estimates;
+    public PublicMarketService(NuvemshopBillingProperties billing, StoreRepository stores,
+            PaymentCatalogPriceRepository catalog, PaymentRoutingRuleRepository routes, CurrencyEstimateService estimates) {
+        this.catalog = catalog; this.routes = routes; this.estimates = estimates;
         this.billing = billing;
         this.stores = stores;
     }
@@ -59,11 +67,30 @@ public class PublicMarketService {
             price = new NuvemshopBillingProperties.CountryPrice("USD", new BigDecimal("4.99"),
                     new BigDecimal("7.49"), new BigDecimal("14.99"));
         }
-        return new Market(priceCountry, COUNTRIES.get(priceCountry), priceCountry.equals("BR") ? "Efí" : "Creem",
-                price == null ? "" : price.currency(),
-                price == null ? "Consulte" : format(price.premiumAmount(), price.currency(), priceCountry),
-                price == null ? "Consulte" : format(price.premiumPlusAmount(), price.currency(), priceCountry),
-                price == null ? "Consulte" : format(price.premiumUltraAmount(), price.currency(), priceCountry));
+        String provider = priceCountry.equals("BR") ? "Efí" : "Creem";
+        var liveRoute = routes.findByCountryCodeIgnoreCase(priceCountry)
+                .filter(route -> route.isEnabled() && route.getProvider() == PaymentProviderType.DODO && route.getEnvironment() == PaymentEnvironment.PRODUCTION);
+        if (liveRoute.isPresent()) {
+            provider = "Dodo Payments";
+            var local = catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseOrderByPlan(PaymentProviderType.DODO, PaymentEnvironment.PRODUCTION, priceCountry)
+                    .stream().filter(p -> p.isEnabled() && p.isValidated() && p.isRecurring()).toList();
+            String currency = br.com.nuvemcustomfields.payment.DodoMarketPricing.currency(priceCountry);
+            var values = new java.util.EnumMap<PlanType, BigDecimal>(PlanType.class);
+            local.stream().filter(p -> currency.equals(p.getCurrency())).forEach(p -> values.put(p.getPlan(), p.getAmountValue()));
+            price = new NuvemshopBillingProperties.CountryPrice(currency, values.get(PlanType.PREMIUM), values.get(PlanType.PREMIUM_PLUS), values.get(PlanType.PREMIUM_ULTRA));
+        }
+        String currency = price == null ? "" : price.currency();
+        var essentialEstimate = estimates.estimate(priceCountry, currency, price == null ? null : price.premiumAmount());
+        var proEstimate = estimates.estimate(priceCountry, currency, price == null ? null : price.premiumPlusAmount());
+        var ultraEstimate = estimates.estimate(priceCountry, currency, price == null ? null : price.premiumUltraAmount());
+        return new Market(priceCountry, COUNTRIES.get(priceCountry), provider, currency,
+                price == null ? "Consulte" : format(price.premiumAmount(), currency, priceCountry),
+                price == null ? "Consulte" : format(price.premiumPlusAmount(), currency, priceCountry),
+                price == null ? "Consulte" : format(price.premiumUltraAmount(), currency, priceCountry),
+                essentialEstimate.map(CurrencyEstimateService.Estimate::formatted).orElse(null),
+                proEstimate.map(CurrencyEstimateService.Estimate::formatted).orElse(null),
+                ultraEstimate.map(CurrencyEstimateService.Estimate::formatted).orElse(null),
+                essentialEstimate.or(() -> proEstimate).or(() -> ultraEstimate).map(CurrencyEstimateService.Estimate::date).orElse(null));
     }
 
     private String format(BigDecimal amount, String currency, String country) {
@@ -88,5 +115,6 @@ public class PublicMarketService {
     }
 
     public record Market(String country, String countryName, String provider, String currency,
-                         String essentialPrice, String proPrice, String ultraPrice) { }
+                         String essentialPrice, String proPrice, String ultraPrice,
+                         String essentialEstimate, String proEstimate, String ultraEstimate, java.time.LocalDate estimateDate) { }
 }

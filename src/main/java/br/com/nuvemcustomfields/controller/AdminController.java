@@ -59,6 +59,10 @@ import java.util.stream.Collectors;
 @Controller
 public class AdminController {
 
+    private br.com.nuvemcustomfields.service.CurrencyEstimateService currencyEstimates;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCurrencyEstimates(br.com.nuvemcustomfields.service.CurrencyEstimateService service) { this.currencyEstimates = service; }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminController.class);
 
     private final AdminStoreService adminStoreService;
@@ -211,6 +215,12 @@ public class AdminController {
         model.addAttribute("planDefinitions", planLimitService.planDefinitions());
         model.addAttribute("billingEnabled", paymentSubscriptionService.anyGatewayEnabled());
         model.addAttribute("billingAvailable", available);
+        boolean dodoTest = subscription != null && subscription.isAccessActive()
+                ? subscription.getProvider().isDodo()
+                : paymentSubscriptionService.provider(store).map(PaymentProviderType::isDodo).orElse(false);
+        model.addAttribute("dodoTestGateway", dodoTest);
+        model.addAttribute("essentialAvailable", !dodoTest || paymentSubscriptionService.planAvailable(store, PlanType.PREMIUM));
+        model.addAttribute("proAvailable", !dodoTest || paymentSubscriptionService.planAvailable(store, PlanType.PREMIUM_PLUS));
         String billingCurrency = available ? paymentSubscriptionService.currency(store) : "";
         model.addAttribute("premiumPrice", formatBillingPrice(billingCurrency,
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM)));
@@ -220,7 +230,7 @@ public class AdminController {
         model.addAttribute("ultraAvailable", ultraAvailable);
         model.addAttribute("premiumUltraPrice", ultraAvailable ? formatBillingPrice(billingCurrency,
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM_ULTRA)) : "");
-        model.addAttribute("canUpgrade", subscription != null && subscription.isAccessActive()
+        model.addAttribute("canUpgrade", subscription != null && !subscription.getProvider().isDodo() && subscription.isAccessActive()
                 && subscription.getStatus() == PaymentSubscriptionStatus.ACTIVE
                 && !subscription.isCancellationPending() && subscription.getCancellationEffectiveAt() == null
                 && !subscription.isWinbackRestorePending() && subscription.getUpgradePlan() == null
@@ -230,6 +240,16 @@ public class AdminController {
         model.addAttribute("analyticsProvider", subscription != null && subscription.isAccessActive()
                 ? subscription.getProvider().name() : paymentSubscriptionService.provider(store).map(Enum::name).orElse(null));
         model.addAttribute("analyticsSandbox", paymentSubscriptionService.analyticsSandbox(store));
+        var localEstimates = new java.util.HashMap<String, String>();
+        java.time.LocalDate estimateDate = null;
+        if (currencyEstimates != null && available) {
+            for (var plan : java.util.List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA)) {
+                var estimate = currencyEstimates.estimate(store.getStoreCountryCode(), billingCurrency, paymentSubscriptionService.amount(store, plan));
+                if (estimate.isPresent()) { localEstimates.put(plan.name(), estimate.get().formatted()); estimateDate = estimate.get().date(); }
+            }
+        }
+        model.addAttribute("billingEstimates", localEstimates);
+        model.addAttribute("billingEstimateDate", estimateDate);
         model.addAttribute("billingError", subscription == null || subscription.getLastError() == null ? null
                 : paymentSubscriptionService.customerFacingError(subscription.getTechnicalError() == null
                 ? subscription.getLastError() : subscription.getTechnicalError()));
@@ -785,6 +805,12 @@ public class AdminController {
     static String formatBillingPrice(String currency, java.math.BigDecimal amount) {
         if ("BRL".equals(currency)) {
             return NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(amount);
+        }
+        if ("CLP".equals(currency) || "MXN".equals(currency)) {
+            var formatter = NumberFormat.getNumberInstance(Locale.forLanguageTag("CLP".equals(currency) ? "es-CL" : "es-MX"));
+            int digits = java.util.Currency.getInstance(currency).getDefaultFractionDigits();
+            formatter.setMinimumFractionDigits(digits); formatter.setMaximumFractionDigits(digits);
+            return currency + " " + formatter.format(amount);
         }
         return currency + " " + amount;
     }

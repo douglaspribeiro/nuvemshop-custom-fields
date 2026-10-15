@@ -40,6 +40,21 @@ class PaymentGatewayRouterTest {
         assertThat(router.require(PaymentProviderType.PADDLE)).isSameAs(paddle);
     }
 
+    @Test void testGatewayOnlyOverridesTheExplicitlySupportedStore() {
+        PaymentGateway dodo = gateway(PaymentProviderType.DODO_TEST, PaymentEnvironment.SANDBOX);
+        PaymentGateway paddle = gateway(PaymentProviderType.PADDLE, PaymentEnvironment.PRODUCTION);
+        var rules = mock(PaymentRoutingRuleRepository.class);
+        when(rules.findByCountryCodeIgnoreCase("MX")).thenReturn(Optional.of(rule("MX", PaymentProviderType.PADDLE, PaymentEnvironment.PRODUCTION, true)));
+        Store test = new Store(); test.setStoreId(42L); test.setStoreCountryCode("MX");
+        Store other = new Store(); other.setStoreId(43L); other.setStoreCountryCode("MX");
+        when(dodo.supports(test)).thenReturn(true); when(dodo.supports(other)).thenReturn(false);
+        var router = new PaymentGatewayRouter(List.of(dodo, paddle), rules);
+        assertThat(router.requireForStore(test)).isSameAs(dodo);
+        assertThat(router.requireForStore(other)).isSameAs(paddle);
+        when(dodo.configured()).thenReturn(false);
+        assertThat(router.requireForStore(test)).isSameAs(paddle);
+    }
+
     private static PaymentGateway gateway(PaymentProviderType provider,PaymentEnvironment environment) {
         PaymentGateway gateway=mock(PaymentGateway.class); when(gateway.provider()).thenReturn(provider);
         when(gateway.environment()).thenReturn(environment); when(gateway.configured()).thenReturn(true);

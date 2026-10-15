@@ -1,0 +1,126 @@
+{
+  "environment": "https://test.dodopayments.com",
+  "products": [
+    {
+      "plan": "PREMIUM",
+      "id": "pdt_0NpncfPHBuCeAoWYEMKWi",
+      "name": "Campos Personalizados — Esencial (TEST)",
+      "tax_category": "saas",
+      "pricing_mode": "by_country",
+      "price": {
+        "type": "recurring_price",
+        "price": 499,
+        "currency": "USD",
+        "tax_inclusive": false,
+        "discount": 0,
+        "discount_bps": 0,
+        "purchasing_power_parity": false,
+        "payment_frequency_count": 1,
+        "payment_frequency_interval": "Month",
+        "subscription_period_count": 1,
+        "subscription_period_interval": "Month",
+        "trial_period_days": 0,
+        "trial_amount": null,
+        "trial_apply_discounts": false,
+        "trial_type": "none",
+        "trial_payment_method_optional": false,
+        "zero_amount_payment_method_optional": false
+      },
+      "localized_prices": [
+        {
+          "id": "lcp_0NpnclIXtvrvFXKHCKZUX",
+          "country": "CL",
+          "currency": "CLP",
+          "amount": 4199
+        },
+        {
+          "id": "lcp_0NpnclMs6fZNqbCUGxsMh",
+          "country": "MX",
+          "currency": "MXN",
+          "amount": 9900
+        }
+      ]
+    },
+    {
+      "plan": "PREMIUM_PLUS",
+      "id": "pdt_0NpncfTZsACz359krtMyz",
+      "name": "Campos Personalizados — Pro (TEST)",
+      "tax_category": "saas",
+      "pricing_mode": "by_country",
+      "price": {
+        "type": "recurring_price",
+        "price": 749,
+        "currency": "USD",
+        "tax_inclusive": false,
+        "discount": 0,
+        "discount_bps": 0,
+        "purchasing_power_parity": false,
+        "payment_frequency_count": 1,
+        "payment_frequency_interval": "Month",
+        "subscription_period_count": 1,
+        "subscription_period_interval": "Month",
+        "trial_period_days": 0,
+        "trial_amount": null,
+        "trial_apply_discounts": false,
+        "trial_type": "none",
+        "trial_payment_method_optional": false,
+        "zero_amount_payment_method_optional": false
+      },
+      "localized_prices": [
+        {
+          "id": "lcp_0Npncljrgy2rO6UAc0Ju0",
+          "country": "CL",
+          "currency": "CLP",
+          "amount": 6299
+        },
+        {
+          "id": "lcp_0NpncloYYw9Hm5Ww5DyJE",
+          "country": "MX",
+          "currency": "MXN",
+          "amount": 14900
+        }
+      ]
+    },
+    {
+      "plan": "PREMIUM_ULTRA",
+      "id": "pdt_0NpncfWWeuij8hUmcu1vb",
+      "name": "Campos Personalizados — Ultra (TEST)",
+      "tax_category": "saas",
+      "pricing_mode": "by_country",
+      "price": {
+        "type": "recurring_price",
+        "price": 1499,
+        "currency": "USD",
+        "tax_inclusive": false,
+        "discount": 0,
+        "discount_bps": 0,
+        "purchasing_power_parity": false,
+        "payment_frequency_count": 1,
+        "payment_frequency_interval": "Month",
+        "subscription_period_count": 1,
+        "subscription_period_interval": "Month",
+        "trial_period_days": 0,
+        "trial_amount": null,
+        "trial_apply_discounts": false,
+        "trial_type": "none",
+        "trial_payment_method_optional": false,
+        "zero_amount_payment_method_optional": false
+      },
+      "localized_prices": [
+        {
+          "id": "lcp_0Npncm3p8Jj0o8fsN5VEH",
+          "country": "CL",
+          "currency": "CLP",
+          "amount": 12599
+        },
+        {
+          "id": "lcp_0Npncm7TmcdZck9PTbk8j",
+          "country": "MX",
+          "currency": "MXN",
+          "amount": 29900
+        }
+      ]
+    }
+  ],
+  "verified_at_utc": "2026-10-15 15:01:22"
+}

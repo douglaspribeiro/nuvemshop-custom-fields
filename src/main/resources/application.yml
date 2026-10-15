@@ -155,6 +155,17 @@ payments:
     premium-amount: ${MERCADO_PAGO_PREMIUM_AMOUNT:19.99}
     premium-plus-amount: ${MERCADO_PAGO_PREMIUM_PLUS_AMOUNT:29.99}
     premium-ultra-amount: ${MERCADO_PAGO_PREMIUM_ULTRA_AMOUNT:59.90}
+  dodo:
+    enabled: ${DODO_ENABLED:false}
+    api-key: ${DODO_API_KEY:}
+    webhook-key: ${DODO_WEBHOOK_KEY:}
+    timeout-seconds: ${DODO_TIMEOUT_SECONDS:20}
+  dodo-test:
+    enabled: ${DODO_TEST_ENABLED:false}
+    api-key: ${DODO_TEST_API_KEY:}
+    webhook-key: ${DODO_TEST_WEBHOOK_KEY:}
+    allowed-store-ids: ${DODO_TEST_ALLOWED_STORE_IDS:}
+    timeout-seconds: ${DODO_TEST_TIMEOUT_SECONDS:20}
   creem:
     enabled: ${CREEM_ENABLED:false}
     sandbox: ${CREEM_SANDBOX:true}
@@ -229,3 +240,7 @@ storefront:
 plans:
   cache:
     ttl: ${PLANS_CACHE_TTL:24h}
+
+pricing:
+  fx-estimates:
+    enabled: ${FX_ESTIMATES_ENABLED:true}
