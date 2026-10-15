@@ -376,9 +376,9 @@ public class PaymentSubscriptionService {
                 || !hasText(subscription.getProviderSubscriptionId())) {
             throw new IllegalArgumentException("Selecione um plano superior ao plano atual.");
         }
+        if (subscription.getProvider().isDodo())
+            throw new IllegalArgumentException("O Dodo ainda não oferece alteração de plano.");
         PaymentGateway gateway = router.require(subscription.getProvider());
-        if (gateway.provider().isDodo())
-            throw new IllegalArgumentException("O produto Dodo de teste não oferece alteração de plano.");
         if (subscription.getProviderEnvironment() != gateway.environment() || !gateway.planAvailable(store, targetPlan)) {
             throw new IllegalArgumentException("Plano ainda não disponível para esta assinatura.");
         }
@@ -1204,7 +1204,10 @@ public class PaymentSubscriptionService {
         return "cancelled".equalsIgnoreCase(status) || "canceled".equalsIgnoreCase(status);
     }
     private BigDecimal amount(PaymentGateway gateway, Store store, PlanType plan) {
-        return gateway.amount(store, plan);
+        PaymentProviderType provider = gateway.provider();
+        return provider == PaymentProviderType.PADDLE || provider == PaymentProviderType.CREEM
+                || provider == PaymentProviderType.DODO || provider == PaymentProviderType.DODO_TEST
+                ? gateway.amount(store, plan) : gateway.amount(plan);
     }
     private int graceDays(PaymentProviderType provider) {
         if (provider == PaymentProviderType.CREEM) return ((br.com.nuvemcustomfields.payment.CreemGateway) router.require(provider)).graceDays();

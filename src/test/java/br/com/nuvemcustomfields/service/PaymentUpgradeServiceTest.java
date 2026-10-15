@@ -6,6 +6,8 @@ import br.com.nuvemcustomfields.properties.*;
 import br.com.nuvemcustomfields.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
@@ -48,6 +50,17 @@ class PaymentUpgradeServiceTest {
     private GatewaySubscription remote(String price, String amount) {
         return new GatewaySubscription("sub-1", price, "ref-1", "active", "BRL",
                 new BigDecimal(amount), Instant.now().plusSeconds(86400));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PaymentProviderType.class, names = {"DODO", "DODO_TEST"})
+    void rejectsDodoUpgradeBeforeCallingTheGateway(PaymentProviderType provider) {
+        subscription.setProvider(provider);
+        assertThatThrownBy(() -> service.upgrade(123L, PlanType.PREMIUM_ULTRA, newAmount))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Dodo");
+        verifyNoInteractions(router, gateway);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(subscription.getUpgradePlan()).isNull();
     }
 
     @Test void changesExistingSubscriptionOnlyAfterProviderConfirmation() {
