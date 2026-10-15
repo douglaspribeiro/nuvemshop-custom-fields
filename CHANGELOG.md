@@ -3,6 +3,21 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.37.0] - 2026-10-15
+
+### Features
+
+- integra Dodo com preços regionais e catálogo sandbox (`84d930f`)
+- adiciona página pública de status com UptimeRobot (`8187032`)
+
+### Correções
+
+- preserva fluxo de upgrade ao verificar provedor Dodo (`82ed076`)
+
+### Outros
+
+- Ajusta granularidade do Grafana e cache de planos para 24h (`51419f8`)
+
 ## [1.36.0] - 2026-10-15
 
 ### Features
