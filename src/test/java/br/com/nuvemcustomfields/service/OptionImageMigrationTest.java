@@ -8,6 +8,20 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OptionImageMigrationTest {
+    @Test void mobileColumnsMigrationKeepsAutomaticLayoutForExistingAndNewFields() throws Exception {
+        try (var connection=DriverManager.getConnection("jdbc:h2:mem:mobile-columns-migration;MODE=MySQL", "sa", "")) {
+            connection.createStatement().execute("create table personalization_fields (id bigint primary key)");
+            connection.createStatement().execute("insert into personalization_fields (id) values (1)");
+            try (var input=getClass().getResourceAsStream("/db/migration/V55__field_mobile_image_columns.sql")) {
+                RunScript.execute(connection,new StringReader(new String(input.readAllBytes(),StandardCharsets.UTF_8)));
+            }
+            connection.createStatement().execute("insert into personalization_fields (id) values (2)");
+            try (var rows=connection.createStatement().executeQuery("select mobile_image_columns from personalization_fields")) {
+                assertThat(rows.next()).isTrue();assertThat(rows.getObject(1)).isNull();
+                assertThat(rows.next()).isTrue();assertThat(rows.getObject(1)).isNull();
+            }
+        }
+    }
     @Test void imageZoomMigrationPreservesExistingFieldsAndDefaultsForNewFields() throws Exception {
         try (var connection=DriverManager.getConnection("jdbc:h2:mem:image-zoom-migration;MODE=MySQL", "sa", "")) {
             connection.createStatement().execute("create table personalization_fields (id bigint primary key)");

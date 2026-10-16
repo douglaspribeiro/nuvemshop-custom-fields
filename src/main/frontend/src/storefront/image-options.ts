@@ -1,9 +1,11 @@
 import type { PersonalizationField } from "../shared/config";
+import { applyMobileImageLayout } from "./image-options-layout";
 
 /** The select remains the native form control and readable fallback when images fail. */
 export function imageChoices(field: PersonalizationField, select: HTMLSelectElement, locale?: string): HTMLElement {
     const grid=document.createElement("div");
     grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:8px";
+    applyMobileImageLayout(grid, field.mobileImageColumns);
     const buttons: HTMLButtonElement[]=[];
     for (const option of field.imageOptions ?? []) {
         const card=document.createElement("div");

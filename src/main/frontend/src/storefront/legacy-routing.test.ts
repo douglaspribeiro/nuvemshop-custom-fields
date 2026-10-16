@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { afterEach, expect, it, vi } from "vitest";
+import { MOBILE_IMAGE_OPTIONS_CSS } from "./image-options-layout";
 
 const source = readFileSync(new URL("../../../resources/static/assets/nuvemshop-personalizer.js", import.meta.url), "utf8");
 let dom: JSDOM;
@@ -53,18 +54,25 @@ it("recognizes an explicit LS theme before the SDK is ready", async () => {
 	expect(dom.window.document.getElementById("ncf-patagonia-script")).not.toBeNull();
 });
 
-it.each([undefined, true, false])("renders image selection in traditional themes with zoom %s", async (showImageZoom) => {
+it.each([
+    {showImageZoom:undefined,mobileImageColumns:undefined},
+    {showImageZoom:true,mobileImageColumns:2},
+    {showImageZoom:false,mobileImageColumns:3},
+])("renders traditional image selection with %o", async ({showImageZoom,mobileImageColumns}) => {
     dom=new JSDOM(`<html lang="pt-BR"><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
         <body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
         {url:"https://store.test/productos/example",runScripts:"outside-only"});
     Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,fields:[
-        {label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT",required:true,options:["Floral"],showImageZoom,
+        {label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT",required:true,options:["Floral"],showImageZoom,mobileImageColumns,
             imageOptions:[{label:"Floral",thumbnailUrl:"/public/thumb",imageUrl:"/public/large"}]}],style:{}})})});
     Object.defineProperty(dom.window.document,"readyState",{value:"complete",configurable:true});dom.window.eval(source);
     await vi.waitFor(()=>expect(dom.window.document.querySelector("button[data-value='Floral']")).not.toBeNull());
     const option=dom.window.document.querySelector<HTMLButtonElement>("button[data-value='Floral']")!;option.click();
     const select=dom.window.document.querySelector<HTMLSelectElement>("select[name='properties[Capa]']")!;
     expect(select.value).toBe("Floral");expect(option.getAttribute("aria-pressed")).toBe("true");
+    expect(dom.window.document.querySelector<HTMLElement>(".ncf-image-options")?.dataset.mobileColumns)
+        .toBe(mobileImageColumns ? String(mobileImageColumns) : undefined);
+    if (mobileImageColumns) expect(dom.window.document.getElementById("ncf-mobile-image-styles")?.textContent).toBe(MOBILE_IMAGE_OPTIONS_CSS);
     expect(dom.window.document.querySelector(".ncf-field a")?.getAttribute("href"))
         .toBe(showImageZoom === false ? undefined : "https://campos-personalizados.wzhub.pro/public/large");
 });

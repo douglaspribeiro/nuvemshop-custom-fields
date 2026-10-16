@@ -13,6 +13,20 @@ jobs:
     name: Build with Maven
     runs-on: ubuntu-latest
 
+    services:
+      migration-mysql:
+        image: mysql:8.0.41
+        env:
+          MYSQL_ROOT_PASSWORD: ncf_migration_test_only
+          MYSQL_DATABASE: ncf_migration_test_contract
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -26,3 +40,9 @@ jobs:
 
       - name: Build with Maven
         run: mvn clean package
+
+      - name: Validate fresh and populated MySQL migrations
+        run: >-
+          mvn -B -ntp -Dskip.frontend=true -Dtest=MysqlMigrationContractIT
+          -Dncf.migration.mysql.url='jdbc:mysql://127.0.0.1:3306/ncf_migration_test_contract?useSSL=false&allowPublicKeyRetrieval=true'
+          -Dncf.migration.mysql.password=ncf_migration_test_only test

@@ -151,12 +151,14 @@ public class PersonalizationAdminService {
     }
 
     private void applyForm(PersonalizationField field, FieldForm form) {
+        if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);
         field.setShowImageZoom(form.isShowImageZoom());
+        field.setMobileImageColumns(form.getFieldType() == FieldType.IMAGE_SELECT ? form.getMobileImageColumns() : null);
         field.setImageOptionsJson(form.getFieldType() == FieldType.IMAGE_SELECT
                 ? ImageOptions.serialize(ImageOptions.parse(form.getImageOptionsJson())) : null);
         field.setMaxLength(form.getFieldType() == FieldType.IMAGE_SELECT ? 100 : form.getMaxLength());

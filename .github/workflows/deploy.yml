@@ -20,6 +20,19 @@ jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    services:
+      migration-mysql:
+        image: mysql:8.0.41
+        env:
+          MYSQL_ROOT_PASSWORD: ncf_migration_test_only
+          MYSQL_DATABASE: ncf_migration_test_contract
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
     outputs:
       version: ${{ steps.bump.outputs.version }}
       base_branch: ${{ steps.base.outputs.branch }}
@@ -80,6 +93,12 @@ jobs:
       # que nunca vira imagem. O package adiante usa -DskipTests: ja rodaram aqui.
       - name: Compile and run tests
         run: mvn -B -ntp clean test
+
+      - name: Validate fresh and populated MySQL migrations before release
+        run: >-
+          mvn -B -ntp -Dskip.frontend=true -Dtest=MysqlMigrationContractIT
+          -Dncf.migration.mysql.url='jdbc:mysql://127.0.0.1:3306/ncf_migration_test_contract?useSSL=false&allowPublicKeyRetrieval=true'
+          -Dncf.migration.mysql.password=ncf_migration_test_only test
 
       # Mesmo bump do scripts/push-docker.sh: versao do pom pelos commits, CHANGELOG.md
       # e commit + tag locais. O push sai nos steps de tag e merge, depois da imagem.

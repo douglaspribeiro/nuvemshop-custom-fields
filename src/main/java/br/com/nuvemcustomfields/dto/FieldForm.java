@@ -31,6 +31,13 @@ public class FieldForm {
     private String optionsText;
     private String imageOptionsJson;
     private boolean showImageZoom = true;
+    private Integer mobileImageColumns;
+    public Integer getMobileImageColumns() { return mobileImageColumns; }
+    public void setMobileImageColumns(Integer value) { mobileImageColumns = value; }
+    @AssertTrue(message = "image.mobile.columns.invalid")
+    public boolean isMobileImageColumnsValid() {
+        return mobileImageColumns == null || mobileImageColumns == 2 || mobileImageColumns == 3;
+    }
     public boolean isShowImageZoom() { return showImageZoom; }
     public void setShowImageZoom(boolean value) { showImageZoom = value; }
     public String getImageOptionsJson() { return imageOptionsJson; }

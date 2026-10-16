@@ -59,6 +59,30 @@ class OptionImagesTest {
     Long save(String... ids) {admin.addField(store,product,form(ids));return admin.requireRuleWithFields(store,product).getFields().getFirst().getId();}
     String state(String id) {return jdbc.queryForObject("select state from personalization_images where id=?",String.class,id);}
     void due() {jdbc.update("update personalization_images set retry_at=? where state='DELETING'",java.sql.Timestamp.from(Instant.now().minusSeconds(1)));}
+    @Test void mobileImageColumnsCanBeCreatedEditedAndResetAndRejectInvalidValues() throws Exception {
+        String id=upload();var initial=form(id);initial.setMobileImageColumns(3);
+        admin.addField(store,product,initial);
+        Long field=admin.requireRuleWithFields(store,product).getFields().getFirst().getId();
+        assertThat(fields.findById(field).orElseThrow().getMobileImageColumns()).isEqualTo(3);
+        for (String columns : new String[]{"2","3",""}) {
+            mvc.perform(post("/admin/products/"+product+"/fields/"+field).session(session)
+                    .param("label","Capa").param("fieldType","IMAGE_SELECT")
+                    .param("imageOptionsJson",form(id).getImageOptionsJson()).param("mobileImageColumns",columns))
+                    .andExpect(status().is3xxRedirection());
+            Integer expected=columns.isEmpty() ? null : Integer.valueOf(columns);
+            assertThat(fields.findById(field).orElseThrow().getMobileImageColumns()).isEqualTo(expected);
+            mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                    .andExpect(jsonPath("$.fields[0].mobileImageColumns").value(expected))
+                    .andExpect(jsonPath("$.fields[0].imageOptions[0].label").value("Capa 0"));
+        }
+        for (String columns : new String[]{"0","1","4"}) {
+            mvc.perform(post("/admin/products/"+product+"/fields/"+field).session(session)
+                    .param("label","Capa").param("fieldType","IMAGE_SELECT")
+                    .param("imageOptionsJson",form(id).getImageOptionsJson()).param("mobileImageColumns",columns))
+                    .andExpect(status().isOk());
+            assertThat(fields.findById(field).orElseThrow().getMobileImageColumns()).isNull();
+        }
+    }
     @Test void imageZoomDefaultsToVisibleAndCanBeDisabledAndReenabledFromEditor() throws Exception {
         String id=upload();Long field=save(id);
         mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))

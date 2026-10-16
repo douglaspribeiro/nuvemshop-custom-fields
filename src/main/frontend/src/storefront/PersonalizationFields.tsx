@@ -1,10 +1,27 @@
 import { Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent } from "@tiendanube/nube-sdk-types";
+import { styled } from "@tiendanube/nube-sdk-ui";
 import type { PersonalizationField } from "../shared/config";
 import { type FieldError, keyOf } from "./values";
 
 /** Mantenha em sincronia com SDK_MARKER_ID no nuvemshop-personalizer.js. */
 export const SDK_MARKER_ID = "ncf-sdk-fields";
+
+function mobileImageGrid(columns: 2 | 3) {
+    return styled(Row)`
+        @media (max-width:767px) {
+            display:grid!important;
+            grid-template-columns:repeat(${columns},minmax(0,1fr));
+            gap:8px!important;
+            & > * {width:auto!important;min-width:0;box-sizing:border-box;padding:6px!important;overflow-wrap:anywhere;}
+            & img {width:100%!important;max-width:120px;height:auto!important;aspect-ratio:1;object-fit:contain;}
+            & button {min-width:0;max-width:100%;height:auto;min-height:44px;white-space:normal;overflow-wrap:anywhere;}
+            & button * {white-space:normal;overflow-wrap:anywhere;}
+        }
+    `;
+}
+const TwoColumnImageGrid = mobileImageGrid(2);
+const ThreeColumnImageGrid = mobileImageGrid(3);
 
 type Props = {
 	fields: PersonalizationField[];
@@ -58,7 +75,9 @@ function input(
 
     if (field.fieldType === "IMAGE_SELECT") {
         const expand = locale?.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
-        const cards = <Row gap={12} style={{flexWrap:"wrap"}}>
+        const ImageGrid = field.mobileImageColumns === 2 ? TwoColumnImageGrid
+            : field.mobileImageColumns === 3 ? ThreeColumnImageGrid : Row;
+        const cards = <ImageGrid gap={12} style={{flexWrap:"wrap"}}>
             {(field.imageOptions ?? []).map(option => {
                 const content: NubeComponent[] = [
                     <Image src={option.thumbnailUrl} alt={option.label} width="120px" height="120px" style={{objectFit:"contain"}} />,
@@ -70,7 +89,7 @@ function input(
                 return <Column width="140px" gap={4}
                     style={{border: option.label === selected ? "2px solid #1976d2" : "1px solid #c8d3d8", borderRadius:"8px", padding:"8px"}}>{content}</Column>;
             })}
-        </Row>;
+        </ImageGrid>;
         const children: NubeComponent[] = [<Text color={color}>{label}</Text>, cards];
         if (!field.required) children.push(<Button variant="link" onClick={() => onValueChange(key, "")}>
             {locale?.startsWith("es") ? "Borrar selección" : "Limpar seleção"}

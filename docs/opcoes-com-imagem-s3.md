@@ -8,6 +8,10 @@ Na vitrine, SDK, temas tradicionais e Patagonia exibem as imagens, nomes e sele�
 
 ## Properties e ativação
 
+O cadastro e edição também oferecem **Opções por linha no celular**: Automático (padrão), 2 ou 3. `mobileImageColumns` fica `null` no modo automático, preservando o layout anterior. As escolhas 2 e 3 aplicam uma grade em telas de até 767 px, com imagens ajustadas à largura da coluna e nomes completos que podem quebrar em várias linhas. Desktop mantém o layout anterior. O ajuste funciona nos temas tradicionais, Patagonia e SDK, independentemente da exibição do link de ampliação. A publicação exige o backend com a migração `V55`, build dos bundles e atualização dos três scripts de vitrine; versões antigas ignoram a configuração nova.
+
+O padrão `true` de `show_image_zoom` também está declarado na entidade com `@ColumnDefault`, para que bancos criados pelo Hibernate nos testes tenham o mesmo padrão da migração `V54`. Produção continua com Flyway e `ddl-auto: validate`.
+
 A configuração está em `src/main/resources/application.yml`:
 
 ```yaml
@@ -72,6 +76,18 @@ A fila não possui FK para loja/campo, para sobreviver à remoção desses regis
 Monitorar `images.upload.failed`, `images.cleanup.retry` e `images.cleanup.deleted`, além da quantidade e idade de registros `DELETING`. Alterar bucket/região exige considerar objetos e exclusões ainda pendentes: cada registro guarda o bucket de origem, mas o cliente usa a região configurada no ambiente.
 
 ## Verificação
+
+Além dos testes de interface e H2, `MysqlMigrationContractIT` é uma etapa obrigatória nos workflows de build e release, antes do bump de versão ou publicação da imagem. Usa MySQL 8.0.41 descartável, a mesma versão do compose local, com Flyway real: instalação limpa, atualização da V53 com dados de todos os tipos de campo e imagem vinculada, V54 e V55 separadamente, preservação das linhas de todas as tabelas de negócio, padrões para inserts antigos, nova execução sem reaplicar migrações e validação de todas as entidades com `ddl-auto: validate`. O teste também confirma que a inicialização falha quando a V55 está ausente. Não usa `repair`, `clean` nem bancos existentes; cria schemas aleatórios exclusivamente em um servidor de teste no loopback e os remove ao terminar.
+
+Para executar localmente, disponibilize um MySQL descartável contendo o banco vazio `ncf_migration_test_contract` e rode:
+
+```sh
+mvn -Dskip.frontend=true -Dtest=MysqlMigrationContractIT \
+  '-Dncf.migration.mysql.url=jdbc:mysql://127.0.0.1:33379/ncf_migration_test_contract?useSSL=false&allowPublicKeyRetrieval=true' \
+  -Dncf.migration.mysql.password=SENHA_DO_MYSQL_DESCARTAVEL test
+```
+
+O teste não entra automaticamente no `mvn test` comum: os workflows o invocam explicitamente e ele falha se a conexão de teste não for informada. `MigrationHistoryIntegrityTest`, incluído na suíte comum, verifica SHA-256 das migrações V1–V54 contra o manifesto versionado para detectar alteração ou remoção de histórico. Não reescrever migrações já versionadas nem atualizar o manifesto para encobrir mudanças: correções de produção exigem uma nova migração. Esses cenários usam dados sintéticos; não substituem a conferência da versão/estado do banco de produção nem medem tempo de locks em tabelas de produção.
 
 Os testes usam armazenamento S3 simulado e cobrem validação de arquivo, autenticação/propriedade, configuração pública, substituição com rollback, exclusão de opção/campo/produto/webhook/loja, uploads abandonados, remoção por SQL e novas tentativas. O adaptador S3 tem teste para exclusão de versões/marcadores da chave exata. Os testes da interface cobrem edição, falha de upload, seleção e propriedades do carrinho nos três caminhos de vitrine.
 

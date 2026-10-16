@@ -14,6 +14,7 @@ export type PersonalizationField = {
 	options: string[];
 	imageOptions?: { label: string; thumbnailUrl: string; imageUrl: string }[];
 	showImageZoom?: boolean;
+	mobileImageColumns?: 2 | 3 | null;
 };
 
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationStyleResponse. */

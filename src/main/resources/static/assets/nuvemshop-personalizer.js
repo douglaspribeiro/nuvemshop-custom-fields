@@ -896,6 +896,26 @@
     function renderImageChoices(field, select) {
         const grid = document.createElement("div");
         grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:8px";
+        grid.className = "ncf-image-options";
+        if (field.mobileImageColumns === 2 || field.mobileImageColumns === 3) {
+            grid.dataset.mobileColumns = String(field.mobileImageColumns);
+            if (!document.getElementById("ncf-mobile-image-styles")) {
+                const style = document.createElement("style");
+                style.id = "ncf-mobile-image-styles";
+                // Keep in sync with image-options-layout.ts.
+                style.textContent = `
+@media (max-width:767px) {
+    .ncf-image-options[data-mobile-columns="2"] {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+    .ncf-image-options[data-mobile-columns="3"] {grid-template-columns:repeat(3,minmax(0,1fr))!important}
+    .ncf-image-options[data-mobile-columns] > div {min-width:0;overflow-wrap:anywhere}
+    .ncf-image-options[data-mobile-columns] button {box-sizing:border-box;min-width:0;padding:6px!important;white-space:normal;overflow-wrap:anywhere}
+    .ncf-image-options[data-mobile-columns] img {width:100%;max-width:120px;height:auto;aspect-ratio:1;object-fit:contain}
+    .ncf-image-options[data-mobile-columns] span {max-width:100%;white-space:normal;overflow-wrap:anywhere}
+}
+`;
+                document.head.append(style);
+            }
+        }
         const buttons = [];
         (field.imageOptions || []).forEach(option => {
             const card = document.createElement("div");

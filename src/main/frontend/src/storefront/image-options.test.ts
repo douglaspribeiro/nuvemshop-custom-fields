@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { imageChoices } from "./image-options";
 import { validate, toCartProperties } from "./values";
 import type { PersonalizationField } from "../shared/config";
+import { MOBILE_IMAGE_OPTIONS_CSS } from "./image-options-layout";
 
 const field: PersonalizationField={label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT",required:true,maxLength:100,
     placeholder:null,validationPattern:null,options:["Floral","Azul"],imageOptions:[
@@ -10,6 +11,18 @@ const field: PersonalizationField={label:"Capa",propertyName:"Capa",fieldType:"I
         {label:"Azul",thumbnailUrl:"https://assets.test/azul.jpg",imageUrl:"https://assets.test/azul-large.jpg"}]};
 
 describe("image choices",()=>{
+    it.each([undefined,null,2,3] as const)("keeps image names and selection with mobile columns %s", columns=>{
+        const select=document.createElement("select");
+        field.options.forEach(label=>select.append(new Option(label,label)));
+        const grid=imageChoices({...field,mobileImageColumns:columns},select);
+        expect(grid.dataset.mobileColumns).toBe(columns ? String(columns) : undefined);
+        expect(grid.querySelectorAll("img")).toHaveLength(2);
+        const buttons=grid.querySelectorAll("button");buttons[1].click();
+        expect(buttons[1].textContent).toBe("Azul");
+        expect(select.value).toBe("Azul");
+        expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+        if(columns) expect(document.getElementById("ncf-mobile-image-styles")?.textContent).toBe(MOBILE_IMAGE_OPTIONS_CSS);
+    });
     it("hides enlargement while keeping images, names and selection",()=>{
         const hidden = {...field, showImageZoom:false};
         const select=document.createElement("select");select.append(new Option("—",""));

@@ -15,7 +15,8 @@ public record FieldResponse(
         String propertyName,
         List<String> options,
         List<ImageOptionResponse> imageOptions,
-        boolean showImageZoom
+        boolean showImageZoom,
+        Integer mobileImageColumns
 ) {
 
     public static FieldResponse from(PersonalizationField field) { return from(field, 25); }
@@ -34,7 +35,8 @@ public record FieldResponse(
                     String url = "/public/stores/" + field.getRule().getStoreId() + "/images/" + option.id();
                     return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);
                 }).toList() : List.of(),
-                field.isShowImageZoom()
+                field.isShowImageZoom(),
+                field.getMobileImageColumns()
         );
     }
 

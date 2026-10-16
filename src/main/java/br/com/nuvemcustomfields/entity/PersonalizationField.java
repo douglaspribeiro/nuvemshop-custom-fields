@@ -59,7 +59,13 @@ public class PersonalizationField {
     private String imageOptionsJson;
 
     @Column(name = "show_image_zoom", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("true")
     private boolean showImageZoom = true;
+
+    @Column(name = "mobile_image_columns")
+    private Integer mobileImageColumns;
+    public Integer getMobileImageColumns() { return mobileImageColumns; }
+    public void setMobileImageColumns(Integer value) { mobileImageColumns = value; }
 
     public boolean isShowImageZoom() { return showImageZoom; }
     public void setShowImageZoom(boolean value) { showImageZoom = value; }

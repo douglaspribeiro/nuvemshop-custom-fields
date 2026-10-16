@@ -113,6 +113,15 @@
                                 <span th:text="#{image.zoom.show}">Exibir link “Ampliar imagem”</span>
                             </label>
                             <p class="field-help" th:text="#{image.zoom.help}"></p>
+                            <label>
+                                <span th:text="#{image.mobile.columns}"></span>
+                                <select name="mobileImageColumns">
+                                    <option value="" th:selected="${draft.mobileImageColumns == null}" th:text="#{image.mobile.columns.auto}"></option>
+                                    <option value="2" th:selected="${draft.mobileImageColumns == 2}" th:text="#{image.mobile.columns.count(2)}"></option>
+                                    <option value="3" th:selected="${draft.mobileImageColumns == 3}" th:text="#{image.mobile.columns.count(3)}"></option>
+                                </select>
+                                <small class="field-help" th:text="#{image.mobile.columns.help}"></small>
+                            </label>
                             <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
                             <p class="image-options-status" role="status" aria-live="polite"></p>
                         </section>
@@ -188,6 +197,15 @@
                         <span th:text="#{image.zoom.show}">Exibir link “Ampliar imagem”</span>
                     </label>
                     <p class="field-help" th:text="#{image.zoom.help}"></p>
+                    <label>
+                        <span th:text="#{image.mobile.columns}"></span>
+                        <select th:field="*{mobileImageColumns}">
+                            <option value="" th:text="#{image.mobile.columns.auto}"></option>
+                            <option value="2" th:text="#{image.mobile.columns.count(2)}"></option>
+                            <option value="3" th:text="#{image.mobile.columns.count(3)}"></option>
+                        </select>
+                        <small class="field-help" th:text="#{image.mobile.columns.help}"></small>
+                    </label>
                     <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
                     <p class="image-options-status" role="status" aria-live="polite"></p>
                 </section>
