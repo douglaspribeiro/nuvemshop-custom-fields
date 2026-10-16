@@ -10,10 +10,12 @@ function boot(pattern = '') {
         <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>TEXTAREA</option></select>
         <label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
+        <input type="checkbox" name="showImageZoom" checked>
+        <select name="mobileImageColumns"><option value="">Automático</option><option value="2">2</option><option value="3">3</option></select>
         <input type="hidden" name="validationPattern">
         <section class="field-validation"><select class="field-format"><option value="">Livre</option><option value="^[0-9]+$">Números</option><option value="custom">Personalizada</option></select>
         <details class="field-custom-format"><input class="field-pattern" data-invalid="Regra inválida"></details></section>
-        <section class="field-live-preview" data-fallback-label="Campo" data-select-prompt="Escolha"><div class="field-preview-control"></div></section>
+        <section class="field-live-preview" data-fallback-label="Campo" data-select-prompt="Escolha" data-image-zoom="Ampliar imagem"><div class="field-preview-control"></div></section>
         <input type="hidden" name="sortOrder" value="0"><input class="field-position" type="number" min="1" step="1" required value="1">
         <button type="submit">Salvar</button></form>`, { runScripts: 'outside-only' });
     input('validationPattern').value = pattern;
@@ -24,6 +26,40 @@ function select(selector: string, value: string) {
     const control = dom.window.document.querySelector<HTMLSelectElement>(selector)!;
     control.value = value; control.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
 }
+it('previews enlargement links, toggles them live and keeps image selection available', () => {
+    boot();
+    input('imageOptionsJson').value = JSON.stringify([{id:'image-1',label:'Azul marinho'},{id:'',label:'Rascunho'}]);
+    select('[name=fieldType]', 'IMAGE_SELECT');
+    const links = () => dom.window.document.querySelectorAll<HTMLAnchorElement>('.field-preview-image-zoom');
+    expect(links()).toHaveLength(1);
+    expect(links()[0].textContent).toBe('Ampliar imagem');
+    expect(links()[0].getAttribute('href')).toBe('/admin/images/image-1');
+    expect(links()[0].getAttribute('aria-label')).toBe('Ampliar imagem: Azul marinho');
+    expect(links()[0].target).toBe('_blank');
+    input('showImageZoom').checked = false;
+    input('showImageZoom').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+    expect(links()).toHaveLength(0);
+    const choice=dom.window.document.querySelector<HTMLButtonElement>('.field-preview-choice')!;
+    expect(choice.querySelector('img')).not.toBeNull();
+    expect(choice.textContent).toBe('Azul marinho');choice.click();
+    expect(choice.getAttribute('aria-pressed')).toBe('true');
+    input('showImageZoom').checked = true;
+    input('showImageZoom').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+    expect(links()).toHaveLength(1);
+    dom.window.document.querySelector<HTMLElement>('.field-live-preview')!.dataset.imageZoom='Ampliar imagen';
+    select('[name=mobileImageColumns]','3');
+    expect(links()[0].textContent).toBe('Ampliar imagen');
+});
+it('reflects two and three mobile columns and returns to automatic in the preview', () => {
+    boot();
+    input('imageOptionsJson').value = JSON.stringify([{id:'image-1',label:'Verde oliva'}]);
+    select('[name=fieldType]', 'IMAGE_SELECT');
+    for (const columns of ['2','3','']) {
+        select('[name=mobileImageColumns]', columns);
+        expect(dom.window.document.querySelector<HTMLElement>('.field-preview-images')!.dataset.mobileColumns).toBe(columns || undefined);
+        expect(dom.window.document.querySelector('.field-preview-choice span')!.textContent).toBe('Verde oliva');
+    }
+});
 it('uses ready formats without requiring regex and updates the posted value', () => {
     boot();
     expect(dom.window.document.querySelector<HTMLElement>('.field-custom-format')!.hidden).toBe(true);

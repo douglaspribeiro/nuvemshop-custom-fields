@@ -77,10 +77,14 @@
             if (type.value === 'IMAGE_SELECT') {
                 const gallery = document.createElement('div');
                 gallery.className = 'field-preview-images';
+                const columns = get('mobileImageColumns')?.value;
+                if (columns === '2' || columns === '3') gallery.dataset.mobileColumns = columns;
                 let options = [];
                 try { options = JSON.parse(get('imageOptionsJson').value || '[]'); } catch (_) { /* An incomplete draft has no options yet. */ }
                 if (!Array.isArray(options)) options = [];
                 options.forEach(option => {
+                    const card = document.createElement('div');
+                    card.className = 'field-preview-image-option';
                     const choice = document.createElement('button');
                     choice.type = 'button'; choice.className = 'field-preview-choice';
                     choice.setAttribute('aria-pressed', 'false');
@@ -93,7 +97,17 @@
                     choice.addEventListener('click', () => {
                         gallery.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button === choice)));
                     });
-                    gallery.append(choice);
+                    card.append(choice);
+                    if (option.id && (get('showImageZoom')?.checked ?? true)) {
+                        const link = document.createElement('a');
+                        link.className = 'field-preview-image-zoom';
+                        link.href = '/admin/images/' + encodeURIComponent(option.id);
+                        link.target = '_blank'; link.rel = 'noopener';
+                        link.textContent = preview.dataset.imageZoom;
+                        link.setAttribute('aria-label', `${link.textContent}: ${option.label || ''}`);
+                        card.append(link);
+                    }
+                    gallery.append(card);
                 });
                 target.append(title, gallery); return;
             }
