@@ -98,6 +98,7 @@
                         <label>
                             <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
+                    <small class="field-help field-checkbox-help" hidden th:text="#{editor.checkbox.help}"></small>
                             <textarea name="optionsText" rows="4" th:placeholder="#{admin.fields.options.placeholder}" th:text="${draft.optionsText}"></textarea>
                         </label>
                         <section class="image-options-editor" hidden
@@ -183,6 +184,7 @@
                 <label>
                     <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
+                    <small class="field-help field-checkbox-help" hidden th:text="#{editor.checkbox.help}"></small>
                     <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
                 </label>
                 <section class="image-options-editor" hidden

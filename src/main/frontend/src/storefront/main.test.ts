@@ -102,6 +102,28 @@ describe("SDK storefront without a legacy script", () => {
         expect((checkbox() as unknown as {checked:boolean}).checked).toBe(false);
     });
 
+    it.each([true, false])('supports multiple SDK choices with required=%s', async (required) => {
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,
+            fields:[{label:'Adicionais',fieldType:'CHECKBOX',required,options:['Laço','Cartão','Embalagem']}]})} as Response);
+        await boot();
+        type Check = {type?:string;children?:Check[];checked?:boolean;onChange?:(e:{value:boolean})=>void};
+        const checks = () => {
+            const collect = (node:Check):Check[] => node.type === 'check' ? [node] : (Array.isArray(node.children) ? node.children : []).flatMap(collect);
+            return collect(render.mock.calls[render.mock.calls.length-1][1]);
+        };
+        expect(checks().map(box=>box.checked)).toEqual([false,false,false]);
+        add();expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(!required);
+        checks()[0].onChange!({value:true}); checks()[2].onChange!({value:true});
+        expect(checks().map(box=>box.checked)).toEqual([true,false,true]);
+        send.mockClear();add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Adicionais:'Laço, Embalagem'});
+        listeners.get('cart:add:fail')!(state);checks()[0].onChange!({value:false});
+        send.mockClear();add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Adicionais:'Embalagem'});
+        listeners.get('cart:add:success')!(state);
+        expect(checks().map(box=>box.checked)).toEqual([false,false,false]);
+    });
+
 	it("blocks a native add with an empty required field", async () => {
 		await boot();
 		add();

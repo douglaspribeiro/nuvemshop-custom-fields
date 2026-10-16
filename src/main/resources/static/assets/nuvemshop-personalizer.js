@@ -400,11 +400,13 @@
                         ? (document.documentElement.lang.toLowerCase().startsWith("es")
                             ? "Seleccioná una opción válida." : "Selecione uma opção válida.") : "");
                 }
-                if (!input.checkValidity()) {
+                const validationInput = field.fieldType === "CHECKBOX" && (field.options || []).length
+                    ? input.closest(".ncf-field").querySelector("input[type=checkbox]") : input;
+                if (!validationInput.checkValidity()) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
-                    input.focus();
-                    input.reportValidity();
+                    validationInput.focus();
+                    validationInput.reportValidity();
                     return;
                 }
             }
@@ -836,6 +838,7 @@
     }
 
     function renderField(field) {
+        if (field.fieldType === "CHECKBOX" && (field.options || []).length) return renderCheckboxGroup(field);
         const wrapper = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
         wrapper.className = "ncf-field";
 
@@ -869,6 +872,36 @@
             wrapper.prepend(input);
         } else wrapper.appendChild(input);
         return wrapper;
+    }
+
+    function renderCheckboxGroup(field) {
+        const group = document.createElement("fieldset"); group.className = "ncf-field";
+        group.style.cssText = "border:0;padding:0;margin:0 0 12px;min-width:0;color:inherit";
+        const legend = document.createElement("legend"); legend.className = "ncf-label";
+        legend.textContent = field.label + (field.required ? " *" : ""); group.append(legend);
+        // Only the aggregate has a property name, so native form serialization preserves every choice.
+        const aggregate = document.createElement("input"); aggregate.type = "hidden";
+        aggregate.name = "properties[" + (field.propertyName || field.label) + "]";
+        group.append(aggregate);
+        const options = [...new Set(field.options)];
+        const boxes = options.map(option => {
+            const label = document.createElement("label");
+            label.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer";
+            const box = document.createElement("input"); box.type = "checkbox"; box.value = option;
+            box.style.cssText = "width:20px;height:20px;min-height:20px;padding:0;flex-shrink:0;accent-color:currentColor";
+            const text = document.createElement("span"); text.textContent = option;
+            box.addEventListener("change", sync);
+            label.append(box, text); group.append(label); return box;
+        });
+        function sync() {
+            const selected = boxes.filter(box => box.checked).map(box => box.value);
+            aggregate.value = selected.join(", "); aggregate.disabled = !selected.length;
+            const invalid = selected.some(option => !options.includes(option));
+            const spanish = document.documentElement.lang.toLowerCase().startsWith("es");
+            boxes[0].setCustomValidity(invalid ? (spanish ? "Seleccioná una opción válida." : "Selecione uma opção válida.")
+                : field.required && !selected.length ? (spanish ? "Elegí al menos una opción." : "Escolha pelo menos uma opção.") : "");
+        }
+        sync(); return group;
     }
 
     function createInput(field) {

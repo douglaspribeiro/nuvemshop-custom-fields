@@ -133,7 +133,22 @@ it('previews an interactive checkbox and hides irrelevant text settings', () => 
     expect(checkbox.checked).toBe(false);
     checkbox.click();
     expect(checkbox.checked).toBe(true);
-    for (const name of ['maxLength', 'placeholder', 'optionsText']) expect(input(name).closest('label')!.hidden).toBe(true);
+    for (const name of ['maxLength', 'placeholder']) expect(input(name).closest('label')!.hidden).toBe(true);
     expect(dom.window.document.querySelector<HTMLElement>('.field-validation')!.hidden).toBe(true);
     expect(input('required').disabled).toBe(false);
+});
+
+it('previews several independent checkbox options without submitting preview answers', () => {
+    boot();
+    input('optionsText').value = 'Laço\nCartão\nLaço\nEmbalagem';
+    select('[name=fieldType]', 'CHECKBOX');
+    expect(input('optionsText').closest('label')!.hidden).toBe(false);
+    const boxes = [...dom.window.document.querySelectorAll<HTMLInputElement>('.field-preview-checkbox-group input')];
+    expect(boxes).toHaveLength(3);
+    boxes[0].click(); boxes[2].click();
+    expect(boxes.map(box => box.checked)).toEqual([true, false, true]);
+    boxes[0].click(); expect(boxes[2].checked).toBe(true);
+    expect(boxes.every(box => box.name === '' && !box.required)).toBe(true);
+    input('optionsText').value = ''; select('[name=fieldType]', 'CHECKBOX');
+    expect(dom.window.document.querySelectorAll('.field-preview-control input')).toHaveLength(1);
 });

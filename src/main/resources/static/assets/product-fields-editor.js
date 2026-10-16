@@ -60,7 +60,9 @@
             placeholderLabel.querySelectorAll('[data-select-text]').forEach(element => {
                 element.textContent = type.value === 'SELECT' ? element.dataset.selectText : element.dataset.text;
             });
-            get('optionsText').closest('label').hidden = type.value !== 'SELECT';
+            get('optionsText').closest('label').hidden = !['SELECT', 'CHECKBOX'].includes(type.value);
+            const checkboxHelp = form.querySelector('.field-checkbox-help');
+            if (checkboxHelp) checkboxHelp.hidden = type.value !== 'CHECKBOX';
             form.querySelector('.field-validation').hidden = !text;
             // Hidden controls retain their saved values when changing field types.
             custom.disabled = !text;
@@ -112,6 +114,19 @@
                 target.append(title, gallery); return;
             }
             if (type.value === 'CHECKBOX') {
+                const options = [...new Set(get('optionsText').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean))];
+                if (options.length) {
+                    const group = document.createElement('fieldset');
+                    group.className = 'field-preview-checkbox-group';
+                    const legend = document.createElement('legend'); legend.textContent = title.textContent; group.append(legend);
+                    options.forEach(option => {
+                        const choice = document.createElement('label'); choice.className = 'field-preview-checkbox';
+                        const box = document.createElement('input'); box.type = 'checkbox';
+                        const caption = document.createElement('span'); caption.textContent = option;
+                        choice.append(box, caption); group.append(choice);
+                    });
+                    target.append(group); return;
+                }
                 input = document.createElement('input'); input.type = 'checkbox';
                 wrapper.className = 'field-preview-checkbox';
                 wrapper.prepend(input); target.append(wrapper); return;

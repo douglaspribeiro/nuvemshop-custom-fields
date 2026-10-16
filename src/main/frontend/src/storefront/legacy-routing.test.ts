@@ -135,3 +135,23 @@ it.each([true, false])('sends only checked checkbox properties and enforces requ
     checkbox.click();expect(properties()).toBe('Sim');expect(submit().defaultPrevented).toBe(false);
     checkbox.click();expect(properties()).toBeNull();expect(submit().defaultPrevented).toBe(required);
 });
+
+it.each([true,false])('serializes all selected legacy options and requires at least one when required=%s',async(required)=>{
+    dom=new JSDOM(`<html lang="pt-BR"><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
+        {url:'https://store.test/productos/example',runScripts:'outside-only'});
+    Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,
+        fields:[{label:'Adicionais',fieldType:'CHECKBOX',required,options:['Laço','Cartão, impresso','Embalagem']}],style:{}})})});
+    Object.defineProperty(dom.window.document,'readyState',{value:'complete',configurable:true});dom.window.eval(source);
+    await vi.waitFor(()=>expect(dom.window.document.querySelectorAll('.ncf-field input[type=checkbox]')).toHaveLength(3));
+    const form=dom.window.document.querySelector('form')!;
+    const boxes=[...form.querySelectorAll<HTMLInputElement>('input[type=checkbox]')];
+    const submit=()=>{const e=new dom.window.Event('submit',{cancelable:true});form.dispatchEvent(e);return e;};
+    const properties=()=>new dom.window.FormData(form).getAll('properties[Adicionais]');
+    expect(properties()).toEqual([]);expect(submit().defaultPrevented).toBe(required);
+    boxes[0].click();boxes[1].click();
+    expect(boxes.map(box=>box.checked)).toEqual([true,true,false]);
+    expect(properties()).toEqual(['Laço, Cartão, impresso']);expect(submit().defaultPrevented).toBe(false);
+    boxes[0].click();expect(properties()).toEqual(['Cartão, impresso']);expect(submit().defaultPrevented).toBe(false);
+    boxes[1].click();expect(properties()).toEqual([]);expect(submit().defaultPrevented).toBe(required);
+});

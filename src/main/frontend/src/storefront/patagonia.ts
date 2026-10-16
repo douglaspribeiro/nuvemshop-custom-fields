@@ -3,7 +3,7 @@ import type { NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { fetchConfig, type PersonalizationConfig } from "../shared/config";
 import { langOf } from "../shared/i18n";
 import { normalizedColor } from "../shared/properties";
-import { keyOf, toCartProperties, validate } from "./values";
+import { type ValueMap, keyOf, toCartProperties, validate } from "./values";
 
 type Listener = (state: NubeSDKState) => void;
 /** Interface do barramento na página; diferente do NubeSDK recebido pelo Worker. */
@@ -32,6 +32,14 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
 	const controls = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();
+    const checkboxGroups = new Map<string, HTMLInputElement[]>();
+    function readValues(): ValueMap {
+        return Object.fromEntries([...controls].map(([key, input]) => {
+            const group = checkboxGroups.get(key);
+            return [key, group ? group.filter(box => box.checked).map(box => box.value)
+                : input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? input.value : "") : input.value];
+        }));
+    }
 	const strings = () => langOf(config?.locale) === "pt" ? {
 		variant: "Selecione a variação do produto antes de adicionar.",
 		quantity: "Informe uma quantidade inteira maior que zero.",
@@ -63,6 +71,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		container = null;
 		scope = null;
 		controls.clear();
+        checkboxGroups.clear();
 		config = null;
 		variantId = null;
 	}
@@ -99,8 +108,9 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		while (anchor?.parentElement && anchor.parentElement !== root) anchor = anchor.parentElement;
 		if (!anchor || anchor.parentElement !== root) return;
 		// O slot pertence ao React/SDK. Nosso nó fica adjacente, para clearSlot não apagá-lo.
-		const previous = new Map([...controls].map(([key, input]) => [key, input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? input.value : "") : input.value]));
+		const previous = readValues();
 		controls.clear();
+        checkboxGroups.clear();
 		container = document.createElement("div");
 		container.id = "ncf-patagonia-fields";
 		container.className = "ncf-personalization";
@@ -112,6 +122,26 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		const color = normalizedColor(config.style?.productTextColor);
 		if (color) container.style.color = color;
 		config.fields.forEach((field, index) => {
+            const key = keyOf(field);
+            if (field.fieldType === "CHECKBOX" && field.options.length) {
+                const group = document.createElement("fieldset");
+                group.style.cssText = "border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0;color:inherit";
+                const legend = document.createElement("legend");
+                legend.textContent = field.label + (field.required ? " *" : ""); group.append(legend);
+                const selected = previous[key];
+                const boxes = [...new Set(field.options)].map(option => {
+                    const label = document.createElement("label");
+                    label.style.cssText = "display:flex;align-items:center;gap:8px;cursor:pointer";
+                    const box = document.createElement("input"); box.type = "checkbox"; box.value = option;
+                    box.checked = Array.isArray(selected) && selected.includes(option);
+                    box.style.cssText = "width:20px;height:20px;min-height:20px;flex-shrink:0;accent-color:currentColor";
+                    box.addEventListener("change", () => controls.get(key)?.setCustomValidity(""));
+                    const text = document.createElement("span"); text.textContent = option;
+                    label.append(box, text); group.append(label); return box;
+                });
+                checkboxGroups.set(key, boxes); controls.set(key, boxes[0]);
+                container!.append(group); return;
+            }
 			const label = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
 			label.textContent = field.label + ((field.required || field.fieldType === "SELECT") ? " *" : "");
 			label.style.cssText = "display:flex;flex-direction:column;gap:4px";
@@ -128,10 +158,10 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 				input.placeholder = field.placeholder ?? "";
 				if (field.maxLength != null && field.maxLength >= 0) input.maxLength = field.maxLength;
 			}
-			input.value = previous.get(keyOf(field)) ?? "";
+			input.value = typeof previous[key] === "string" ? previous[key] : "";
             if (field.fieldType === "CHECKBOX" && input instanceof HTMLInputElement) {
                 input.type = "checkbox";
-                input.checked = Boolean(previous.get(keyOf(field)));
+                input.checked = Boolean(previous[key]);
                 input.value = langOf(config?.locale) === "pt" ? "Sim" : "Sí";
                 input.className = "ncf-checkbox";
                 input.style.cssText = "width:20px;height:20px;min-height:20px;flex-shrink:0;accent-color:currentColor";
@@ -190,7 +220,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		if (pending) return;
-		const values = Object.fromEntries([...controls].map(([key, input]) => [key, input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? input.value : "") : input.value]));
+		const values = readValues();
 		for (const input of controls.values()) input.setCustomValidity("");
 		const errors = validate(config.fields, values, config.locale);
 		for (const error of errors) controls.get(error.propertyName)?.setCustomValidity(error.message);

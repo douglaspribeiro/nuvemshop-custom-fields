@@ -30,7 +30,8 @@ public record FieldResponse(
                 field.getPlaceholder(),
                 field.getValidationPattern(),
                 propertyName(field.getLabel()),
-                field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(ImageOption::label).toList() : field.options(),
+                field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(ImageOption::label).toList()
+                        : field.getFieldType() == FieldType.CHECKBOX ? field.options().stream().distinct().toList() : field.options(),
                 field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(option -> {
                     String url = "/public/stores/" + field.getRule().getStoreId() + "/images/" + option.id();
                     return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);

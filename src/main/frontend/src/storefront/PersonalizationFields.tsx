@@ -2,7 +2,7 @@ import { Checkbox, Button, Column, Field, Image, Link, Row, Select, Text, Textar
 import type { NubeComponent } from "@tiendanube/nube-sdk-types";
 import { styled } from "@tiendanube/nube-sdk-ui";
 import type { PersonalizationField } from "../shared/config";
-import { type FieldError, keyOf } from "./values";
+import { type FieldError, type FieldValue, type ValueMap, keyOf } from "./values";
 
 /** Mantenha em sincronia com SDK_MARKER_ID no nuvemshop-personalizer.js. */
 export const SDK_MARKER_ID = "ncf-sdk-fields";
@@ -27,9 +27,9 @@ type Props = {
 	fields: PersonalizationField[];
 	errors: FieldError[];
 	color?: string;
-	values?: Record<string, string>;
+	values?: ValueMap;
 	locale?: string;
-	onValueChange: (key: string, value: string) => void;
+	onValueChange: (key: string, value: FieldValue) => void;
 };
 
 export function PersonalizationFields({ fields, errors, color, values, locale, onValueChange }: Props) {
@@ -47,8 +47,8 @@ function fieldGroup(
 	field: PersonalizationField,
 	errors: FieldError[],
 	color: string | undefined,
-	onValueChange: (key: string, value: string) => void,
-    selected?: string, locale?: string,
+	onValueChange: (key: string, value: FieldValue) => void,
+    selected?: FieldValue, locale?: string,
 ): NubeComponent[] {
 	const children: NubeComponent[] = [input(field, color, onValueChange, selected, locale)];
 	const error = errors.find((candidate) => candidate.propertyName === keyOf(field));
@@ -65,8 +65,8 @@ function fieldGroup(
 function input(
 	field: PersonalizationField,
 	color: string | undefined,
-	onValueChange: (key: string, value: string) => void,
-    selected?: string, locale?: string,
+	onValueChange: (key: string, value: FieldValue) => void,
+    selected?: FieldValue, locale?: string,
 ): NubeComponent {
 	const key = keyOf(field);
 	const label = (field.required || field.fieldType === "SELECT") ? `${field.label} *` : field.label;
@@ -74,6 +74,16 @@ function input(
 	const labelStyle = color ? { color } : undefined;
 
     if (field.fieldType === "CHECKBOX") {
+        if (field.options.length) {
+            const choices = Array.isArray(selected) ? selected : [];
+            const options = [...new Set(field.options)];
+            const children: NubeComponent[] = [<Text color={color}>{label}</Text>,
+                ...options.map((option, index) => <Checkbox name={`${key}__option_${index}`} label={option}
+                    checked={choices.includes(option)} style={{label: labelStyle}}
+                    onChange={event => onValueChange(key, options.filter(candidate => candidate === option
+                        ? event.value : choices.includes(candidate)))} />)];
+            return <Column gap={8}>{children}</Column>;
+        }
         return <Checkbox name={key} label={label} checked={Boolean(selected)}
             onChange={event => onValueChange(key, event.value ? (locale?.startsWith("es") ? "Sí" : "Sim") : "")}
             style={{ label: labelStyle }} />;
@@ -106,7 +116,7 @@ function input(
 			<Select
 				name={key}
 				label={label}
-				value={selected ?? ""}
+				value={typeof selected === "string" ? selected : ""}
 				options={[
 					{ label: field.placeholder?.trim() || (locale?.toLowerCase().startsWith("es") ? "Seleccioná una opción" : "Selecione uma opção"), value: "" },
 					...field.options.map((option) => ({ label: option, value: option })),

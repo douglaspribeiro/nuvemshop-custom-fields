@@ -79,7 +79,7 @@ class ProductFieldEditorCompatibilityTest {
         var session = new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, storeId);
         mvc.perform(post("/admin/products/" + productId + "/fields").session(session)
                 .param("label", "Embrulhar para presente").param("fieldType", "CHECKBOX")
-                .param("validationPattern", "[").param("placeholder", "Texto antigo").param("optionsText", "Azul"))
+                .param("validationPattern", "[").param("placeholder", "Texto antigo"))
                 .andExpect(status().is3xxRedirection());
         entityManager.flush(); entityManager.clear();
         var saved = admin.requireRuleWithFields(storeId, productId).getFields().getFirst();
@@ -93,13 +93,19 @@ class ProductFieldEditorCompatibilityTest {
         assertThat(response.required()).isFalse();
         var html = mvc.perform(get("/admin/products/" + productId + "/fields").session(session))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(html).contains("value=\"CHECKBOX\"", "Caixa de seleção (checkbox)");
+        assertThat(html).contains("value=\"CHECKBOX\"", "Caixas de seleção (checkbox)");
         mvc.perform(post("/admin/products/" + productId + "/fields/" + saved.getId()).session(session)
-                .param("label", "Embrulhar para presente").param("fieldType", "CHECKBOX").param("required", "true"))
+                .param("label", "Adicionais").param("fieldType", "CHECKBOX").param("required", "true")
+                .param("optionsText", "Laço\nCartão\nLaço\nEmbalagem"))
                 .andExpect(status().is3xxRedirection());
         entityManager.flush(); entityManager.clear();
         saved = admin.requireRuleWithFields(storeId, productId).getFields().getFirst();
         assertThat(br.com.nuvemcustomfields.dto.FieldResponse.from(saved).required()).isTrue();
+        assertThat(br.com.nuvemcustomfields.dto.FieldResponse.from(saved).options()).containsExactly("Laço", "Cartão", "Embalagem");
+        assertThat(saved.getLabel()).isEqualTo("Adicionais");
+        mvc.perform(get("/admin/products/" + productId + "/fields").session(session))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Cartão")));
     }
 
 }

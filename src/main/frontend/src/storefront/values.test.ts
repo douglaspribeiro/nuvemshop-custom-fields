@@ -89,3 +89,15 @@ it('requires checkbox confirmation only when mandatory and omits unchecked answe
     expect(toCartProperties([checkbox], {})).toEqual({});
     expect(toCartProperties([checkbox], {Nome: 'Sim'})).toEqual({Nome: 'Sim'});
 });
+
+it('validates checkbox groups and serializes every choice in configured order', () => {
+    const group = field({fieldType:'CHECKBOX',required:true,options:['Azul, claro','Verde','Azul'],maxLength:1,validationPattern:'^X$'});
+    expect(validate([group], {})).toHaveLength(1);
+    expect(validate([group], {Nome:[]})).toHaveLength(1);
+    expect(validate([group], {Nome:['Azul, claro','Azul']})).toEqual([]);
+    expect(validate([group], {Nome:['Outra']})).toHaveLength(1);
+    expect(validate([group], {Nome:'Sim'})).toHaveLength(1);
+    expect(validate([{...group,required:false}], {Nome:[]})).toEqual([]);
+    expect(toCartProperties([group], {Nome:['Azul','Azul, claro','Azul']})).toEqual({Nome:'Azul, claro, Azul'});
+    expect(toCartProperties([group], {Nome:[]})).toEqual({});
+});

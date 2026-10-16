@@ -158,11 +158,14 @@ Também estão disponíveis:
 1. Abra o aplicativo no painel da Nuvemshop e acesse **Produtos e campos**.
 2. No produto desejado, clique em **Editar campos** e em **Adicionar novo campo**.
 3. Preencha o texto que aparecerá ao lado da caixa, por exemplo, “Embrulhar para presente”.
-4. Em **Tipo**, escolha **Caixa de seleção (checkbox)**.
-5. Marque **Obrigatório** somente se o comprador precisar confirmar a caixa para adicionar o produto ao carrinho.
-6. Salve e teste o produto na vitrine.
+4. Em **Tipo**, escolha **Caixas de seleção (checkbox)**.
+5. Em **Opções para o cliente escolher**, escreva uma opção por linha, por exemplo: “Laço”, “Cartão” e “Embalagem”.
+6. Marque **Obrigatório** se o comprador precisar escolher pelo menos uma opção. Ele poderá marcar várias.
+7. Salve e teste o produto na vitrine.
 
-A caixa começa desmarcada. Quando marcada, envia “Sim” como propriedade do item (ou “Sí” em lojas em espanhol), usando o texto do campo como identificação. Se for opcional e ficar desmarcada, não envia resposta. Cada campo é uma caixa individual; para várias escolhas independentes, cadastre vários campos, respeitando os limites do plano.
+As opções começam desmarcadas e podem ser selecionadas de forma independente. Todas as escolhas seguem juntas como propriedade do item: por exemplo, “Adicionais: Laço, Cartão”. Se o campo for opcional e nenhuma opção for marcada, não envia resposta. O grupo conta como um campo nos limites do plano.
+
+Para uma confirmação individual, deixe a lista de opções vazia. Nesse caso, a caixa usa o texto do campo e, quando marcada, envia “Sim” (ou “Sí” em lojas em espanhol). Os checkboxes individuais existentes continuam funcionando.
 
 ### 3.5. Tutorial de instalação Nuvemshop
 

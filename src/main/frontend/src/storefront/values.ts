@@ -1,7 +1,8 @@
 import type { PersonalizationField } from "../shared/config";
 import { messages } from "../shared/i18n";
 
-export type ValueMap = Record<string, string>;
+export type FieldValue = string | string[];
+export type ValueMap = Record<string, FieldValue>;
 
 export type FieldError = { propertyName: string; label: string; message: string };
 
@@ -19,8 +20,18 @@ export function validate(
 	const errors: FieldError[] = [];
 	for (const field of fields) {
 		const key = keyOf(field);
-		const value = (values[key] ?? "").trim();
+		const raw = values[key];
+		const value = typeof raw === "string" ? raw.trim() : "";
 
+        if (field.fieldType === "CHECKBOX" && field.options.length) {
+            const choices = Array.isArray(raw) ? raw : [];
+            if ((raw != null && raw !== "" && !Array.isArray(raw)) || choices.some(choice => !field.options.includes(choice))) {
+                errors.push({ propertyName: key, label: field.label, message: text.select });
+            } else if (field.required && choices.length === 0) {
+                errors.push({ propertyName: key, label: field.label, message: text.required });
+            }
+            continue;
+        }
 		if ((field.required || field.fieldType === "SELECT") && !value) {
 			errors.push({ propertyName: key, label: field.label, message: text.required });
 			continue;
@@ -95,8 +106,13 @@ export function toCartProperties(
 	const properties: Record<string, string> = {};
 	for (const field of fields) {
 		const key = keyOf(field);
-		const value = (values[key] ?? "").trim();
-		if (value) {
+		const raw = values[key];
+		const value = typeof raw === "string" ? raw.trim() : "";
+        if (field.fieldType === "CHECKBOX" && field.options.length) {
+            const choices = Array.isArray(raw) ? raw : [];
+            const selected = [...new Set(field.options)].filter(option => choices.includes(option));
+            if (selected.length) properties[key] = selected.join(", ");
+        } else if (value) {
 			properties[key] = value;
 		}
 	}

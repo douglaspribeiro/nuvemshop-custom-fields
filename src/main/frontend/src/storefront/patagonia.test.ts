@@ -73,6 +73,23 @@ describe("Patagonia transition", () => {
         else expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart: {items: [{properties: {}}]}});
     });
 
+    it.each([true,false])('supports multiple DOM choices with required=%s',async(required)=>{
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...configuration,fields:[{
+            ...configuration.fields[0],fieldType:'CHECKBOX',required,options:['Laço','Cartão','Embalagem']}]}));
+        const boxes=()=>[...document.querySelectorAll<HTMLInputElement>('#ncf-patagonia-fields input[type=checkbox]')];
+        await vi.waitFor(()=>expect(boxes()).toHaveLength(3));
+        if(required){click();expect(runtime.send).not.toHaveBeenCalled();}
+        boxes()[0].click();boxes()[2].click();click();
+        expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{Nombre:'Laço, Embalagem'}}]}});
+        listeners.get('cart:add:fail')!({...state,eventPayload:{product_id:341531127,variant_id:101}});
+        boxes()[0].click();vi.mocked(runtime.send).mockClear();click();
+        expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{Nombre:'Embalagem'}}]}});
+        listeners.get('cart:add:fail')!({...state,eventPayload:{product_id:341531127,variant_id:101}});
+        boxes()[2].click();vi.mocked(runtime.send).mockClear();click();
+        if(required) expect(runtime.send).not.toHaveBeenCalled();
+        else expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{}}]}});
+    });
+
 	it("renders outside the SDK slot and blocks native add when required values are absent", async () => {
 		const nativeAdd = vi.fn();
 		button().addEventListener("click", nativeAdd);
