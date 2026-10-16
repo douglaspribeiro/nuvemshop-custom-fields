@@ -3,6 +3,17 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.38.0] - 2026-10-16
+
+### Features
+
+- configure mobile image columns and verify MySQL migrations (`02f0ff5`)
+- allow hiding image enlargement links per field (`1ef0fec`)
+
+### Outros
+
+- planos (`25eaf83`)
+
 ## [1.37.0] - 2026-10-15
 
 ### Features
