@@ -8,6 +8,20 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OptionImageMigrationTest {
+    @Test void imageZoomMigrationPreservesExistingFieldsAndDefaultsForNewFields() throws Exception {
+        try (var connection=DriverManager.getConnection("jdbc:h2:mem:image-zoom-migration;MODE=MySQL", "sa", "")) {
+            connection.createStatement().execute("create table personalization_fields (id bigint primary key)");
+            connection.createStatement().execute("insert into personalization_fields (id) values (1)");
+            try (var input=getClass().getResourceAsStream("/db/migration/V54__field_image_zoom_visibility.sql")) {
+                RunScript.execute(connection,new StringReader(new String(input.readAllBytes(),StandardCharsets.UTF_8)));
+            }
+            connection.createStatement().execute("insert into personalization_fields (id) values (2)");
+            try (var rows=connection.createStatement().executeQuery("select show_image_zoom from personalization_fields order by id")) {
+                assertThat(rows.next()).isTrue();assertThat(rows.getBoolean(1)).isTrue();
+                assertThat(rows.next()).isTrue();assertThat(rows.getBoolean(1)).isTrue();
+            }
+        }
+    }
     @Test void migrationCreatesLedgerThatSurvivesOwnerRemoval() throws Exception {
         try (var connection=DriverManager.getConnection("jdbc:h2:mem:image-migration;MODE=MySQL", "sa", "")) {
             connection.createStatement().execute("create table personalization_fields (id bigint primary key)");

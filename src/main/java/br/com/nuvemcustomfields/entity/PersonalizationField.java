@@ -58,6 +58,12 @@ public class PersonalizationField {
     @Column(name = "image_options_json", columnDefinition = "TEXT")
     private String imageOptionsJson;
 
+    @Column(name = "show_image_zoom", nullable = false)
+    private boolean showImageZoom = true;
+
+    public boolean isShowImageZoom() { return showImageZoom; }
+    public void setShowImageZoom(boolean value) { showImageZoom = value; }
+
     public String getImageOptionsJson() { return imageOptionsJson; }
     public void setImageOptionsJson(String value) { imageOptionsJson = value; }
     public java.util.List<br.com.nuvemcustomfields.dto.ImageOption> imageOptions() {

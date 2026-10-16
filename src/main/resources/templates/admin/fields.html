@@ -107,6 +107,12 @@
                     <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
                             <input type="hidden" name="imageOptionsJson" th:value="${draft.imageOptionsJson}">
                             <div class="image-options-rows"></div>
+                            <input type="hidden" name="_showImageZoom" value="on">
+                            <label class="checkbox">
+                                <input type="checkbox" name="showImageZoom" value="true" th:checked="${draft.showImageZoom}">
+                                <span th:text="#{image.zoom.show}">Exibir link “Ampliar imagem”</span>
+                            </label>
+                            <p class="field-help" th:text="#{image.zoom.help}"></p>
                             <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
                             <p class="image-options-status" role="status" aria-live="polite"></p>
                         </section>
@@ -177,6 +183,11 @@
                     <p class="notice" th:unless="${imagesEnabled}" th:text="#{image.storage.unavailable}">Imagens indisponíveis.</p>
                     <input type="hidden" name="imageOptionsJson" th:value="${fieldForm.imageOptionsJson}">
                     <div class="image-options-rows"></div>
+                    <label class="checkbox">
+                        <input type="checkbox" th:field="*{showImageZoom}">
+                        <span th:text="#{image.zoom.show}">Exibir link “Ampliar imagem”</span>
+                    </label>
+                    <p class="field-help" th:text="#{image.zoom.help}"></p>
                     <button class="button small image-option-add" type="button" th:text="#{image.option.add}">Adicionar opção</button>
                     <p class="image-options-status" role="status" aria-live="polite"></p>
                 </section>

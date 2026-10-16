@@ -905,10 +905,14 @@
             image.loading = "lazy";image.width = 120;image.height = 120;image.style.objectFit = "contain";
             const name = document.createElement("span");name.textContent = option.label;button.append(image,name);
             button.addEventListener("click", () => {select.value = option.label;select.dispatchEvent(new Event("change", {bubbles:true}));});
-            const link = document.createElement("a");link.href = new URL(option.imageUrl,apiOrigin).href;link.target = "_blank";link.rel = "noopener";
-            link.textContent = document.documentElement.lang.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
-            link.setAttribute("aria-label",link.textContent + ": " + option.label);
-            card.append(button,link);grid.append(card);buttons.push(button);
+            card.append(button);
+            if (field.showImageZoom !== false) {
+                const link = document.createElement("a");link.href = new URL(option.imageUrl,apiOrigin).href;link.target = "_blank";link.rel = "noopener";
+                link.textContent = document.documentElement.lang.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
+                link.setAttribute("aria-label",link.textContent + ": " + option.label);
+                card.append(link);
+            }
+            grid.append(card);buttons.push(button);
         });
         function highlight() {buttons.forEach(button => {const selected = button.dataset.value === select.value;button.setAttribute("aria-pressed",String(selected));button.style.border = selected ? "2px solid #1976d2" : "1px solid #c8d3d8";});}
         select.addEventListener("change",highlight);highlight();

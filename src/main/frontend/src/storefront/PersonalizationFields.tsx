@@ -59,14 +59,17 @@ function input(
     if (field.fieldType === "IMAGE_SELECT") {
         const expand = locale?.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
         const cards = <Row gap={12} style={{flexWrap:"wrap"}}>
-            {(field.imageOptions ?? []).map(option => <Column width="140px" gap={4}
-                style={{border: option.label === selected ? "2px solid #1976d2" : "1px solid #c8d3d8", borderRadius:"8px", padding:"8px"}}>
-                <Image src={option.thumbnailUrl} alt={option.label} width="120px" height="120px" style={{objectFit:"contain"}} />
-                <Button variant={option.label === selected ? "primary" : "secondary"}
+            {(field.imageOptions ?? []).map(option => {
+                const content: NubeComponent[] = [
+                    <Image src={option.thumbnailUrl} alt={option.label} width="120px" height="120px" style={{objectFit:"contain"}} />,
+                    <Button variant={option.label === selected ? "primary" : "secondary"}
                     ariaLabel={`${label}: ${option.label}${option.label === selected ? " ✓" : ""}`}
-                    onClick={() => onValueChange(key, option.label)}>{option.label === selected ? `✓ ${option.label}` : option.label}</Button>
-                <Link href={option.imageUrl} target="_blank">{expand}</Link>
-            </Column>)}
+                    onClick={() => onValueChange(key, option.label)}>{option.label === selected ? `✓ ${option.label}` : option.label}</Button>,
+                ];
+                if (field.showImageZoom !== false) content.push(<Link href={option.imageUrl} target="_blank">{expand}</Link>);
+                return <Column width="140px" gap={4}
+                    style={{border: option.label === selected ? "2px solid #1976d2" : "1px solid #c8d3d8", borderRadius:"8px", padding:"8px"}}>{content}</Column>;
+            })}
         </Row>;
         const children: NubeComponent[] = [<Text color={color}>{label}</Text>, cards];
         if (!field.required) children.push(<Button variant="link" onClick={() => onValueChange(key, "")}>

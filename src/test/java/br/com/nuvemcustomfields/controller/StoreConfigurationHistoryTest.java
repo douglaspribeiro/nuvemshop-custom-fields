@@ -53,7 +53,7 @@ class StoreConfigurationHistoryTest {
         select.setFieldType(FieldType.SELECT); select.setOptionsText("Dourado\nBranco"); select.setSortOrder(1); fields.saveAndFlush(select);
         var image = new PersonalizationField(); image.setRule(rule); image.setLabel("Capa"); image.setFieldType(FieldType.IMAGE_SELECT);
         image.setImageOptionsJson("[{\"id\":\"" + UUID.randomUUID() + "\",\"label\":\"Floral\"}]");
-        image.setSortOrder(2); fields.saveAndFlush(image);
+        image.setShowImageZoom(false); image.setSortOrder(2); fields.saveAndFlush(image);
         var empty = new PersonalizationRule(); empty.setStoreId(storeId); empty.setProductId(7002L);
         empty.setProductName("Produto sem campos"); empty.setEnabled(false); rules.saveAndFlush(empty);
         logs.warn(storeId, "script.install.failed", "Não foi possível instalar o script da vitrine.");
@@ -71,6 +71,8 @@ class StoreConfigurationHistoryTest {
         var inspection = history.inspect(storeId, null, null);
         assertThat(inspection.configuration().plan()).isEqualTo(PlanType.PREMIUM_PLUS);
         assertThat(inspection.configuration().fieldCount()).isEqualTo(3);
+        assertThat(inspection.configuration().products().stream().flatMap(p -> p.fields().stream())
+                .filter(f -> f.fieldType() == FieldType.IMAGE_SELECT).findFirst().orElseThrow().showImageZoom()).isFalse();
         assertThat(inspection.configuration().scope()).isEqualTo("read_products,write_scripts");
         assertThat(inspection.configuration().logs().stream().map(StoreConfigurationHistoryService.Log::eventType)).contains("script.install.failed");
         var campaign = campaigns.findByStoreIdAndUninstalledAt(storeId, snapshot.getUninstalledAt())

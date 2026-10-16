@@ -156,6 +156,7 @@ public class PersonalizationAdminService {
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);
+        field.setShowImageZoom(form.isShowImageZoom());
         field.setImageOptionsJson(form.getFieldType() == FieldType.IMAGE_SELECT
                 ? ImageOptions.serialize(ImageOptions.parse(form.getImageOptionsJson())) : null);
         field.setMaxLength(form.getFieldType() == FieldType.IMAGE_SELECT ? 100 : form.getMaxLength());

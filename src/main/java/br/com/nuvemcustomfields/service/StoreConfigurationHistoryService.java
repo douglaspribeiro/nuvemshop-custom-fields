@@ -91,7 +91,7 @@ public class StoreConfigurationHistoryService {
                                 .thenComparing(PersonalizationField::getId)).map(field ->
                                 new Field(field.getId(), field.getLabel(), field.getFieldType(), field.isRequired(),
                                         field.getMaxLength(), field.getPlaceholder(), field.getValidationPattern(),
-                                        field.getOptionsText(), field.getImageOptionsJson(), field.getSortOrder())).toList())).toList();
+                                        field.getOptionsText(), field.getImageOptionsJson(), field.getSortOrder(), field.isShowImageZoom())).toList())).toList();
         var recentLogs = logs.findTop20ByStoreIdOrderByCreatedAtDesc(store.getStoreId()).stream()
                 .map(log -> new Log(log.getCreatedAt(), log.getLevel(), log.getEventType(), log.getMessage())).toList();
         return new Configuration(store.getEffectivePlan(), store.isBillingSuspended(), store.getScope(),
@@ -104,7 +104,11 @@ public class StoreConfigurationHistoryService {
     }
     public record Product(Long productId, String productName, boolean enabled, Instant createdAt, List<Field> fields) { }
     public record Field(Long id, String label, FieldType fieldType, boolean required, Integer maxLength,
-            String placeholder, String validationPattern, String optionsText, String imageOptionsJson, Integer sortOrder) {
+            String placeholder, String validationPattern, String optionsText, String imageOptionsJson, Integer sortOrder,
+            Boolean showImageZoom) {
+        public Field {
+            if (showImageZoom == null) showImageZoom = true;
+        }
         public List<String> imageLabels() {
             return ImageOptions.parse(imageOptionsJson).stream().map(br.com.nuvemcustomfields.dto.ImageOption::label).toList();
         }

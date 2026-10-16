@@ -13,6 +13,7 @@ export type PersonalizationField = {
 	propertyName: string;
 	options: string[];
 	imageOptions?: { label: string; thumbnailUrl: string; imageUrl: string }[];
+	showImageZoom?: boolean;
 };
 
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationStyleResponse. */

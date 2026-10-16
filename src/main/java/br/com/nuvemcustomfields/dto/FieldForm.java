@@ -30,6 +30,9 @@ public class FieldForm {
 
     private String optionsText;
     private String imageOptionsJson;
+    private boolean showImageZoom = true;
+    public boolean isShowImageZoom() { return showImageZoom; }
+    public void setShowImageZoom(boolean value) { showImageZoom = value; }
     public String getImageOptionsJson() { return imageOptionsJson; }
     public void setImageOptionsJson(String value) { imageOptionsJson = value; }
     @AssertTrue(message = "image.options.invalid")

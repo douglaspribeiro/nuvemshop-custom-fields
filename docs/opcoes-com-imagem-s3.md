@@ -4,7 +4,7 @@ O editor oferece `IMAGE_SELECT` (“Opções com imagem”). Free não inclui im
 
 Cada opção tem nome e uma imagem JPG ou PNG de até 5 MB e 20 megapixels. A loja pode reordenar, renomear, substituir imagens e remover opções.
 
-Na vitrine, SDK, temas tradicionais e Patagonia exibem as imagens, nomes e seleção. “Ampliar imagem” abre a imagem maior em outra aba. O carrinho/pedido recebe o nome selecionado nas propriedades existentes, e não a URL do arquivo. O nome já registrado no pedido não é reescrito quando o catálogo muda. O envio de imagem pelo comprador continua como próxima etapa.
+Na vitrine, SDK, temas tradicionais e Patagonia exibem as imagens, nomes e seleção. “Ampliar imagem” abre a imagem maior em outra aba. No cadastro e edição de cada campo com imagens, desmarcar **Exibir link “Ampliar imagem”** remove esse link, preservando as miniaturas, os nomes e a seleção. A opção vem marcada em campos novos e existentes (migração `V54`); clientes que recebem uma configuração antiga sem `showImageZoom` também preservam o link. O carrinho/pedido recebe o nome selecionado nas propriedades existentes, e não a URL do arquivo. O nome já registrado no pedido não é reescrito quando o catálogo muda. O envio de imagem pelo comprador continua como próxima etapa.
 
 ## Properties e ativação
 

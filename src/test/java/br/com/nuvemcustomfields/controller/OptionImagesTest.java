@@ -59,6 +59,24 @@ class OptionImagesTest {
     Long save(String... ids) {admin.addField(store,product,form(ids));return admin.requireRuleWithFields(store,product).getFields().getFirst().getId();}
     String state(String id) {return jdbc.queryForObject("select state from personalization_images where id=?",String.class,id);}
     void due() {jdbc.update("update personalization_images set retry_at=? where state='DELETING'",java.sql.Timestamp.from(Instant.now().minusSeconds(1)));}
+    @Test void imageZoomDefaultsToVisibleAndCanBeDisabledAndReenabledFromEditor() throws Exception {
+        String id=upload();Long field=save(id);
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                .andExpect(jsonPath("$.fields[0].showImageZoom").value(true));
+        for (boolean visible : new boolean[]{false,true}) {
+            var request=post("/admin/products/"+product+"/fields/"+field).session(session)
+                    .param("label","Capa").param("fieldType","IMAGE_SELECT")
+                    .param("imageOptionsJson",form(id).getImageOptionsJson()).param("_showImageZoom","on");
+            if (visible) request.param("showImageZoom","true");
+            mvc.perform(request).andExpect(status().is3xxRedirection());
+            assertThat(fields.findById(field).orElseThrow().isShowImageZoom()).isEqualTo(visible);
+            mvc.perform(get("/public/stores/"+store+"/personalization").param("productId",product.toString()))
+                    .andExpect(jsonPath("$.fields[0].showImageZoom").value(visible))
+                    .andExpect(jsonPath("$.fields[0].imageOptions[0].label").value("Capa 0"));
+            mvc.perform(get("/admin/products/"+product+"/fields").session(session))
+                    .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"showImageZoom\"")));
+        }
+    }
     @Test void uploadsValidatedImagesToS3AndReturnsLabelsToCartConfiguration() throws Exception {
         String id=upload();verify(storage,times(2)).put(eq("test-images"),contains("/"+store+"/"+product+"/"+id+"/"),any(byte[].class));
         mvc.perform(get("/public/stores/"+store+"/images/"+id)).andExpect(status().isNotFound());

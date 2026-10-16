@@ -10,6 +10,19 @@ const field: PersonalizationField={label:"Capa",propertyName:"Capa",fieldType:"I
         {label:"Azul",thumbnailUrl:"https://assets.test/azul.jpg",imageUrl:"https://assets.test/azul-large.jpg"}]};
 
 describe("image choices",()=>{
+    it("hides enlargement while keeping images, names and selection",()=>{
+        const hidden = {...field, showImageZoom:false};
+        const select=document.createElement("select");select.append(new Option("—",""));
+        field.options.forEach(label=>select.append(new Option(label,label)));
+        const grid=imageChoices(hidden,select,"pt-BR");
+        expect(grid.querySelector("a")).toBeNull();
+        expect(grid.querySelectorAll("img")).toHaveLength(2);
+        const button=grid.querySelector("button")!;button.click();
+        expect(button.textContent).toBe("Floral");
+        expect(button.getAttribute("aria-pressed")).toBe("true");
+        expect(toCartProperties([hidden],{Capa:select.value})).toEqual({Capa:"Floral"});
+        expect(imageChoices({...hidden,showImageZoom:true},select).querySelectorAll("a")).toHaveLength(2);
+    });
     it("selects a named option, updates accessible state, allows enlargement and sends the name",()=>{
         const select=document.createElement("select");select.append(new Option("—",""));
         field.options.forEach(label=>select.append(new Option(label,label)));

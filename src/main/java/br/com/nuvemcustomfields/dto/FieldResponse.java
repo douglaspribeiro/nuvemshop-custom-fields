@@ -14,7 +14,8 @@ public record FieldResponse(
         String validationPattern,
         String propertyName,
         List<String> options,
-        List<ImageOptionResponse> imageOptions
+        List<ImageOptionResponse> imageOptions,
+        boolean showImageZoom
 ) {
 
     public static FieldResponse from(PersonalizationField field) { return from(field, 25); }
@@ -32,7 +33,8 @@ public record FieldResponse(
                 field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(option -> {
                     String url = "/public/stores/" + field.getRule().getStoreId() + "/images/" + option.id();
                     return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);
-                }).toList() : List.of()
+                }).toList() : List.of(),
+                field.isShowImageZoom()
         );
     }
 

@@ -14,10 +14,14 @@ export function imageChoices(field: PersonalizationField, select: HTMLSelectElem
         const text=document.createElement("span");text.textContent=option.label;
         button.append(image,text);
         button.addEventListener("click",()=>{select.value=option.label;select.dispatchEvent(new Event("change",{bubbles:true}));});
-        const link=document.createElement("a");link.href=option.imageUrl;link.target="_blank";link.rel="noopener";
-        link.textContent=locale?.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
-        link.setAttribute("aria-label",`${link.textContent}: ${option.label}`);
-        card.append(button,link);grid.append(card);buttons.push(button);
+        card.append(button);
+        if (field.showImageZoom !== false) {
+            const link=document.createElement("a");link.href=option.imageUrl;link.target="_blank";link.rel="noopener";
+            link.textContent=locale?.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
+            link.setAttribute("aria-label",`${link.textContent}: ${option.label}`);
+            card.append(link);
+        }
+        grid.append(card);buttons.push(button);
     }
     function highlight() {for(const button of buttons){const selected=button.dataset.value===select.value;button.setAttribute("aria-pressed",String(selected));button.style.border=selected?"2px solid #1976d2":"1px solid #c8d3d8";}}
     select.addEventListener("change",highlight);highlight();
