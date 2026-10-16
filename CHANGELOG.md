@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.0] - 2026-10-16
+
+### Features
+
+- support multiple checkbox selections per field (`fa10090`)
+
 ## [1.39.0] - 2026-10-16
 
 ### Features
