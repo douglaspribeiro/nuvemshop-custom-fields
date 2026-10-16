@@ -56,6 +56,23 @@ describe("Patagonia transition", () => {
         expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({ cart: { items: [{ properties: { Nombre: "Molido" } }] } });
     });
 
+    it.each([true, false])('submits checkbox state with required=%s', async (required) => {
+        dispose = startPatagonia(runtime, vi.fn().mockResolvedValue({...configuration, fields: [{
+            ...configuration.fields[0], fieldType: 'CHECKBOX', required }]}));
+        await ready();
+        expect(field().type).toBe('checkbox');
+        expect(field().checked).toBe(false);
+        if (required) { click(); expect(runtime.send).not.toHaveBeenCalled(); }
+        field().click();
+        click();
+        expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart: {items: [{properties: {Nombre: 'Sí'}}]}});
+        listeners.get('cart:add:fail')!({...state, eventPayload: {product_id: 341531127, variant_id: 101}});
+        field().click();
+        vi.mocked(runtime.send).mockClear(); click();
+        if (required) expect(runtime.send).not.toHaveBeenCalled();
+        else expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart: {items: [{properties: {}}]}});
+    });
+
 	it("renders outside the SDK slot and blocks native add when required values are absent", async () => {
 		const nativeAdd = vi.fn();
 		button().addEventListener("click", nativeAdd);

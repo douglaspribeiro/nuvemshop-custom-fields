@@ -78,3 +78,14 @@ describe("toCartProperties", () => {
 		expect(hasAnyValue({ Nome: "Ana" })).toBe(true);
 	});
 });
+
+it('requires checkbox confirmation only when mandatory and omits unchecked answers', () => {
+    const checkbox = field({fieldType: 'CHECKBOX', required: true, maxLength: 1, validationPattern: '^ABC$'});
+    expect(validate([checkbox], {})).toHaveLength(1);
+    expect(validate([checkbox], {Nome: 'false'})).toHaveLength(1);
+    expect(validate([checkbox], {Nome: 'Sim'})).toEqual([]);
+    expect(validate([checkbox], {Nome: 'Sí'}, 'es-AR')).toEqual([]);
+    expect(validate([{...checkbox, required: false}], {})).toEqual([]);
+    expect(toCartProperties([checkbox], {})).toEqual({});
+    expect(toCartProperties([checkbox], {Nome: 'Sim'})).toEqual({Nome: 'Sim'});
+});

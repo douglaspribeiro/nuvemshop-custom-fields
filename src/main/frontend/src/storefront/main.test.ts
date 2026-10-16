@@ -40,7 +40,7 @@ describe("SDK storefront without a legacy script", () => {
 		send.mockClear();
 	}
 	function field(node: Node): Node | undefined {
-		if (node.type === "field" || node.type === "select") return node;
+		if (node.type === "field" || node.type === "select" || node.type === "check") return node;
 		for (const child of node.children ?? []) {
 			const found = field(child);
 			if (found) return found;
@@ -79,6 +79,27 @@ describe("SDK storefront without a legacy script", () => {
         send.mockClear();
         add();
         expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Moagem: "Molido"});
+    });
+
+    it.each(['pt-BR', 'es-AR'])('renders and submits controlled checkbox in %s', async (locale) => {
+        vi.mocked(fetch).mockResolvedValue({ok:true, json:async()=>({...DISABLED, enabled:true, locale,
+            fields:[{label:'Confirmo', propertyName:'Confirmo', fieldType:'CHECKBOX',required:true,options:[]}]})} as Response);
+        await boot();
+        const checkbox = () => field(render.mock.calls[render.mock.calls.length - 1][1])!;
+        expect(checkbox().type).toBe('check');
+        expect((checkbox() as unknown as {checked:boolean}).checked).toBe(false);
+        add(); expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        (checkbox().onChange as unknown as (e:{value:boolean})=>void)({value:true});
+        expect((checkbox() as unknown as {checked:boolean}).checked).toBe(true);
+        send.mockClear(); add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Confirmo:locale==='pt-BR'?'Sim':'Sí'});
+        listeners.get('cart:add:fail')!(state);
+        (checkbox().onChange as unknown as (e:{value:boolean})=>void)({value:false});
+        send.mockClear(); add();
+        expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        (checkbox().onChange as unknown as (e:{value:boolean})=>void)({value:true});
+        listeners.get('cart:add:success')!(state);
+        expect((checkbox() as unknown as {checked:boolean}).checked).toBe(false);
     });
 
 	it("blocks a native add with an empty required field", async () => {

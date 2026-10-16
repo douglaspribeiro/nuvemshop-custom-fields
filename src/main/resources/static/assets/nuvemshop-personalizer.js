@@ -441,7 +441,7 @@
                 const key = field.propertyName || field.label;
                 const input = Array.from(targetForm.elements || [])
                     .find((element) => element.name === "properties[" + key + "]");
-                const value = input && input.value ? String(input.value).trim() : "";
+                const value = input && (input.type !== "checkbox" || input.checked) && input.value ? String(input.value).trim() : "";
                 return value ? { label: field.label || key, value: value } : null;
             })
             .filter(Boolean);
@@ -862,7 +862,12 @@
             input.setAttribute("aria-label",field.label);
             wrapper.appendChild(renderImageChoices(field,input));
         }
-        wrapper.appendChild(input);
+        if (field.fieldType === "CHECKBOX") {
+            wrapper.style.cssText = "display:flex;align-items:center;gap:8px;cursor:pointer";
+            text.style.margin = "0";
+            input.style.cssText = "width:20px;height:20px;min-height:20px;padding:0;flex-shrink:0;accent-color:currentColor";
+            wrapper.prepend(input);
+        } else wrapper.appendChild(input);
         return wrapper;
     }
 
@@ -889,7 +894,8 @@
         }
 
         const input = document.createElement("input");
-        input.type = field.fieldType === "NUMBER" ? "number" : "text";
+        input.type = field.fieldType === "CHECKBOX" ? "checkbox" : field.fieldType === "NUMBER" ? "number" : "text";
+        if (field.fieldType === "CHECKBOX") input.value = document.documentElement.lang.toLowerCase().startsWith("es") ? "Sí" : "Sim";
         return input;
     }
 

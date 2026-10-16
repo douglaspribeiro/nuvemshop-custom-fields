@@ -99,7 +99,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		while (anchor?.parentElement && anchor.parentElement !== root) anchor = anchor.parentElement;
 		if (!anchor || anchor.parentElement !== root) return;
 		// O slot pertence ao React/SDK. Nosso nó fica adjacente, para clearSlot não apagá-lo.
-		const previous = new Map([...controls].map(([key, input]) => [key, input.value]));
+		const previous = new Map([...controls].map(([key, input]) => [key, input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? input.value : "") : input.value]));
 		controls.clear();
 		container = document.createElement("div");
 		container.id = "ncf-patagonia-fields";
@@ -129,6 +129,14 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 				if (field.maxLength != null && field.maxLength >= 0) input.maxLength = field.maxLength;
 			}
 			input.value = previous.get(keyOf(field)) ?? "";
+            if (field.fieldType === "CHECKBOX" && input instanceof HTMLInputElement) {
+                input.type = "checkbox";
+                input.checked = Boolean(previous.get(keyOf(field)));
+                input.value = langOf(config?.locale) === "pt" ? "Sim" : "Sí";
+                input.className = "ncf-checkbox";
+                input.style.cssText = "width:20px;height:20px;min-height:20px;flex-shrink:0;accent-color:currentColor";
+                label.style.cssText = "display:flex;flex-direction:row;align-items:center;gap:8px;cursor:pointer";
+            }
 			input.addEventListener("input", () => input.setCustomValidity(""));
 			input.addEventListener("change", () => input.setCustomValidity(""));
 			controls.set(keyOf(field), input);
@@ -136,7 +144,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
                 input.setAttribute("aria-label",field.label);
                 label.append(imageChoices(field,input,config?.locale));
             }
-			label.append(input);
+			if (field.fieldType === "CHECKBOX") label.prepend(input); else label.append(input);
 			container!.append(label);
 		});
 		const feedback = document.createElement("p");
@@ -182,7 +190,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		if (pending) return;
-		const values = Object.fromEntries([...controls].map(([key, input]) => [key, input.value]));
+		const values = Object.fromEntries([...controls].map(([key, input]) => [key, input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? input.value : "") : input.value]));
 		for (const input of controls.values()) input.setCustomValidity("");
 		const errors = validate(config.fields, values, config.locale);
 		for (const error of errors) controls.get(error.propertyName)?.setCustomValidity(error.message);

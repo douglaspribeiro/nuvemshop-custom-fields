@@ -7,7 +7,7 @@ afterEach(() => dom?.window.close());
 function boot(pattern = '') {
     dom = new JSDOM(`<form class="field-editor-form">
         <input name="label" value="Nome para gravar"><input type="checkbox" name="required" checked>
-        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>TEXTAREA</option></select>
+        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option></select>
         <label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
         <input type="checkbox" name="showImageZoom" checked>
@@ -121,4 +121,19 @@ it('uses the configured select prompt and falls back when blank', () => {
     input('placeholder').value = '   ';
     input('placeholder').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     expect(option().textContent).toBe('Escolha');
+});
+
+it('previews an interactive checkbox and hides irrelevant text settings', () => {
+    boot('^ABC$');
+    select('[name=fieldType]', 'CHECKBOX');
+    const checkbox = dom.window.document.querySelector<HTMLInputElement>('.field-preview-control input')!;
+    expect(checkbox.type).toBe('checkbox');
+    expect(checkbox.required).toBe(false);
+    expect(checkbox.name).toBe('');
+    expect(checkbox.checked).toBe(false);
+    checkbox.click();
+    expect(checkbox.checked).toBe(true);
+    for (const name of ['maxLength', 'placeholder', 'optionsText']) expect(input(name).closest('label')!.hidden).toBe(true);
+    expect(dom.window.document.querySelector<HTMLElement>('.field-validation')!.hidden).toBe(true);
+    expect(input('required').disabled).toBe(false);
 });

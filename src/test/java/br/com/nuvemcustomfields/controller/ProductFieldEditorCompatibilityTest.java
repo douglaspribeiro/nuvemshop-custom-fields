@@ -72,4 +72,34 @@ class ProductFieldEditorCompatibilityTest {
         saved.setRequired(false);
         assertThat(br.com.nuvemcustomfields.dto.FieldResponse.from(saved).required()).isTrue();
     }
+    @Test void checkboxCanBeCreatedReloadedAndMadeRequiredWithoutTextConstraints() throws Exception {
+        long storeId = 990088781L, productId = 125L;
+        var store = new Store(); store.setStoreId(storeId); store.setStoreCountryCode("BR"); store.setPlan(PlanType.PREMIUM_PLUS);
+        stores.saveAndFlush(store); admin.ensureRule(storeId, productId, "Presente");
+        var session = new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, storeId);
+        mvc.perform(post("/admin/products/" + productId + "/fields").session(session)
+                .param("label", "Embrulhar para presente").param("fieldType", "CHECKBOX")
+                .param("validationPattern", "[").param("placeholder", "Texto antigo").param("optionsText", "Azul"))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush(); entityManager.clear();
+        var saved = admin.requireRuleWithFields(storeId, productId).getFields().getFirst();
+        assertThat(saved.getFieldType()).isEqualTo(FieldType.CHECKBOX);
+        assertThat(saved.isRequired()).isFalse();
+        assertThat(saved.getValidationPattern()).isNull();
+        assertThat(saved.getPlaceholder()).isNull();
+        assertThat(saved.options()).isEmpty();
+        var response = br.com.nuvemcustomfields.dto.FieldResponse.from(saved);
+        assertThat(response.fieldType()).isEqualTo(FieldType.CHECKBOX);
+        assertThat(response.required()).isFalse();
+        var html = mvc.perform(get("/admin/products/" + productId + "/fields").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("value=\"CHECKBOX\"", "Caixa de seleção (checkbox)");
+        mvc.perform(post("/admin/products/" + productId + "/fields/" + saved.getId()).session(session)
+                .param("label", "Embrulhar para presente").param("fieldType", "CHECKBOX").param("required", "true"))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush(); entityManager.clear();
+        saved = admin.requireRuleWithFields(storeId, productId).getFields().getFirst();
+        assertThat(br.com.nuvemcustomfields.dto.FieldResponse.from(saved).required()).isTrue();
+    }
+
 }

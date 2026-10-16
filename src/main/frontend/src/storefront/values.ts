@@ -25,6 +25,11 @@ export function validate(
 			errors.push({ propertyName: key, label: field.label, message: text.required });
 			continue;
 		}
+		// Checkboxes have no text length or format constraints.
+		if (field.fieldType === "CHECKBOX") {
+			if (value && !["Sim", "Sí"].includes(value)) errors.push({ propertyName: key, label: field.label, message: text.select });
+			continue;
+		}
 		if (!value) {
 			continue;
 		}

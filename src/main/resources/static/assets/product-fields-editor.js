@@ -111,6 +111,11 @@
                 });
                 target.append(title, gallery); return;
             }
+            if (type.value === 'CHECKBOX') {
+                input = document.createElement('input'); input.type = 'checkbox';
+                wrapper.className = 'field-preview-checkbox';
+                wrapper.prepend(input); target.append(wrapper); return;
+            }
             if (type.value === 'SELECT') {
                 input = document.createElement('select');
                 const prompt = document.createElement('option');

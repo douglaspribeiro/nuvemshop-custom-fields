@@ -153,6 +153,17 @@ Também estão disponíveis:
 - Ajuda dentro do app: `/admin/help`;
 - Central de suporte: [https://campos-personalizados.wzhub.pro/support/](https://campos-personalizados.wzhub.pro/support/).
 
+### Como configurar um checkbox?
+
+1. Abra o aplicativo no painel da Nuvemshop e acesse **Produtos e campos**.
+2. No produto desejado, clique em **Editar campos** e em **Adicionar novo campo**.
+3. Preencha o texto que aparecerá ao lado da caixa, por exemplo, “Embrulhar para presente”.
+4. Em **Tipo**, escolha **Caixa de seleção (checkbox)**.
+5. Marque **Obrigatório** somente se o comprador precisar confirmar a caixa para adicionar o produto ao carrinho.
+6. Salve e teste o produto na vitrine.
+
+A caixa começa desmarcada. Quando marcada, envia “Sim” como propriedade do item (ou “Sí” em lojas em espanhol), usando o texto do campo como identificação. Se for opcional e ficar desmarcada, não envia resposta. Cada campo é uma caixa individual; para várias escolhas independentes, cadastre vários campos, respeitando os limites do plano.
+
 ### 3.5. Tutorial de instalação Nuvemshop
 
 #### 3.5.1. Como instalar o aplicativo?

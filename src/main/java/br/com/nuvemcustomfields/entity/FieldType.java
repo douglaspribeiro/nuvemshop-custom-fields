@@ -5,5 +5,6 @@ public enum FieldType {
     NUMBER,
     SELECT,
     IMAGE_SELECT,
+    CHECKBOX,
     TEXTAREA
 }

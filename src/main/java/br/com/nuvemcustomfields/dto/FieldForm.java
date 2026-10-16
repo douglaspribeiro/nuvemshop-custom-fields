@@ -102,7 +102,7 @@ public class FieldForm {
 
     @AssertTrue(message = "Regex invalida")
     public boolean isValidationPatternValid() {
-        if (validationPattern == null || validationPattern.isBlank()) {
+        if (fieldType == FieldType.CHECKBOX || validationPattern == null || validationPattern.isBlank()) {
             return true;
         }
         try {

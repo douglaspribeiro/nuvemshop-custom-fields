@@ -61,7 +61,7 @@ O e-mail contém a resposta e o link do chamado, que exige acesso pelo aplicativ
 - Persistencia de lojas, tokens, regras de personalizacao e campos.
 - Painel do lojista em `/admin`.
 - Editor de campos por produto em `/admin/products` e `/admin/products/{productId}/fields`.
-- Tipos de campo: `TEXT`, `NUMBER`, `SELECT` e `TEXTAREA`.
+- Tipos de campo: `TEXT`, `NUMBER`, `SELECT`, `IMAGE_SELECT`, `CHECKBOX` e `TEXTAREA`.
 - Validacoes por campo: obrigatorio, tamanho maximo, placeholder, regex/mascara e opcoes para select.
 - Templates por nicho em `/admin/onboarding`.
 - Registro dos scripts de vitrine e checkout via Scripts API.

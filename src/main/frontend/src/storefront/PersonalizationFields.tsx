@@ -1,4 +1,4 @@
-import { Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
+import { Checkbox, Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent } from "@tiendanube/nube-sdk-types";
 import { styled } from "@tiendanube/nube-sdk-ui";
 import type { PersonalizationField } from "../shared/config";
@@ -73,6 +73,11 @@ function input(
 	const handle = (event: { value?: string }) => onValueChange(key, event.value ?? "");
 	const labelStyle = color ? { color } : undefined;
 
+    if (field.fieldType === "CHECKBOX") {
+        return <Checkbox name={key} label={label} checked={Boolean(selected)}
+            onChange={event => onValueChange(key, event.value ? (locale?.startsWith("es") ? "Sí" : "Sim") : "")}
+            style={{ label: labelStyle }} />;
+    }
     if (field.fieldType === "IMAGE_SELECT") {
         const expand = locale?.startsWith("es") ? "Ampliar imagen" : "Ampliar imagem";
         const ImageGrid = field.mobileImageColumns === 2 ? TwoColumnImageGrid

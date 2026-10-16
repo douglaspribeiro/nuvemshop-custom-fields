@@ -257,3 +257,6 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .product-field-page .field-create-panel[open] .field-create-summary::before { content:"−"; }
 .product-field-page .field-create-summary small { color:var(--merchant-muted); font-size:.8rem; line-height:1.5; font-weight:400; }
 .product-field-page .field-create-panel > .field-help { margin-top:18px; }
+
+.product-field-page .field-preview-control .field-preview-checkbox { display:flex;align-items:center;gap:8px;cursor:pointer; }
+.product-field-page .field-preview-control .field-preview-checkbox input { width:20px;height:20px;min-height:20px;padding:0;flex-shrink:0;accent-color:currentColor; }

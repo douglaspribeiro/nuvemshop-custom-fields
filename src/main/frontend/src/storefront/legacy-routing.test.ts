@@ -117,3 +117,21 @@ it("blocks AJAX purchase clicks and form submissions until a list item is select
     expect(nativeAdd).toHaveBeenCalledTimes(1);
     expect(select.value).toBe("Molido");
 });
+
+it.each([true, false])('sends only checked checkbox properties and enforces required=%s', async (required) => {
+    dom = new JSDOM(`<html lang="pt-BR"><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
+        {url:'https://store.test/productos/example',runScripts:'outside-only'});
+    Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,
+        fields:[{label:'Embrulhar',fieldType:'CHECKBOX',required}],style:{}})})});
+    Object.defineProperty(dom.window.document,'readyState',{value:'complete',configurable:true});dom.window.eval(source);
+    await vi.waitFor(()=>expect(dom.window.document.querySelector('.ncf-field input')).not.toBeNull());
+    const form = dom.window.document.querySelector('form')!;
+    const checkbox = form.querySelector<HTMLInputElement>('.ncf-field input')!;
+    const submit = () => { const event = new dom.window.Event('submit',{cancelable:true});form.dispatchEvent(event);return event; };
+    const properties = () => new dom.window.FormData(form).get('properties[Embrulhar]');
+    expect(checkbox.type).toBe('checkbox');expect(checkbox.checked).toBe(false);
+    expect(properties()).toBeNull();expect(submit().defaultPrevented).toBe(required);
+    checkbox.click();expect(properties()).toBe('Sim');expect(submit().defaultPrevented).toBe(false);
+    checkbox.click();expect(properties()).toBeNull();expect(submit().defaultPrevented).toBe(required);
+});
