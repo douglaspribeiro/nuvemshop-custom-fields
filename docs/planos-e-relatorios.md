@@ -1,5 +1,7 @@
 # Planos e relatórios no backoffice
 
+Planejamento de evolução: [ofertas gratuitas com duração configurável](plano-free-temporario.md), incluindo criação de `FREE_30` e `FREE_14` pelo backoffice e encerramento de novas adesões ao FREE legado sem afetar as lojas existentes. Ainda não implementado.
+
 A tela `/backoffice/plans` mantém versões dos cinco planos atuais (Free, Grátis, Essencial, Pro e Ultra). Cada versão contém nome, descrição, preço/moeda de referência, limites e início de vigência. Os limites de produtos e campos usados no painel e na loja vêm da versão vigente; `-1` significa ilimitado.
 
 A migration V45 preserva os limites atuais: Free 1/1, Grátis 1/3, Essencial 10/3, Pro 50/ilimitado e Ultra ilimitado/ilimitado. Os preços de referência iniciais são R$ 19,99, R$ 29,99 e R$ 59,90 para os planos pagos.
