@@ -614,37 +614,6 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
-    void marksPaddleAttemptFailedWhenDefaultCheckoutUrlIsMissing() {
-        PaymentAttemptRepository attempts = mock(PaymentAttemptRepository.class);
-        PaddleGateway paddle = mock(PaddleGateway.class);
-        PaymentSubscriptionService paddleService = new PaymentSubscriptionService(
-                stores, subscriptions, events, router, mock(NuvemshopApiClient.class), nuvemshopProperties,
-                new MercadoPagoProperties(true, "https://api.example.com", "token", "secret", 3,
-                        new BigDecimal("19.99"), new BigDecimal("29.99")), efi, paymentNotifications, attempts, paddle);
-        Store store = store();
-        store.setStoreCountryCode("AR"); store.setStoreCurrency("ARS"); store.setStoreEmail("store@example.com");
-        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
-        when(router.requireForStore(store)).thenReturn(gateway);
-        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.empty());
-        when(gateway.provider()).thenReturn(PaymentProviderType.PADDLE);
-        when(gateway.environment()).thenReturn(PaymentEnvironment.SANDBOX);
-        when(gateway.currency(store)).thenReturn("ARS");
-        when(gateway.amount(store, PlanType.PREMIUM)).thenReturn(new BigDecimal("5599"));
-        when(gateway.priceId(store, PlanType.PREMIUM)).thenReturn("pri_example");
-        when(paddle.checkoutTokenMinutes()).thenReturn(30L);
-        when(nuvemshopProperties.appBaseUrl()).thenReturn("https://app.test");
-        doThrow(new PaymentGatewayException("Paddle retornou erro: transaction_default_checkout_url_not_set"))
-                .when(gateway).createCheckout(any(), any(), anyString(), anyString());
-
-        assertThatThrownBy(() -> paddleService.startCheckout(123L, PlanType.PREMIUM))
-                .isInstanceOf(PaymentGatewayException.class);
-
-        ArgumentCaptor<PaymentAttempt> attempt = ArgumentCaptor.forClass(PaymentAttempt.class);
-        verify(attempts, atLeastOnce()).save(attempt.capture());
-        assertThat(attempt.getValue().getStatus()).isEqualTo(PaymentAttemptStatus.FAILED);
-    }
-
-    @Test
     void associatesWebhookSubscriptionByCheckoutPlanId() {
         PaymentSubscription local = local();
         local.setProviderSubscriptionId(null);
@@ -689,9 +658,4 @@ class PaymentSubscriptionServiceTest {
                 new BigDecimal("19.99"), Instant.now().plusSeconds(86400));
     }
 
-    @Test
-    void turnsPaddleCheckoutActivationErrorIntoCustomerFriendlyMessage() {
-        assertThat(service.customerFacingError("Paddle retornou erro: transaction_checkout_not_enabled"))
-                .isEqualTo("Os pagamentos estão sendo ativados para esta loja. Tente novamente em alguns minutos ou contate o suporte.");
-    }
 }

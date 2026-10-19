@@ -114,7 +114,6 @@ class BackofficeScriptsPageTest {
         mockMvc.perform(get("/backoffice/payments").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Rotas por país")))
-                .andExpect(content().string(containsString("Catálogo")))
-                .andExpect(content().string(containsString("PADDLE")));
+                .andExpect(content().string(containsString("Catálogo")));
     }
 }

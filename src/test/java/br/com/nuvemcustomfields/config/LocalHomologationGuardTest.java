@@ -15,6 +15,5 @@ class LocalHomologationGuardTest {
         assertThatThrownBy(()->new LocalHomologationGuard(environment().withProperty("payments.efi.sandbox","false"))).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(()->new LocalHomologationGuard(environment().withProperty("environment","DOCKER"))).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(()->new LocalHomologationGuard(environment().withProperty("local.homologation.access-key","short"))).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(()->new LocalHomologationGuard(environment().withProperty("payments.paddle.enabled","true"))).isInstanceOf(IllegalStateException.class);
     }
 }

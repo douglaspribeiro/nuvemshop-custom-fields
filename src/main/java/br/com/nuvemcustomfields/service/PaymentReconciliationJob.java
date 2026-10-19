@@ -51,11 +51,6 @@ public class PaymentReconciliationJob {
         }
     }
 
-    @Scheduled(fixedDelayString = "${payments.webhook-processing-delay-ms:5000}")
-    public void processPaddleWebhooks() {
-        if (router.configured(PaymentProviderType.PADDLE)) webhooks.processPendingPaddle();
-    }
-
     @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")
     public void expireCanceledAccess() {
         service.expireCanceledAccess();
@@ -63,7 +58,7 @@ public class PaymentReconciliationJob {
 
     @Scheduled(fixedDelayString = "${payments.pending-expiration-delay-ms:60000}")
     public void expirePendingPayments() {
-        for (PaymentProviderType provider : java.util.List.of(PaymentProviderType.EFI, PaymentProviderType.PADDLE, PaymentProviderType.CREEM)) {
+        for (PaymentProviderType provider : java.util.List.of(PaymentProviderType.EFI, PaymentProviderType.CREEM)) {
             var expired = repository.findByProviderAndStatusAndAccessActiveFalseAndPendingStartedAtLessThanEqual(
                     provider, PaymentSubscriptionStatus.PENDING,
                     Instant.now().minus(30, ChronoUnit.MINUTES));

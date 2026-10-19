@@ -31,8 +31,6 @@ payments:
   creem:
     enabled: false
     sandbox: true
-  paddle:
-    enabled: false
 notifications:
   ses-events:
     enabled: false

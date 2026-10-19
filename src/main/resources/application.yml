@@ -173,18 +173,6 @@ payments:
     webhook-secret: ${CREEM_WEBHOOK_SECRET:}
     grace-days: ${CREEM_GRACE_DAYS:3}
     timeout-seconds: ${CREEM_TIMEOUT_SECONDS:20}
-  paddle:
-    enabled: ${PADDLE_ENABLED:false}
-    sandbox: ${PADDLE_SANDBOX:true}
-    api-base-url: ${PADDLE_API_BASE_URL:https://sandbox-api.paddle.com}
-    api-key: ${PADDLE_API_KEY:}
-    client-side-token: ${PADDLE_CLIENT_SIDE_TOKEN:}
-    webhook-secret: ${PADDLE_WEBHOOK_SECRET:}
-    api-version: ${PADDLE_API_VERSION:1}
-    grace-days: ${PADDLE_GRACE_DAYS:3}
-    webhook-tolerance-seconds: ${PADDLE_WEBHOOK_TOLERANCE_SECONDS:300}
-    checkout-token-minutes: ${PADDLE_CHECKOUT_TOKEN_MINUTES:30}
-
 notifications:
   ses-events:
     enabled: ${AWS_SES_EVENTS_ENABLED:false}

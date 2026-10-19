@@ -14,7 +14,6 @@ import br.com.nuvemcustomfields.payment.GatewaySubscription;
 import br.com.nuvemcustomfields.payment.EfiGateway;
 import br.com.nuvemcustomfields.payment.PaymentGateway;
 import br.com.nuvemcustomfields.payment.PaymentGatewayException;
-import br.com.nuvemcustomfields.payment.PaddleGateway;
 import br.com.nuvemcustomfields.properties.MercadoPagoProperties;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
@@ -33,10 +32,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 @Service
 public class PaymentSubscriptionService {
@@ -55,7 +50,6 @@ public class PaymentSubscriptionService {
     private final EfiGateway efi;
     private final PaymentNotificationService paymentNotifications;
     private final PaymentAttemptRepository attempts;
-    private final PaddleGateway paddle;
     private final WinbackDiscountService winbackDiscounts;
     private DodoLiveCheckoutService dodoLiveCheckout;
     @Autowired(required = false)
@@ -83,7 +77,6 @@ public class PaymentSubscriptionService {
             EfiGateway efi,
             PaymentNotificationService paymentNotifications,
             PaymentAttemptRepository attempts,
-            PaddleGateway paddle,
             WinbackDiscountService winbackDiscounts
     ) {
         this.stores = stores;
@@ -96,16 +89,15 @@ public class PaymentSubscriptionService {
         this.efi = efi;
         this.paymentNotifications = paymentNotifications;
         this.attempts = attempts;
-        this.paddle = paddle;
         this.winbackDiscounts = winbackDiscounts;
     }
 
     public PaymentSubscriptionService(StoreRepository stores, PaymentSubscriptionRepository subscriptions,
             PlanEventRepository planEvents, PaymentGatewayRouter router, NuvemshopApiClient nuvemshopApi,
             NuvemshopProperties nuvemshopProperties, MercadoPagoProperties mercadoPagoProperties, EfiGateway efi,
-            PaymentNotificationService paymentNotifications, PaymentAttemptRepository attempts, PaddleGateway paddle) {
+            PaymentNotificationService paymentNotifications, PaymentAttemptRepository attempts) {
         this(stores, subscriptions, planEvents, router, nuvemshopApi, nuvemshopProperties, mercadoPagoProperties,
-                efi, paymentNotifications, attempts, paddle, null);
+                efi, paymentNotifications, attempts, null);
     }
 
     public PaymentSubscriptionService(StoreRepository stores, PaymentSubscriptionRepository subscriptions,
@@ -127,8 +119,7 @@ public class PaymentSubscriptionService {
         return router.configured(PaymentProviderType.MERCADO_PAGO);
     }
 
-    public boolean paddleEnabled() { return router.configured(PaymentProviderType.PADDLE); }
-    public boolean anyGatewayEnabled() { return efiEnabled() || mercadoPagoEnabled() || paddleEnabled() || router.configured(PaymentProviderType.CREEM) || router.configured(PaymentProviderType.DODO_TEST) || router.configured(PaymentProviderType.DODO); }
+    public boolean anyGatewayEnabled() { return efiEnabled() || mercadoPagoEnabled() || router.configured(PaymentProviderType.CREEM) || router.configured(PaymentProviderType.DODO_TEST) || router.configured(PaymentProviderType.DODO); }
     public Optional<PaymentProviderType> provider(Store store) {
         return router.forStore(store).map(PaymentGateway::provider);
     }
@@ -491,25 +482,7 @@ public class PaymentSubscriptionService {
             subscription.setStoreId(storeId);
         }
         String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
-        String checkoutToken = gateway.provider() == PaymentProviderType.PADDLE
-                ? UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "") : null;
         PaymentAttempt attempt = null;
-        if (checkoutToken != null) {
-            if (attempts == null) throw new IllegalStateException("Persistência de tentativas indisponível.");
-            attempt = new PaymentAttempt();
-            attempt.setStoreId(storeId);
-            attempt.setProvider(gateway.provider());
-            attempt.setEnvironment(gateway.environment());
-            attempt.setCountryCode(store.getStoreCountryCode().toUpperCase());
-            attempt.setPlan(plan);
-            attempt.setCurrency(gateway.currency(store));
-            attempt.setAmountValue(amount(gateway, store, plan));
-            attempt.setExternalReference(reference);
-            attempt.setCheckoutTokenHash(hash(checkoutToken == null ? reference : checkoutToken));
-            attempt.setStatus(PaymentAttemptStatus.CREATING);
-            attempt.setExpiresAt(Instant.now().plus(gateway.provider() == PaymentProviderType.PADDLE ? paddle.checkoutTokenMinutes() : 30, ChronoUnit.MINUTES));
-            attempts.saveAndFlush(attempt);
-        }
         subscription.applyWinbackCoupon(null, null, null);
         subscription.setProvider(gateway.provider());
         subscription.setPayerEmail(null);
@@ -542,7 +515,6 @@ public class PaymentSubscriptionService {
                 attempt.setProviderTransactionId(checkout.checkoutResourceId());
                 attempt.setStatus(PaymentAttemptStatus.OPEN);
                 attempts.save(attempt);
-                if (checkoutToken != null) checkoutUrl = nuvemshopProperties.appBaseUrl() + "/checkout/paddle?token=" + checkoutToken;
             }
             subscription.setCheckoutUrl(checkoutUrl);
             subscription.setProviderStatus(checkout.providerStatus());
@@ -565,21 +537,6 @@ public class PaymentSubscriptionService {
             }
             throw ex;
         }
-    }
-
-    @Transactional(readOnly = true)
-    public PaddleCheckoutView paddleCheckout(String token) {
-        if (attempts == null || paddle == null || token == null || !token.matches("[a-f0-9]{64}")) {
-            throw new IllegalArgumentException("Checkout inválido.");
-        }
-        PaymentAttempt attempt = attempts.findByCheckoutTokenHash(hash(token))
-                .orElseThrow(() -> new IllegalArgumentException("Checkout inválido."));
-        if (attempt.getProvider() != PaymentProviderType.PADDLE || attempt.getStatus() != PaymentAttemptStatus.OPEN
-                || attempt.getExpiresAt().isBefore(Instant.now()) || !hasText(attempt.getProviderTransactionId())) {
-            throw new IllegalArgumentException("Este checkout expirou ou não está disponível.");
-        }
-        return new PaddleCheckoutView(attempt.getProviderTransactionId(), paddle.clientSideToken(), paddle.sandbox(),
-                attempt.getPlan().getDisplayName(), attempt.getCurrency(), attempt.getAmountValue());
     }
 
     @Transactional
@@ -633,47 +590,7 @@ public class PaymentSubscriptionService {
             PaymentSubscription reconciled = synchronizeCreemCheckout(local.getProviderCheckoutId());
             return reconciled.getStatus() != PaymentSubscriptionStatus.PENDING;
         }
-        if (local.getProvider() != PaymentProviderType.PADDLE) return false;
-        boolean expired = pendingExpired(local, Instant.now());
-        if (attempts != null) {
-            PaymentAttempt attempt = attempts.findByExternalReference(local.getExternalReference()).orElse(null);
-            expired = expired || (attempt != null && attempt.getExpiresAt() != null
-                    && !Instant.now().isBefore(attempt.getExpiresAt()));
-        }
-        if (!expired) return false;
-        if (!hasText(local.getProviderCheckoutId()))
-            throw new PaymentGatewayException("A tentativa anterior ainda precisa ser conciliada. Nenhuma nova cobrança foi iniciada.");
-        if (paddle == null || !paddle.configured() || local.getProviderEnvironment() != paddle.environment()) {
-            // An abandoned test checkout cannot cause a real charge. Do not let old sandbox
-            // credentials block a new gateway, but never apply this exception to production.
-            if (local.getProviderEnvironment() == br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX
-                    && !hasText(local.getProviderSubscriptionId())
-                    && !new GatewayInvoice(null, null, null, local.getLastPaymentStatus()).approved()
-                    && !"completed".equalsIgnoreCase(local.getLastPaymentStatus())) {
-                markExpiredCheckout(local, "sandbox_timeout",
-                        "O checkout antigo de teste expirou localmente. As credenciais desse ambiente não estão mais disponíveis.");
-                return true;
-            }
-            throw new PaymentGatewayException("Não foi possível verificar o checkout anterior na Paddle. Tente novamente mais tarde.");
-        }
-        PaddleGateway.PaddleTransaction remote = paddle.getTransaction(local.getProviderCheckoutId());
-        validatePendingPaddle(local, remote);
-        if (hasText(remote.subscriptionId()) || java.util.Set.of("paid", "completed").contains(remote.status())) {
-            if (hasText(remote.subscriptionId())) synchronizeFromPaddleTransaction(remote.id());
-            else throw new PaymentGatewayException("O pagamento anterior foi recebido e está aguardando confirmação da assinatura.");
-            return local.getStatus() != PaymentSubscriptionStatus.PENDING;
-        }
-        if (!"canceled".equals(remote.status())) {
-            if (!java.util.Set.of("draft", "ready", "past_due").contains(remote.status()))
-                throw new PaymentGatewayException("O checkout anterior ainda precisa ser verificado pela Paddle.");
-            paddle.cancelCheckout(remote.id());
-            remote = paddle.getTransaction(remote.id());
-            validatePendingPaddle(local, remote);
-            if (!"canceled".equals(remote.status()) || hasText(remote.subscriptionId()))
-                throw new PaymentGatewayException("Aguardando confirmação do encerramento do checkout anterior.");
-        }
-        markExpiredCheckout(local, "canceled", EXPIRED_ATTEMPT_MESSAGE);
-        return true;
+        return false;
     }
 
     private void markExpiredCheckout(PaymentSubscription local, String providerStatus, String message) {
@@ -688,13 +605,6 @@ public class PaymentSubscriptionService {
         subscriptions.save(local);
         LOGGER.info("payments.checkout.expired store_id={} provider={} checkout_id={} status={}",
                 local.getStoreId(), local.getProvider(), local.getProviderCheckoutId(), providerStatus);
-    }
-
-    private void validatePendingPaddle(PaymentSubscription local, PaddleGateway.PaddleTransaction remote) {
-        if (!Objects.equals(local.getProviderCheckoutId(), remote.id())
-                || !Objects.equals(local.getExternalReference(), remote.externalReference())
-                || !Objects.equals(local.getCurrency(), remote.currency()))
-            throw new PaymentGatewayException("Checkout Paddle divergente da tentativa local.");
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
@@ -814,38 +724,6 @@ public class PaymentSubscriptionService {
         PaymentSubscription local = locate(remote);
         if (provider == PaymentProviderType.CREEM || provider.isDodo()) requireProvider(local, provider);
         return synchronize(local, remote, invoice, "PAYMENT_WEBHOOK");
-    }
-
-    @Transactional
-    public PaymentSubscription synchronizeFromPaddleTransaction(String transactionId) {
-        if (paddle == null) throw new IllegalStateException("Paddle indisponível.");
-        PaddleGateway.PaddleTransaction transaction = paddle.getTransaction(transactionId);
-        if (hasText(transaction.subscriptionId())) {
-            return synchronizeFromInvoice(PaymentProviderType.PADDLE, transactionId);
-        }
-        if (!hasText(transaction.externalReference())) {
-            throw new IllegalArgumentException("Transação Paddle sem referência interna.");
-        }
-        PaymentSubscription local = subscriptions.findByExternalReference(transaction.externalReference())
-                .orElseThrow(() -> new IllegalArgumentException("Transação Paddle não pertence a uma loja."));
-        if (!local.getCurrency().equalsIgnoreCase(transaction.currency())
-                || local.getAmountValue().compareTo(transaction.amount()) != 0) {
-            throw new IllegalArgumentException("Valor ou moeda da transação Paddle divergente.");
-        }
-        local.setLastPaymentId(transaction.id());
-        local.setLastPaymentStatus(transaction.status());
-        local.setProviderStatus(transaction.status());
-        local.setProviderCustomerId(transaction.customerId());
-        local.setLastSyncedAt(Instant.now());
-        PaymentAttemptStatus attemptStatus = "canceled".equalsIgnoreCase(transaction.status())
-                ? PaymentAttemptStatus.CANCELED : PaymentAttemptStatus.FAILED;
-        local.setStatus("canceled".equalsIgnoreCase(transaction.status())
-                ? PaymentSubscriptionStatus.CANCELED : PaymentSubscriptionStatus.ERROR);
-        local.setAccessActive(false);
-        if (attempts != null) attempts.findByExternalReference(local.getExternalReference()).ifPresent(attempt -> {
-            attempt.setStatus(attemptStatus); attempts.save(attempt);
-        });
-        return subscriptions.save(local);
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
@@ -1129,7 +1007,7 @@ public class PaymentSubscriptionService {
                 || local.getUpgradeAmount().compareTo(remote.amount()) != 0
                 || (!"active".equalsIgnoreCase(remote.status()) && !"authorized".equalsIgnoreCase(remote.status())
                     && !"new_charge".equalsIgnoreCase(remote.status()))) return false;
-        String remotePrice = local.getProvider() == PaymentProviderType.PADDLE || local.getProvider() == PaymentProviderType.CREEM ? remote.priceId() : remote.checkoutResourceId();
+        String remotePrice = local.getProvider() == PaymentProviderType.CREEM ? remote.priceId() : remote.checkoutResourceId();
         return !hasText(local.getUpgradePriceId()) || Objects.equals(local.getUpgradePriceId(), remotePrice);
     }
 
@@ -1205,30 +1083,15 @@ public class PaymentSubscriptionService {
     }
     private BigDecimal amount(PaymentGateway gateway, Store store, PlanType plan) {
         PaymentProviderType provider = gateway.provider();
-        return provider == PaymentProviderType.PADDLE || provider == PaymentProviderType.CREEM
+        return provider == PaymentProviderType.CREEM
                 || provider == PaymentProviderType.DODO || provider == PaymentProviderType.DODO_TEST
                 ? gateway.amount(store, plan) : gateway.amount(plan);
     }
     private int graceDays(PaymentProviderType provider) {
         if (provider == PaymentProviderType.CREEM) return ((br.com.nuvemcustomfields.payment.CreemGateway) router.require(provider)).graceDays();
-        return provider == PaymentProviderType.PADDLE && paddle != null ? paddle.graceDays() : mercadoPagoProperties.safeGraceDays();
+        return mercadoPagoProperties.safeGraceDays();
     }
     private boolean reusableCheckout(PaymentSubscription subscription) {
-        if (subscription.getProvider() == PaymentProviderType.CREEM) return true; // Reuse until provider confirms expiration.
-        if (subscription.getProvider() != PaymentProviderType.PADDLE || attempts == null) return true;
-        PaymentAttempt attempt = attempts.findByExternalReference(subscription.getExternalReference()).orElse(null);
-        if (attempt != null && attempt.getStatus() == PaymentAttemptStatus.OPEN
-                && attempt.getExpiresAt().isAfter(Instant.now())) return true;
-        if (attempt != null && attempt.getStatus() == PaymentAttemptStatus.OPEN) {
-            attempt.setStatus(PaymentAttemptStatus.CANCELED);
-            attempts.save(attempt);
-        }
-        return false;
+        return true;
     }
-    private static String hash(String token) {
-        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8))); }
-        catch (NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
-    }
-    public record PaddleCheckoutView(String transactionId, String clientSideToken, boolean sandbox,
-                                     String planName, String currency, BigDecimal amount) {}
 }

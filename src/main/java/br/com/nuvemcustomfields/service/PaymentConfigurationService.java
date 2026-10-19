@@ -1,7 +1,6 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.*;
-import br.com.nuvemcustomfields.payment.PaddleGateway;
 import br.com.nuvemcustomfields.payment.PaymentGateway;
 import br.com.nuvemcustomfields.repository.*;
 import org.springframework.stereotype.Service;
@@ -18,15 +17,14 @@ public class PaymentConfigurationService {
     private final PaymentRoutingHistoryRepository history;
     private final PaymentCatalogPriceRepository catalog;
     private final PaymentGatewayRouter router;
-    private final PaddleGateway paddle;
 
     public PaymentConfigurationService(PaymentRoutingRuleRepository rules, PaymentRoutingHistoryRepository history,
-            PaymentCatalogPriceRepository catalog, PaymentGatewayRouter router, PaddleGateway paddle) {
-        this.rules=rules; this.history=history; this.catalog=catalog; this.router=router; this.paddle=paddle;
+            PaymentCatalogPriceRepository catalog, PaymentGatewayRouter router) {
+        this.rules=rules; this.history=history; this.catalog=catalog; this.router=router;
     }
 
-    public List<PaymentRoutingRule> rules() { return rules.findAll().stream().sorted((a,b)->a.getCountryCode().compareTo(b.getCountryCode())).toList(); }
-    public List<PaymentCatalogPrice> catalog() { return catalog.findAllByOrderByCountryCodeAscPlanAsc(); }
+    public List<PaymentRoutingRule> rules() { return rules.findAll().stream().filter(rule -> rule.getProvider() != PaymentProviderType.PADDLE).sorted((a,b)->a.getCountryCode().compareTo(b.getCountryCode())).toList(); }
+    public List<PaymentCatalogPrice> catalog() { return catalog.findAllByOrderByCountryCodeAscPlanAsc().stream().filter(price -> price.getProvider() != PaymentProviderType.PADDLE).toList(); }
     public List<PaymentRoutingHistory> history() { return history.findTop50ByOrderByChangedAtDesc(); }
     public boolean configured(PaymentProviderType provider) { return router.configured(provider); }
     public PaymentEnvironment runningEnvironment(PaymentProviderType provider) { return router.environment(provider); }
@@ -35,6 +33,8 @@ public class PaymentConfigurationService {
     public void saveRoute(String country, PaymentProviderType provider, PaymentEnvironment environment,
                           boolean enabled, String operator) {
         String code=country(country);
+        if (provider == PaymentProviderType.PADDLE)
+            throw new IllegalArgumentException("Paddle foi removido e não aceita novas assinaturas.");
         if (provider == PaymentProviderType.DODO_TEST)
             throw new IllegalArgumentException("DODO_TEST é selecionado apenas para lojas autorizadas. Configure o produto na área Dodo de teste, sem alterar a rota do país.");
         if (enabled) validateMarket(code, provider, environment);
@@ -52,6 +52,8 @@ public class PaymentConfigurationService {
     public PriceSaveResult savePrice(Long id, String currency, BigDecimal amount, String providerPriceId,
                                      boolean enabled) {
         PaymentCatalogPrice price=catalog.findById(id).orElseThrow(() -> new IllegalArgumentException("Preço não encontrado."));
+        if (price.getProvider() == PaymentProviderType.PADDLE)
+            throw new IllegalArgumentException("Paddle foi removido e este preço histórico não pode ser alterado.");
         if (amount==null || amount.signum()<=0) throw new IllegalArgumentException("O valor deve ser positivo.");
         String normalizedCurrency=currency==null?"":currency.trim().toUpperCase(Locale.ROOT);
         if (!normalizedCurrency.matches("[A-Z]{3}")) throw new IllegalArgumentException("Moeda inválida.");
@@ -62,7 +64,6 @@ public class PaymentConfigurationService {
             return new PriceSaveResult(false, false, "Preço salvo, mas permanece desabilitado.");
         }
         try {
-            if (price.getProvider()==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
             if (price.getProvider()==PaymentProviderType.CREEM) router.require(PaymentProviderType.CREEM).validateCatalog(price);
             if (price.getProvider().isDodo()) router.require(price.getProvider()).validateCatalog(price);
             price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
@@ -93,7 +94,6 @@ public class PaymentConfigurationService {
         for (PlanType plan : List.of(PlanType.PREMIUM,PlanType.PREMIUM_PLUS)) {
             PaymentCatalogPrice price=prices.stream().filter(p->p.getPlan()==plan && p.isEnabled() && p.isRecurring() && p.isValidated()).findFirst()
                     .orElseThrow(()->new IllegalArgumentException("Catálogo incompleto para "+plan.getDisplayName()+"."));
-            if (provider==PaymentProviderType.PADDLE) paddle.validateCatalog(price);
             if (provider==PaymentProviderType.CREEM) router.require(provider).validateCatalog(price);
         }
     }

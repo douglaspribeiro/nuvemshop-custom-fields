@@ -308,7 +308,8 @@ public class BackofficeController {
         model.addAttribute("routingRules", paymentConfigurationService.rules());
         model.addAttribute("catalogPrices", paymentConfigurationService.catalog());
         model.addAttribute("routingHistory", paymentConfigurationService.history());
-        model.addAttribute("providers", PaymentProviderType.values());
+        model.addAttribute("providers", java.util.Arrays.stream(PaymentProviderType.values())
+                .filter(provider -> provider != PaymentProviderType.PADDLE).toArray(PaymentProviderType[]::new));
         model.addAttribute("environments", PaymentEnvironment.values());
         model.addAttribute("paymentConfiguration", paymentConfigurationService);
         return "backoffice/payments";
