@@ -17,6 +17,7 @@ import br.com.nuvemcustomfields.payment.PaymentGatewayException;
 import br.com.nuvemcustomfields.properties.MercadoPagoProperties;
 import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
+import br.com.nuvemcustomfields.repository.PaymentCatalogPriceRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.PaymentAttemptRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
@@ -51,6 +52,9 @@ public class PaymentSubscriptionService {
     private final PaymentNotificationService paymentNotifications;
     private final PaymentAttemptRepository attempts;
     private final WinbackDiscountService winbackDiscounts;
+    private PaymentCatalogPriceRepository catalog;
+    @Autowired
+    public void setPaymentCatalog(PaymentCatalogPriceRepository catalog) { this.catalog = catalog; }
     private DodoLiveCheckoutService dodoLiveCheckout;
     @Autowired(required = false)
     public void setDodoLiveCheckout(DodoLiveCheckoutService service) { this.dodoLiveCheckout = service; }
@@ -787,7 +791,7 @@ public class PaymentSubscriptionService {
     ) {
         validateRemote(local, remote);
         if (local.getProvider().isDodo() && invoice != null
-                && (!Objects.equals(remote.id(), invoice.subscriptionId()) || !Objects.equals(local.getCurrency(), invoice.currency())))
+                && !Objects.equals(remote.id(), invoice.subscriptionId()))
             throw new IllegalArgumentException("Pagamento Dodo divergente da assinatura.");
         if (local.getProvider() == PaymentProviderType.CREEM && invoice != null
                 && (!Objects.equals(local.getProviderSubscriptionId() == null ? remote.id() : local.getProviderSubscriptionId(), invoice.subscriptionId())
@@ -987,6 +991,12 @@ public class PaymentSubscriptionService {
                 && !Objects.equals(local.getExternalReference(), remote.externalReference())) {
             throw new IllegalArgumentException("Referencia externa da assinatura divergente.");
         }
+        // Dodo can represent a localized recurring checkout in the product base
+        // currency even when the authenticated payment was collected in the
+        // catalog's regional currency. This is safe only for a product still
+        // bound to a validated local catalog entry; product and reference were
+        // checked above.
+        if (local.getProvider().isDodo() && hasValidatedDodoCatalogPrice(local)) return;
         boolean restoringFullPrice = local.isWinbackRestorePending() && local.getWinbackCouponCode() != null
                 && local.getWinbackRegularAmount() != null
                 && local.getWinbackRegularAmount().compareTo(remote.amount()) == 0;
@@ -994,6 +1004,14 @@ public class PaymentSubscriptionService {
                 || (local.getAmountValue().compareTo(remote.amount()) != 0 && !restoringFullPrice)) {
             throw new IllegalArgumentException("Valor ou moeda da assinatura divergente.");
         }
+    }
+
+    private boolean hasValidatedDodoCatalogPrice(PaymentSubscription local) {
+        if (catalog == null || !hasText(local.getCountryCode()) || local.getPlan() == null) return false;
+        return catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(
+                        local.getProvider(), local.getProviderEnvironment(), local.getCountryCode(), local.getPlan())
+                .filter(price -> price.isValidated() && Objects.equals(local.getProviderPriceId(), price.getProviderPriceId()))
+                .isPresent();
     }
 
     private boolean matchesUpgrade(PaymentSubscription local, GatewaySubscription remote) {

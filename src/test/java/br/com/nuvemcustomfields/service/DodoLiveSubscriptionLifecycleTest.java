@@ -14,6 +14,7 @@ import static org.mockito.Mockito.*;
 class DodoLiveSubscriptionLifecycleTest {
     final StoreRepository stores = mock(StoreRepository.class);
     final PaymentSubscriptionRepository subscriptions = mock(PaymentSubscriptionRepository.class);
+    final PaymentCatalogPriceRepository catalog = mock(PaymentCatalogPriceRepository.class);
     final PaymentGatewayRouter router = mock(PaymentGatewayRouter.class);
     final DodoLiveGateway gateway = mock(DodoLiveGateway.class);
     final PaymentNotificationService notifications = mock(PaymentNotificationService.class);
@@ -27,6 +28,7 @@ class DodoLiveSubscriptionLifecycleTest {
         local.setStoreId(42L); local.setProvider(PaymentProviderType.DODO); local.setProviderEnvironment(PaymentEnvironment.PRODUCTION);
         local.setProviderSubscriptionId("sub_1"); local.setProviderCheckoutId("ch_1"); local.setProviderPriceId("prod_1");
         local.setExternalReference("ncf_ref"); local.setPlan(PlanType.PREMIUM); local.setCurrency("USD");
+        local.setCountryCode("MX");
         local.setAmountValue(new BigDecimal("9.99")); local.setStatus(PaymentSubscriptionStatus.PENDING);
         store.setStoreId(42L); store.setPlan(PlanType.FREE);
         when(router.require(PaymentProviderType.DODO)).thenReturn(gateway); when(gateway.environment()).thenReturn(PaymentEnvironment.PRODUCTION);
@@ -35,6 +37,10 @@ class DodoLiveSubscriptionLifecycleTest {
         when(stores.findByStoreId(42L)).thenReturn(Optional.of(store));
         when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_1","9.99",null));
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","paid")));
+        service.setPaymentCatalog(catalog);
+        var price = new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.DODO); price.setEnvironment(PaymentEnvironment.PRODUCTION);
+        price.setCountryCode("MX"); price.setPlan(PlanType.PREMIUM); price.setProviderPriceId("prod_1"); price.setValidatedAt(Instant.now());
+        when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO,PaymentEnvironment.PRODUCTION,"MX",PlanType.PREMIUM)).thenReturn(Optional.of(price));
     }
     @Test void activeEventDoesNotGrantUnpaidAccess() {
         service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1");
@@ -46,13 +52,13 @@ class DodoLiveSubscriptionLifecycleTest {
         assertThat(local.isAccessActive()).isTrue(); assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         assertThat(local.getCurrentPeriodEnd()).isEqualTo(end); verify(notifications).enqueue(eq(local),any());
     }
-    @Test void mismatchedProductOrPaymentCurrencyCannotGrantAccess() {
+    @Test void mismatchedProductCannotGrantAccessButDodoLocalizedCurrencyCan() {
         when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_foreign","9.99",null));
         assertThatThrownBy(() -> service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1")).hasMessageContaining("Produto ou referência Dodo divergente");
-        when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_1","9.99",null));
-        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(new GatewayInvoice("tran_1","sub_1","tran_1","paid","EUR",BigDecimal.TEN)));
-        assertThatThrownBy(() -> service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1")).hasMessageContaining("Pagamento Dodo divergente");
-        assertThat(local.isAccessActive()).isFalse();
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_1","5.36",null));
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(new GatewayInvoice("tran_1","sub_1","tran_1","paid","MXN",new BigDecimal("99.00"))));
+        service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1");
+        assertThat(local.isAccessActive()).isTrue();
     }
     @Test void canceledImmediatelyAndUnpaidRevokeExistingAccess() {
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("cancelled","prod_1","9.99",null));
