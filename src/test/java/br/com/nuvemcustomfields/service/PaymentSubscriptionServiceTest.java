@@ -59,6 +59,31 @@ class PaymentSubscriptionServiceTest {
     }
 
     @Test
+    void confirmedPaymentConvertsCourtesyIntoPaidSubscription() {
+        PaymentSubscription local = local();
+        Store store = store();
+        store.setPremiumBonusStartedAt(Instant.now().minusSeconds(26 * 86_400));
+        store.setPremiumBonusExpiresAt(Instant.now().plusSeconds(4 * 86_400));
+        store.setPremiumBonusPlan(PlanType.PREMIUM);
+        store.setCourtesyPremium(true);
+        store.setCourtesyPremiumReason("Cortesia comercial");
+        when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote());
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("invoice-1", "sub-1", "payment-1", "approved")));
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO, "sub-1");
+
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(store.isCourtesyPremium()).isFalse();
+        assertThat(store.getPremiumBonusExpiresAt()).isNull();
+        assertThat(store.getCourtesyPremiumReason()).isNull();
+    }
+
+    @Test
     void activatesEfiPlanOnlyAfterPaidCharge() {
         PaymentSubscription local = local();
         local.setProvider(PaymentProviderType.EFI);
@@ -385,6 +410,8 @@ class PaymentSubscriptionServiceTest {
         store.setStoreCountryCode("BR");
         store.setStoreCurrency("BRL");
         store.setStoreEmail("loja@example.com");
+        store.setPremiumBonusExpiresAt(Instant.now().plusSeconds(4 * 86_400));
+        store.setPremiumBonusPlan(PlanType.PREMIUM);
         AtomicReference<PaymentSubscription> saved = new AtomicReference<>();
         when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
         when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
@@ -414,6 +441,7 @@ class PaymentSubscriptionServiceTest {
         assertThat(saved.get().getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
         assertThat(saved.get().getLastPaymentId()).isEqualTo("12345");
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(store.isCourtesyPremium()).isFalse();
         verify(events).save(any(PlanEvent.class));
     }
 

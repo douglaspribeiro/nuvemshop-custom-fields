@@ -78,7 +78,6 @@ public abstract class DodoCheckoutService {
         Store store = stores.findActiveByStoreIdForUpdate(storeId).orElseThrow(() -> new IllegalArgumentException("Loja ativa não encontrada."));
         if (router.requireForStore(store).provider() != gateway.provider() || !gateway.planAvailable(store, plan))
             throw new IllegalArgumentException("Plano Dodo indisponível para esta loja.");
-        if (store.isCourtesyPremium()) throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
         if (local != null && (local.isAccessActive() || local.isWinbackRestorePending()))
             throw new IllegalArgumentException("A assinatura anterior precisa terminar antes de uma nova contratação.");

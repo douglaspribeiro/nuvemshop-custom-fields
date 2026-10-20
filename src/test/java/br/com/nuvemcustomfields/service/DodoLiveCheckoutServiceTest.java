@@ -60,6 +60,19 @@ class DodoLiveCheckoutServiceTest {
         assertThatThrownBy(() -> service.start(42L,PlanType.PREMIUM)).hasMessageContaining("conciliada");
         verify(gateway,times(1)).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString());
     }
+    @Test void startsCheckoutWhileTemporaryCourtesyIsStillActive() {
+        store.setPremiumBonusStartedAt(java.time.Instant.now().minusSeconds(26 * 86_400));
+        store.setPremiumBonusExpiresAt(java.time.Instant.now().plusSeconds(4 * 86_400));
+        store.setPremiumBonusPlan(PlanType.PREMIUM);
+        when(gateway.planAvailable(store,PlanType.PREMIUM_PLUS)).thenReturn(true);
+        when(gateway.priceId(store,PlanType.PREMIUM_PLUS)).thenReturn("pdt_pro");
+        when(gateway.amount(store,PlanType.PREMIUM_PLUS)).thenReturn(new BigDecimal("19.99"));
+        when(gateway.createCheckout(eq(store),eq(PlanType.PREMIUM_PLUS),anyString(),anyString()))
+                .thenReturn(new GatewayCheckout(null,"ch_courtesy","https://checkout.dodopayments.com/ch_courtesy","pending"));
+
+        assertThat(service.start(42L,PlanType.PREMIUM_PLUS)).isEqualTo("https://checkout.dodopayments.com/ch_courtesy");
+        assertThat(store.isCourtesyPremium()).isTrue();
+    }
     @Test void neverReplacesAnExistingActiveContract() {
         local = new PaymentSubscription(); local.setStoreId(42L); local.setProvider(PaymentProviderType.EFI);
         local.setStatus(PaymentSubscriptionStatus.ACTIVE); local.setAccessActive(true);

@@ -152,7 +152,6 @@ public class PaymentSubscriptionService {
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa não encontrada."));
         refreshProfileIfNeeded(store);
-        if (store.isCourtesyPremium()) throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
         if (!efi.configured() || !efi.supports(store)) throw new IllegalArgumentException("Pagamento Efí indisponível para esta loja.");
         if (plan == PlanType.PREMIUM_ULTRA && !efi.planAvailable(store, plan))
             throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
@@ -426,9 +425,6 @@ public class PaymentSubscriptionService {
         Store store = stores.findActiveByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja ativa nao encontrada."));
         refreshProfileIfNeeded(store);
-        if (store.isCourtesyPremium()) {
-            throw new IllegalArgumentException("A cortesia ativa precisa terminar antes da assinatura paga.");
-        }
         PaymentGateway gateway = router.requireForStore(store);
         if (gateway.provider().isDodo())
             throw new PaymentGatewayException("Reabra os planos para iniciar o checkout Dodo de teste.");
@@ -1030,6 +1026,12 @@ public class PaymentSubscriptionService {
         PlanType previous = store.getPlan();
         local.setAccessActive(true);
         store.setBillingSuspended(false);
+        // A confirmed paid subscription replaces any active courtesy immediately.
+        // Pending or failed checkouts leave the courtesy untouched.
+        store.setCourtesyPremium(false);
+        store.setCourtesyPremiumReason(null);
+        store.setPremiumBonusExpiresAt(null);
+        store.setPremiumBonusPlan(null);
         if (previous != local.getPlan()) {
             store.setPlan(local.getPlan());
             event(store.getStoreId(), previous, local.getPlan(), source);
