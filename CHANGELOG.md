@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.7] - 2026-10-20
+
+### Correções
+
+- fall back from disabled Dodo test gateway (`2d6ab00`)
+
 ## [1.40.6] - 2026-10-20
 
 ### Correções
