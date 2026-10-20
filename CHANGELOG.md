@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.6] - 2026-10-20
+
+### Correções
+
+- show live plans after sandbox subscription (`697d821`)
+
 ## [1.40.5] - 2026-10-20
 
 ### Correções
