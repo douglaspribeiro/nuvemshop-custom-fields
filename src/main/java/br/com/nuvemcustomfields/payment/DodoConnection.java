@@ -11,8 +11,9 @@ public interface DodoConnection {
     PaymentEnvironment environment();
     boolean allows(Long storeId);
     default boolean apiConfigured() {
-        String prefix = environment() == PaymentEnvironment.SANDBOX ? "dodo_test_" : "dodo_live_";
-        return apiKey() != null && apiKey().startsWith(prefix) && apiKey().length() > prefix.length();
+        // Dodo may issue opaque API-key formats. The gateway's fixed base URL is
+        // the authority for the environment, and the API authenticates the key.
+        return apiKey() != null && !apiKey().isBlank();
     }
     default boolean operational() { return apiConfigured() && webhookKey() != null && !webhookKey().isBlank(); }
     default boolean configured() { return enabled() && operational(); }

@@ -43,7 +43,7 @@ class DodoTestGatewayTest {
         assertThat(gateway.supports(store(42,"CO"))).isTrue();
         assertThat(gateway.supports(store(43,"CO"))).isFalse(); assertThat(gateway.supports(store(42,"BR"))).isFalse();
         assertThat(gateway.planAvailable(store(42,"CO"),PlanType.PREMIUM_PLUS)).isFalse();
-        assertThat(new DodoTestProperties(true,"dodo_live_wrong",secret,"42",20).configured()).isFalse();
+        assertThat(new DodoTestProperties(true,"opaque-test-api-key",secret,"42",20).configured()).isTrue();
         assertThat(new DodoTestProperties(true,"dodo_test_credential",secret,"0",20).allows(42L)).isTrue();
     }
     @Test void allStoresSettingStillExcludesBrazilAndMissingCatalog() {

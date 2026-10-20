@@ -10,13 +10,14 @@ Configure no gerenciador de segredos usado pelo servidor:
 
 ```dotenv
 DODO_TEST_ENABLED=true
-DODO_TEST_API_KEY=dodo_test_...
+DODO_TEST_API_KEY=CHAVE_DE_API_DO_MODO_TESTE
 DODO_TEST_WEBHOOK_KEY=whsec_...
 DODO_TEST_ALLOWED_STORE_IDS=ID_DA_LOJA_DE_TESTE
 DODO_TEST_TIMEOUT_SECONDS=20
 ```
 
-Não salve segredos no Git. A chave deve ser do ambiente de teste. A lista de lojas
+Não salve segredos no Git. A chave deve ser do ambiente de teste; o formato é
+opaco e é autenticado pelo endpoint sandbox do Dodo. A lista de lojas
 restringe o teste quando contém IDs específicos. Vazia ou com `0` autoriza todas
 as lojas fora do Brasil, desde que país e plano tenham preço de teste habilitado.
 Uma loja brasileira nunca é elegível, mesmo que esteja na lista. O perfil

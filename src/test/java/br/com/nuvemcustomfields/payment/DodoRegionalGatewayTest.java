@@ -66,8 +66,9 @@ class DodoRegionalGatewayTest {
         DodoMarketPricing.validate("CO","USD",new BigDecimal("4.99"));
         assertThatThrownBy(() -> DodoMarketPricing.validate("AR","ARS",BigDecimal.TEN)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> DodoMarketPricing.validate("CL","CLP",new BigDecimal("4199.99"))).isInstanceOf(IllegalArgumentException.class);
-        assertThat(new DodoProperties(true,"dodo_test_wrong","secret",20).configured()).isFalse();
-        assertThat(new DodoTestProperties(true,"dodo_live_wrong","secret","42",20).configured()).isFalse();
+        assertThat(new DodoProperties(true,"opaque-live-api-key","secret",20).configured()).isTrue();
+        assertThat(new DodoTestProperties(true,"opaque-test-api-key","secret","42",20).configured()).isTrue();
+        assertThat(new DodoTestProperties(true," ","secret","42",20).configured()).isFalse();
         assertThat(DodoMarketPricing.fromMinor(new BigDecimal("9900"),"MXN")).isEqualByComparingTo("99");
     }
     private record AutoCloseGateway(DodoGateway gateway) implements AutoCloseable { public void close() { gateway.close(); } }
