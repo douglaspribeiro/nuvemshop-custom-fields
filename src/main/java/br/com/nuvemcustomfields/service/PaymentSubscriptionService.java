@@ -1010,7 +1010,10 @@ public class PaymentSubscriptionService {
         if (catalog == null || !hasText(local.getCountryCode()) || local.getPlan() == null) return false;
         return catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(
                         local.getProvider(), local.getProviderEnvironment(), local.getCountryCode(), local.getPlan())
-                .filter(price -> price.isValidated() && Objects.equals(local.getProviderPriceId(), price.getProviderPriceId()))
+                // The subscription retains the product ID it was created with.
+                // A later validated catalog refresh may replace that product ID,
+                // but must not invalidate an already authenticated checkout.
+                .filter(price -> price.isValidated())
                 .isPresent();
     }
 

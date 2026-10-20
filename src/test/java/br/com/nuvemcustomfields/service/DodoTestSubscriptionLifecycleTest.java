@@ -39,7 +39,7 @@ class DodoTestSubscriptionLifecycleTest {
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","paid")));
         service.setPaymentCatalog(catalog);
         var price = new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.DODO_TEST); price.setEnvironment(PaymentEnvironment.SANDBOX);
-        price.setCountryCode("MX"); price.setPlan(PlanType.PREMIUM); price.setProviderPriceId("prod_1"); price.setValidatedAt(Instant.now());
+        price.setCountryCode("MX"); price.setPlan(PlanType.PREMIUM); price.setProviderPriceId("prod_current"); price.setValidatedAt(Instant.now());
         when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX,"MX",PlanType.PREMIUM)).thenReturn(Optional.of(price));
     }
     @Test void activeEventDoesNotGrantUnpaidAccess() {
