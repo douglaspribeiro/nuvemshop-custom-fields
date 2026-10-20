@@ -40,7 +40,7 @@ public class DeploymentLifecycleConfiguration {
     }
 
     @EventListener(ContextClosedEvent.class)
-    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     public void shutdown() {
         if (!closing.compareAndSet(false, true)) return;
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(Math.max(1, timeout));

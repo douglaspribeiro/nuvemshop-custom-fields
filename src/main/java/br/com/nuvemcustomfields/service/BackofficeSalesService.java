@@ -46,6 +46,19 @@ public class BackofficeSalesService {
     @org.springframework.beans.factory.annotation.Qualifier("deploymentBackgroundExecutor")
     private java.util.concurrent.ExecutorService backgroundExecutor;
     private final AtomicBoolean running = new AtomicBoolean();
+    private volatile boolean stopping;
+
+    @org.springframework.context.event.EventListener(org.springframework.context.event.ContextClosedEvent.class)
+    @org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
+    public synchronized void stopSync() {
+        stopping = true;
+    }
+
+    private void checkStopping() {
+        if (stopping || Thread.currentThread().isInterrupted()) throw new SyncPaused();
+    }
+
+    private static final class SyncPaused extends RuntimeException {}
 
     public BackofficeSalesService(StoreRepository stores, StoreOrderSalesRepository orderSales,
                                   StoreSalesSyncRepository syncStates, NuvemshopApiClient apiClient) {
@@ -90,23 +103,32 @@ public class BackofficeSalesService {
 
     @Scheduled(initialDelayString = "${analytics.sales-sync-initial-delay-ms:120000}",
                fixedDelayString = "${analytics.sales-sync-delay-ms:120000}")
-    public void scheduleSync() {
+    public synchronized void scheduleSync() {
+        if (stopping) return;
         if (!running.compareAndSet(false, true)) {
             return;
         }
         // A importacao historica pode durar minutos; ela nao deve bloquear os jobs de pagamento.
-        backgroundExecutor.execute(() -> {
-            try {
-                syncOnePendingStore();
-            } catch (RuntimeException ex) {
-                LOGGER.warn("backoffice.sales_sync.unexpected_error error={}", ex.toString());
-            } finally {
-                running.set(false);
-            }
-        });
+        try {
+            backgroundExecutor.execute(() -> {
+                try {
+                    syncOnePendingStore();
+                } catch (SyncPaused paused) {
+                    LOGGER.info("backoffice.sales_sync.paused reason=shutdown");
+                } catch (RuntimeException ex) {
+                    LOGGER.warn("backoffice.sales_sync.unexpected_error error={}", ex.toString());
+                } finally {
+                    running.set(false);
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            running.set(false);
+            if (!stopping) throw ex;
+        }
     }
 
     void syncOnePendingStore() {
+        checkStopping();
         Instant now = Instant.now();
         Map<Long, StoreSalesSync> states = syncStates.findAll().stream()
                 .collect(Collectors.toMap(StoreSalesSync::getStoreId, Function.identity()));
@@ -134,6 +156,7 @@ public class BackofficeSalesService {
         state.setLastError(null);
         syncStates.save(state);
         try {
+            checkStopping();
             if (state.isComplete() && state.isPersonalizedValueBackfilled() && state.getLastSyncedAt() != null) {
                 importRange(store, null, null, state.getLastSyncedAt().minus(Duration.ofHours(1)), now);
             } else {
@@ -143,12 +166,19 @@ public class BackofficeSalesService {
                     importRange(store, start, end.isAfter(now) ? now : end, null, null);
                 }
             }
+            checkStopping();
             state.setComplete(true);
             state.setPersonalizedValueBackfilled(true);
             state.setLastSyncedAt(now);
             syncStates.save(state);
             LOGGER.info("backoffice.sales_sync.done store_id={}", store.getStoreId());
+        } catch (SyncPaused paused) {
+            LOGGER.info("backoffice.sales_sync.paused store_id={} reason=shutdown", store.getStoreId());
         } catch (RuntimeException ex) {
+            if (stopping || Thread.currentThread().isInterrupted()) {
+                LOGGER.info("backoffice.sales_sync.paused store_id={} reason=shutdown", store.getStoreId());
+                return;
+            }
             state.setLastError(ex.getClass().getSimpleName());
             syncStates.save(state);
             LOGGER.warn("backoffice.sales_sync.failed store_id={} error={}", store.getStoreId(), ex.toString());
@@ -158,8 +188,10 @@ public class BackofficeSalesService {
     private void importRange(Store store, Instant createdMin, Instant createdMax,
                              Instant updatedMin, Instant updatedMax) {
         for (int page = 1; page <= MAX_PAGES_PER_RANGE; page++) {
+            checkStopping();
             JsonNode orders = apiClient.listOrdersForSales(store, page, PAGE_SIZE,
                     createdMin, createdMax, updatedMin, updatedMax);
+            checkStopping();
             if (orders == null || !orders.isArray()) {
                 throw new IllegalStateException("Resposta de pedidos invalida");
             }

@@ -26,6 +26,77 @@ class BackofficeSalesServiceTest {
     private final ObjectMapper json = new ObjectMapper();
 
     @Test
+    void shutdownDrainsWorkerWithoutFinishingHistoricalImport() throws Exception {
+        var stores = mock(StoreRepository.class);
+        var sales = mock(StoreOrderSalesRepository.class);
+        var states = mock(StoreSalesSyncRepository.class);
+        var api = mock(NuvemshopApiClient.class);
+        var store = new Store();
+        store.setStoreId(123L);
+        store.setAccessToken("token");
+        store.setScope("read_orders");
+        when(stores.findAll()).thenReturn(List.of(store));
+        when(states.findAll()).thenReturn(List.of());
+        var lifecycle = new br.com.nuvemcustomfields.config.DeploymentLifecycleConfiguration();
+        var service = new BackofficeSalesService(stores, sales, states, api);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "backgroundExecutor",
+                lifecycle.deploymentBackgroundExecutor());
+        var requested = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        when(api.listOrdersForSales(any(), anyInt(), anyInt(), any(), any(), any(), any()))
+                .thenAnswer(call -> {
+                    requested.countDown();
+                    if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new AssertionError("request not released");
+                    return json.readTree("[]");
+                });
+        try {
+            service.scheduleSync();
+            assertThat(requested.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            service.stopSync();
+            release.countDown();
+            lifecycle.shutdown();
+            assertThat(lifecycle.deploymentBackgroundExecutor().isTerminated()).isTrue();
+            verify(api, org.mockito.Mockito.times(1)).listOrdersForSales(any(), anyInt(), anyInt(), any(), any(), any(), any());
+            verify(states, org.mockito.Mockito.times(1)).save(any());
+        } finally {
+            release.countDown();
+            lifecycle.deploymentBackgroundExecutor().shutdownNow();
+        }
+    }
+
+    @Test
+    void shutdownDuringRequestPausesWithoutMarkingCompleteOrRecordingFailure() throws Exception {
+        var stores = mock(StoreRepository.class);
+        var sales = mock(StoreOrderSalesRepository.class);
+        var states = mock(StoreSalesSyncRepository.class);
+        var api = mock(NuvemshopApiClient.class);
+        var store = new Store();
+        store.setStoreId(123L);
+        store.setAccessToken("token");
+        store.setScope("read_orders");
+        var state = new StoreSalesSync(123L);
+        when(stores.findAll()).thenReturn(List.of(store));
+        when(states.findAll()).thenReturn(List.of(state));
+        var service = new BackofficeSalesService(stores, sales, states, api);
+        when(api.listOrdersForSales(any(), anyInt(), anyInt(), any(), any(), any(), any()))
+                .thenAnswer(call -> {
+                    service.stopSync();
+                    return json.readTree("[]");
+                });
+
+        service.syncOnePendingStore();
+        service.scheduleSync(); // Must not submit any work after the shutdown signal.
+
+        verify(api, org.mockito.Mockito.times(1)).listOrdersForSales(any(), anyInt(), anyInt(), any(), any(), any(), any());
+        verify(states, org.mockito.Mockito.times(1)).save(state);
+        org.mockito.Mockito.verifyNoInteractions(sales);
+        assertThat(state.isComplete()).isFalse();
+        assertThat(state.isPersonalizedValueBackfilled()).isFalse();
+        assertThat(state.getLastSyncedAt()).isNull();
+        assertThat(state.getLastError()).isNull();
+    }
+
+    @Test
     void countsPaidItemQuantitiesAndOnlyCustomizedLineItems() throws Exception {
         var order = json.readTree("""
                 {"id": 91, "created_at": "2026-09-29T10:30:00-03:00", "currency": "BRL", "payment_status": "paid", "status": "open", "products": [

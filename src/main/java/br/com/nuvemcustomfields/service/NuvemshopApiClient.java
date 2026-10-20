@@ -40,6 +40,19 @@ public class NuvemshopApiClient {
     private final NuvemshopProperties properties;
     private final RestClient restClient;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public NuvemshopApiClient(NuvemshopProperties properties, RestClient.Builder builder,
+            @org.springframework.beans.factory.annotation.Value("${nuvemshop.api.read-timeout-ms:10000}") int readTimeout) {
+        this(properties, boundedBuilder(builder, readTimeout));
+    }
+
+    private static RestClient.Builder boundedBuilder(RestClient.Builder builder, int readTimeout) {
+        var factory = new org.springframework.http.client.JdkClientHttpRequestFactory(
+                java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(3)).build());
+        factory.setReadTimeout(java.time.Duration.ofMillis(readTimeout));
+        return builder.clone().requestFactory(factory);
+    }
+
     public NuvemshopApiClient(NuvemshopProperties properties, RestClient.Builder builder) {
         this.properties = properties;
         this.restClient = builder.defaultHeader("User-Agent", properties.userAgent()).build();
