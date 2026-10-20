@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.1] - 2026-10-20
+
+### Correções
+
+- reconcile localized Dodo subscriptions (`f832725`)
+
 ## [1.40.0.2] - 2026-10-20
 
 ### Outros
