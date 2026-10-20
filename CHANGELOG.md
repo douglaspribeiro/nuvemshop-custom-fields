@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.4] - 2026-10-20
+
+### Correções
+
+- restart checkout for canceled subscriptions (`789d8da`)
+
 ## [1.40.3] - 2026-10-20
 
 ### Correções
