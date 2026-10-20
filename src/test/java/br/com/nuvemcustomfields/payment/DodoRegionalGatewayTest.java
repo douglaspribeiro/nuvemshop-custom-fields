@@ -41,8 +41,6 @@ class DodoRegionalGatewayTest {
             var gateway = ignored.gateway; String base = live ? "https://live.dodopayments.com" : "https://test.dodopayments.com";
             var price = price(gateway,"CL","CLP","4199");
             when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(gateway.provider(),gateway.environment(),"CL",PlanType.PREMIUM)).thenReturn(Optional.of(price));
-            server.expect(requestTo(base+"/products/pdt_regional")).andRespond(withSuccess(product(),MediaType.APPLICATION_JSON));
-            server.expect(requestTo(base+"/products/pdt_regional/localized-prices")).andRespond(withSuccess("{\"items\":[{\"id\":\"lcp_cl\",\"country_code\":\"CL\",\"currency\":\"CLP\",\"amount\":4199}]}",MediaType.APPLICATION_JSON));
             String host = live ? "checkout.dodopayments.com" : "test.checkout.dodopayments.com";
             server.expect(requestTo(base+"/checkouts")).andExpect(jsonPath("$.billing_currency").value("CLP"))
                     .andExpect(jsonPath("$.billing_address.country").value("CL"))

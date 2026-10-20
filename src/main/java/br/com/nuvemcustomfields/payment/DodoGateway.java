@@ -93,7 +93,11 @@ public abstract class DodoGateway implements PaymentGateway {
     }
     @Override public GatewayCheckout createCheckout(Store store, PlanType plan, String reference, String returnUrl) {
         if (!planAvailable(store, plan)) throw new IllegalArgumentException("Loja ou plano não autorizado para Dodo.");
-        var price = requirePrice(store, plan); validateCatalog(price);
+        // A catalog entry is validated when it is bound or changed. Revalidating
+        // its displayed amount here makes a completed checkout depend on Dodo's
+        // localized/base-price representation again. The signed webhook plus the
+        // bound product and external reference are the authoritative confirmation.
+        var price = requirePrice(store, plan);
         var data = request(client.post().uri(baseUrl + "/checkouts").contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("product_cart", List.of(Map.of("product_id", price.getProviderPriceId(), "quantity", 1)),
                         "billing_currency", price.getCurrency(), "return_url", returnUrl,
