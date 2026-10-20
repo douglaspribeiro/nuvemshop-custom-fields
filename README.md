@@ -155,6 +155,12 @@ de upgrade e o histórico de ajustes financeiros. Os preços Ultra do catálogo 
 e valide no Backoffice > Pagamentos antes de vender o plano. Preços internacionais
 Ultra são valores iniciais configuráveis; não alteram contratos existentes.
 
+## Stripe para Argentina
+
+Configuração da Stripe para Argentina (conta recebedora brasileira):
+[checkout, catálogo, webhooks e ativação](docs/configuracao-stripe-argentina.md).
+O gateway começa desabilitado e a V56 preserva as rotas existentes.
+
 ## Reconquista apos desinstalacao
 
 **Estado atual:** a publicacao SQS esta implementada com outbox transacional,

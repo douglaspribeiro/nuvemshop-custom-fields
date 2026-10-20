@@ -17,6 +17,10 @@ nuvemshop:
   billing:
     enabled: false
 payments:
+  stripe:
+    enabled: false
+    secret-key: ''
+    webhook-secret: ''
   dodo:
     enabled: false
   dodo-test:

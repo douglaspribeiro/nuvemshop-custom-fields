@@ -6,7 +6,10 @@ public enum PaymentProviderType {
     PADDLE,
     CREEM,
     DODO,
-    DODO_TEST;
+    DODO_TEST,
+    STRIPE;
+
+    public boolean isStripeOrCreem() { return this == STRIPE || this == CREEM; }
 
     public boolean isDodo() { return this == DODO || this == DODO_TEST; }
 }

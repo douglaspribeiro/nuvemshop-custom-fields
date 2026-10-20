@@ -33,6 +33,8 @@ public class PaymentConfigurationService {
     public void saveRoute(String country, PaymentProviderType provider, PaymentEnvironment environment,
                           boolean enabled, String operator) {
         String code=country(country);
+        if (provider == PaymentProviderType.STRIPE && !"AR".equals(code))
+            throw new IllegalArgumentException("A integração Stripe está disponível apenas para a Argentina.");
         if (provider == PaymentProviderType.PADDLE)
             throw new IllegalArgumentException("Paddle foi removido e não aceita novas assinaturas.");
         if (provider == PaymentProviderType.DODO_TEST)
@@ -64,7 +66,7 @@ public class PaymentConfigurationService {
             return new PriceSaveResult(false, false, "Preço salvo, mas permanece desabilitado.");
         }
         try {
-            if (price.getProvider()==PaymentProviderType.CREEM) router.require(PaymentProviderType.CREEM).validateCatalog(price);
+            if (price.getProvider().isStripeOrCreem()) router.require(price.getProvider()).validateCatalog(price);
             if (price.getProvider().isDodo()) router.require(price.getProvider()).validateCatalog(price);
             price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
             return new PriceSaveResult(true, true, "Preço validado e habilitado.");
@@ -88,13 +90,13 @@ public class PaymentConfigurationService {
             enabledPrices.forEach(price -> router.require(provider).validateCatalog(price));
             return;
         }
-        if (provider == PaymentProviderType.CREEM && prices.stream().filter(PaymentCatalogPrice::isEnabled)
+        if (provider.isStripeOrCreem() && prices.stream().filter(PaymentCatalogPrice::isEnabled)
                 .map(PaymentCatalogPrice::getCurrency).distinct().count() > 1)
-            throw new IllegalArgumentException("Os planos Creem do país devem usar a mesma moeda.");
+            throw new IllegalArgumentException("Os planos do país devem usar a mesma moeda.");
         for (PlanType plan : List.of(PlanType.PREMIUM,PlanType.PREMIUM_PLUS)) {
             PaymentCatalogPrice price=prices.stream().filter(p->p.getPlan()==plan && p.isEnabled() && p.isRecurring() && p.isValidated()).findFirst()
                     .orElseThrow(()->new IllegalArgumentException("Catálogo incompleto para "+plan.getDisplayName()+"."));
-            if (provider==PaymentProviderType.CREEM) router.require(provider).validateCatalog(price);
+            if (provider.isStripeOrCreem()) router.require(provider).validateCatalog(price);
         }
     }
     private static String country(String value) {

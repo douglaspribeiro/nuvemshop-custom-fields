@@ -22,6 +22,10 @@ public class BackofficePlansController {
     private static final String TOKEN_KEY = "planActionToken";
     private final PlanCatalogService catalog;
     private br.com.nuvemcustomfields.service.CreemCatalogService creem;
+    private br.com.nuvemcustomfields.service.StripeCatalogService stripe;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setStripe(br.com.nuvemcustomfields.service.StripeCatalogService stripe) { this.stripe = stripe; }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setCreem(br.com.nuvemcustomfields.service.CreemCatalogService creem) { this.creem = creem; }
@@ -42,6 +46,10 @@ public class BackofficePlansController {
         model.addAttribute("creemEnvironment", creem == null ? br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX : creem.environment());
         model.addAttribute("creemPrices", creem == null ? java.util.List.of() : creem.prices());
         model.addAttribute("creemPublications", creem == null ? java.util.List.of() : creem.publications());
+        model.addAttribute("stripeConfigured", stripe != null && stripe.apiConfigured());
+        model.addAttribute("stripeEnvironment", stripe == null ? br.com.nuvemcustomfields.entity.PaymentEnvironment.SANDBOX : stripe.environment());
+        model.addAttribute("stripePrices", stripe == null ? java.util.List.of() : stripe.prices());
+        model.addAttribute("stripePublications", stripe == null ? java.util.List.of() : stripe.publications());
         model.addAttribute("billablePlans", java.util.Arrays.stream(PlanType.values()).filter(PlanType::isBillable).toList());
         return "backoffice/plans";
     }

@@ -305,7 +305,9 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/payments")
     public String payments(Model model) {
-        model.addAttribute("routingRules", paymentConfigurationService.rules());
+        var rules = paymentConfigurationService.rules();
+        model.addAttribute("routingRules", rules);
+        model.addAttribute("argentinaRouteMissing", rules.stream().noneMatch(rule -> "AR".equalsIgnoreCase(rule.getCountryCode())));
         model.addAttribute("catalogPrices", paymentConfigurationService.catalog());
         model.addAttribute("routingHistory", paymentConfigurationService.history());
         model.addAttribute("providers", java.util.Arrays.stream(PaymentProviderType.values())

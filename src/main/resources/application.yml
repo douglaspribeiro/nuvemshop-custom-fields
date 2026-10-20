@@ -131,6 +131,14 @@ backoffice:
   password: ${BACKOFFICE_PASSWORD:admin}
 
 payments:
+  stripe:
+    enabled: ${STRIPE_ENABLED:false}
+    sandbox: ${STRIPE_SANDBOX:true}
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    allowed-store-ids: ${STRIPE_ALLOWED_STORE_IDS:}
+    grace-days: ${STRIPE_GRACE_DAYS:0}
+    timeout-seconds: ${STRIPE_TIMEOUT_SECONDS:20}
   upgrade:
     reconcile-delay-ms: ${UPGRADE_RECONCILE_DELAY_MS:60000}
   reconciliation-delay-ms: ${PAYMENTS_RECONCILIATION_DELAY_MS:3600000}

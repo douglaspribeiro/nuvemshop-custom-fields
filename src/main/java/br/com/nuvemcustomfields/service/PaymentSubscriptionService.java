@@ -62,6 +62,9 @@ public class PaymentSubscriptionService {
     @Autowired(required = false)
     public void setDodoTestCheckout(DodoTestCheckoutService service) { this.dodoTestCheckout = service; }
     private CreemCheckoutService creemCheckout;
+    private StripeCheckoutService stripeCheckout;
+    @Autowired(required = false)
+    public void setStripeCheckout(StripeCheckoutService service) { this.stripeCheckout = service; }
     private CreemUpgradeService creemUpgrade;
     @Autowired(required = false)
     public void setCreemUpgrade(CreemUpgradeService service) { this.creemUpgrade = service; }
@@ -123,7 +126,7 @@ public class PaymentSubscriptionService {
         return router.configured(PaymentProviderType.MERCADO_PAGO);
     }
 
-    public boolean anyGatewayEnabled() { return efiEnabled() || mercadoPagoEnabled() || router.configured(PaymentProviderType.CREEM) || router.configured(PaymentProviderType.DODO_TEST) || router.configured(PaymentProviderType.DODO); }
+    public boolean anyGatewayEnabled() { return efiEnabled() || mercadoPagoEnabled() || router.configured(PaymentProviderType.CREEM) || router.configured(PaymentProviderType.DODO_TEST) || router.configured(PaymentProviderType.DODO) || router.configured(PaymentProviderType.STRIPE); }
     public Optional<PaymentProviderType> provider(Store store) {
         return router.forStore(store).map(PaymentGateway::provider);
     }
@@ -160,7 +163,7 @@ public class PaymentSubscriptionService {
         if (plan == PlanType.PREMIUM_ULTRA && !efi.planAvailable(store, plan))
             throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
-        if (local != null && (local.getProvider() == PaymentProviderType.CREEM || local.getProvider().isDodo())
+        if (local != null && (local.getProvider().isStripeOrCreem() || local.getProvider().isDodo())
                 && local.getStatus() == PaymentSubscriptionStatus.PENDING && !hasText(local.getProviderCheckoutId()))
             throw new IllegalStateException("A tentativa anterior no gateway ainda precisa ser conciliada. Contate o suporte.");
         if (local != null && local.getProvider() == PaymentProviderType.EFI
@@ -309,7 +312,7 @@ public class PaymentSubscriptionService {
 
     public BigDecimal amount(Store store, PlanType plan) {
         PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
-        if (existing != null && (existing.getProvider() == PaymentProviderType.CREEM || existing.getProvider().isDodo()) && existing.isAccessActive() && existing.getPlan() == plan)
+        if (existing != null && (existing.getProvider().isStripeOrCreem() || existing.getProvider().isDodo()) && existing.isAccessActive() && existing.getPlan() == plan)
             return existing.getAmountValue();
         try { return priceGateway(store).map(gateway -> amount(gateway, store, plan)).orElse(BigDecimal.ZERO); }
         catch (IllegalArgumentException ex) { return BigDecimal.ZERO; }
@@ -321,7 +324,7 @@ public class PaymentSubscriptionService {
 
     public String currency(Store store) {
         PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
-        if (existing != null && (existing.getProvider() == PaymentProviderType.CREEM || existing.getProvider().isDodo()) && existing.isAccessActive()) return existing.getCurrency();
+        if (existing != null && (existing.getProvider().isStripeOrCreem() || existing.getProvider().isDodo()) && existing.isAccessActive()) return existing.getCurrency();
         return priceGateway(store).map(gateway -> gateway.currency(store)).orElse(store.getStoreCurrency());
     }
 
@@ -344,7 +347,7 @@ public class PaymentSubscriptionService {
             // rather than hiding the entire comparison screen.
             PaymentGateway gateway = existing != null && existing.isAccessActive() && router.configured(existing.getProvider())
                     ? router.require(existing.getProvider()) : router.requireForStore(store);
-            if (existing != null && existing.isAccessActive() && existing.getProvider() == PaymentProviderType.CREEM
+            if (existing != null && existing.isAccessActive() && existing.getProvider().isStripeOrCreem()
                     && !existing.getCurrency().equals(gateway.currency(store))) return false;
             return gateway.planAvailable(store, plan);
         } catch (RuntimeException ex) { return false; }
@@ -375,6 +378,8 @@ public class PaymentSubscriptionService {
         }
         if (subscription.getProvider().isDodo())
             throw new IllegalArgumentException("O Dodo ainda não oferece alteração de plano.");
+        if (subscription.getProvider() == PaymentProviderType.STRIPE)
+            throw new IllegalArgumentException("Para alterar o plano Stripe, entre em contato com o suporte.");
         PaymentGateway gateway = router.require(subscription.getProvider());
         if (subscription.getProviderEnvironment() != gateway.environment() || !gateway.planAvailable(store, targetPlan)) {
             throw new IllegalArgumentException("Plano ainda não disponível para esta assinatura.");
@@ -402,7 +407,7 @@ public class PaymentSubscriptionService {
             GatewaySubscription remote = gateway.getSubscription(subscription.getProviderSubscriptionId());
             if (!matchesUpgrade(subscription, remote))
                 throw new PaymentGatewayException("A alteração está aguardando confirmação do provedor.");
-            synchronize(subscription, remote, gateway.provider() == PaymentProviderType.CREEM ? gateway.getLatestInvoice(remote.id()).orElse(null) : null, "PAYMENT_UPGRADE");
+            synchronize(subscription, remote, gateway.provider().isStripeOrCreem() ? gateway.getLatestInvoice(remote.id()).orElse(null) : null, "PAYMENT_UPGRADE");
         } catch (RuntimeException ex) {
             throw new PaymentGatewayException("A alteração precisa ser confirmada pelo provedor. Seu acesso atual foi preservado.", ex);
         }
@@ -413,6 +418,11 @@ public class PaymentSubscriptionService {
     public String startCheckout(Long storeId, PlanType plan) {
         if (plan == null || !plan.isBillable()) {
             throw new IllegalArgumentException("Selecione um plano pago.");
+        }
+        if (stripeCheckout != null) {
+            Store candidate = stores.findByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("Loja não encontrada."));
+            if (router.forStore(candidate).map(g -> g.provider() == PaymentProviderType.STRIPE).orElse(false))
+                return stripeCheckout.start(storeId, plan);
         }
         if (dodoLiveCheckout != null) {
             Store candidate = stores.findByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("Loja não encontrada."));
@@ -435,6 +445,8 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.requireForStore(store);
         if (gateway.provider().isDodo())
             throw new PaymentGatewayException("Reabra os planos para iniciar o checkout Dodo de teste.");
+        if (gateway.provider() == PaymentProviderType.STRIPE)
+            throw new PaymentGatewayException("Reabra os planos para iniciar o checkout Stripe.");
         if (gateway.provider() == PaymentProviderType.CREEM)
             throw new PaymentGatewayException("O perfil da loja foi atualizado. Reabra os planos para iniciar o checkout Creem.");
         PaymentSubscription subscription = subscriptions.findByStoreId(storeId).orElse(null);
@@ -547,9 +559,11 @@ public class PaymentSubscriptionService {
         PaymentSubscription local = subscriptions.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura local nao encontrada."));
         if (local.getProviderSubscriptionId() == null) {
+            if (local.getProvider() == PaymentProviderType.STRIPE && hasText(local.getProviderCheckoutId()))
+                return synchronizeStripeCheckout(local.getProviderCheckoutId());
             if (local.getProvider().isDodo() && hasText(local.getProviderCheckoutId()))
                 return synchronizeDodoCheckout(local);
-            if (local.getProvider() == PaymentProviderType.CREEM && hasText(local.getProviderCheckoutId()))
+            if (local.getProvider().isStripeOrCreem() && hasText(local.getProviderCheckoutId()))
                 return synchronizeCreemCheckout(local.getProviderCheckoutId());
             return local;
         }
@@ -583,12 +597,16 @@ public class PaymentSubscriptionService {
         if (stores.findActiveByStoreIdForUpdate(storeId).isEmpty()) return false;
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
         if (local == null || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()) return false;
+        if (local.getProvider() == PaymentProviderType.STRIPE) {
+            if (!hasText(local.getProviderCheckoutId())) return false;
+            return synchronizeStripeCheckout(local.getProviderCheckoutId()).getStatus() != PaymentSubscriptionStatus.PENDING;
+        }
         if (local.getProvider() == PaymentProviderType.EFI) return expirePendingEfi(storeId);
         if (local.getProvider().isDodo()) {
             if (!hasText(local.getProviderCheckoutId())) return false;
             return synchronizeDodoCheckout(local).getStatus() != PaymentSubscriptionStatus.PENDING;
         }
-        if (local.getProvider() == PaymentProviderType.CREEM) {
+        if (local.getProvider().isStripeOrCreem()) {
             if (!hasText(local.getProviderCheckoutId())) return false; // Unknown response must be reconciled, never replayed.
             PaymentSubscription reconciled = synchronizeCreemCheckout(local.getProviderCheckoutId());
             return reconciled.getStatus() != PaymentSubscriptionStatus.PENDING;
@@ -696,7 +714,7 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
         PaymentSubscription local = locate(remote);
-        if (provider == PaymentProviderType.CREEM || provider.isDodo()) requireProvider(local, provider);
+        if (provider.isStripeOrCreem() || provider.isDodo()) requireProvider(local, provider);
         return synchronize(local, remote, latestInvoice(gateway, local, remote).orElse(null), "PAYMENT_WEBHOOK");
     }
 
@@ -705,7 +723,7 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
         PaymentSubscription local = locate(remote);
-        if (provider == PaymentProviderType.CREEM || provider.isDodo()) requireProvider(local, provider);
+        if (provider.isStripeOrCreem() || provider.isDodo()) requireProvider(local, provider);
         return synchronize(local, remote, null, "PAYMENT_WEBHOOK");
     }
 
@@ -725,7 +743,7 @@ public class PaymentSubscriptionService {
         GatewayInvoice invoice = gateway.getInvoice(invoiceId);
         GatewaySubscription remote = gateway.getSubscription(invoice.subscriptionId());
         PaymentSubscription local = locate(remote);
-        if (provider == PaymentProviderType.CREEM || provider.isDodo()) requireProvider(local, provider);
+        if (provider.isStripeOrCreem() || provider.isDodo()) requireProvider(local, provider);
         return synchronize(local, remote, invoice, "PAYMENT_WEBHOOK");
     }
 
@@ -796,11 +814,12 @@ public class PaymentSubscriptionService {
         if (local.getProvider().isDodo() && invoice != null
                 && !Objects.equals(remote.id(), invoice.subscriptionId()))
             throw new IllegalArgumentException("Pagamento Dodo divergente da assinatura.");
-        if (local.getProvider() == PaymentProviderType.CREEM && invoice != null
+        if (local.getProvider().isStripeOrCreem() && invoice != null
                 && (!Objects.equals(local.getProviderSubscriptionId() == null ? remote.id() : local.getProviderSubscriptionId(), invoice.subscriptionId())
                     || !Objects.equals(local.getCurrency(), invoice.currency())))
-            throw new IllegalArgumentException("Pagamento Creem divergente da assinatura.");
-        if (local.getProvider() == PaymentProviderType.CREEM && matchesUpgrade(local, remote)
+            throw new IllegalArgumentException("Pagamento " + (local.getProvider() == PaymentProviderType.STRIPE ? "Stripe" : "Creem")
+                    + " divergente da assinatura.");
+        if (local.getProvider().isStripeOrCreem() && matchesUpgrade(local, remote)
                 && (invoice == null || !invoice.approved() || Objects.equals(invoice.paymentId(), local.getLastPaymentId())))
             throw new PaymentGatewayException("Aguardando confirmação do pagamento proporcional Creem.");
         PlanType sourcePlan = local.getPlan();
@@ -843,14 +862,26 @@ public class PaymentSubscriptionService {
         }
         paymentNotifications.paymentFailed(local, invoice);
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
-        if (local.getProvider().isDodo()
+        if (local.getProvider() == PaymentProviderType.STRIPE && "incomplete_expired".equals(status)) {
+            markExpiredCheckout(local, status, "A assinatura Stripe incompleta expirou. Você pode tentar novamente.");
+            deactivate(local, store, source);
+        } else if (local.getProvider() == PaymentProviderType.STRIPE && "incomplete".equals(status)) {
+            local.setStatus(PaymentSubscriptionStatus.PENDING);
+            deactivate(local, store, source);
+        } else if (local.getProvider() == PaymentProviderType.STRIPE && invoice != null
+                && java.util.Set.of("refunded", "chargedBack").contains(invoice.paymentStatus())) {
+            local.setStatus(canceled(status) || remote.cancellationEffectiveAt() != null
+                    ? PaymentSubscriptionStatus.CANCELED : PaymentSubscriptionStatus.PAUSED);
+            if (canceled(status) || remote.cancellationEffectiveAt() != null) local.setCancellationPending(false);
+            deactivate(local, store, source);
+        } else if (local.getProvider().isDodo()
                 && ("paused".equals(status) || "cancelled".equals(status)
                     || remote.currentPeriodEnd() == null || !Instant.now().isBefore(remote.currentPeriodEnd())
                     || (invoice != null && "refunded".equals(invoice.paymentStatus())))) {
             local.setStatus("cancelled".equals(status) ? PaymentSubscriptionStatus.CANCELED : PaymentSubscriptionStatus.PAUSED);
             local.setCancellationPending(false); deactivate(local, store, source);
         } else if (remote.cancellationEffectiveAt() != null) {
-            if ((local.getProvider() == PaymentProviderType.CREEM || local.getProvider().isDodo()) && invoice != null && invoice.approved()
+            if ((local.getProvider().isStripeOrCreem() || local.getProvider().isDodo()) && invoice != null && invoice.approved()
                     && Instant.now().isBefore(remote.cancellationEffectiveAt())) {
                 activate(local, store, source); paymentNotifications.enqueue(local, invoice);
                 if (local.getProvider().isDodo() && attempts != null)
@@ -862,11 +893,11 @@ public class PaymentSubscriptionService {
             local.setCancellationPending(false);
             local.setCancellationEffectiveAt(remote.cancellationEffectiveAt());
             local.setNextPaymentAt(remote.cancellationEffectiveAt());
-        } else if (local.getProvider() == PaymentProviderType.CREEM && "active".equals(status)
+        } else if (local.getProvider().isStripeOrCreem() && "active".equals(status)
                 && invoice != null && invoice.approved()
                 && (remote.currentPeriodEnd() == null || !Instant.now().isBefore(remote.currentPeriodEnd()))) {
             local.setStatus(PaymentSubscriptionStatus.PAUSED); deactivate(local, store, source);
-        } else if (local.getProvider() == PaymentProviderType.CREEM &&
+        } else if (local.getProvider().isStripeOrCreem() &&
                 ("unpaid".equals(status) || "expired".equals(status) || "trialing".equals(status)
                  || (invoice != null && java.util.Set.of("refunded", "chargedBack").contains(invoice.paymentStatus())))) {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
@@ -883,7 +914,7 @@ public class PaymentSubscriptionService {
             local.setGraceUntil(null);
             local.setCancellationPending(false);
             activate(local, store, source);
-            if (upgraded && local.getProvider() == PaymentProviderType.CREEM) {
+            if (upgraded && local.getProvider().isStripeOrCreem()) {
                 paymentNotifications.enqueueUpgrade(store, local, sourcePlan, invoice);
             } else {
                 paymentNotifications.enqueue(local, invoice);
@@ -896,7 +927,7 @@ public class PaymentSubscriptionService {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
             deactivate(local, store, source);
         } else if (canceled(status)) {
-            if (local.getProvider() == PaymentProviderType.CREEM) {
+            if (local.getProvider().isStripeOrCreem()) {
                 local.setNextPaymentAt(Instant.now()); deactivate(local, store, source);
             }
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
@@ -916,6 +947,40 @@ public class PaymentSubscriptionService {
                     local.getStatus(), source);
         }
         stores.save(store);
+        return subscriptions.save(local);
+    }
+
+    @Transactional
+    public PaymentSubscription synchronizeStripeCheckout(String checkoutId) {
+        var gateway = (br.com.nuvemcustomfields.payment.StripeGateway) router.require(PaymentProviderType.STRIPE);
+        var checkout = gateway.getCheckout(checkoutId);
+        String reference = br.com.nuvemcustomfields.payment.StripeGateway.required(checkout, "client_reference_id");
+        PaymentSubscription local = subscriptions.findByExternalReference(reference)
+                .orElseThrow(() -> new IllegalArgumentException("Checkout Stripe sem tentativa local."));
+        requireProvider(local, PaymentProviderType.STRIPE);
+        var metadata = checkout.path("metadata");
+        if (!checkoutId.equals(br.com.nuvemcustomfields.payment.StripeGateway.required(checkout, "id"))
+                || !"subscription".equals(br.com.nuvemcustomfields.payment.StripeGateway.text(checkout, "mode"))
+                || (hasText(local.getProviderCheckoutId()) && !checkoutId.equals(local.getProviderCheckoutId()))
+                || !reference.equals(br.com.nuvemcustomfields.payment.StripeGateway.text(metadata, "external_reference"))
+                || !local.getStoreId().toString().equals(br.com.nuvemcustomfields.payment.StripeGateway.text(metadata, "store_id"))
+                || !Objects.equals(local.getProviderPriceId(), br.com.nuvemcustomfields.payment.StripeGateway.text(metadata, "price_id"))
+                || !"AR".equals(br.com.nuvemcustomfields.payment.StripeGateway.text(metadata, "country_code"))
+                || !local.getPlan().name().equals(br.com.nuvemcustomfields.payment.StripeGateway.text(metadata, "plan")))
+            throw new IllegalArgumentException("Checkout Stripe divergente da tentativa local.");
+        local.setProviderCheckoutId(checkoutId);
+        String subscriptionId = br.com.nuvemcustomfields.payment.StripeGateway.resourceId(checkout.path("subscription"));
+        if (hasText(subscriptionId)) {
+            GatewaySubscription remote = gateway.getSubscription(subscriptionId);
+            return synchronize(local, remote, gateway.getLatestInvoice(subscriptionId).orElse(null), "STRIPE_CHECKOUT");
+        }
+        if ("expired".equals(br.com.nuvemcustomfields.payment.StripeGateway.text(checkout, "status"))) {
+            markExpiredCheckout(local, "expired", "O checkout Stripe expirou. Você pode tentar novamente.");
+        } else if (attempts != null) attempts.findByExternalReference(reference).ifPresent(attempt -> {
+            attempt.setProviderTransactionId(checkoutId);
+            if (attempt.getStatus() != PaymentAttemptStatus.COMPLETED) attempt.setStatus(PaymentAttemptStatus.OPEN);
+            attempts.save(attempt);
+        });
         return subscriptions.save(local);
     }
 
@@ -971,6 +1036,12 @@ public class PaymentSubscriptionService {
     }
 
     private void validateRemote(PaymentSubscription local, GatewaySubscription remote) {
+        if (local.getProvider() == PaymentProviderType.STRIPE) {
+            requireProvider(local, PaymentProviderType.STRIPE);
+            if (!Objects.equals(local.getExternalReference(), remote.externalReference())
+                    || !Objects.equals(local.getProviderPriceId(), remote.priceId()))
+                throw new IllegalArgumentException("Preço ou referência Stripe divergente da tentativa local.");
+        }
         if (hasText(local.getProviderSubscriptionId()) && !Objects.equals(local.getProviderSubscriptionId(), remote.id()))
             throw new IllegalArgumentException("Identificador de assinatura divergente.");
         if (matchesUpgrade(local, remote)) {
@@ -982,7 +1053,7 @@ public class PaymentSubscriptionService {
                 && (!Objects.equals(local.getProviderPriceId(), remote.priceId())
                     || !Objects.equals(local.getExternalReference(), remote.externalReference())))
             throw new IllegalArgumentException("Produto ou referência Dodo divergente da tentativa local.");
-        if (local.getProvider() == PaymentProviderType.CREEM
+        if (local.getProvider().isStripeOrCreem()
                 && !Objects.equals(local.getProviderPriceId(), remote.priceId()))
             throw new IllegalArgumentException("Produto Creem divergente da assinatura.");
         String expectedResource = hasText(local.getProviderPriceId()) ? local.getProviderPriceId() : local.getProviderCheckoutId();
@@ -1027,7 +1098,7 @@ public class PaymentSubscriptionService {
                 || local.getUpgradeAmount().compareTo(remote.amount()) != 0
                 || (!"active".equalsIgnoreCase(remote.status()) && !"authorized".equalsIgnoreCase(remote.status())
                     && !"new_charge".equalsIgnoreCase(remote.status()))) return false;
-        String remotePrice = local.getProvider() == PaymentProviderType.CREEM ? remote.priceId() : remote.checkoutResourceId();
+        String remotePrice = local.getProvider().isStripeOrCreem() ? remote.priceId() : remote.checkoutResourceId();
         return !hasText(local.getUpgradePriceId()) || Objects.equals(local.getUpgradePriceId(), remotePrice);
     }
 
@@ -1109,11 +1180,12 @@ public class PaymentSubscriptionService {
     }
     private BigDecimal amount(PaymentGateway gateway, Store store, PlanType plan) {
         PaymentProviderType provider = gateway.provider();
-        return provider == PaymentProviderType.CREEM
+        return provider.isStripeOrCreem()
                 || provider == PaymentProviderType.DODO || provider == PaymentProviderType.DODO_TEST
                 ? gateway.amount(store, plan) : gateway.amount(plan);
     }
     private int graceDays(PaymentProviderType provider) {
+        if (provider == PaymentProviderType.STRIPE) return ((br.com.nuvemcustomfields.payment.StripeGateway) router.require(provider)).graceDays();
         if (provider == PaymentProviderType.CREEM) return ((br.com.nuvemcustomfields.payment.CreemGateway) router.require(provider)).graceDays();
         return mercadoPagoProperties.safeGraceDays();
     }

@@ -230,7 +230,8 @@ public class AdminController {
         model.addAttribute("ultraAvailable", ultraAvailable);
         model.addAttribute("premiumUltraPrice", ultraAvailable ? formatBillingPrice(billingCurrency,
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM_ULTRA)) : "");
-        model.addAttribute("canUpgrade", subscription != null && !subscription.getProvider().isDodo() && subscription.isAccessActive()
+        model.addAttribute("canUpgrade", subscription != null && !subscription.getProvider().isDodo()
+                && subscription.getProvider() != PaymentProviderType.STRIPE && subscription.isAccessActive()
                 && subscription.getStatus() == PaymentSubscriptionStatus.ACTIVE
                 && !subscription.isCancellationPending() && subscription.getCancellationEffectiveAt() == null
                 && !subscription.isWinbackRestorePending() && subscription.getUpgradePlan() == null

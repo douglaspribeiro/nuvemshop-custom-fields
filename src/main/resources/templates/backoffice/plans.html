@@ -122,6 +122,62 @@
             </table>
         </div>
     </section>
+    <section class="panel" id="stripe">
+        <p class="eyebrow">Stripe · Argentina</p>
+        <h2>Criar produtos e preços mensais</h2>
+        <p>Crie o produto e o preço mensal do Essencial, Pro ou Ultra pela sua conta Stripe. O código de cobrança é salvo automaticamente para a Argentina.</p>
+        <p>Ambiente do servidor: <strong th:text="${stripeEnvironment}">SANDBOX</strong>. Após criar, habilite o preço e a rota AR em <a th:href="@{/backoffice/payments}">Pagamentos</a>. As assinaturas dos lojistas são criadas quando eles concluem o checkout.</p>
+        <p class="notice" th:unless="${stripeConfigured}">Configure STRIPE_SECRET_KEY do ambiente selecionado no servidor para criar produtos e preços.</p>
+        <div class="grid two">
+            <form class="form" th:action="@{/backoffice/plans/stripe/create}" method="post">
+                <h3>Criar na Stripe</h3>
+                <input type="hidden" name="actionToken" th:value="${actionToken}">
+                <input type="hidden" name="environment" th:value="${stripeEnvironment}">
+                <label>Plano<select name="plan" required><option th:each="type : ${billablePlans}" th:value="${type}" th:text="${type.displayName}"></option></select></label>
+                <label>Nome do produto<input name="name" maxlength="120" placeholder="Campos personalizados — Essencial" required></label>
+                <label>Descrição<input name="description" maxlength="500" placeholder="Assinatura mensal de campos personalizados" required></label>
+                <label>Moeda<select name="currency"><option value="ARS">ARS</option><option value="USD">USD</option><option value="BRL">BRL</option></select></label>
+                <label>Preço mensal<input name="amount" type="number" min="0.01" max="999999.99" step="0.01" required></label>
+                <p>Mensalidade fixa com impostos incluídos. Use uma moeda aceita pela sua conta e a mesma moeda em todos os planos da Argentina.</p>
+                <button class="button primary" type="submit" th:disabled="${!stripeConfigured}">Criar produto e preço na Stripe</button>
+            </form>
+            <form class="form" th:action="@{/backoffice/plans/stripe/bind}" method="post">
+                <h3>Vincular preço existente</h3>
+                <p>Use se já criou o preço na Stripe ou precisa recuperar uma publicação antiga sem repetir a criação.</p>
+                <input type="hidden" name="actionToken" th:value="${actionToken}">
+                <input type="hidden" name="environment" th:value="${stripeEnvironment}">
+                <label>Plano<select name="plan" required><option th:each="type : ${billablePlans}" th:value="${type}" th:text="${type.displayName}"></option></select></label>
+                <label>ID do preço Stripe<input name="priceId" maxlength="120" pattern="price_[A-Za-z0-9_]+" placeholder="price_..." required></label>
+                <label>Moeda<select name="currency"><option value="ARS">ARS</option><option value="USD">USD</option><option value="BRL">BRL</option></select></label>
+                <label>Preço mensal<input name="amount" type="number" min="0.01" max="999999.99" step="0.01" required></label>
+                <button class="button" type="submit" th:disabled="${!stripeConfigured}">Validar e salvar preço Stripe</button>
+            </form>
+        </div>
+        <h3>Preços salvos da Argentina</h3>
+        <p th:if="${#lists.isEmpty(stripePrices)}">Nenhum preço Stripe vinculado.</p>
+        <table class="table" th:unless="${#lists.isEmpty(stripePrices)}">
+            <thead><tr><th>Plano</th><th>Ambiente</th><th>Preço mensal</th><th>ID do preço</th><th>Status</th></tr></thead>
+            <tbody><tr th:each="price : ${stripePrices}">
+                <td th:text="${price.plan.displayName}"></td><td th:text="${price.environment}"></td>
+                <td th:text="${price.currency + ' ' + price.amountValue}"></td>
+                <td><input readonly aria-label="ID do preço Stripe" th:value="${price.providerPriceId}" onclick="this.select()"></td>
+                <td th:text="${price.enabled and price.validated ? 'Habilitado' : 'Aguardando habilitação'}"></td>
+            </tr></tbody>
+        </table>
+        <h3>Publicações Stripe recentes</h3>
+        <p th:if="${#lists.isEmpty(stripePublications)}">Nenhuma publicação realizada.</p>
+        <table class="table" th:unless="${#lists.isEmpty(stripePublications)}">
+            <thead><tr><th>Plano</th><th>Ambiente</th><th>Resultado</th><th>Produto / preço</th><th>Ação</th></tr></thead>
+            <tbody><tr th:each="publication : ${stripePublications}">
+                <td th:text="${publication.plan.displayName}"></td><td th:text="${publication.environment}"></td>
+                <td><span th:text="${publication.status}"></span><small th:if="${publication.lastError}" th:text="${publication.lastError}"></small></td>
+                <td><div th:text="${publication.productId ?: 'Aguardando produto'}"></div><div th:text="${publication.priceId ?: 'Aguardando preço'}"></div></td>
+                <td><form th:if="${publication.status != 'LINKED' and publication.environment == stripeEnvironment}" th:action="@{/backoffice/plans/stripe/{id}/resume(id=${publication.id})}" method="post">
+                    <input type="hidden" name="actionToken" th:value="${actionToken}"><button class="button" type="submit" th:disabled="${!stripeConfigured}">Retomar publicação Stripe</button>
+                </form></td>
+            </tr></tbody>
+        </table>
+    </section>
     <section class="panel" id="creem">
         <p class="eyebrow">Creem</p>
         <h2>Cobrança dos planos</h2>

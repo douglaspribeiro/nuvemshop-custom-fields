@@ -30,6 +30,7 @@ public class LocalHomologationGuard {
                 || !env.getProperty("payments.efi.sandbox",Boolean.class,false)
                 || env.getProperty("payments.mercado-pago.enabled",Boolean.class,false)
                 || env.getProperty("payments.creem.enabled",Boolean.class,false)
+                || env.getProperty("payments.stripe.enabled",Boolean.class,false)
                 || env.getProperty("payments.dodo-test.enabled",Boolean.class,false)
                 || env.getProperty("payments.dodo.enabled",Boolean.class,false)
                 || env.getProperty("nuvemshop.billing.enabled",Boolean.class,false))
