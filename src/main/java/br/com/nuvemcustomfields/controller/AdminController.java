@@ -268,7 +268,8 @@ public class AdminController {
                 throw new IllegalStateException(messages.get("admin.billing.unavailable"));
             }
             var activeSubscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
-            if (activeSubscription != null && activeSubscription.isAccessActive()) {
+            if (activeSubscription != null && activeSubscription.isAccessActive()
+                    && activeSubscription.getStatus() != PaymentSubscriptionStatus.CANCELED) {
                 if (!plan.isUpgradeFrom(store.getPlan())) {
                     throw new IllegalArgumentException("Selecione um plano superior ao plano atual.");
                 }

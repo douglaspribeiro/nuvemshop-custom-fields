@@ -96,7 +96,7 @@ class UltraBillingPageTest {
 
     @Test void clickingSubscribeStartsCheckoutDirectly() throws Exception {
         subscription.setProvider(PaymentProviderType.CREEM);
-        subscription.setStatus(PaymentSubscriptionStatus.CANCELED); subscription.setAccessActive(false);
+        subscription.setStatus(PaymentSubscriptionStatus.CANCELED); subscription.setAccessActive(true);
         when(payments.startCheckout(subscription.getStoreId(), PlanType.PREMIUM))
                 .thenReturn("https://checkout.creem.io/new_checkout");
         mvc.perform(post("/admin/billing/checkout").session(session).param("plan", "PREMIUM"))
