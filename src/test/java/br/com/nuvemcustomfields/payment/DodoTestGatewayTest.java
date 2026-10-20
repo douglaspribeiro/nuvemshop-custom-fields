@@ -55,9 +55,8 @@ class DodoTestGatewayTest {
             assertThat(all.supports(store(43,"CL"))).isFalse();
         } finally { all.close(); }
     }
-    @Test void createsHostedTestCheckoutWithFixedCurrencyAndStoreReference() {
+    @Test void createsHostedTestCheckoutFromBoundCatalogWithFixedCurrencyAndStoreReference() {
         when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX,"CO",PlanType.PREMIUM)).thenReturn(Optional.of(price()));
-        server.expect(requestTo("https://test.dodopayments.com/products/pdt_test")).andRespond(withSuccess(product(),MediaType.APPLICATION_JSON));
         server.expect(requestTo("https://test.dodopayments.com/checkouts")).andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization","Bearer dodo_test_credential"))
                 .andExpect(jsonPath("$.product_cart[0].product_id").value("pdt_test"))

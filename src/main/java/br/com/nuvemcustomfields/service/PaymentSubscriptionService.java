@@ -407,7 +407,7 @@ public class PaymentSubscriptionService {
             GatewaySubscription remote = gateway.getSubscription(subscription.getProviderSubscriptionId());
             if (!matchesUpgrade(subscription, remote))
                 throw new PaymentGatewayException("A alteração está aguardando confirmação do provedor.");
-            synchronize(subscription, remote, gateway.provider().isStripeOrCreem() ? gateway.getLatestInvoice(remote.id()).orElse(null) : null, "PAYMENT_UPGRADE");
+            synchronize(subscription, remote, subscription.getProvider().isStripeOrCreem() ? gateway.getLatestInvoice(remote.id()).orElse(null) : null, "PAYMENT_UPGRADE");
         } catch (RuntimeException ex) {
             throw new PaymentGatewayException("A alteração precisa ser confirmada pelo provedor. Seu acesso atual foi preservado.", ex);
         }
@@ -1180,7 +1180,7 @@ public class PaymentSubscriptionService {
     }
     private BigDecimal amount(PaymentGateway gateway, Store store, PlanType plan) {
         PaymentProviderType provider = gateway.provider();
-        return provider.isStripeOrCreem()
+        return (provider != null && provider.isStripeOrCreem())
                 || provider == PaymentProviderType.DODO || provider == PaymentProviderType.DODO_TEST
                 ? gateway.amount(store, plan) : gateway.amount(plan);
     }
