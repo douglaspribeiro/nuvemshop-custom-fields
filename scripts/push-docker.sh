@@ -17,6 +17,11 @@ cd "$PROJECT_ROOT"
 CUSTOM_TAG=""
 BUMP=true
 PRECHECK=true
+CLEANUP_GHCR=false
+CLEANUP_APPLY=false
+CLEANUP_KEEP=20
+CLEANUP_MIN_AGE=30
+CLEANUP_PROTECTED_FILE="${GHCR_PROTECTED_REFS_FILE:-}"
 BUMP_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -26,12 +31,34 @@ while [[ $# -gt 0 ]]; do
     --release) BUMP_ARGS+=(--release "${2:?--release exige major|minor|patch|build}"); shift 2 ;;
     --set-version) BUMP_ARGS+=(--set "${2:?--set-version exige X.Y.Z[.B]}"); shift 2 ;;
     --allow-dirty) BUMP_ARGS+=(--allow-dirty); shift ;;
+    --cleanup-ghcr) CLEANUP_GHCR=true; shift ;;
+    --cleanup-ghcr-apply) CLEANUP_GHCR=true; CLEANUP_APPLY=true; shift ;;
+    --ghcr-keep) CLEANUP_KEEP="${2:?--ghcr-keep exige quantidade}"; shift 2 ;;
+    --ghcr-min-age-days) CLEANUP_MIN_AGE="${2:?--ghcr-min-age-days exige dias}"; shift 2 ;;
+    --ghcr-protected-refs) CLEANUP_PROTECTED_FILE="${2:?--ghcr-protected-refs exige arquivo}"; shift 2 ;;
     -h|--help)
       echo "Uso: $0 [--release major|minor|patch|build] [--set-version X.Y.Z[.B]] [--no-bump] [--tag TAG] [--allow-dirty] [--skip-precheck]"
+      echo "GHCR: --cleanup-ghcr simula a limpeza após publicar; --cleanup-ghcr-apply exclui com arquivo de proteção."
+      echo "      --ghcr-keep N (20), --ghcr-min-age-days N (30), --ghcr-protected-refs arquivo.json"
       exit 0 ;;
     *) echo "Argumento desconhecido: $1" >&2; exit 2 ;;
   esac
 done
+
+if [[ "$CLEANUP_GHCR" == true ]]; then
+  if [[ ! "$CLEANUP_KEEP" =~ ^[1-9][0-9]*$ || ! "$CLEANUP_MIN_AGE" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Retenção GHCR exige quantidades positivas." >&2
+    exit 2
+  fi
+  if [[ -z "${GHCR_TOKEN:-}" ]]; then
+    echo "Defina GHCR_TOKEN para consultar/limpar o pacote; o login Docker sozinho não basta." >&2
+    exit 2
+  fi
+  if [[ "$CLEANUP_APPLY" == true && ( -z "$CLEANUP_PROTECTED_FILE" || ! -f "$CLEANUP_PROTECTED_FILE" ) ]]; then
+    echo "Exclusão GHCR exige --ghcr-protected-refs com produção e rollback revisados." >&2
+    exit 2
+  fi
+fi
 
 # Epoch FIXO p/ build reproduzível (deve casar com o ARG SOURCE_DATE_EPOCH do
 # Dockerfile). Junto com rewrite-timestamp=true, reescreve TODOS os timestamps das
@@ -115,3 +142,13 @@ echo "   O sync-infra detectará o novo digest de :latest e fará o deploy."
 # Para o container do builder (libera RAM/CPU); retomado no próximo build.
 echo "▶ Parando builder multi-arch..."
 docker buildx stop multi-arch-builder >/dev/null 2>&1 || true
+
+if [[ "$CLEANUP_GHCR" == true ]]; then
+  CLEANUP_ARGS=(--owner "$GHCR_USER" --keep "$CLEANUP_KEEP" --min-age-days "$CLEANUP_MIN_AGE" --protect-ref "$VERSION" --protect-ref latest)
+  if [[ -n "$CLEANUP_PROTECTED_FILE" ]]; then CLEANUP_ARGS+=(--protected-refs-file "$CLEANUP_PROTECTED_FILE"); fi
+  if [[ "$CLEANUP_APPLY" == true ]]; then CLEANUP_ARGS+=(--apply); fi
+  if ! GHCR_TOKEN="$GHCR_TOKEN" python3 scripts/cleanup-ghcr.py "${CLEANUP_ARGS[@]}"; then
+    echo "A imagem já foi publicada, mas a limpeza GHCR não concluiu. Revise e execute scripts/cleanup-ghcr.py separadamente." >&2
+    exit 1
+  fi
+fi

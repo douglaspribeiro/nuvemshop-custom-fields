@@ -1,0 +1,97 @@
+# Retenção de imagens no GHCR
+
+`scripts/push-docker.sh` publica `latest` e a tag da versão. O histórico do GHCR
+não é removido pelo Docker local nem pela retenção de imagens no servidor.
+A limpeza opcional usa somente o pacote pessoal
+`ghcr.io/$GHCR_USER/nuvemshop-custom-fields` (não outros pacotes nem organizações).
+
+## Simular
+
+Disponibilize `GHCR_TOKEN` no ambiente, sem incluí-lo em comandos, arquivos
+versionados ou mensagens. Use um PAT clássico com `read:packages` para consultar
+e também `delete:packages` quando for excluir; o usuário precisa administrar o
+pacote. Login no Docker não fornece automaticamente esse token ao helper.
+
+```bash
+# Sem build, push ou exclusão:
+python3 scripts/cleanup-ghcr.py
+
+# Publica normalmente e depois simula a limpeza:
+bash scripts/push-docker.sh --cleanup-ghcr
+
+# Ajusta a retenção; o padrão é 20 releases / 30 dias:
+bash scripts/push-docker.sh --cleanup-ghcr --ghcr-keep 10 --ghcr-min-age-days 60
+```
+
+O plano lista IDs das versões de pacote, digests e tags. Não estima espaço em
+bytes: camadas compartilhadas e a coleta do registry influenciam o espaço liberado.
+Sem arquivo de proteção, a simulação é preliminar e não sabe quais versões
+antigas estão fixadas no servidor por digest.
+
+## Proteger produção e rollback
+
+Antes de excluir, confira os servidores e inclua TODAS as referências necessárias:
+containers ativos/parados preservados, últimas imagens aprovadas, journal de
+deploy/recuperação e baseline de rollback. No deploy validado, os IDs Docker de
+`state.json`, `approved-images.json` e dos snapshots de recuperação precisam ser
+resolvidos para os **digests OCI em `RepoDigests`** ou para suas tags GHCR.
+O ID de configuração retornado como `docker image inspect .Id` não é o digest
+do manifest do registry e não deve ser usado como substituto.
+
+Prepare fora do Git um JSON com a imagem exata, a data real da inspeção em UTC
+e suas tags/digests protegidos. Exemplo de formato (substituir pelos dados da
+inspeção atual, inclusive a data; não copiar como configuração pronta):
+
+```json
+{
+  "image": "ghcr.io/douglaspribeiro/nuvemshop-custom-fields",
+  "captured_at": "2026-10-20T22:00:00Z",
+  "protected_refs": ["latest", "v1.41.0", "v1.40.7", "TAG_OU_DIGEST_DO_BASELINE"]
+}
+```
+
+O helper exige captura com menos de 24 horas, escopo exato e referências
+existentes. Ele não consulta os servidores para comprovar que a lista está
+completa: essa conferência é responsabilidade de quem prepara o arquivo.
+Atualize a captura imediatamente antes da limpeza. Não execute simultaneamente
+com outra publicação, alteração de tag ou rollback.
+
+```bash
+# Revise primeiro o plano com as proteções reais:
+python3 scripts/cleanup-ghcr.py --protected-refs-file /tmp/ncf-ghcr-protected.json
+
+# Excluir somente depois de revisar:
+python3 scripts/cleanup-ghcr.py --protected-refs-file /tmp/ncf-ghcr-protected.json --apply
+
+# Ou após uma publicação:
+bash scripts/push-docker.sh --cleanup-ghcr-apply \
+  --ghcr-protected-refs /tmp/ncf-ghcr-protected.json
+```
+
+`GHCR_PROTECTED_REFS_FILE` pode fornecer o caminho padrão. O modo de exclusão
+não é ativado apenas por definir essa variável; ainda exige `--apply` ou
+`--cleanup-ghcr-apply`. No push, a tag publicada e `latest` também são protegidas.
+
+## Regras de segurança
+
+- Mantém as N releases mais recentemente criadas e todas as versões recentes.
+  Tags semver `vX`, `vX.Y`, `vX.Y.Z` e `vX.Y.Z.B` são consideradas releases.
+- Tags que não sejam de release, como `latest`, `rollback` e canais de teste,
+  permanecem preservadas. Uma versão com várias tags é mantida se qualquer tag
+  for protegida.
+- Percorre os índices OCI/Docker das imagens mantidas e preserva seus manifests
+  de plataforma e atestações, mesmo sem tag. Somente manifests sem referência
+  nas imagens preservadas podem entrar no plano de remoção.
+- Lista todas as páginas antes de planejar. Falha de autenticação, referência
+  protegida ausente ou manifest desconhecido interrompe a operação.
+- Antes de excluir, confirma o proprietário do token e que o inventário não
+  mudou. Cada versão é conferida novamente antes do DELETE. Uma mudança
+  concorrente detectada interrompe o restante, sem desfazer exclusões já feitas.
+- A exclusão remove a versão do pacote GHCR, incluindo suas tags. Não altera tags
+  Git, containers, volumes ou imagens Docker locais. Para recuperar uma exclusão,
+  consulte as condições de restauração do GitHub Packages.
+- Se a limpeza após o push falhar, a imagem nova já foi publicada. O script
+  informa isso e retorna erro; execute o helper separadamente, sem gerar outra release.
+
+Referências: [API de pacotes](https://docs.github.com/en/rest/packages/packages),
+[excluir/restaurar pacotes](https://docs.github.com/en/packages/learn-github-packages/deleting-and-restoring-a-package).

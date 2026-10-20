@@ -505,7 +505,15 @@ Python 3, Git e Docker Buildx; o push local exige login prévio no GHCR.
 ./scripts/push-docker.sh --set-version 1.2.0  # define versão exata
 ./scripts/push-docker.sh --no-bump            # publica a versão atual do pom
 ./scripts/push-docker.sh --tag teste          # tag explícita, sem alterar o pom
+./scripts/push-docker.sh --cleanup-ghcr       # publica e simula limpeza de versões antigas no GHCR
 ```
+
+A limpeza do GHCR é opcional e mantém por padrão as 20 releases mais recentes,
+versões criadas/atualizadas nos últimos 30 dias, tags como `latest`/`rollback` e os
+manifests associados às imagens preservadas. Excluir exige opção explícita e um
+arquivo recente com as referências de produção e rollback. Veja o
+[procedimento de retenção GHCR](docs/limpeza-ghcr.md). Nenhuma limpeza global do
+Docker local ou das imagens de outros aplicativos é executada por esse fluxo.
 
 Desde a última tag, vence a mudança de maior nível: `BREAKING CHANGE` ou
 `tipo!:` incrementa major; `feat:`/`add:` incrementa minor; outros prefixos
