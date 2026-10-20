@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.41.0] - 2026-10-20
+
+### Features
+
+- integra Stripe para assinaturas na Argentina (`5d7ed58`)
+
+### Correções
+
+- corrige regressao nos testes de pagamentos (`5caed82`)
+
 ## [1.40.7] - 2026-10-20
 
 ### Correções
