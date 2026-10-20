@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.3] - 2026-10-20
+
+### Correções
+
+- allow resubscribe after cancellation (`1570616`)
+
 ## [1.40.2] - 2026-10-20
 
 ### Correções
