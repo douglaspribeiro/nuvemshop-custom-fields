@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.42.0] - 2026-10-20
+
+### Features
+
+- add optional GHCR image retention cleanup (`7cca4c4`)
+
+### Correções
+
+- pause sales synchronization during deployment shutdown (`2ef2f15`)
+
 ## [1.41.1] - 2026-10-20
 
 ### Correções
