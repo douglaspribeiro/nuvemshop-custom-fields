@@ -46,9 +46,10 @@ class StripeGatewayTest {
                 .andExpect(header("Stripe-Version",StripeGateway.API_VERSION)).andRespond(withSuccess(response,MediaType.APPLICATION_JSON));
     }
     @Test void createsProductAndMonthlyDefaultPriceTogetherWithIdempotencyBeforeSalesAreEnabled() {
-        var gateway = new StripeGateway(new StripeProperties(false,true,"sk_test_fixture_only","","",0,20),catalog,builder.build(),mapper);
+        var gateway = new StripeGateway(new StripeProperties(false,true,"rk_test_fixture_only","","",0,20),catalog,builder.build(),mapper);
         assertThat(gateway.apiConfigured()).isTrue(); assertThat(gateway.operational()).isFalse();
         server.expect(requestTo("https://api.stripe.com/v1/products")).andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization","Bearer rk_test_fixture_only"))
                 .andExpect(header("Idempotency-Key","ncf-catalog-stable-key"))
                 .andExpect(header("Stripe-Version",StripeGateway.API_VERSION))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("default_price_data%5Bcurrency%5D=ars")))

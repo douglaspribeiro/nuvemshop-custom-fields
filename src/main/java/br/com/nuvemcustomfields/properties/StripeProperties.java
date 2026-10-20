@@ -8,8 +8,9 @@ import java.util.Arrays;
 public record StripeProperties(boolean enabled, boolean sandbox, String secretKey, String webhookSecret,
                                String allowedStoreIds, int graceDays, int timeoutSeconds) {
     public boolean apiConfigured() {
-        return secretKey != null && secretKey.startsWith(sandbox ? "sk_test_" : "sk_live_")
-                && secretKey.length() > 12;
+        String mode = sandbox ? "test_" : "live_";
+        return secretKey != null && secretKey.length() > 12
+                && (secretKey.startsWith("sk_" + mode) || secretKey.startsWith("rk_" + mode));
     }
     public boolean operational() {
         return apiConfigured() && webhookSecret != null && webhookSecret.startsWith("whsec_")

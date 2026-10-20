@@ -18,12 +18,19 @@ STRIPE_GRACE_DAYS=0
 STRIPE_TIMEOUT_SECONDS=20
 ```
 
-Em teste, usar chave `sk_test_...`, segredo `whsec_...` do endpoint de teste e
+Em teste, usar chave secreta `sk_test_...` ou restrita `rk_test_...`, segredo
+`whsec_...` do endpoint de teste e
 IDs explícitos de lojas argentinas em `STRIPE_ALLOWED_STORE_IDS`, separados por
 vírgula. Vazio e `0` não autorizam lojas. Em produção, usar `STRIPE_SANDBOX=false`
-com chave `sk_live_...` e o segredo do endpoint de produção. Não colocar chaves
+com chave `sk_live_...` ou `rk_live_...` e o segredo do endpoint de produção. Não colocar chaves
 no navegador, no banco de catálogo ou no Git. Recarregar a aplicação depois de
 alterar as variáveis.
+
+Chaves restritas usam a mesma variável `STRIPE_SECRET_KEY` e precisam de
+permissões para os recursos utilizados. Para criar o catálogo, permitir escrita
+em produtos e preços; as consultas de validação também precisam de leitura.
+O prefixo identifica o tipo e o ambiente, mas não comprova validade ou permissões
+na Stripe. Chaves públicas `pk_...` e chaves de outro ambiente são rejeitadas.
 
 `STRIPE_ENABLED` bloqueia novas compras quando falso. Assinaturas existentes,
 webhooks e conciliação continuam funcionando enquanto as credenciais do ambiente
