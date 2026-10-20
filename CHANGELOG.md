@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.40.0.2] - 2026-10-20
+
+### Outros
+
+- Accept opaque Dodo API keys (`db4f648`)
+- Permite contratar plano durante cortesia (`256eb1f`)
+
 ## [1.40.0.1] - 2026-10-19
 
 ### Outros
