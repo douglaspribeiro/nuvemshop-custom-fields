@@ -68,6 +68,18 @@ class UltraBillingPageTest {
                 .doesNotContain("billing-plan-pro", "billing-plan-ultra", "value=\"PREMIUM_PLUS\"", "value=\"PREMIUM_ULTRA\"");
     }
 
+    @Test void activeLegacyDodoSubscriptionStillShowsPlansFromTheCurrentRoute() throws Exception {
+        subscription.setProvider(PaymentProviderType.DODO_TEST);
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM))).thenReturn(true);
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM_PLUS))).thenReturn(true);
+        when(payments.planAvailable(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(true);
+
+        String page = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(page).contains("billing-plan-essential", "billing-plan-pro", "billing-plan-ultra");
+    }
+
     @Test void argentineStoreSeesAnEstimateWithoutChangingTheDollarQuote() throws Exception {
         var store = stores.findByStoreId(991120L).orElseThrow(); store.setStoreCountryCode("AR"); store.setPlan(PlanType.FREE); stores.saveAndFlush(store);
         subscription.setAccessActive(false); subscription.setStatus(PaymentSubscriptionStatus.PENDING);

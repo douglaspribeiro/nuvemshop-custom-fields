@@ -339,7 +339,10 @@ public class PaymentSubscriptionService {
     public boolean planAvailable(Store store, PlanType plan) {
         try {
             PaymentSubscription existing = subscriptions.findByStoreId(store.getStoreId()).orElse(null);
-            PaymentGateway gateway = existing != null && existing.isAccessActive()
+            // An existing sandbox contract can remain active after its test gateway
+            // is disabled. Show plans from the current market route in that case,
+            // rather than hiding the entire comparison screen.
+            PaymentGateway gateway = existing != null && existing.isAccessActive() && router.operational(existing.getProvider())
                     ? router.require(existing.getProvider()) : router.requireForStore(store);
             if (existing != null && existing.isAccessActive() && existing.getProvider() == PaymentProviderType.CREEM
                     && !existing.getCurrency().equals(gateway.currency(store))) return false;
