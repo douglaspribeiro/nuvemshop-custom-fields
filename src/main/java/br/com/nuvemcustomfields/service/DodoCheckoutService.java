@@ -79,7 +79,8 @@ public abstract class DodoCheckoutService {
         if (router.requireForStore(store).provider() != gateway.provider() || !gateway.planAvailable(store, plan))
             throw new IllegalArgumentException("Plano Dodo indisponível para esta loja.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
-        if (local != null && (local.isAccessActive() || local.isWinbackRestorePending()))
+        if (local != null && ((local.isAccessActive() && local.getStatus() != PaymentSubscriptionStatus.CANCELED)
+                || local.isWinbackRestorePending()))
             throw new IllegalArgumentException("A assinatura anterior precisa terminar antes de uma nova contratação.");
         if (attempts.findFirstByStoreIdAndStatusInOrderByCreatedAtDesc(storeId,
                 EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN)).isPresent())

@@ -67,6 +67,17 @@ class DodoTestCheckoutServiceTest {
         verify(gateway,never()).createCheckout(any(),any(),anyString(),anyString());
     }
 
+    @Test void canceledSubscriptionCanStartANewCheckoutDuringItsPaidAccessPeriod() {
+        local = new PaymentSubscription(); local.setStoreId(42L); local.setProvider(PaymentProviderType.DODO_TEST);
+        local.setStatus(PaymentSubscriptionStatus.CANCELED); local.setAccessActive(true); local.setProviderSubscriptionId("sub_cancelled");
+        when(gateway.createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(), anyString()))
+                .thenReturn(new GatewayCheckout(null, "ch_new", "https://test.checkout.dodopayments.com/ch_new", "pending"));
+
+        assertThat(service.start(42L, PlanType.PREMIUM)).isEqualTo("https://test.checkout.dodopayments.com/ch_new");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        assertThat(local.getProviderCheckoutId()).isEqualTo("ch_new");
+    }
+
     @Test void retiresOldProviderBeforeReservingDodoTestCheckout() {
         local = new PaymentSubscription(); local.setStoreId(42L); local.setProvider(PaymentProviderType.PADDLE);
         local.setPlan(PlanType.PREMIUM); local.setStatus(PaymentSubscriptionStatus.PENDING);

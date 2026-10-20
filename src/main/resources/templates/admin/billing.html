@@ -111,9 +111,9 @@
             <div class="billing-plan-actions">
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and !store.courtesyPremium}" th:with="planName=#{plan.PREMIUM}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM' and store.courtesyPremium}" th:text="#{plan.courtesy}">Premium Cortesia</span>
-            <form th:if="${billingEnabled and billingAvailable and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
+            <form th:if="${billingEnabled and billingAvailable and (paymentSubscription == null or paymentSubscription.status.name() == 'CANCELED' or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM">
-                <button class="button primary" type="submit" th:disabled="${!store.courtesyPremium and store.effectivePlan.name() == 'PREMIUM'}"
+                <button class="button primary" type="submit" th:disabled="${!store.courtesyPremium and store.effectivePlan.name() == 'PREMIUM' and (paymentSubscription == null or paymentSubscription.status.name() != 'CANCELED')}"
                         th:with="planName=#{plan.PREMIUM}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Essencial
                 </button>
@@ -148,9 +148,9 @@
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_PLUS'}" th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <a class="button primary" th:if="${canUpgrade and paymentSubscription.plan.name() == 'PREMIUM'}"
                th:href="@{/admin/billing/upgrade(plan='PREMIUM_PLUS')}" th:text="#{admin.billing.upgrade.heading('Pro')}">Trocar para Pro</a>
-            <form th:if="${billingEnabled and billingAvailable and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
+            <form th:if="${billingEnabled and billingAvailable and (paymentSubscription == null or paymentSubscription.status.name() == 'CANCELED' or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM_PLUS">
-                <button class="button primary" type="submit" th:disabled="${!store.courtesyPremium and store.effectivePlan.name() == 'PREMIUM_PLUS'}"
+                <button class="button primary" type="submit" th:disabled="${!store.courtesyPremium and store.effectivePlan.name() == 'PREMIUM_PLUS' and (paymentSubscription == null or paymentSubscription.status.name() != 'CANCELED')}"
                         th:with="planName=#{plan.PREMIUM_PLUS}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Pro
                 </button>
@@ -185,9 +185,9 @@
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_ULTRA'}" th:with="planName=#{plan.PREMIUM_ULTRA}" th:text="#{plan.current(${planName})}">Plano atual</span>
             <a class="button primary" th:if="${canUpgrade and ultraAvailable and paymentSubscription.plan.name() != 'PREMIUM_ULTRA'}"
                th:href="@{/admin/billing/upgrade(plan='PREMIUM_ULTRA')}" th:text="#{admin.billing.upgrade.heading('Ultra')}">Trocar para Ultra</a>
-            <form th:if="${billingEnabled and ultraAvailable and (paymentSubscription == null or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
+            <form th:if="${billingEnabled and ultraAvailable and (paymentSubscription == null or paymentSubscription.status.name() == 'CANCELED' or (!paymentSubscription.accessActive and !(paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING')))}" th:action="@{/admin/billing/checkout}" method="post" target="_top">
                 <input type="hidden" name="plan" value="PREMIUM_ULTRA">
-                <button class="button primary" type="submit" th:disabled="${!store.courtesyPremium and store.effectivePlan.name() == 'PREMIUM_ULTRA'}"
+                <button class="button primary" type="submit" th:disabled="${!store.courtesyPremium and store.effectivePlan.name() == 'PREMIUM_ULTRA' and (paymentSubscription == null or paymentSubscription.status.name() != 'CANCELED')}"
                         th:with="planName=#{plan.PREMIUM_ULTRA}" th:text="#{admin.billing.subscribe.plan(${planName})}">
                     Assinar Ultra
                 </button>
