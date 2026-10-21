@@ -1,7 +1,10 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.PaymentNotificationOutbox;
-import br.com.nuvemcustomfields.entity.PlanType;
+import br.com.nuvemcustomfields.repository.StoreRepository;
+import java.math.BigDecimal;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import br.com.nuvemcustomfields.properties.DiscordNotificationProperties;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -17,8 +20,13 @@ import java.util.Map;
 public class DiscordPaymentWebhookClient {
     private final URI webhookUri;
     private final RestClient client;
+    private final StoreRepository stores;
+    private final ManagementReportService reports;
 
-    public DiscordPaymentWebhookClient(DiscordNotificationProperties properties) {
+    public DiscordPaymentWebhookClient(DiscordNotificationProperties properties, StoreRepository stores,
+                                       ManagementReportService reports) {
+        this.stores = stores;
+        this.reports = reports;
         webhookUri = properties.configured() ? validWebhookUri(properties.paymentWebhookUrl()) : null;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
@@ -36,32 +44,44 @@ public class DiscordPaymentWebhookClient {
     }
 
     String content(PaymentNotificationOutbox notification) {
-        String amount = "BRL".equals(notification.getCurrency())
-                ? NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(notification.getAmountValue())
-                : notification.getCurrency() + " " + notification.getAmountValue();
+        String amount = money(notification.getCurrency(), notification.getAmountValue());
         String plan = notification.getPlan().getDisplayName();
-        if(notification.getEventType()==PaymentNotificationOutbox.EventType.UPGRADE){
-            String storeName=notification.getStoreName()==null || notification.getStoreName().isBlank()
-                    ? "Loja" : notification.getStoreName().replaceAll("[\\r\\n]", " ");
-            String monthly="BRL".equals(notification.getCurrency())
-                    ? NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(notification.getRecurringAmount())
-                    : notification.getCurrency()+" "+notification.getRecurringAmount();
-            return "🚀 Upgrade concluído\n"
-                    + "Loja: "+storeName+" · ID "+notification.getStoreId()+"\n"
-                    + "Planos: "+notification.getSourcePlan().getDisplayName()+" → "+plan+"\n"
-                    + "Ajuste único: "+amount+"\n"
-                    + "Cupom: "+(notification.getCouponCode()==null?"Não utilizado":notification.getCouponCode())+"\n"
-                    + "Nova mensalidade: "+monthly+"\n"
-                    + "Gateway: "+notification.getProvider()+"\n"
-                    + "Assinatura mantida: "+notification.getSubscriptionId()+"\n"
-                    + "Cobrança do ajuste: "+(notification.getChargeId()==null?"Sem cobrança (ajuste zerado)":notification.getChargeId());
+        String storeName = notification.getStoreName();
+        if (storeName == null || storeName.isBlank()) {
+            storeName = stores.findByStoreId(notification.getStoreId())
+                    .map(br.com.nuvemcustomfields.entity.Store::getStoreName).orElse("Nome indisponível");
         }
-        return "✅ Pagamento confirmado\n"
-                + "Loja: " + notification.getStoreId() + "\n"
-                + "Plano: " + plan + "\n"
-                + "Valor: " + amount + "\n"
-                + "Gateway: " + notification.getProvider() + "\n"
-                + "Cobrança: " + notification.getPaymentId();
+        String store = "🏪 **Loja:** " + safe(storeName) + " · **ID:** " + notification.getStoreId() + "\n";
+        String mrr = new TreeMap<>(reports.report().mrrByCurrency()).entrySet().stream()
+                .map(entry -> money(entry.getKey(), entry.getValue()))
+                .collect(Collectors.joining(" + "));
+        String footer = "\n📈 **MRR total estimado:** " + (mrr.isEmpty() ? "Sem receita recorrente elegível" : mrr + "/mês");
+        if (notification.getEventType() == PaymentNotificationOutbox.EventType.UPGRADE) {
+            return "🚀 **Upgrade concluído**\n" + store
+                    + "📦 **Planos:** " + notification.getSourcePlan().getDisplayName() + " → " + plan + "\n"
+                    + "💰 **Ajuste único:** " + amount + "\n"
+                    + "🎟️ **Cupom:** " + (notification.getCouponCode() == null ? "Não utilizado" : safe(notification.getCouponCode())) + "\n"
+                    + "🔁 **Nova mensalidade:** " + money(notification.getCurrency(), notification.getRecurringAmount()) + "\n"
+                    + "**Assinatura mantida:** " + notification.getSubscriptionId() + "\n"
+                    + "💳 **Gateway:** " + notification.getProvider() + " · **Cobrança do ajuste:** "
+                    + (notification.getChargeId() == null ? "Sem cobrança (ajuste zerado)" : notification.getChargeId())
+                    + footer;
+        }
+        return "✅ **Pagamento confirmado**\n" + store
+                + "📦 **Plano:** " + plan + "\n"
+                + "💰 **Valor:** " + amount + "\n"
+                + "💳 **Gateway:** " + notification.getProvider() + " · **Cobrança:** " + notification.getPaymentId()
+                + footer;
+    }
+
+    private static String money(String currency, BigDecimal amount) {
+        return "BRL".equals(currency)
+                ? NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(amount)
+                : currency + " " + amount.toPlainString();
+    }
+
+    private static String safe(String value) {
+        return (value == null || value.isBlank() ? "Nome indisponível" : value).replaceAll("[\\r\\n]", " ").replaceAll("([\\\\`*_{}\\[\\]()<>~|])", "\\\\$1");
     }
 
     private static URI validWebhookUri(String value) {
