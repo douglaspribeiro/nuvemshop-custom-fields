@@ -7,7 +7,8 @@
     document.querySelectorAll('[data-local-time]').forEach(function (element) {
         var timestamp = element.getAttribute('data-local-time');
         // Only convert instants with an explicit offset. Calendar dates are not instants.
-        if (!timestamp || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(timestamp)) return;
+        if (!timestamp || !/T.*(?:Z|[+-]\d{2}:?\d{2})$/.test(timestamp)) return;
+        timestamp = timestamp.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
         var instant = new Date(timestamp);
         if (!Number.isFinite(instant.getTime())) return;
         var format = element.getAttribute('data-time-format') || 'datetime';
