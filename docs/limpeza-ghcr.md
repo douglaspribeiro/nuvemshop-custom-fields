@@ -5,10 +5,24 @@ não é removido pelo Docker local nem pela retenção de imagens no servidor.
 A limpeza após cada publicação usa somente o pacote pessoal
 `ghcr.io/$GHCR_USER/nuvemshop-custom-fields` (não outros pacotes nem organizações).
 
-`push-docker.sh` executa a exclusão após toda publicação por padrão. Exige
-uma credencial do `docker login ghcr.io` ou `GHCR_TOKEN`, além de
-`GHCR_PROTECTED_REFS_FILE` (ou `--ghcr-protected-refs`) antes do build.
-`--cleanup-ghcr` troca a exclusão por uma simulação nessa execução.
+`push-docker.sh` executa a exclusão após toda publicação por padrão. Usa a
+credencial do `docker login ghcr.io` ou `GHCR_TOKEN` e consulta o servidor por SSH.
+Ele captura produção/rollback antes do build e atualiza a captura novamente
+imediatamente antes da limpeza, após a publicação. O deploy é assíncrono: se
+estiver em andamento ou o estado mudar durante a captura após a publicação,
+o coletor aguarda até cinco minutos pela estabilização. Se não conseguir
+confirmar o estado estável, a limpeza é interrompida.
+Não é necessário preparar ou exportar um arquivo manualmente.
+
+Por padrão usa `ubuntu@137.131.163.33` e a chave no checkout vizinho
+`../server/server-docker-1/keys/ssh-key-2026-05-26.key`. Os caminhos do estado remoto
+correspondem à instalação `/opt/server-docker-1`. Para outro acesso SSH, configure
+`GHCR_PROTECTION_SSH_HOST` e `GHCR_PROTECTION_SSH_KEY`.
+
+O arquivo é temporário e removido ao terminar. `--ghcr-protected-refs` ou
+`GHCR_PROTECTED_REFS_FILE` podem indicar um destino persistente; seu conteúdo será
+atualizado a partir do servidor a cada publicação. `--cleanup-ghcr` troca a exclusão
+por uma simulação nessa execução, também com captura automática.
 O workflow `.github/workflows/deploy.yml` apenas publica: não chama este helper.
 A retenção padrão mantém as últimas 20 imagens publicadas (versões com tag),
 sem proteção adicional por idade. Tags de teste também entram nesse limite.
@@ -50,8 +64,16 @@ resolvidos para os **digests OCI em `RepoDigests`** ou para suas tags GHCR.
 O ID de configuração retornado como `docker image inspect .Id` não é o digest
 do manifest do registry e não deve ser usado como substituto.
 
-Prepare fora do Git um JSON com a imagem exata, a data real da inspeção em UTC
-e suas tags/digests protegidos. Exemplo de formato (substituir pelos dados da
+No push, `scripts/capture-ghcr-protection.py` prepara esse JSON automaticamente,
+considerando instâncias atuais, as duas últimas imagens aprovadas, containers
+preservados, snapshots de recuperação e baseline de rollback. Para executar o
+helper de limpeza separadamente, gere uma captura atual:
+
+```bash
+python3 scripts/capture-ghcr-protection.py --output /tmp/ncf-ghcr-protected.json
+```
+
+Exemplo do formato (substituir pelos dados da
 inspeção atual, inclusive a data; não copiar como configuração pronta):
 
 ```json
@@ -63,8 +85,8 @@ inspeção atual, inclusive a data; não copiar como configuração pronta):
 ```
 
 O helper exige captura com menos de 24 horas, escopo exato e referências
-existentes. Ele não consulta os servidores para comprovar que a lista está
-completa: essa conferência é responsabilidade de quem prepara o arquivo.
+existentes. O helper de limpeza isolado não consulta os servidores; o coletor chamado pelo
+push faz essa conferência antes de fornecer o arquivo.
 Atualize a captura imediatamente antes da limpeza. Não execute simultaneamente
 com outra publicação, alteração de tag ou rollback.
 
@@ -80,8 +102,8 @@ bash scripts/push-docker.sh --cleanup-ghcr-apply \
   --ghcr-protected-refs /tmp/ncf-ghcr-protected.json
 ```
 
-`GHCR_PROTECTED_REFS_FILE` fornece o caminho padrão. No helper isolado, excluir
-continua exigindo `--apply`; no `push-docker.sh`, a exclusão já é o padrão.
+No helper isolado, excluir continua exigindo `--apply`; no `push-docker.sh`,
+a captura automática e a exclusão já são o padrão.
 No push, a tag publicada e `latest` também são protegidas.
 
 ## Regras de segurança

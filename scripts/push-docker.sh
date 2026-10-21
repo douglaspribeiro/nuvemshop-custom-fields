@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
     --ghcr-protected-refs) CLEANUP_PROTECTED_FILE="${2:?--ghcr-protected-refs exige arquivo}"; shift 2 ;;
     -h|--help)
       echo "Uso: $0 [--release major|minor|patch|build] [--set-version X.Y.Z[.B]] [--no-bump] [--tag TAG] [--allow-dirty] [--skip-precheck]"
-      echo "GHCR: limpeza real após cada publicação (últimas 20 imagens); exige login GHCR (ou GHCR_TOKEN) e arquivo de proteção."
+      echo "GHCR: limpeza real após cada publicação (últimas 20 imagens); usa login GHCR (ou GHCR_TOKEN) e captura produção/rollback por SSH."
       echo "      --cleanup-ghcr apenas simula; --cleanup-ghcr-apply explicita o comportamento padrão."
       echo "      --ghcr-keep N (20), --ghcr-min-age-days N (0, sem proteção por idade), --ghcr-protected-refs arquivo.json"
       exit 0 ;;
@@ -52,10 +52,12 @@ if [[ "$CLEANUP_GHCR" == true ]]; then
     exit 2
   fi
   python3 scripts/cleanup-ghcr.py --check-credentials
-  if [[ "$CLEANUP_APPLY" == true && ( -z "$CLEANUP_PROTECTED_FILE" || ! -f "$CLEANUP_PROTECTED_FILE" ) ]]; then
-    echo "Exclusão GHCR exige --ghcr-protected-refs com produção e rollback revisados." >&2
-    exit 2
+  if [[ -z "$CLEANUP_PROTECTED_FILE" ]]; then
+    CLEANUP_PROTECTED_FILE=$(mktemp "${TMPDIR:-/tmp}/ncf-ghcr-protected.XXXXXX.json")
+    trap 'rm -f -- "$CLEANUP_PROTECTED_FILE"' EXIT
   fi
+  # Fail before publishing if live recovery references cannot be captured.
+  python3 scripts/capture-ghcr-protection.py --owner "$GHCR_USER" --output "$CLEANUP_PROTECTED_FILE"
 fi
 
 # Epoch FIXO p/ build reproduzível (deve casar com o ARG SOURCE_DATE_EPOCH do
@@ -155,6 +157,11 @@ if [[ "$CLEANUP_GHCR" == true ]]; then
   echo "   Retenção: últimas $CLEANUP_KEEP imagens publicadas, seus manifests e referências protegidas de produção/rollback."
   if [[ "$CLEANUP_MIN_AGE" != 0 ]]; then
     echo "   Proteção adicional por idade solicitada: últimos $CLEANUP_MIN_AGE dias."
+  fi
+  # Publication triggers an asynchronous deploy: refresh immediately before cleanup.
+  if ! python3 scripts/capture-ghcr-protection.py --owner "$GHCR_USER" --output "$CLEANUP_PROTECTED_FILE" --wait-seconds 300; then
+    echo "A imagem já foi publicada; limpeza interrompida porque não foi possível atualizar a proteção. Nenhuma exclusão executada." >&2
+    exit 1
   fi
   CLEANUP_ARGS=(--owner "$GHCR_USER" --keep "$CLEANUP_KEEP" --min-age-days "$CLEANUP_MIN_AGE" --protect-ref "$VERSION" --protect-ref latest)
   if [[ -n "$CLEANUP_PROTECTED_FILE" ]]; then CLEANUP_ARGS+=(--protected-refs-file "$CLEANUP_PROTECTED_FILE"); fi
