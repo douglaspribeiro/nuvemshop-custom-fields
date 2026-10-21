@@ -3,6 +3,26 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.44.0] - 2026-10-21
+
+### Features
+
+- melhora notificações de compra com loja e MRR estimado (`dd923d4`)
+- grafana: adiciona comparativos diários de tráfego (`b8cb400`)
+
+### Correções
+
+- simplifica retenção GHCR sem captura SSH (`1a8b7b2`)
+
+### Documentação
+
+- registra máscara de WhatsApp adiada em branch (`b9f70f1`)
+- registra plano de modelos personalizados em massa (`11dbb4c`)
+
+### Outros
+
+- Reduce routine request and navigation logging (`24dbbf5`)
+
 ## [1.43.1] - 2026-10-21
 
 ### Correções
