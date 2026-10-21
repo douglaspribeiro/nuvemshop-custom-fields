@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.43.0] - 2026-10-21
+
+### Features
+
+- adiciona modelo de personalização infantil (`1c2e397`)
+
 ## [1.42.4] - 2026-10-21
 
 ### Correções
