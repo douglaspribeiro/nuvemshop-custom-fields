@@ -100,6 +100,29 @@ class RetentionTests(unittest.TestCase):
             with self.assertRaises(SystemExit): cleanup.main(["--apply"])
             client.assert_not_called()
 
+    def test_environment_token_takes_precedence_over_docker_config(self):
+        with patch.dict(cleanup.os.environ, {"GHCR_TOKEN":"fixture-env-token"}, clear=True), patch.object(cleanup.Path, "read_text") as read:
+            self.assertEqual(cleanup.resolve_token(), "fixture-env-token")
+            read.assert_not_called()
+
+    def test_reads_docker_login_without_printing_credential(self):
+        auth = cleanup.base64.b64encode(b"owner:fixture-docker-token").decode()
+        with tempfile.TemporaryDirectory() as folder, patch.dict(cleanup.os.environ, {"DOCKER_CONFIG":folder}, clear=True):
+            Path(folder, "config.json").write_text(json.dumps({"auths":{"ghcr.io":{"auth":auth}}}))
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(cleanup.resolve_token(), "fixture-docker-token")
+                self.assertEqual(cleanup.main(["--check-credentials"]), 0)
+            self.assertEqual(output.getvalue(), "")
+
+    def test_reads_docker_credential_helper(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(cleanup.os.environ, {"DOCKER_CONFIG":folder}, clear=True):
+            Path(folder, "config.json").write_text(json.dumps({"credsStore":"pass"}))
+            with patch.object(cleanup.subprocess, "run") as run:
+                run.return_value.stdout = json.dumps({"Secret":"fixture-helper-token"})
+                self.assertEqual(cleanup.resolve_token(), "fixture-helper-token")
+                self.assertEqual(run.call_args.args[0], ["docker-credential-pass", "get"])
+
     def test_dry_run_never_calls_delete(self):
         with patch.dict(cleanup.os.environ, {"GHCR_TOKEN": "fixture-not-a-token"}, clear=True), patch.object(cleanup, "Client") as factory, contextlib.redirect_stdout(io.StringIO()):
             client = factory.return_value; client.versions.return_value = [row(1, ["v1.0.0"], 90), row(2, ["v2.0.0"], 60)]

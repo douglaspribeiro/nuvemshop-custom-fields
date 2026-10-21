@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,6 +27,35 @@ class RetentionError(Exception):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise RetentionError("Redirecionamento inesperado; operação interrompida.")
+
+
+def resolve_token():
+    token = os.environ.get("GHCR_TOKEN", "").strip()
+    if token:
+        return token
+    config = Path(os.environ.get("DOCKER_CONFIG", str(Path.home() / ".docker"))) / "config.json"
+    try:
+        data = json.loads(config.read_text())
+        keys = ("ghcr.io", "https://ghcr.io", "https://ghcr.io/v1/")
+        helper = next((data.get("credHelpers", {}).get(key) for key in keys
+                       if data.get("credHelpers", {}).get(key)), None) or data.get("credsStore")
+        if helper:
+            if not re.fullmatch(r"[A-Za-z0-9._-]+", helper):
+                raise ValueError()
+            result = subprocess.run(["docker-credential-" + helper, "get"], input="ghcr.io\n",
+                                    capture_output=True, text=True, check=True, timeout=15)
+            token = json.loads(result.stdout).get("Secret", "").strip()
+        else:
+            entry = next((data.get("auths", {}).get(key) for key in keys
+                          if data.get("auths", {}).get(key)), {})
+            decoded = base64.b64decode(entry.get("auth", ""), validate=True).decode()
+            token = decoded.split(":", 1)[1].strip() if ":" in decoded else ""
+        if token:
+            return token
+    except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError):
+        pass
+    raise RetentionError("Credencial GHCR ausente: execute docker login ghcr.io ou defina GHCR_TOKEN. "
+                         "A exclusão exige read:packages e delete:packages.")
 
 
 def utc(value):
@@ -190,14 +220,16 @@ def main(argv=None):
     parser.add_argument("--protect-ref", action="append", default=[])
     parser.add_argument("--protected-refs-file", default=os.environ.get("GHCR_PROTECTED_REFS_FILE"))
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--check-credentials", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.check_credentials:
+        resolve_token()
+        return 0
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", args.owner) or args.keep < 1 or args.min_age_days < 0:
         parser.error("Informe proprietário válido, quantidade positiva e idade não negativa.")
     if args.apply and not args.protected_refs_file:
         parser.error("--apply exige --protected-refs-file com produção e rollback capturados há menos de 24h.")
-    token = os.environ.get("GHCR_TOKEN")
-    if not token:
-        raise RetentionError("Defina GHCR_TOKEN no ambiente. O login Docker sozinho não autoriza a API de exclusão.")
+    token = resolve_token()
     now = datetime.now(timezone.utc)
     image = "ghcr.io/" + args.owner + "/" + PACKAGE
     refs = protected_refs(args.protected_refs_file, image, now) | set(args.protect_ref)

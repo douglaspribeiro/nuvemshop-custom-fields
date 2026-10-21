@@ -16,7 +16,7 @@ class PushDockerCleanupTests(unittest.TestCase):
                 "mvn": 'if [ "$1" = "-version" ]; then echo "Java version: 25"; fi\n',
                 "git": 'if [ "$1" = rev-parse ]; then echo fixture-sha; elif [ "$1" = log ]; then echo "feat: fixture"; fi\n',
                 "docker": 'if [ "$1 $2" = "buildx build" ]; then exit "${BUILD_EXIT:-0}"; fi\n',
-                "python3": 'if [ "$1" = "-c" ]; then echo 1.0.0; else printf "%s\\n" "$@" > "$CLEANUP_TRACE"; fi\n',
+                "python3": 'if [ "$1" = "-c" ]; then echo 1.0.0; elif [ "$2" != "--check-credentials" ]; then printf "%s\\n" "$@" > "$CLEANUP_TRACE"; fi\n',
             }
             for name, body in commands.items():
                 file = directory / name; file.write_text("#!/bin/bash\n" + body); file.chmod(0o700)

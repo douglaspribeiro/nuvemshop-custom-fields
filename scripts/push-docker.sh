@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
     --ghcr-protected-refs) CLEANUP_PROTECTED_FILE="${2:?--ghcr-protected-refs exige arquivo}"; shift 2 ;;
     -h|--help)
       echo "Uso: $0 [--release major|minor|patch|build] [--set-version X.Y.Z[.B]] [--no-bump] [--tag TAG] [--allow-dirty] [--skip-precheck]"
-      echo "GHCR: limpeza real após cada publicação (últimas 20 imagens); exige GHCR_TOKEN e arquivo de proteção."
+      echo "GHCR: limpeza real após cada publicação (últimas 20 imagens); exige login GHCR (ou GHCR_TOKEN) e arquivo de proteção."
       echo "      --cleanup-ghcr apenas simula; --cleanup-ghcr-apply explicita o comportamento padrão."
       echo "      --ghcr-keep N (20), --ghcr-min-age-days N (0, sem proteção por idade), --ghcr-protected-refs arquivo.json"
       exit 0 ;;
@@ -51,10 +51,7 @@ if [[ "$CLEANUP_GHCR" == true ]]; then
     echo "Retenção GHCR exige quantidade positiva e idade não negativa." >&2
     exit 2
   fi
-  if [[ -z "${GHCR_TOKEN:-}" ]]; then
-    echo "Defina GHCR_TOKEN para consultar/limpar o pacote; o login Docker sozinho não basta." >&2
-    exit 2
-  fi
+  python3 scripts/cleanup-ghcr.py --check-credentials
   if [[ "$CLEANUP_APPLY" == true && ( -z "$CLEANUP_PROTECTED_FILE" || ! -f "$CLEANUP_PROTECTED_FILE" ) ]]; then
     echo "Exclusão GHCR exige --ghcr-protected-refs com produção e rollback revisados." >&2
     exit 2
@@ -162,7 +159,7 @@ if [[ "$CLEANUP_GHCR" == true ]]; then
   CLEANUP_ARGS=(--owner "$GHCR_USER" --keep "$CLEANUP_KEEP" --min-age-days "$CLEANUP_MIN_AGE" --protect-ref "$VERSION" --protect-ref latest)
   if [[ -n "$CLEANUP_PROTECTED_FILE" ]]; then CLEANUP_ARGS+=(--protected-refs-file "$CLEANUP_PROTECTED_FILE"); fi
   if [[ "$CLEANUP_APPLY" == true ]]; then CLEANUP_ARGS+=(--apply); fi
-  if ! GHCR_TOKEN="$GHCR_TOKEN" python3 scripts/cleanup-ghcr.py "${CLEANUP_ARGS[@]}"; then
+  if ! python3 scripts/cleanup-ghcr.py "${CLEANUP_ARGS[@]}"; then
     echo "A imagem já foi publicada, mas a limpeza GHCR não concluiu. Revise e execute scripts/cleanup-ghcr.py separadamente." >&2
     exit 1
   fi

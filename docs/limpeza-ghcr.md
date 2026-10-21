@@ -6,7 +6,8 @@ A limpeza após cada publicação usa somente o pacote pessoal
 `ghcr.io/$GHCR_USER/nuvemshop-custom-fields` (não outros pacotes nem organizações).
 
 `push-docker.sh` executa a exclusão após toda publicação por padrão. Exige
-`GHCR_TOKEN` e `GHCR_PROTECTED_REFS_FILE` (ou `--ghcr-protected-refs`) antes do build.
+uma credencial do `docker login ghcr.io` ou `GHCR_TOKEN`, além de
+`GHCR_PROTECTED_REFS_FILE` (ou `--ghcr-protected-refs`) antes do build.
 `--cleanup-ghcr` troca a exclusão por uma simulação nessa execução.
 O workflow `.github/workflows/deploy.yml` apenas publica: não chama este helper.
 A retenção padrão mantém as últimas 20 imagens publicadas (versões com tag),
@@ -17,10 +18,11 @@ para imagens preservadas e não devem ser apagadas apenas por não terem tag.
 
 ## Simular
 
-Disponibilize `GHCR_TOKEN` no ambiente, sem incluí-lo em comandos, arquivos
-versionados ou mensagens. Use um PAT clássico com `read:packages` para consultar
-e também `delete:packages` quando for excluir; o usuário precisa administrar o
-pacote. Login no Docker não fornece automaticamente esse token ao helper.
+O helper usa `GHCR_TOKEN`, se definido; caso contrário, lê a credencial salva
+pelo `docker login ghcr.io`, inclusive via credential helper. Não imprime a credencial.
+Use um PAT clássico com `read:packages` para consultar e também `delete:packages`
+quando for excluir; o usuário precisa administrar o pacote. Ter permissão de push
+não garante permissão de exclusão. Não inclua tokens em arquivos versionados ou mensagens.
 
 ```bash
 # Sem build, push ou exclusão:
