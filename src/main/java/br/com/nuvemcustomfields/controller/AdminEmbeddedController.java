@@ -42,10 +42,10 @@ public class AdminEmbeddedController {
     public String embedded(HttpSession session, Model model) {
         Object storeId = session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
         if (storeId instanceof Long id && storeRepository.findActiveByStoreId(id).isPresent()) {
-            LOGGER.info("admin.embedded.session_present store_id={}", id);
+            LOGGER.debug("admin.embedded.session_present store_id={}", id);
             return "redirect:/admin";
         }
-        LOGGER.info("admin.embedded.open session_id={}", session.getId());
+        LOGGER.debug("admin.embedded.open session_id={}", session.getId());
         model.addAttribute("nuvemshopClientId", properties.clientId());
         return "admin/embedded";
     }

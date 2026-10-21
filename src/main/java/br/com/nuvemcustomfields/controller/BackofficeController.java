@@ -99,7 +99,7 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/login")
     public String login(Model model) {
-        LOGGER.info("backoffice.login.open");
+        LOGGER.debug("backoffice.login.open");
         model.addAttribute("appVersion", appVersion);
         return "backoffice/login";
     }
@@ -119,7 +119,7 @@ public class BackofficeController {
 
     @GetMapping("/backoffice")
     public String index(@RequestParam(required = false, defaultValue = "") String q, Model model) {
-        LOGGER.info("backoffice.index.open");
+        LOGGER.debug("backoffice.index.open");
         var stores = storeRepository.findAll();
         populateStoreDirectory(model, stores, q);
         long rules = backofficeService.fields();
@@ -128,7 +128,7 @@ public class BackofficeController {
         model.addAttribute("flags", flags);
         model.addAttribute("sales", backofficeSalesService.summary());
         model.addAttribute("openTickets", supportService.openTickets());
-        LOGGER.info("backoffice.index.loaded stores={} rules={} flags={} open_tickets={}", stores.size(), rules, flags, supportService.openTickets());
+        LOGGER.debug("backoffice.index.loaded stores={} rules={} flags={} open_tickets={}", stores.size(), rules, flags, supportService.openTickets());
         return "backoffice/index";
     }
 
@@ -142,7 +142,7 @@ public class BackofficeController {
     @GetMapping("/backoffice/stores")
     public String stores(@RequestParam(required = false, defaultValue = "") String q,
                          @RequestParam(required = false, defaultValue = "") String status, Model model, HttpSession session) {
-        LOGGER.info("backoffice.stores.open");
+        LOGGER.debug("backoffice.stores.open");
         var stores = storeRepository.findAll();
         boolean uninstalledOnly = "uninstalled".equals(status);
         populateStoreDirectory(model, stores, q, uninstalledOnly);
@@ -153,19 +153,19 @@ public class BackofficeController {
                 .filter(c -> c.getUninstalledAt().equals(byId.get(c.getStoreId()).getUninstalledAt()))
                 .collect(Collectors.toMap(br.com.nuvemcustomfields.entity.WinbackCampaign::getStoreId, Function.identity()));
         model.addAttribute("departureCampaigns", reasons);
-        LOGGER.info("backoffice.stores.loaded stores_count={}", stores.size());
+        LOGGER.debug("backoffice.stores.loaded stores_count={}", stores.size());
         return "backoffice/stores";
     }
 
     @GetMapping("/backoffice/stores/{storeId}")
     public String store(@PathVariable Long storeId, Model model) {
-        LOGGER.info("backoffice.store.open store_id={}", storeId);
+        LOGGER.debug("backoffice.store.open store_id={}", storeId);
         model.addAttribute("store", storeRepository.findByStoreId(storeId).orElseThrow());
         model.addAttribute("planTypes", PlanType.values());
         model.addAttribute("events", planEventRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("paymentSubscription", paymentSubscriptionRepository.findByStoreId(storeId).orElse(null));
-        LOGGER.info("backoffice.store.loaded store_id={}", storeId);
+        LOGGER.debug("backoffice.store.loaded store_id={}", storeId);
         return "backoffice/store";
     }
 
@@ -193,13 +193,13 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/stores/{storeId}/scripts")
     public String scripts(@PathVariable Long storeId, Model model) {
-        LOGGER.info("backoffice.scripts.open store_id={}", storeId);
+        LOGGER.debug("backoffice.scripts.open store_id={}", storeId);
         var store = storeRepository.findByStoreId(storeId).orElseThrow();
         var diagnostics = scriptInstallService.diagnose(store);
         model.addAttribute("store", store);
         model.addAttribute("diagnostics", diagnostics);
         model.addAttribute("expectedSrcs", scriptInstallService.expectedScriptSrcs(store));
-        LOGGER.info(
+        LOGGER.debug(
                 "backoffice.scripts.loaded store_id={} configured={} installed={} missing={}",
                 storeId,
                 diagnostics.configuredIds().size(),
@@ -296,10 +296,10 @@ public class BackofficeController {
 
     @GetMapping("/backoffice/flags")
     public String flags(Model model) {
-        LOGGER.info("backoffice.flags.open");
+        LOGGER.debug("backoffice.flags.open");
         var flags = featureFlagRepository.findAll();
         model.addAttribute("flags", flags);
-        LOGGER.info("backoffice.flags.loaded flags_count={}", flags.size());
+        LOGGER.debug("backoffice.flags.loaded flags_count={}", flags.size());
         return "backoffice/flags";
     }
 

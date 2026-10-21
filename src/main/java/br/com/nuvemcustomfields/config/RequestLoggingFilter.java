@@ -60,10 +60,13 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     }
 
     private void logStart(HttpServletRequest request, String requestId) {
+        if (!LOGGER.isDebugEnabled()) {
+            return;
+        }
         HttpSession session = request.getSession(false);
         Object storeId = session == null ? null : session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
         Object backofficeAuthenticated = session == null ? null : session.getAttribute(BackofficeSessionInterceptor.SESSION_KEY);
-        LOGGER.info(
+        LOGGER.debug(
                 "request.start request_id={} method={} uri={} remote_addr={} session_id={} store_id={} backoffice_authenticated={}",
                 requestId,
                 request.getMethod(),
@@ -77,7 +80,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private void logEnd(HttpServletRequest request, HttpServletResponse response, String requestId, long startedAt) {
         long durationMs = System.currentTimeMillis() - startedAt;
-        LOGGER.info(
+        LOGGER.debug(
                 "request.end request_id={} method={} uri={} status={} duration_ms={}",
                 requestId,
                 request.getMethod(),

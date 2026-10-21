@@ -65,7 +65,7 @@ public class PublicPersonalizationController {
     private record CachedPersonalization(boolean active, PersonalizationResponse response) {}
 
     private CachedPersonalization loadPersonalization(Long storeId, Long productId, String path) {
-        LOGGER.info("public.personalization.open store_id={} product_id={} path={}", storeId, productId, path);
+        LOGGER.debug("public.personalization.open store_id={} product_id={} path={}", storeId, productId, path);
         Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
         if (productId == null) {
             LOGGER.warn("public.personalization.disabled store_id={} reason=missing_product_id path={}", storeId, path);

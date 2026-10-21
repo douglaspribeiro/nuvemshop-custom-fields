@@ -29,7 +29,7 @@ public class AdminStoreService {
 
     public Store requireCurrentStore(HttpSession session) {
         Long storeId = (Long) session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
-        LOGGER.info("admin.store.require session_id={} store_id={}", session.getId(), storeId);
+        LOGGER.debug("admin.store.require session_id={} store_id={}", session.getId(), storeId);
         return storeRepository.findActiveByStoreId(storeId)
                 .orElseThrow(() -> {
                     LOGGER.error("admin.store.not_found session_id={} store_id={}", session.getId(), storeId);

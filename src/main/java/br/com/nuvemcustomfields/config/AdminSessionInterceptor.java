@@ -36,7 +36,7 @@ public class AdminSessionInterceptor implements HandlerInterceptor {
         Object storeId = request.getSession().getAttribute(STORE_SESSION_KEY);
         if (storeId instanceof Long id) {
             Optional<Store> activeStore = storeRepository.findActiveByStoreId(id);
-            LOGGER.info(
+            LOGGER.debug(
                     "admin.session.check uri={} store_id={} active_store_found={}",
                     request.getRequestURI(),
                     id,
@@ -77,7 +77,7 @@ public class AdminSessionInterceptor implements HandlerInterceptor {
         Locale locale = StoreLocale.forCountry(store.getStoreCountryCode());
         if (!locale.equals(request.getSession().getAttribute(AppLocaleResolver.SESSION_KEY))) {
             request.getSession().setAttribute(AppLocaleResolver.SESSION_KEY, locale);
-            LOGGER.info(
+            LOGGER.debug(
                     "admin.session.locale.applied store_id={} country={} locale={} uri={}",
                     store.getStoreId(),
                     store.getStoreCountryCode(),

@@ -30,7 +30,7 @@ public class AuthController {
 
     @GetMapping("/")
     public String root() {
-        LOGGER.info("public.landing.open");
+        LOGGER.debug("public.landing.open");
         return "public/landing";
     }
 

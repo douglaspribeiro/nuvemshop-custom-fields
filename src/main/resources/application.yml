@@ -218,7 +218,7 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
   level:
-    br.com.nuvemcustomfields: DEBUG
+    br.com.nuvemcustomfields: INFO
 
 images:
   s3:

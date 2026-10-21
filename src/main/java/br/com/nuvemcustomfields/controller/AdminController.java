@@ -123,7 +123,7 @@ public class AdminController {
         if (reconcilePendingEfi(store.getStoreId(), true)) {
             store = adminStoreService.requireCurrentStore(session);
         }
-        LOGGER.info("admin.index.open store_id={}", store.getStoreId());
+        LOGGER.debug("admin.index.open store_id={}", store.getStoreId());
         var rules = personalizationAdminService.listRules(store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("rules", rules);
@@ -131,14 +131,14 @@ public class AdminController {
         model.addAttribute("setupRule", rules.isEmpty() ? null : rules.get(0));
         model.addAttribute("usage", planLimitService.usage(store, 0));
         model.addAttribute("backofficeStoreMode", Boolean.TRUE.equals(session.getAttribute(BackofficeSessionInterceptor.STORE_MODE_SESSION_KEY)));
-        LOGGER.info("admin.index.loaded store_id={} rules_count={}", store.getStoreId(), rules.size());
+        LOGGER.debug("admin.index.loaded store_id={} rules_count={}", store.getStoreId(), rules.size());
         return "admin/index";
     }
 
     @GetMapping("/admin/settings/style")
     public String styleSettings(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.settings.style.open store_id={}", store.getStoreId());
+        LOGGER.debug("admin.settings.style.open store_id={}", store.getStoreId());
         model.addAttribute("store", store);
         return "admin/style-settings";
     }
@@ -176,7 +176,7 @@ public class AdminController {
     @GetMapping("/admin/help")
     public String help(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.help.open store_id={}", store.getStoreId());
+        LOGGER.debug("admin.help.open store_id={}", store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("logs", integrationLogService.recent(store.getStoreId()));
         return "admin/help";
@@ -185,7 +185,7 @@ public class AdminController {
     @GetMapping("/admin/dashboard")
     public String dashboard(HttpSession session, Model model) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.dashboard.open store_id={}", store.getStoreId());
+        LOGGER.debug("admin.dashboard.open store_id={}", store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("summary", reportService.dashboard(store));
         return "admin/dashboard";
@@ -490,7 +490,7 @@ public class AdminController {
             Model model
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.products.open store_id={} page={}", store.getStoreId(), page);
+        LOGGER.debug("admin.products.open store_id={} page={}", store.getStoreId(), page);
         var productPage = apiClient.listProducts(store, page, NuvemshopApiClient.DEFAULT_PER_PAGE, q);
         var rules = personalizationAdminService.listRules(store.getStoreId());
         var configuredFieldProductIds = personalizationAdminService.configuredFieldProductIds(store.getStoreId());
@@ -502,7 +502,7 @@ public class AdminController {
         model.addAttribute("configuredFieldProductIds", configuredFieldProductIds);
         model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
         model.addAttribute("usage", planLimitService.usage(store, 0));
-        LOGGER.info(
+        LOGGER.debug(
                 "admin.products.loaded store_id={} page={} products_count={} total_count={} rules_count={}",
                 store.getStoreId(),
                 productPage.page(),
@@ -521,7 +521,7 @@ public class AdminController {
             Model model
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.onboarding.open store_id={} page={}", store.getStoreId(), page);
+        LOGGER.debug("admin.onboarding.open store_id={} page={}", store.getStoreId(), page);
         var productPage = apiClient.listProducts(store, page, NuvemshopApiClient.DEFAULT_PER_PAGE, q);
         var templates = nicheTemplateService.listTemplates();
         model.addAttribute("store", store);
@@ -529,7 +529,7 @@ public class AdminController {
         model.addAttribute("products", productPage.items());
         model.addAttribute("templates", templates);
         model.addAttribute("usage", planLimitService.usage(store, 0));
-        LOGGER.info(
+        LOGGER.debug(
                 "admin.onboarding.loaded store_id={} page={} products_count={} templates_count={}",
                 store.getStoreId(),
                 productPage.page(),
@@ -584,7 +584,7 @@ public class AdminController {
             Model model
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
-        LOGGER.info("admin.fields.open store_id={} product_id={} product_name={}", store.getStoreId(), productId, productName);
+        LOGGER.debug("admin.fields.open store_id={} product_id={} product_name={}", store.getStoreId(), productId, productName);
         if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
             LOGGER.warn("admin.fields.open.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
             var rules = personalizationAdminService.listRules(store.getStoreId());

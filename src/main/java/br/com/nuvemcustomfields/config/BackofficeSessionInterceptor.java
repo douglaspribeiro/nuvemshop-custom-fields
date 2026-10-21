@@ -20,7 +20,7 @@ public class BackofficeSessionInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         Object authenticated = request.getSession().getAttribute(SESSION_KEY);
         if (Boolean.TRUE.equals(authenticated)) {
-            LOGGER.info("backoffice.session.check uri={} authenticated=true", request.getRequestURI());
+            LOGGER.debug("backoffice.session.check uri={} authenticated=true", request.getRequestURI());
             return true;
         }
         LOGGER.warn(
