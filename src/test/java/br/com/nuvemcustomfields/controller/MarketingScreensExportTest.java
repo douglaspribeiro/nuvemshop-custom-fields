@@ -48,16 +48,17 @@ class MarketingScreensExportTest {
         finish.setOptionsText("Espiral dourado\nEspiral branco\nEspiral preto"); finish.setSortOrder(2);
         admin.addField(store.getStoreId(), 7001L, finish);
         when(api.listRecentOrders(any())).thenReturn(mapper.readTree("""
-                [{"id":1042,"number":"1042","created_at":"2026-10-05T13:30:00Z","products":[{"properties":{"Nome na capa":"Ana Clara","Capa":"Floral","Acabamento":"Espiral dourado"}}]},
-                 {"id":1041,"number":"1041","created_at":"2026-10-05T12:15:00Z","products":[{"properties":{"Nome na capa":"Marina","Capa":"Geométrica","Mensagem":"Feito com carinho!"}}]},
-                 {"id":1040,"number":"1040","created_at":"2026-10-04T18:00:00Z","products":[{"properties":{"Nome na capa":"Pedro","Acabamento":"Espiral preto"}}]}]
+                [{"id":1042,"number":"1042","created_at":"2026-10-05T13:30:00Z","products":[{"product_id":7001,"properties":{"Nome na capa":"Ana Clara","Capa":"Floral","Acabamento":"Espiral dourado"}}]},
+                 {"id":1041,"number":"1041","created_at":"2026-10-05T12:15:00Z","products":[{"product_id":7001,"properties":{"Nome na capa":"Marina","Capa":"Geométrica","Mensagem para presente":"Feito com carinho!"}}]},
+                 {"id":1040,"number":"1040","created_at":"2026-10-04T18:00:00Z","products":[{"product_id":7001,"properties":{"Nome na capa":"Pedro","Acabamento":"Espiral preto"}}]}]
                 """));
         var session = new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
-        var output = Path.of("docs/marketing/loja-aplicativos/fontes/telas"); Files.createDirectories(output);
+        var output = Path.of(System.getProperty("marketing.export.dir","docs/marketing/loja-aplicativos/fontes/telas")); Files.createDirectories(output);
         for (var page : new String[][]{{"campos", "/admin/products/7001/fields"},
                 {"aparencia", "/admin/settings/style"}, {"pedidos", "/admin/dashboard"}}) {
             var html = mvc.perform(get(page[1]).session(session)).andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
+            if (page[0].equals("pedidos")) org.assertj.core.api.Assertions.assertThat(html).contains("Ana Clara","Feito com carinho!");
             Files.writeString(output.resolve(page[0] + ".html"), html);
         }
     }

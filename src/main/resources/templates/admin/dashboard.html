@@ -27,7 +27,7 @@
             <dd th:text="${summary.configuredProducts}">0</dd>
         </div>
         <div>
-            <dt th:text="#{admin.dashboard.metric.fields}">Campos ativos</dt>
+            <dt th:text="#{admin.dashboard.metric.fields}">Campos cadastrados</dt>
             <dd th:text="${summary.configuredFields}">0</dd>
         </div>
         <div>
@@ -41,7 +41,7 @@
             <h2 th:text="#{admin.dashboard.orders.title}">Pedidos com personalizacao</h2>
             <span class="muted" th:text="#{admin.dashboard.orders.subtitle}">Ultimos 50 pedidos</span>
         </div>
-        <p class="notice error" th:if="${!summary.ordersAvailable}" th:text="#{admin.dashboard.orders.unavailable}">
+        <p class="notice error" th:if="${!summary.ordersAvailable}" th:text="${summary.ordersUnavailableReason == 'load_failed' ? #messages.msg('admin.dashboard.orders.load_failed') : #messages.msg('admin.dashboard.orders.unavailable')}">
             Reinstale o app para liberar a leitura de pedidos.
         </p>
         <div class="empty" th:if="${summary.ordersAvailable and #lists.isEmpty(summary.personalizedOrders)}"

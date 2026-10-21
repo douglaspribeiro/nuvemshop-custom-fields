@@ -110,6 +110,20 @@ class BackofficeUninstalledStoresPageTest {
 
     @Test
     @Transactional
+    void erasurePendingStoresDoNotLeakIntoActiveSalesTotals() {
+        long ordersBefore=orderSales.personalizedOrdersFromSyncedActiveStores();
+        long itemsBefore=orderSales.personalizedItemsFromSyncedActiveStores();
+        var state=new StoreSalesSync(ACTIVE_ID);state.setComplete(true);syncStates.saveAndFlush(state);
+        orderSales.saveAndFlush(new StoreOrderSales(ACTIVE_ID,101L,3,2,Instant.now(),new BigDecimal("12.00"),"BRL"));
+        var pending=stores.findByStoreId(ACTIVE_ID).orElseThrow();pending.setErasureRequestedAt(Instant.now());stores.saveAndFlush(pending);
+        assertThat(orderSales.personalizedOrdersFromSyncedActiveStores()).isEqualTo(ordersBefore);
+        assertThat(orderSales.personalizedItemsFromSyncedActiveStores()).isEqualTo(itemsBefore);
+        assertThat(orderSales.findSales(org.springframework.data.domain.PageRequest.of(0,50)).getContent())
+                .noneMatch(row->row.getId().getStoreId().equals(ACTIVE_ID));
+    }
+
+    @Test
+    @Transactional
     void historicalTotalSurvivesErasureAndDoesNotExposeDeletedStore() throws Exception {
         long before = departures.summary().getTotal();
         erasure.erase(ACTIVE_ID);

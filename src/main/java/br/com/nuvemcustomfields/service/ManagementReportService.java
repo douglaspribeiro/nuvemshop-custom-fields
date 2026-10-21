@@ -18,21 +18,20 @@ public class ManagementReportService {
     private final PersonalizationFieldRepository fields;
     private final PlanEventRepository events;
     private final PaymentSubscriptionRepository subscriptions;
-    private final PlanCatalogService catalog;
     private final Clock clock;
 
     @Autowired
     public ManagementReportService(StoreRepository stores, PersonalizationRuleRepository rules,
             PersonalizationFieldRepository fields, PlanEventRepository events,
-            PaymentSubscriptionRepository subscriptions, PlanCatalogService catalog) {
-        this(stores, rules, fields, events, subscriptions, catalog, Clock.system(ZoneId.of("America/Sao_Paulo")));
+            PaymentSubscriptionRepository subscriptions) {
+        this(stores, rules, fields, events, subscriptions, Clock.system(ZoneId.of("America/Sao_Paulo")));
     }
 
     ManagementReportService(StoreRepository stores, PersonalizationRuleRepository rules,
             PersonalizationFieldRepository fields, PlanEventRepository events,
-            PaymentSubscriptionRepository subscriptions, PlanCatalogService catalog, Clock clock) {
+            PaymentSubscriptionRepository subscriptions, Clock clock) {
         this.stores = stores; this.rules = rules; this.fields = fields; this.events = events;
-        this.subscriptions = subscriptions; this.catalog = catalog; this.clock = clock;
+        this.subscriptions = subscriptions; this.clock = clock;
     }
 
     public ManagementReport report() {
@@ -61,15 +60,12 @@ public class ManagementReportService {
                 currency = subscription.getCurrency();
                 next = subscription.getNextPaymentAt() == null ? null : subscription.getNextPaymentAt().atZone(clock.getZone()).toLocalDate();
             } else {
+                // A locally assigned paid plan is not proof of a recurring contract.
+                if (store.getSubscriptionId() == null || store.getSubscriptionId().isBlank()) continue;
                 monthlyAmount = store.getBillingAmountValue();
                 currency = store.getBillingAmountCurrency();
-                if (monthlyAmount == null) {
-                    var reference = catalog.activePlan(store.getPlan());
-                    String marketCurrency = currency == null || currency.isBlank() ? store.getStoreCurrency() : currency;
-                    if (marketCurrency != null && !marketCurrency.isBlank() && !marketCurrency.equalsIgnoreCase(reference.getCurrency())) continue;
-                    monthlyAmount = reference.getAmount();
-                    currency = reference.getCurrency();
-                }
+                // Missing contract prices must not be replaced by today's catalog price.
+                if (monthlyAmount == null) continue;
                 nextAmount = monthlyAmount;
                 next = store.getBillingNextExecution();
             }

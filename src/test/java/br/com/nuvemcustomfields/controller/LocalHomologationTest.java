@@ -42,6 +42,7 @@ class LocalHomologationTest {
         assertThat(session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY)).isEqualTo(LocalHomologationGuard.STORE_ID);
         assertThat(session.getAttribute(BackofficeSessionInterceptor.SESSION_KEY)).isNull();
         var store=stores.findByStoreId(LocalHomologationGuard.STORE_ID).orElseThrow();
+        assertThat(store.getScope()).contains("read_orders");
         assertThat(store.getPlan()).isEqualTo(PlanType.FREE);assertThat(api).isInstanceOf(LocalNuvemshopApiClient.class);
         assertThat(api.listProducts(store,1,50,null).items()).hasSize(3);
         String dashboard=mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

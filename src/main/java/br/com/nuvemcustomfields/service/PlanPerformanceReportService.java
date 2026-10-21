@@ -31,21 +31,34 @@ public class PlanPerformanceReportService {
         var zone = ZoneId.of("America/Sao_Paulo");
         var counts = sales.summarizeByStore(from.atStartOfDay(zone).toInstant(), to.plusDays(1).atStartOfDay(zone).toInstant())
                 .stream().collect(Collectors.toMap(StoreSalesCount::storeId, Function.identity()));
-        var complete = syncs.findAllById(active.stream().map(Store::getStoreId).toList()).stream()
-                .filter(StoreSalesSync::isComplete).map(StoreSalesSync::getStoreId).collect(Collectors.toSet());
+        var states = syncs.findAllById(active.stream().map(Store::getStoreId).toList()).stream()
+                .collect(Collectors.toMap(StoreSalesSync::getStoreId, Function.identity()));
+        var complete = states.values().stream().filter(state -> state.isComplete() && state.getLastError() == null)
+                .map(StoreSalesSync::getStoreId).collect(Collectors.toSet());
         var rows = active.stream().map(s -> {
-            var count = counts.getOrDefault(s.getStoreId(), new StoreSalesCount(s.getStoreId(), 0, 0));
+            String issue=syncIssue(s,states.get(s.getStoreId()));
+            boolean synced=complete.contains(s.getStoreId()) && issue == null;
+            var count = synced ? counts.getOrDefault(s.getStoreId(), new StoreSalesCount(s.getStoreId(), 0, 0))
+                    : new StoreSalesCount(s.getStoreId(), 0, 0);
             return new StoreRow(s.getStoreId(), s.getStoreName(), s.getPlan(), products.getOrDefault(s.getStoreId(), 0L),
-                    count.orders(), count.items(), complete.contains(s.getStoreId()));
+                    count.orders(), count.items(), synced, issue);
         }).toList();
         var plans = Arrays.stream(PlanType.values()).map(plan -> {
             var group = rows.stream().filter(r -> r.plan() == plan).toList();
             return new PlanRow(plan, group.size(), group.stream().filter(r -> r.products() > 0).count(),
                     group.stream().filter(r -> r.orders() > 0).count(), group.stream().mapToLong(StoreRow::orders).sum(),
-                    group.stream().mapToLong(StoreRow::items).sum(), group.stream().filter(StoreRow::synced).count());
+                    group.stream().mapToLong(StoreRow::items).sum(), group.stream().filter(StoreRow::synced).count(), group.stream().filter(r -> r.syncIssue() != null).count());
         }).toList();
         var free = rows.stream().filter(r -> !r.plan().isBillable())
                 .sorted(Comparator.comparingLong(StoreRow::orders).reversed().thenComparing(StoreRow::id)).toList();
-        return new PlanPerformanceReport(from, to, plans, free);
+        return new PlanPerformanceReport(from, to, plans, free, rows.stream().filter(r -> r.syncIssue() != null).toList());
     }
+    private static String syncIssue(Store store, StoreSalesSync state) {
+        if (store.getAccessToken() == null || store.getAccessToken().isBlank()) return "Reconectar loja: token ausente";
+        boolean permission = java.util.Arrays.stream(java.util.Objects.toString(store.getScope(), "").split(","))
+                .anyMatch(scope -> scope.strip().equals("read_orders"));
+        if (!permission) return "Permissão de leitura de pedidos ausente";
+        return state == null ? null : state.issueLabel();
+    }
+
 }

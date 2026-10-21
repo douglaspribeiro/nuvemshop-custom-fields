@@ -49,6 +49,7 @@ public class StoreDataErasureService {
                 "delete from personalization_fields where rule_id in (select id from personalization_rules where store_id = ?)",
                 storeId
         );
+        jdbcTemplate.update("delete from personalization_field_history where store_id = ?", storeId);
         jdbcTemplate.update("delete from personalization_rules where store_id = ?", storeId);
         jdbcTemplate.update("delete from store_configuration_snapshots where store_id = ?", storeId);
         jdbcTemplate.update("delete from integration_logs where store_id = ?", storeId);

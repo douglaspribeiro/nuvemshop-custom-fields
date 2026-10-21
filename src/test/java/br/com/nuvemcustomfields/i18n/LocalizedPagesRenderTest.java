@@ -95,6 +95,22 @@ class LocalizedPagesRenderTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"BR", "AR"})
+    void orderApiFailureDoesNotRenderNoOrdersOrReinstallInstruction(String country) throws Exception {
+        var session = sessionForStoreIn(country);
+        when(apiClient.listRecentOrders(any(Store.class))).thenThrow(
+                new org.springframework.web.client.HttpClientErrorException(org.springframework.http.HttpStatus.FORBIDDEN));
+        String body = render("/admin/dashboard", session);
+        assertNoMissingKeys("/admin/dashboard", country, body);
+        assertThat(body).contains(country.equals("BR") ? "Não foi possível consultar os pedidos" : "No pudimos consultar los pedidos");
+        assertThat(body).doesNotContain("class=\"empty\"", "Nenhum pedido com preenchimento", "No encontramos pedidos con valores", "Reinstale o app", "Reinstalá la aplicación");
+        if (System.getProperty("ncf.release.screens") != null) {
+            var output=java.nio.file.Path.of(System.getProperty("ncf.release.screens"));java.nio.file.Files.createDirectories(output);
+            java.nio.file.Files.writeString(output.resolve("pedidos-indisponiveis-"+country+".html"),body);
+        }
+    }
+
     /**
      * Chave ausente em messages_es.properties NAO renderiza ??chave??: o Spring cai no
      * bundle padrao e entrega portugues em silencio. Este e o unico teste que pega isso

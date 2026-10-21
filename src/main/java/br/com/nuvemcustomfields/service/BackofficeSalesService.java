@@ -19,7 +19,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -33,6 +32,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class BackofficeSalesService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private OrderPersonalizationCatalog personalizationCatalog;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BackofficeSalesService.class);
     private static final int PAGE_SIZE = 200;
@@ -48,6 +49,8 @@ public class BackofficeSalesService {
     private java.util.concurrent.ExecutorService backgroundExecutor;
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile boolean stopping;
+    @org.springframework.beans.factory.annotation.Value("${analytics.sales-sync-stores-per-run:5}")
+    private int storesPerRun = 5;
 
     @org.springframework.context.event.EventListener(org.springframework.context.event.ContextClosedEvent.class)
     @org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
@@ -77,7 +80,7 @@ public class BackofficeSalesService {
                 .collect(Collectors.toMap(StoreSalesSync::getStoreId, Function.identity()));
         long synced = active.stream().filter(store -> {
             StoreSalesSync state = states.get(store.getStoreId());
-            return state != null && state.isComplete();
+            return state != null && state.isComplete() && state.getLastError() == null;
         }).count();
         long personalizedValueBackfilled = active.stream().filter(store -> {
             StoreSalesSync state = states.get(store.getStoreId());
@@ -115,7 +118,10 @@ public class BackofficeSalesService {
         try {
             backgroundExecutor.execute(() -> {
                 try {
-                    syncOnePendingStore();
+                    for (int index = 0; index < Math.max(1, storesPerRun); index++) {
+                        checkStopping();
+                        syncOnePendingStore();
+                    }
                 } catch (SyncPaused paused) {
                     LOGGER.info("backoffice.sales_sync.paused reason=shutdown");
                 } catch (RuntimeException ex) {
@@ -147,10 +153,11 @@ public class BackofficeSalesService {
                     return !state.isComplete() || !state.isPersonalizedValueBackfilled() || state.getLastSyncedAt() == null
                             || state.getLastSyncedAt().isBefore(now.minus(Duration.ofHours(24)));
                 })
-                .min(Comparator.comparing(candidate -> {
+                .min(Comparator.<Store, Instant>comparing(candidate -> {
                     StoreSalesSync state = states.get(candidate.getStoreId());
                     return state == null || state.getLastAttemptAt() == null ? Instant.EPOCH : state.getLastAttemptAt();
-                }))
+                }).thenComparing(candidate -> candidate.getPlan().isBillable() ? 0 : 1)
+                        .thenComparing(Store::getStoreId))
                 .orElse(null);
         if (store == null) return;
 
@@ -160,14 +167,22 @@ public class BackofficeSalesService {
         syncStates.save(state);
         try {
             checkStopping();
-            var personalization = new OrderPersonalization(fields.findWithRuleByStoreId(store.getStoreId()));
+            var personalization = personalizationCatalog == null ? new OrderPersonalization(fields.findWithRuleByStoreId(store.getStoreId()))
+                    : personalizationCatalog.forStore(store.getStoreId());
             if (state.isComplete() && state.isPersonalizedValueBackfilled() && state.getLastSyncedAt() != null) {
                 importRange(store, null, null, state.getLastSyncedAt().minus(Duration.ofHours(1)), now, personalization);
             } else {
-                for (int year = 2000; LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant().isBefore(now); year += 5) {
-                    Instant start = LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
-                    Instant end = LocalDate.of(year + 5, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
-                    importRange(store, start, end.isAfter(now) ? now : end, null, null, personalization);
+                Instant start = state.getHistoricalThrough() == null
+                        ? Instant.parse("2000-01-01T00:00:00Z") : state.getHistoricalThrough();
+                while (start.isBefore(now)) {
+                    var date = start.atOffset(ZoneOffset.UTC);
+                    Instant end = (date.getYear() < 2025 ? date.plusYears(5) : date.plusMonths(3)).toInstant();
+                    if (end.isAfter(now)) end = now;
+                    importRange(store, start, end, null, null, personalization);
+                    checkStopping();
+                    state.setHistoricalThrough(end);
+                    syncStates.save(state);
+                    start = end;
                 }
             }
             checkStopping();
@@ -183,10 +198,23 @@ public class BackofficeSalesService {
                 LOGGER.info("backoffice.sales_sync.paused store_id={} reason=shutdown", store.getStoreId());
                 return;
             }
-            state.setLastError(ex.getClass().getSimpleName());
+            state.setLastError(syncError(ex));
             syncStates.save(state);
             LOGGER.warn("backoffice.sales_sync.failed store_id={} error={}", store.getStoreId(), ex.toString());
         }
+    }
+
+    private static String syncError(RuntimeException ex) {
+        if (ex instanceof org.springframework.web.client.RestClientResponseException http) {
+            return switch (http.getStatusCode().value()) {
+                case 401 -> "AUTH_REQUIRED";
+                case 402 -> "PLATFORM_BLOCKED";
+                case 403 -> "PERMISSION_REQUIRED";
+                case 429 -> "RATE_LIMITED";
+                default -> "HTTP_" + http.getStatusCode().value();
+            };
+        }
+        return ex.getClass().getSimpleName();
     }
 
     private void importRange(Store store, Instant createdMin, Instant createdMax,
@@ -289,6 +317,11 @@ public class BackofficeSalesService {
                                long personalizedValueBackfilledStores, long activeStores) {
         public boolean complete() {
             return syncedStores == activeStores;
+        }
+        public String ordersDisplay() { return display(personalizedOrders); }
+        public String itemsDisplay() { return display(personalizedItems); }
+        private String display(long value) {
+            return complete() ? Long.toString(value) : value > 0 ? value + " (parcial)" : "—";
         }
     }
 

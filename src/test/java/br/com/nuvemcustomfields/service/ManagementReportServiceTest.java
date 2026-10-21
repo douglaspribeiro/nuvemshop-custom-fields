@@ -23,13 +23,12 @@ class ManagementReportServiceTest {
     private final PersonalizationFieldRepository fieldRepository = mock(PersonalizationFieldRepository.class);
     private final PlanEventRepository planEventRepository = mock(PlanEventRepository.class);
     private final PaymentSubscriptionRepository subscriptions = mock(PaymentSubscriptionRepository.class);
-    private final PlanCatalogService catalog = mock(PlanCatalogService.class);
     private final java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneId.of("America/Sao_Paulo"));
     private final ManagementReportService service = new ManagementReportService(
             storeRepository,
             ruleRepository,
             fieldRepository,
-            planEventRepository, subscriptions, catalog, clock
+            planEventRepository, subscriptions, clock
     );
 
     @Test
@@ -97,15 +96,13 @@ class ManagementReportServiceTest {
     }
 
     @Test
-    void usesCatalogReferenceOnlyWhenCurrencyIsCompatible() {
+    void doesNotInventRevenueFromCatalogWhenContractAmountIsMissing() {
         var br = store(PlanType.PREMIUM, false); br.setBillingAmountValue(null);
         var ar = store(PlanType.PREMIUM, false); ar.setBillingAmountValue(null); ar.setBillingAmountCurrency("ARS");
-        var reference = new PlanAsset(); reference.setCurrency("BRL"); reference.setAmount(new BigDecimal("25.00"));
-        when(catalog.activePlan(PlanType.PREMIUM)).thenReturn(reference);
         when(storeRepository.findAll()).thenReturn(List.of(br, ar));
         when(ruleRepository.findAll()).thenReturn(List.of());
-        assertThat(service.report().mrrByCurrency()).containsOnlyKeys("BRL");
-        assertThat(service.report().estimatedMrr()).isEqualByComparingTo("25.00");
+        assertThat(service.report().mrrByCurrency()).isEmpty();
+        assertThat(service.report().estimatedMrr()).isEqualByComparingTo("0.00");
     }
 
     @Test
@@ -121,6 +118,13 @@ class ManagementReportServiceTest {
         assertThat(service.report().projectedPaymentsByCurrency()).isEmpty();
     }
 
+    @Test void paidPlanWithoutSubscriptionDoesNotGenerateRevenue() {
+        var manual=store(PlanType.PREMIUM_PLUS,false);manual.setSubscriptionId(null);
+        when(storeRepository.findAll()).thenReturn(List.of(manual));
+        assertThat(service.report().mrrByCurrency()).isEmpty();
+        assertThat(service.report().projectedPaymentsByCurrency()).isEmpty();
+    }
+
     private PaymentSubscription subscription(long storeId, String currency, String amount) {
         var subscription = new PaymentSubscription();
         subscription.setStoreId(storeId); subscription.setCurrency(currency);
@@ -132,6 +136,7 @@ class ManagementReportServiceTest {
     private Store store(PlanType plan, boolean courtesyPremium) {
         Store store = new Store();
         store.setPlan(plan);
+        store.setSubscriptionId("legacy-test-subscription");
         store.setBillingAmountCurrency("BRL");
         store.setBillingAmountValue(plan == PlanType.PREMIUM ? new BigDecimal("19.99") : new BigDecimal("29.99"));
         store.setCourtesyPremium(courtesyPremium);

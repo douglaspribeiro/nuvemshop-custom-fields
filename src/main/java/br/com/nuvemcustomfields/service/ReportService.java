@@ -7,13 +7,15 @@ import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ReportService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private OrderPersonalizationCatalog personalizationCatalog;
 
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
@@ -43,29 +45,30 @@ public class ReportService {
                     List.of()
             );
         }
-        return new DashboardSummary(
-                ruleRepository.countByStoreId(store.getStoreId()),
-                fields,
-                true,
-                null,
-                personalizedOrders(store)
-        );
+        try {
+            JsonNode orders = apiClient.listRecentOrders(store);
+            if (orders == null || !orders.isArray()) {
+                return unavailable(store, fields);
+            }
+            return new DashboardSummary(ruleRepository.countByStoreId(store.getStoreId()), fields,
+                    true, null, personalizedOrders(store, orders));
+        } catch (RestClientException | OrderPersonalizationCatalog.Unavailable ex) {
+            return unavailable(store, fields);
+        }
     }
 
-    private List<PersonalizedOrderSummary> personalizedOrders(Store store) {
-        JsonNode orders;
-        try {
-            orders = apiClient.listRecentOrders(store);
-        } catch (HttpClientErrorException.Forbidden ex) {
-            return List.of();
-        } catch (HttpClientErrorException.NotFound ex) {
-            return List.of();
-        }
+    private DashboardSummary unavailable(Store store, long fields) {
+        return new DashboardSummary(ruleRepository.countByStoreId(store.getStoreId()), fields,
+                false, "load_failed", List.of());
+    }
+
+    private List<PersonalizedOrderSummary> personalizedOrders(Store store, JsonNode orders) {
         List<PersonalizedOrderSummary> result = new ArrayList<>();
         if (orders == null || !orders.isArray()) {
             return result;
         }
-        var personalization = new OrderPersonalization(fieldRepository.findWithRuleByStoreId(store.getStoreId()));
+        var personalization = personalizationCatalog == null ? new OrderPersonalization(fieldRepository.findWithRuleByStoreId(store.getStoreId()))
+                    : personalizationCatalog.forStore(store.getStoreId());
         for (JsonNode order : orders) {
             List<String> properties = personalization.orderProperties(order);
             if (!properties.isEmpty()) {

@@ -48,7 +48,7 @@ public class StoreAdoptionReportService {
         var enabledCounts=counts(fields.countEnabledProductsWithFieldsByStore());
         var orderCounts=counts(sales.countPersonalizedOrdersByStore());
         var renderCounts=counts(logs.countStorefrontRenderReportsByStore());
-        var complete=syncs.findAllById(ids).stream().filter(StoreSalesSync::isComplete)
+        var complete=syncs.findAllById(ids).stream().filter(state -> state.isComplete() && state.getLastError() == null)
                 .map(StoreSalesSync::getStoreId).collect(Collectors.toSet());
         var feedback=ids.isEmpty()?List.<WinbackCampaign>of():campaigns.findByStoreIdIn(ids);
         var feedbackByStore=feedback.stream().collect(Collectors.groupingBy(WinbackCampaign::getStoreId));

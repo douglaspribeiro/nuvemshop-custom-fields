@@ -17,6 +17,9 @@ public class WebhookLifecycleService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebhookLifecycleService.class);
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private OrderPersonalizationCatalog personalizationCatalog;
+
     private final StoreConfigurationHistoryService configurationHistory;
     private final OptionImageService images;
     private final StoreRepository storeRepository;
@@ -99,6 +102,9 @@ public class WebhookLifecycleService {
 
     private void handleProductDeleted(Long storeId, Long productId) {
         if (storeId != null && productId != null) {
+            images.lockStore(storeId);
+            if (personalizationCatalog != null) ruleRepository.findWithFieldsByStoreIdAndProductId(storeId,productId)
+                    .ifPresent(rule -> rule.getFields().forEach(personalizationCatalog::remember));
             images.deleteProduct(storeId, productId);
             ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
             integrationLogService.info(storeId, "webhook.product_deleted", "Regras removidas para produto " + productId + ".");

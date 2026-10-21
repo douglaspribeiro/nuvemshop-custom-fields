@@ -20,6 +20,22 @@ public class StoreSalesSync {
     @Column(nullable = false)
     private boolean personalizedValueBackfilled;
 
+    private Instant historicalThrough;
+
+    public Instant getHistoricalThrough() { return historicalThrough; }
+    public void setHistoricalThrough(Instant value) { historicalThrough = value; }
+
+    public String issueLabel() {
+        if (lastError == null) return null;
+        return switch (lastError) {
+            case "AUTH_REQUIRED", "Unauthorized" -> "Reconectar loja: token inválido ou expirado";
+            case "PLATFORM_BLOCKED" -> "Acesso ao app bloqueado pela Nuvemshop (402)";
+            case "PERMISSION_REQUIRED", "Forbidden" -> "Permissão de leitura de pedidos recusada";
+            case "RATE_LIMITED" -> "Limite de consultas da Nuvemshop; nova tentativa automática";
+            default -> "Falha na consulta de pedidos; verificar integração";
+        };
+    }
+
     private Instant lastAttemptAt;
     private Instant lastSyncedAt;
 

@@ -47,6 +47,47 @@ class BackofficeSalesServiceTest {
         return BackofficeSalesService.summarizeOrder(123L, order, new OrderPersonalization(configuredFields()));
     }
 
+    @Test void resumesHistoryAfterLastCompletedRange() throws Exception {
+        var stores=mock(StoreRepository.class);var sales=mock(StoreOrderSalesRepository.class);
+        var states=mock(StoreSalesSyncRepository.class);var api=mock(NuvemshopApiClient.class);
+        var store=new Store();store.setStoreId(123L);store.setAccessToken("fixture-token");store.setScope("read_orders");
+        var state=new StoreSalesSync(123L);state.setHistoricalThrough(Instant.parse("2025-07-01T00:00:00Z"));
+        when(stores.findAll()).thenReturn(List.of(store));when(states.findAll()).thenReturn(List.of(state));
+        when(api.listOrdersForSales(any(),anyInt(),anyInt(),any(),any(),any(),any())).thenReturn(json.readTree("[]"));
+        new BackofficeSalesService(stores,sales,states,api,fields).syncOnePendingStore();
+        var starts=ArgumentCaptor.forClass(Instant.class);
+        verify(api,atLeastOnce()).listOrdersForSales(any(),anyInt(),anyInt(),starts.capture(),any(),any(),any());
+        assertThat(starts.getAllValues().getFirst()).isEqualTo(Instant.parse("2025-07-01T00:00:00Z"));
+        assertThat(state.isComplete()).isTrue();
+        assertThat(state.getHistoricalThrough()).isEqualTo(state.getLastSyncedAt());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"401,AUTH_REQUIRED","402,PLATFORM_BLOCKED","403,PERMISSION_REQUIRED","429,RATE_LIMITED"})
+    void exposesActionableSyncFailureWithoutCallingItZero(int code,String expected) {
+        var stores=mock(StoreRepository.class);var sales=mock(StoreOrderSalesRepository.class);
+        var states=mock(StoreSalesSyncRepository.class);var api=mock(NuvemshopApiClient.class);
+        var store=new Store();store.setStoreId(123L);store.setAccessToken("fixture-token");store.setScope("read_orders");
+        var state=new StoreSalesSync(123L);
+        when(stores.findAll()).thenReturn(List.of(store));when(states.findAll()).thenReturn(List.of(state));
+        when(api.listOrdersForSales(any(),anyInt(),anyInt(),any(),any(),any(),any())).thenThrow(
+                new org.springframework.web.client.HttpClientErrorException(org.springframework.http.HttpStatusCode.valueOf(code)));
+        new BackofficeSalesService(stores,sales,states,api,fields).syncOnePendingStore();
+        assertThat(state.getLastError()).isEqualTo(expected);
+        assertThat(state.isComplete()).isFalse();
+        assertThat(state.issueLabel()).isNotBlank();
+    }
+
+    @Test void incompleteSummaryIsNotDisplayedAsNoSales() {
+        var pending = new BackofficeSalesService.SalesSummary(0,0,1,1,16);
+        assertThat(pending.ordersDisplay()).isEqualTo("—");
+        assertThat(pending.itemsDisplay()).isEqualTo("—");
+        var partial = new BackofficeSalesService.SalesSummary(2,3,1,1,16);
+        assertThat(partial.ordersDisplay()).isEqualTo("2 (parcial)");
+        var complete = new BackofficeSalesService.SalesSummary(0,0,16,16,16);
+        assertThat(complete.ordersDisplay()).isEqualTo("0");
+    }
+
     @Test
     void shutdownDrainsWorkerWithoutFinishingHistoricalImport() throws Exception {
         var stores = mock(StoreRepository.class);

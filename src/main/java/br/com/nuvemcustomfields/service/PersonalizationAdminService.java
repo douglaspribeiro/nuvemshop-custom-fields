@@ -21,6 +21,13 @@ public class PersonalizationAdminService {
     @org.springframework.beans.factory.annotation.Autowired
     private StorefrontCache storefrontCache;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private OrderPersonalizationCatalog personalizationCatalog;
+
+    private void remember(PersonalizationField field) {
+        if (personalizationCatalog != null) personalizationCatalog.remember(field);
+    }
+
     private final OptionImageService images;
     private final PlanLimitService limits;
     private final StoreRepository stores;
@@ -86,6 +93,7 @@ public class PersonalizationAdminService {
         applyForm(field, form);
         field.setRule(rule);
         fieldRepository.saveAndFlush(field);
+        remember(field);
         images.bind(field, field.imageOptions());
     }
 
@@ -98,14 +106,20 @@ public class PersonalizationAdminService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Campo nao encontrado para esta loja/produto."));
         validateImagePlan(storeId, productId, form);
+        remember(field);
         applyForm(field, form);
         fieldRepository.saveAndFlush(field);
+        remember(field);
         images.bind(field, field.imageOptions());
     }
 
     @Transactional
     public void deleteField(Long storeId, Long productId, Long fieldId) {
         images.lockStore(storeId);
+        var field = requireRuleWithFields(storeId, productId).getFields().stream()
+                .filter(candidate -> candidate.getId().equals(fieldId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Campo nao encontrado para esta loja/produto."));
+        remember(field);
         images.deleteField(storeId, productId, fieldId);
         int deleted = fieldRepository.deleteByIdAndStoreIdAndProductId(fieldId, storeId, productId);
         if (storefrontCache != null) storefrontCache.invalidateAfterCommit();
@@ -117,6 +131,8 @@ public class PersonalizationAdminService {
     @Transactional
     public void deleteRule(Long storeId, Long productId) {
         images.lockStore(storeId);
+        ruleRepository.findWithFieldsByStoreIdAndProductId(storeId,productId)
+                .ifPresent(rule -> rule.getFields().forEach(this::remember));
         images.deleteProduct(storeId, productId);
         ruleRepository.deleteByStoreIdAndProductId(storeId, productId);
     }
@@ -137,6 +153,7 @@ public class PersonalizationAdminService {
             applyForm(field, form);
             field.setRule(rule);
             fieldRepository.saveAndFlush(field);
+            remember(field);
             images.bind(field, field.imageOptions());
             created++;
         }

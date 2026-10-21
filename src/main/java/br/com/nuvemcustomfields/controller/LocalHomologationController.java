@@ -34,6 +34,8 @@ public class LocalHomologationController {
         });
         if(!LocalHomologationGuard.STORE_TOKEN.equals(store.getAccessToken()) || !store.isActive())
             throw new ResponseStatusException(HttpStatus.CONFLICT,"O ID local já existe sem a identificação da loja fictícia.");
+        store.setScope("read_products,read_orders,write_scripts,read_scripts");
+        stores.save(store);
         var previous=request.getSession(false);if(previous!=null)previous.invalidate();
         request.getSession(true).setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,store.getStoreId());
         return "redirect:/admin";

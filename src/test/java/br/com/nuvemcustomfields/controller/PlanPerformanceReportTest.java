@@ -35,7 +35,7 @@ class PlanPerformanceReportTest {
         session.setAttribute(BackofficeSessionInterceptor.SESSION_KEY, true);
     }
     Store store(long id, PlanType plan) {
-        var s = new Store(); s.setStoreId(id); s.setStoreName("Relatório " + id); s.setPlan(plan);
+        var s = new Store(); s.setStoreId(id); s.setStoreName("Relatório " + id); s.setPlan(plan); s.setAccessToken("fixture-token"); s.setScope("read_orders");
         return stores.saveAndFlush(s);
     }
     void field(Store s, long product, boolean enabled) {
@@ -100,6 +100,7 @@ class PlanPerformanceReportTest {
                 .andExpect(header().string("Content-Disposition", "attachment; filename=lojas-gratuitas.csv"))
                 .andReturn().getResponse().getContentAsString();
         assertThat(csv).contains("\"'=HYPERLINK(\"\"x\"\");<script>alert(1)</script>\"", ";2026-10-10;2026-10-10");
+        assertThat(csv).contains(";1;;;\"Histórico incompleto\"");
     }
 
     @Test void distinguishesUnknownHistoryAndNoRecordedOrders() {
@@ -113,7 +114,32 @@ class PlanPerformanceReportTest {
                 .isEqualTo("Histórico incompleto");
         assertThat(report.freeDetails().stream().filter(r -> r.id().equals(complete.getStoreId())).findFirst().orElseThrow().salesStatus())
                 .isEqualTo("Sem pedidos no período");
+        var unknownRow = report.freeDetails().stream().filter(r -> r.id().equals(unknown.getStoreId())).findFirst().orElseThrow();
+        assertThat(unknownRow.ordersDisplay()).isEqualTo("—");
+        assertThat(unknownRow.itemsDisplay()).isEqualTo("—");
+        assertThat(report.freeSellingRate()).isNull();
+        var freePlan=report.plans().stream().filter(p -> p.plan() == PlanType.FREE).findFirst().orElseThrow();
+        assertThat(freePlan.sellingRate()).isNull();
+        assertThat(freePlan.ordersDisplay()).isEqualTo("—");
         assertThat(report.plans().stream().filter(p -> p.plan() == PlanType.PREMIUM_ULTRA).findFirst().orElseThrow().sellingRate()).isNull();
+    }
+
+    @Test void blockedStoresAreNotReportedAsHavingNoSalesAndShowTheRequiredAction() throws Exception {
+        var blocked=store(997669030L,PlanType.PREMIUM_PLUS);
+        var state=new StoreSalesSync(blocked.getStoreId());state.setComplete(true);state.setLastError("AUTH_REQUIRED");syncs.saveAndFlush(state);
+        order(blocked,1,"2026-10-10T12:00:00Z",2);
+        var report=reports.report(day,day);
+        var plan=report.plans().stream().filter(p->p.plan()==PlanType.PREMIUM_PLUS).findFirst().orElseThrow();
+        assertThat(plan.synced()).isZero();assertThat(plan.blocked()).isEqualTo(1);
+        assertThat(plan.ordersDisplay()).isEqualTo("—");assertThat(plan.sellingRate()).isNull();
+        assertThat(report.syncIssues()).anyMatch(r->r.id().equals(blocked.getStoreId()) && r.syncIssue().contains("Reconectar"));
+        String page=mvc.perform(get("/backoffice/reports").session(session).param("from",day.toString()).param("to",day.toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("Sincronização que precisa de atenção","Reconectar loja: token inválido ou expirado");
+        if (System.getProperty("ncf.release.screens") != null) {
+            var output=java.nio.file.Path.of(System.getProperty("ncf.release.screens"));java.nio.file.Files.createDirectories(output);
+            java.nio.file.Files.writeString(output.resolve("relatorio-incompleto.html"),page);
+        }
     }
 
     @Test void validatesDatesAndProtectsPageAndExport() throws Exception {

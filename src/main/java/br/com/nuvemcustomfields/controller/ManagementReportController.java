@@ -44,7 +44,7 @@ public class ManagementReportController {
         writer.write("\uFEFFID;Loja;Plano atual;Produtos habilitados;Pedidos personalizados;Itens personalizados;Histórico;Início;Fim\r\n");
         for (var row : report.freeDetails()) {
             writer.write(row.id() + ";" + cell(row.name()) + ";" + cell(row.plan().getDisplayName()) + ";"
-                    + row.products() + ";" + row.orders() + ";" + row.items() + ";" + cell(row.salesStatus())
+                    + row.products() + ";" + (row.synced() ? row.orders() : "") + ";" + (row.synced() ? row.items() : "") + ";" + cell(row.salesStatus())
                     + ";" + report.from() + ";" + report.to() + "\r\n");
         }
     }

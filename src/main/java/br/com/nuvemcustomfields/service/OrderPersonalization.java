@@ -10,9 +10,15 @@ final class OrderPersonalization {
 
     OrderPersonalization(List<PersonalizationField> fields) {
         for (var field : fields) {
-            fieldNames.computeIfAbsent(field.getRule().getProductId(), ignored -> new HashSet<>())
-                    .add(field.getLabel().replace('[', '(').replace(']', ')').strip());
+            addField(field.getRule().getProductId(),field.getLabel());
         }
+    }
+
+    static String propertyName(String label) { return label.replace('[', '(').replace(']', ')').strip(); }
+
+    void addField(Long productId, String label) {
+        if (productId != null && productId > 0 && label != null && !label.isBlank())
+            fieldNames.computeIfAbsent(productId, ignored -> new HashSet<>()).add(propertyName(label));
     }
 
     List<String> orderProperties(JsonNode order) {
@@ -36,20 +42,32 @@ final class OrderPersonalization {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
-                if (names.contains(entry.getKey()) && !entry.getValue().asText().isBlank()) {
-                    properties.add(entry.getKey() + ": " + entry.getValue().asText());
+                String value = displayValue(entry.getValue());
+                if (names.contains(entry.getKey()) && !value.isBlank()) {
+                    properties.add(entry.getKey() + ": " + value);
                 }
             }
         } else if (node.isArray()) {
             for (JsonNode property : node) {
                 String name = property.path("name").asText(property.path("key").asText(""));
-                String value = property.path("value").asText("");
+                String value = displayValue(property.path("value"));
                 if (names.contains(name) && !value.isBlank()) {
                     properties.add(name + ": " + value);
                 }
             }
         }
         return properties;
+    }
+
+    private static String displayValue(JsonNode value) {
+        if (value.isArray()) {
+            List<String> selected = new ArrayList<>();
+            for (JsonNode item : value) {
+                if (item.isValueNode() && !item.isNull() && !item.asText("").isBlank()) selected.add(item.asText());
+            }
+            return String.join(", ", selected);
+        }
+        return value.isValueNode() && !value.isNull() ? value.asText("") : "";
     }
 
 }

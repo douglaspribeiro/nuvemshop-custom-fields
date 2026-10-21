@@ -53,7 +53,8 @@ class MysqlMigrationContractIT {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM personalization_fields WHERE show_image_zoom=true", Integer.class)).isEqualTo(5);
             jdbc.update("UPDATE personalization_fields SET show_image_zoom=false WHERE id=?", imageField);
             assertThatThrownBy(() -> validateHibernateAndReadField(source, null))
-                    .hasStackTraceContaining("missing column [mobile_image_columns]");
+                    .hasStackTraceContaining("Schema-validation:");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='personalization_fields' AND column_name='mobile_image_columns'", Integer.class)).isZero();
 
             var columns = flyway(source, "55");
             assertThat(columns.migrate().migrationsExecuted).isEqualTo(1);
@@ -77,6 +78,32 @@ class MysqlMigrationContractIT {
             assertThat(jdbc.queryForObject("SELECT mobile_image_columns FROM personalization_fields WHERE label='Campo legado'", Integer.class)).isNull();
             jdbc.update("UPDATE personalization_fields SET mobile_image_columns=3 WHERE id=?", imageField);
             validateHibernateAndReadField(source, imageField);
+        });
+    }
+
+    @Test void preservesHistoricalFieldNamesAndQueuesReclassificationOnMysql() {
+        isolatedDatabase(source -> {
+            var jdbc=new JdbcTemplate(source);
+            flyway(source,"58").migrate();
+            jdbc.update("INSERT INTO stores(store_id,access_token,plan) VALUES(900002,'test-only','PREMIUM')");
+            jdbc.update("INSERT INTO personalization_rules(store_id,product_id,product_name) VALUES(900002,123,'Teste')");
+            Long rule=jdbc.queryForObject("SELECT id FROM personalization_rules WHERE store_id=900002",Long.class);
+            for (String name:List.of("Nome [gravar]","nome [gravar]"))
+                jdbc.update("INSERT INTO personalization_fields(rule_id,label,field_type) VALUES(?,?,'TEXT')",rule,name);
+            jdbc.update("INSERT INTO store_sales_sync(store_id,complete,personalized_value_backfilled,last_synced_at) VALUES(900002,true,true,'2026-10-01 12:00:00')");
+            flyway(source,"59").migrate();
+            assertThat(jdbc.queryForList("SELECT property_name FROM personalization_field_history WHERE store_id=900002",String.class))
+                    .containsExactlyInAnyOrder("Nome (gravar)","nome (gravar)");
+            assertThat(jdbc.queryForObject("SELECT complete FROM store_sales_sync WHERE store_id=900002",Boolean.class)).isFalse();
+            assertThat(jdbc.queryForObject("SELECT last_synced_at FROM store_sales_sync WHERE store_id=900002",java.sql.Timestamp.class))
+                    .isEqualTo(java.sql.Timestamp.valueOf("2026-10-01 12:00:00"));
+            flyway(source,"60").migrate();
+            assertThat(jdbc.queryForObject("SELECT historical_through FROM store_sales_sync WHERE store_id=900002",java.sql.Timestamp.class)).isNull();
+            jdbc.update("DELETE FROM personalization_fields WHERE rule_id=?",rule);
+            jdbc.update("DELETE FROM personalization_rules WHERE id=?",rule);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM personalization_field_history WHERE store_id=900002",Long.class)).isEqualTo(2);
+            jdbc.update("DELETE FROM stores WHERE store_id=900002");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM personalization_field_history WHERE store_id=900002",Long.class)).isZero();
         });
     }
 
