@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.44.1] - 2026-10-21
+
+### Performance
+
+- reduce storefront load for stores without usable fields (`b85d68b`)
+
 ## [1.44.0] - 2026-10-21
 
 ### Features
