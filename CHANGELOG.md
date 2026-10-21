@@ -3,6 +3,15 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.42.3] - 2026-10-21
+
+### Correções
+
+- capture live GHCR protection automatically during publication (`f60251e`)
+- reuse Docker login credentials for GHCR cleanup (`964fa93`)
+- run GHCR cleanup after every Docker publication (`4575063`)
+- retain the latest 20 published GHCR images by default (`346db03`)
+
 ## [1.42.2] - 2026-10-21
 
 ### Correções
