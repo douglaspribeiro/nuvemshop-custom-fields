@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.42.2] - 2026-10-21
+
+### Correções
+
+- align personalized sales reports with configured fields (`8ca3eac`)
+
 ## [1.42.1] - 2026-10-20
 
 ### Correções
