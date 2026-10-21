@@ -33,6 +33,7 @@ class PushDockerCleanupTests(unittest.TestCase):
         result, trace = self.run_push([])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIsNone(trace)
+        self.assertIn("limpeza desativada; nenhuma versão antiga foi apagada", result.stdout)
 
     def test_cleanup_runs_after_publication_and_protects_new_version_and_latest(self):
         result, trace = self.run_push(["--cleanup-ghcr", "--ghcr-keep", "10"])
@@ -43,6 +44,10 @@ class PushDockerCleanupTests(unittest.TestCase):
         self.assertIn("--protect-ref\nv1.0.0", trace)
         self.assertIn("--protect-ref\nlatest", trace)
         self.assertNotIn("--apply", trace)
+        self.assertIn("somente simulação; nenhuma versão será apagada", result.stdout)
+        self.assertIn("últimas 10 imagens publicadas", result.stdout)
+        self.assertIn("--min-age-days\n0", trace)
+        self.assertNotIn("Proteção adicional por idade solicitada", result.stdout)
 
     def test_failed_image_build_never_reaches_cleanup(self):
         result, trace = self.run_push(["--cleanup-ghcr"], build_exit=42)

@@ -30,12 +30,20 @@ def index(*children):
 
 class RetentionTests(unittest.TestCase):
     def planned(self, rows, keep=1, refs=(), manifests=None):
-        return cleanup.plan(rows, keep, 30, set(refs), lambda d: manifests[d] if manifests else image(), NOW)
+        return cleanup.plan(rows, keep, 0, set(refs), lambda d: manifests[d] if manifests else image(), NOW)
 
-    def test_keeps_latest_custom_tags_and_recent_uploads(self):
+    def test_keeps_only_newest_tagged_image_and_latest_without_age_or_custom_tag_exceptions(self):
         versions = [row(1, ["v1.0.0"]), row(2, ["v1.1.0"], 45), row(3, ["latest"], 60),
                     row(4, ["rollback"], 90), row(5, [], 2)]
-        self.assertEqual([v["id"] for v in self.planned(versions)], [1])
+        self.assertEqual(sorted(v["id"] for v in self.planned(versions)), [1, 4, 5])
+
+    def test_default_keeps_twenty_images_even_when_all_uploaded_today(self):
+        versions = [row(i, [f"v1.0.{i}"], 0) for i in range(1, 31)]
+        self.assertEqual([v["id"] for v in self.planned(versions, keep=20)], list(range(1, 11)))
+
+    def test_optional_age_protection_is_still_explicit(self):
+        versions = [row(1, ["v1.0.0"], 2), row(2, ["v2.0.0"], 1)]
+        self.assertEqual(cleanup.plan(versions, 1, 30, set(), lambda _: image(), NOW), [])
 
     def test_old_production_and_rollback_are_preserved(self):
         versions = [row(1, ["v1.0.0"], 100), row(2, ["v1.1.0"], 90), row(3, ["v1.2.0"], 70), row(4, ["v1.3.0"], 50)]
@@ -46,9 +54,9 @@ class RetentionTests(unittest.TestCase):
         manifests = {root["digest"]: index(platform, attestation), platform["digest"]: image(), attestation["digest"]: image()}
         self.assertEqual([v["id"] for v in self.planned([root, platform, attestation, obsolete], manifests=manifests)], [4])
 
-    def test_recently_retagged_version_is_protected(self):
+    def test_recently_retagged_old_version_is_not_protected_by_age(self):
         old = row(1, ["v1.0.0"]); old["updated"] = NOW - timedelta(days=1)
-        self.assertEqual(self.planned([old, row(2, ["v2.0.0"], 40)]), [])
+        self.assertEqual([v["id"] for v in self.planned([old, row(2, ["v2.0.0"], 40)])], [1])
 
     def test_shared_child_of_old_and_new_index_is_kept(self):
         old, new, shared = row(1, ["v1.0.0"], 100), row(2, ["v2.0.0"], 60), row(3, [], 100)

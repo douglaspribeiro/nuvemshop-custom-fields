@@ -5,6 +5,14 @@ não é removido pelo Docker local nem pela retenção de imagens no servidor.
 A limpeza opcional usa somente o pacote pessoal
 `ghcr.io/$GHCR_USER/nuvemshop-custom-fields` (não outros pacotes nem organizações).
 
+A execução sem opções de limpeza não exclui versões. O workflow
+`.github/workflows/deploy.yml` também apenas publica: não chama este helper.
+A retenção padrão mantém as últimas 20 imagens publicadas (versões com tag),
+sem proteção adicional por idade. Tags de teste também entram nesse limite.
+`latest` e referências explícitas de produção/rollback continuam protegidas.
+Versões sem tag podem ser manifests de plataforma ou atestações necessários
+para imagens preservadas e não devem ser apagadas apenas por não terem tag.
+
 ## Simular
 
 Disponibilize `GHCR_TOKEN` no ambiente, sem incluí-lo em comandos, arquivos
@@ -19,8 +27,8 @@ python3 scripts/cleanup-ghcr.py
 # Publica normalmente e depois simula a limpeza:
 bash scripts/push-docker.sh --cleanup-ghcr
 
-# Ajusta a retenção; o padrão é 20 releases / 30 dias:
-bash scripts/push-docker.sh --cleanup-ghcr --ghcr-keep 10 --ghcr-min-age-days 60
+# Ajusta a quantidade; o padrão é 20 imagens, sem proteção por idade:
+bash scripts/push-docker.sh --cleanup-ghcr --ghcr-keep 10
 ```
 
 O plano lista IDs das versões de pacote, digests e tags. Não estima espaço em
@@ -74,11 +82,12 @@ não é ativado apenas por definir essa variável; ainda exige `--apply` ou
 
 ## Regras de segurança
 
-- Mantém as N releases mais recentemente criadas e todas as versões recentes.
-  Tags semver `vX`, `vX.Y`, `vX.Y.Z` e `vX.Y.Z.B` são consideradas releases.
-- Tags que não sejam de release, como `latest`, `rollback` e canais de teste,
-  permanecem preservadas. Uma versão com várias tags é mantida se qualquer tag
-  for protegida.
+- Mantém as N imagens com tag mais recentemente criadas (20 por padrão).
+  Não preserva versões extras por idade; `--ghcr-min-age-days N` / `--min-age-days N`
+  permite solicitar essa proteção adicional, cujo padrão é zero.
+- `latest` e referências explícitas de produção/rollback permanecem protegidas.
+  Tags antigas de teste ou `rollback` sem proteção explícita podem ser removidas.
+  Uma imagem com várias tags conta uma vez e permanece se qualquer tag for protegida.
 - Percorre os índices OCI/Docker das imagens mantidas e preserva seus manifests
   de plataforma e atestações, mesmo sem tag. Somente manifests sem referência
   nas imagens preservadas podem entrar no plano de remoção.

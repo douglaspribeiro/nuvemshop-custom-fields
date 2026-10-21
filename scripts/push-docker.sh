@@ -20,7 +20,7 @@ PRECHECK=true
 CLEANUP_GHCR=false
 CLEANUP_APPLY=false
 CLEANUP_KEEP=20
-CLEANUP_MIN_AGE=30
+CLEANUP_MIN_AGE=0
 CLEANUP_PROTECTED_FILE="${GHCR_PROTECTED_REFS_FILE:-}"
 BUMP_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -39,15 +39,15 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       echo "Uso: $0 [--release major|minor|patch|build] [--set-version X.Y.Z[.B]] [--no-bump] [--tag TAG] [--allow-dirty] [--skip-precheck]"
       echo "GHCR: --cleanup-ghcr simula a limpeza após publicar; --cleanup-ghcr-apply exclui com arquivo de proteção."
-      echo "      --ghcr-keep N (20), --ghcr-min-age-days N (30), --ghcr-protected-refs arquivo.json"
+      echo "      --ghcr-keep N (20), --ghcr-min-age-days N (0, sem proteção por idade), --ghcr-protected-refs arquivo.json"
       exit 0 ;;
     *) echo "Argumento desconhecido: $1" >&2; exit 2 ;;
   esac
 done
 
 if [[ "$CLEANUP_GHCR" == true ]]; then
-  if [[ ! "$CLEANUP_KEEP" =~ ^[1-9][0-9]*$ || ! "$CLEANUP_MIN_AGE" =~ ^[1-9][0-9]*$ ]]; then
-    echo "Retenção GHCR exige quantidades positivas." >&2
+  if [[ ! "$CLEANUP_KEEP" =~ ^[1-9][0-9]*$ || ! "$CLEANUP_MIN_AGE" =~ ^[0-9]+$ ]]; then
+    echo "Retenção GHCR exige quantidade positiva e idade não negativa." >&2
     exit 2
   fi
   if [[ -z "${GHCR_TOKEN:-}" ]]; then
@@ -143,7 +143,21 @@ echo "   O sync-infra detectará o novo digest de :latest e fará o deploy."
 echo "▶ Parando builder multi-arch..."
 docker buildx stop multi-arch-builder >/dev/null 2>&1 || true
 
+if [[ "$CLEANUP_GHCR" == false ]]; then
+  echo "GHCR: limpeza desativada; nenhuma versão antiga foi apagada."
+  echo "      --cleanup-ghcr apenas simula; --cleanup-ghcr-apply executa a exclusão com arquivo de proteção."
+fi
+
 if [[ "$CLEANUP_GHCR" == true ]]; then
+  if [[ "$CLEANUP_APPLY" == true ]]; then
+    echo "▶ GHCR: aplicando limpeza com proteção de produção e rollback."
+  else
+    echo "▶ GHCR: somente simulação; nenhuma versão será apagada."
+  fi
+  echo "   Retenção: últimas $CLEANUP_KEEP imagens publicadas, seus manifests e referências protegidas de produção/rollback."
+  if [[ "$CLEANUP_MIN_AGE" != 0 ]]; then
+    echo "   Proteção adicional por idade solicitada: últimos $CLEANUP_MIN_AGE dias."
+  fi
   CLEANUP_ARGS=(--owner "$GHCR_USER" --keep "$CLEANUP_KEEP" --min-age-days "$CLEANUP_MIN_AGE" --protect-ref "$VERSION" --protect-ref latest)
   if [[ -n "$CLEANUP_PROTECTED_FILE" ]]; then CLEANUP_ARGS+=(--protected-refs-file "$CLEANUP_PROTECTED_FILE"); fi
   if [[ "$CLEANUP_APPLY" == true ]]; then CLEANUP_ARGS+=(--apply); fi

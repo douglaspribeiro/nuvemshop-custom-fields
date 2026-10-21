@@ -14,7 +14,6 @@ import urllib.request
 
 PACKAGE = "nuvemshop-custom-fields"
 DIGEST = re.compile(r"sha256:[a-f0-9]{64}\Z")
-RELEASE = re.compile(r"v[0-9]+(?:\.[0-9]+){0,3}\Z")
 MANIFEST_TYPES = ", ".join(("application/vnd.oci.image.index.v1+json",
     "application/vnd.docker.distribution.manifest.list.v2+json",
     "application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json"))
@@ -83,13 +82,12 @@ def plan(versions, keep, min_age_days, refs, manifest, now):
     missing = refs - lookup.keys()
     if missing:
         raise RetentionError("Referência protegida ausente no inventário; confira tags/digests.")
-    newest = sorted((v for v in versions if any(RELEASE.fullmatch(t) for t in v["tags"])),
+    newest = sorted((v for v in versions if v["tags"]),
                     key=lambda v: (v["created"], v["id"]), reverse=True)[:keep]
     roots = {v["digest"] for v in newest} | {lookup[ref] for ref in refs}
     cutoff = now - timedelta(days=min_age_days)
     for v in versions:
-        # Unknown/custom tags (including latest, rollback and test channels) are never deleted.
-        if max(v["created"], v["updated"]) >= cutoff or any(not RELEASE.fullmatch(t) for t in v["tags"]):
+        if "latest" in v["tags"] or (min_age_days > 0 and max(v["created"], v["updated"]) >= cutoff):
             roots.add(v["digest"])
     kept, visiting = set(), set()
 
@@ -188,13 +186,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--owner", default=os.environ.get("GHCR_USER", "douglaspribeiro"))
     parser.add_argument("--keep", type=int, default=20)
-    parser.add_argument("--min-age-days", type=int, default=30)
+    parser.add_argument("--min-age-days", type=int, default=0)
     parser.add_argument("--protect-ref", action="append", default=[])
     parser.add_argument("--protected-refs-file", default=os.environ.get("GHCR_PROTECTED_REFS_FILE"))
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", args.owner) or args.keep < 1 or args.min_age_days < 1:
-        parser.error("Informe proprietário válido e retenção positiva.")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", args.owner) or args.keep < 1 or args.min_age_days < 0:
+        parser.error("Informe proprietário válido, quantidade positiva e idade não negativa.")
     if args.apply and not args.protected_refs_file:
         parser.error("--apply exige --protected-refs-file com produção e rollback capturados há menos de 24h.")
     token = os.environ.get("GHCR_TOKEN")
@@ -209,7 +207,9 @@ def main(argv=None):
     print(("APLICAÇÃO" if args.apply else "SIMULAÇÃO") + ": " + image)
     if not args.protected_refs_file:
         print("Sem arquivo de proteção: esta simulação ainda não considera produção e rollback por digest.")
-    print(f"Inventário: {len(versions)}; candidatos: {len(removable)}; manter últimas {args.keep} releases e últimos {args.min_age_days} dias.")
+    print(f"Inventário: {len(versions)}; candidatos: {len(removable)}; manter últimas {args.keep} imagens publicadas e seus manifests necessários.")
+    if args.min_age_days > 0:
+        print(f"Proteção adicional por idade solicitada: últimos {args.min_age_days} dias.")
     for v in removable:
         print(f"  id={v['id']} digest={v['digest']} tags={','.join(v['tags']) or '(sem tag)'}")
     if not args.apply:
