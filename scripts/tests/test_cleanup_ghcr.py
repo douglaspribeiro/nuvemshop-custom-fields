@@ -95,10 +95,15 @@ class RetentionTests(unittest.TestCase):
             with self.assertRaises(cleanup.RetentionError): client.delete(original)
             self.assertEqual(api.call_count, 1)
 
-    def test_apply_without_protection_file_stops_before_any_network_access(self):
-        with patch.object(cleanup, "Client") as client, contextlib.redirect_stderr(io.StringIO()):
-            with self.assertRaises(SystemExit): cleanup.main(["--apply"])
-            client.assert_not_called()
+    def test_apply_without_protection_file_uses_retention_and_deletes_old_image(self):
+        with patch.dict(cleanup.os.environ, {"GHCR_TOKEN": "fixture-not-a-token"}, clear=True), patch.object(cleanup, "Client") as factory, contextlib.redirect_stdout(io.StringIO()):
+            client = factory.return_value
+            old, recent = row(1, ["v1.0.0"], 90), row(2, ["latest", "v2.0.0"], 60)
+            client.versions.return_value = [old, recent]
+            client.manifest.return_value = image()
+            client.api.return_value = {"login": "owner"}
+            self.assertEqual(cleanup.main(["--owner", "owner", "--keep", "1", "--apply"]), 0)
+            client.delete.assert_called_once_with(old)
 
     def test_environment_token_takes_precedence_over_docker_config(self):
         with patch.dict(cleanup.os.environ, {"GHCR_TOKEN":"fixture-env-token"}, clear=True), patch.object(cleanup.Path, "read_text") as read:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan scoped GHCR retention; deleting requires --apply and fresh protected refs."""
+"""Plan scoped GHCR retention; deleting requires --apply; protected refs are optional."""
 import argparse
 import base64
 from datetime import datetime, timedelta, timezone
@@ -227,8 +227,6 @@ def main(argv=None):
         return 0
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", args.owner) or args.keep < 1 or args.min_age_days < 0:
         parser.error("Informe proprietário válido, quantidade positiva e idade não negativa.")
-    if args.apply and not args.protected_refs_file:
-        parser.error("--apply exige --protected-refs-file com produção e rollback capturados há menos de 24h.")
     token = resolve_token()
     now = datetime.now(timezone.utc)
     image = "ghcr.io/" + args.owner + "/" + PACKAGE
@@ -238,14 +236,14 @@ def main(argv=None):
     removable = plan(versions, args.keep, args.min_age_days, refs, client.manifest, now)
     print(("APLICAÇÃO" if args.apply else "SIMULAÇÃO") + ": " + image)
     if not args.protected_refs_file:
-        print("Sem arquivo de proteção: esta simulação ainda não considera produção e rollback por digest.")
+        print("Retenção sem consulta ao servidor: últimas imagens publicadas, latest e referências explícitas.")
     print(f"Inventário: {len(versions)}; candidatos: {len(removable)}; manter últimas {args.keep} imagens publicadas e seus manifests necessários.")
     if args.min_age_days > 0:
         print(f"Proteção adicional por idade solicitada: últimos {args.min_age_days} dias.")
     for v in removable:
         print(f"  id={v['id']} digest={v['digest']} tags={','.join(v['tags']) or '(sem tag)'}")
     if not args.apply:
-        print("Nenhuma versão apagada. Para excluir, revise o plano e use --apply com o arquivo de proteção.")
+        print("Nenhuma versão apagada. Para excluir, revise o plano e use --apply.")
         return 0
     if str(client.api("/user").get("login", "")).lower() != args.owner.lower():
         raise RetentionError("O token não pertence ao proprietário informado; exclusão bloqueada.")
