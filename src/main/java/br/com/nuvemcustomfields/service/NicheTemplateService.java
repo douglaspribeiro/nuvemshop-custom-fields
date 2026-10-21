@@ -18,7 +18,7 @@ public class NicheTemplateService {
                     List.of(
                             new FieldTemplate("Nome da criança", FieldType.TEXT, true, 100, "Ex: Mariana", null, null),
                             new FieldTemplate("Frase", FieldType.TEXTAREA, false, 200, "Ex: Meu primeiro aniversário", null, null),
-                            new FieldTemplate("WhatsApp", FieldType.TEXT, true, 30, "Ex: +55 (11) 99999-9999", null, null)
+                            new FieldTemplate("WhatsApp", FieldType.TEXT, true, 14, "(11)99999-9999", "^\\([0-9]{2}\\)[0-9]{5}-[0-9]{4}$", null)
                     )
             ),
             new NicheTemplate(
