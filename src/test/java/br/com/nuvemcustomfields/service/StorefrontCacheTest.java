@@ -8,6 +8,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class StorefrontCacheTest {
+    @Test void storeInvalidationPreservesOtherStores() {
+        var cache = new StorefrontCache(new SimpleMeterRegistry(), Duration.ofMinutes(1), 100);
+        cache.get("store-state", 1L, null, () -> "empty");
+        cache.get("personalization", 2L, 10L, () -> "warm");
+        cache.invalidateStoreAfterCommit(1L);
+        assertThat(cache.get("store-state", 1L, null, () -> "configured")).isEqualTo("configured");
+        assertThat(cache.get("personalization", 2L, 10L, () -> "unexpected")).isEqualTo("warm");
+    }
+
     @Test void expiresAfterWriteRatherThanAfterAccessAndSeparatesStoresProductsAndKinds() {
         AtomicLong clock = new AtomicLong();
         var cache = new StorefrontCache(new SimpleMeterRegistry(), Duration.ofMinutes(1), 100, clock::get);

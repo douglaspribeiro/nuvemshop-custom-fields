@@ -21,7 +21,16 @@ public class StorefrontCacheEntityListener {
     @PostPersist @PostUpdate @PostRemove
     public void changed(Object entity) {
         // Persistence-only contexts can operate without the storefront cache.
-        cache.ifAvailable(StorefrontCache::invalidateAfterCommit);
+        Long storeId = null;
+        if (entity instanceof br.com.nuvemcustomfields.entity.Store store) storeId = store.getStoreId();
+        if (entity instanceof br.com.nuvemcustomfields.entity.PersonalizationRule rule) storeId = rule.getStoreId();
+        if (entity instanceof br.com.nuvemcustomfields.entity.PersonalizationField field && field.getRule() != null)
+            storeId = field.getRule().getStoreId();
+        Long changedStoreId = storeId;
+        if (entity instanceof br.com.nuvemcustomfields.entity.PlanAsset)
+            cache.ifAvailable(StorefrontCache::invalidateAfterCommit);
+        else if (changedStoreId != null)
+            cache.ifAvailable(value -> value.invalidateStoreAfterCommit(changedStoreId));
         if (entity instanceof br.com.nuvemcustomfields.entity.PlanAsset)
             plans.ifAvailable(br.com.nuvemcustomfields.service.PlanCatalogCache::invalidateAfterCommit);
     }

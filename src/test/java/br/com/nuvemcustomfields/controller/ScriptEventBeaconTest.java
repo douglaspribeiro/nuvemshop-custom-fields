@@ -19,7 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ScriptEventBeaconTest {
 
-    private static final long STORE_ID = 5544332211L;
+    private long STORE_ID = 5544332211L;
+    private static final java.util.concurrent.atomic.AtomicLong IDS = new java.util.concurrent.atomic.AtomicLong(5544332211L);
 
     @Autowired
     private MockMvc mockMvc;
@@ -35,6 +36,7 @@ class ScriptEventBeaconTest {
 
     @BeforeEach
     void setUp() {
+        STORE_ID = IDS.incrementAndGet();
         // integration_logs nao tem FK para stores, entao apagar a loja nao limpa os logs:
         // sem isto os metodos vazam estado entre si no H2 compartilhado.
         integrationLogRepository.deleteAll(
@@ -75,6 +77,18 @@ class ScriptEventBeaconTest {
         var log = integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(STORE_ID).getFirst();
         assertThat(log.getEventType()).doesNotContain("<").doesNotContain(">");
         assertThat(log.getMessage()).doesNotContain("<").doesNotContain(">");
+    }
+
+    @Test
+    void boundsWritesEvenWhenProductAndReasonChange() throws Exception {
+        double before = meterRegistry.get("ncf.storefront.beacon.suppressed").functionCounter().count();
+        for (int i = 0; i < 20; i++) {
+            mockMvc.perform(get("/public/script-events").param("event", "storefront_sdk")
+                    .param("storeId", String.valueOf(STORE_ID)).param("productId", String.valueOf(i))
+                    .param("reason", "reason_" + i)).andExpect(status().isOk());
+        }
+        assertThat(integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(STORE_ID)).hasSize(1);
+        assertThat(meterRegistry.get("ncf.storefront.beacon.suppressed").functionCounter().count()).isEqualTo(before + 19);
     }
 
     @Test

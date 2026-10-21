@@ -27,6 +27,7 @@ class ProductCacheInvalidationIntegrationTest {
     @Autowired PersonalizationRuleRepository rules;
     @Autowired PersonalizationAdminService admin;
     @Autowired PublicPersonalizationController controller;
+    @Autowired StorefrontCache cache;
     @Autowired PlatformTransactionManager transactions;
     private Long fieldId;
 
@@ -55,7 +56,7 @@ class ProductCacheInvalidationIntegrationTest {
         assertThat(updated).isNotSameAs(original);
         assertThat(read()).isSameAs(updated);
         switch (change) {
-            case CREATE_PRODUCT -> assertThat(updated.enabled()).isTrue();
+            case CREATE_PRODUCT -> assertThat(updated.enabled()).isFalse();
             case RENAME_PRODUCT -> assertThat(rules.findByStoreIdAndProductId(STORE, PRODUCT).orElseThrow()
                     .getProductName()).isEqualTo("Renamed product");
             case DISABLE_PRODUCT, DELETE_PRODUCT -> assertThat(updated.enabled()).isFalse();
@@ -80,6 +81,19 @@ class ProductCacheInvalidationIntegrationTest {
             status.setRollbackOnly();
         });
         assertThat(read()).isSameAs(original);
+    }
+
+    @org.junit.jupiter.api.Test
+    void firstFieldReactivatesStoreAndLastFieldDisablesIt() {
+        admin.ensureRule(STORE, PRODUCT, "Empty product");
+        assertThat(read().enabled()).isFalse();
+        var other = cache.get("personalization", STORE + 1, PRODUCT, () -> "warm");
+        admin.addField(STORE, PRODUCT, form("First field"));
+        assertThat(read().fields()).hasSize(1);
+        assertThat(cache.get("personalization", STORE + 1, PRODUCT, () -> "unexpected")).isSameAs(other);
+        long id = admin.requireRuleWithFields(STORE, PRODUCT).getFields().getFirst().getId();
+        admin.deleteField(STORE, PRODUCT, id);
+        assertThat(read().enabled()).isFalse();
     }
 
     private void prepare(Change change) {

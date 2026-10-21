@@ -122,7 +122,7 @@ public class PersonalizationAdminService {
         remember(field);
         images.deleteField(storeId, productId, fieldId);
         int deleted = fieldRepository.deleteByIdAndStoreIdAndProductId(fieldId, storeId, productId);
-        if (storefrontCache != null) storefrontCache.invalidateAfterCommit();
+        if (storefrontCache != null) storefrontCache.invalidateStoreAfterCommit(storeId);
         if (deleted == 0) {
             throw new IllegalArgumentException("Campo nao encontrado para esta loja/produto.");
         }

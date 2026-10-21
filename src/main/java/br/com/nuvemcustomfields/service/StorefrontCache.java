@@ -18,6 +18,8 @@ import java.util.function.Supplier;
 public class StorefrontCache {
     private final Cache<Key, Object> entries;
     private final AtomicLong generation = new AtomicLong();
+    private final AtomicLong sequence = new AtomicLong();
+    private final Cache<Long, Long> storeGenerations;
 
     @org.springframework.beans.factory.annotation.Autowired
     public StorefrontCache(MeterRegistry registry,
@@ -33,6 +35,7 @@ public class StorefrontCache {
 
     StorefrontCache(MeterRegistry registry, Duration ttl, long maximumSize,
             com.github.benmanes.caffeine.cache.Ticker ticker, String name) {
+        storeGenerations = Caffeine.newBuilder().maximumSize(maximumSize).build();
         entries = Caffeine.newBuilder().expireAfterWrite(ttl).maximumSize(maximumSize).ticker(ticker).recordStats().build();
         CaffeineCacheMetrics.monitor(registry, entries, name);
     }
@@ -42,15 +45,23 @@ public class StorefrontCache {
         // A transactional read must not publish uncommitted data into the shared cache.
         if (TransactionSynchronizationManager.isActualTransactionActive()) return loader.get();
         long currentGeneration = generation.get();
-        return (T) entries.get(new Key(kind, storeId, productId, currentGeneration), ignored -> loader.get());
+        return (T) entries.get(new Key(kind, storeId, productId, currentGeneration, storeGenerations.get(storeId, ignored -> sequence.incrementAndGet())), ignored -> loader.get());
+    }
+
+    public void invalidateStoreAfterCommit(Long storeId) {
+        afterCommit(() -> storeGenerations.put(storeId, sequence.incrementAndGet()));
     }
 
     public void invalidateAfterCommit() {
+        afterCommit(this::invalidate);
+    }
+
+    private void afterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override public void afterCommit() { invalidate(); }
+                @Override public void afterCommit() { action.run(); }
             });
-        } else invalidate();
+        } else action.run();
     }
 
     private void invalidate() {
@@ -60,5 +71,5 @@ public class StorefrontCache {
         generation.incrementAndGet();
     }
 
-    private record Key(String kind, Long storeId, Long productId, long generation) {}
+    private record Key(String kind, Long storeId, Long productId, long generation, long storeGeneration) {}
 }

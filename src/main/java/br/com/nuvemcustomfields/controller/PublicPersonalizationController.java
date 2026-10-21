@@ -27,6 +27,11 @@ public class PublicPersonalizationController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicPersonalizationController.class);
 
+    private final com.github.benmanes.caffeine.cache.Cache<Long, Boolean> eventSamples =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .expireAfterWrite(java.time.Duration.ofMinutes(1)).maximumSize(10000).build();
+    private final java.util.concurrent.atomic.LongAdder sampledEvents = new java.util.concurrent.atomic.LongAdder();
+    private final java.util.concurrent.atomic.LongAdder suppressedEvents = new java.util.concurrent.atomic.LongAdder();
     private final StorefrontCache cache;
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
@@ -47,6 +52,14 @@ public class PublicPersonalizationController {
         this.integrationLogService = integrationLogService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    void registerEventMetrics(io.micrometer.core.instrument.MeterRegistry registry) {
+        io.micrometer.core.instrument.FunctionCounter.builder("ncf.storefront.beacon.sampled", sampledEvents,
+                java.util.concurrent.atomic.LongAdder::doubleValue).register(registry);
+        io.micrometer.core.instrument.FunctionCounter.builder("ncf.storefront.beacon.suppressed", suppressedEvents,
+                java.util.concurrent.atomic.LongAdder::doubleValue).register(registry);
+    }
+
     @GetMapping("/public/stores/{storeId}/personalization")
     public PersonalizationResponse getFields(
             @PathVariable Long storeId,
@@ -54,12 +67,29 @@ public class PublicPersonalizationController {
             @RequestParam(required = false) String path,
             HttpServletRequest request
     ) {
+        StoreState state = storeState(storeId);
+        if (state.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
+        if (!state.hasFields()) return state.disabled();
         CachedPersonalization cached = cache.get("personalization", storeId, productId,
                 () -> loadPersonalization(storeId, productId, path));
         if (cached.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
         if (cached.response().enabled() && !cached.response().fields().isEmpty())
             request.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE, productId);
         return cached.response();
+    }
+
+    private record StoreState(boolean active, boolean hasFields, PersonalizationResponse disabled) {
+        StoreState(boolean active, boolean hasFields) { this(active, hasFields, PersonalizationResponse.disabled()); }
+    }
+
+    private StoreState storeState(Long storeId) {
+        return cache.get("store-state", storeId, null, () -> {
+            Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
+            if (store == null) return new StoreState(false, false);
+            boolean visible = ruleRepository.findByStoreIdAndEnabledTrue(storeId).stream()
+                    .anyMatch(rule -> !planLimitService.storefrontFields(store, rule.getFields()).isEmpty());
+            return new StoreState(true, visible);
+        });
     }
 
     private record CachedPersonalization(boolean active, PersonalizationResponse response) {}
@@ -81,7 +111,7 @@ public class PublicPersonalizationController {
                 .filter(PersonalizationRule::isEnabled)
                 .orElse(null);
         if (rule == null) {
-            LOGGER.info("public.personalization.disabled store_id={} product_id={} reason=rule_not_found_or_disabled", storeId, productId);
+            LOGGER.debug("public.personalization.disabled store_id={} product_id={} reason=rule_not_found_or_disabled", storeId, productId);
             return new CachedPersonalization(store != null, PersonalizationResponse.disabled());
         }
 
@@ -89,7 +119,7 @@ public class PublicPersonalizationController {
         var fields = planLimitService.storefrontFields(store, rule.getFields()).stream()
                 .map(field -> FieldResponse.from(field, imageOptionLimit))
                 .toList();
-        LOGGER.info(
+        LOGGER.debug(
                 "public.personalization.enabled store_id={} product_id={} rule_id={} fields_count={} country={} locale={}",
                 storeId,
                 productId,
@@ -98,6 +128,7 @@ public class PublicPersonalizationController {
                 store.getStoreCountryCode(),
                 StoreLocale.tagFor(store.getStoreCountryCode())
         );
+        if (fields.isEmpty()) return new CachedPersonalization(true, PersonalizationResponse.disabled());
         return new CachedPersonalization(true, new PersonalizationResponse(
                 true,
                 fields,
@@ -129,7 +160,7 @@ public class PublicPersonalizationController {
             @RequestParam(required = false) String scriptSrc,
             HttpServletRequest request
     ) {
-        LOGGER.info(
+        LOGGER.debug(
                 "public.script.event event={} store_id={} product_id={} reason={} path={} script_src={}",
                 event,
                 storeId,
@@ -159,6 +190,13 @@ public class PublicPersonalizationController {
             LOGGER.warn("public.script.event.not_persisted store_id={} reason=store_not_active", storeId);
             return;
         }
+        // A public beacon must not write once for every page view. One sample per store/minute,
+        // independent of arbitrary product IDs or reasons supplied by the caller.
+        if (eventSamples.asMap().putIfAbsent(storeId, Boolean.TRUE) != null) {
+            suppressedEvents.increment();
+            return;
+        }
+        sampledEvents.increment();
         String message = "produto=" + (productId == null ? "-" : productId)
                 + " eventos=" + sanitizeDetail(path);
         integrationLogService.info(storeId, "storefront.sdk." + sanitizeReason(reason), message);

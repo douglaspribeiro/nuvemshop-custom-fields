@@ -119,7 +119,9 @@ class StorefrontCacheEntityListenerTest {
                     .filter(method -> method.isAnnotationPresent(event)).findFirst().orElseThrow();
             TransactionSynchronizationManager.initSynchronization();
             try {
-                callback.invoke(listener, entityType.getConstructor().newInstance());
+                var rule = new PersonalizationRule(); rule.setStoreId(1L);
+                var field = new PersonalizationField(); field.setRule(rule);
+                callback.invoke(listener, entityType == PersonalizationRule.class ? rule : field);
                 assertThat(cache.get("personalization", 1L, 10L, Object::new)).isSameAs(original);
                 var synchronizations = TransactionSynchronizationManager.getSynchronizations();
                 assertThat(synchronizations).isNotEmpty();

@@ -17,6 +17,9 @@ public interface PersonalizationRuleRepository extends JpaRepository<Personaliza
     @EntityGraph(attributePaths = "fields")
     Optional<PersonalizationRule> findWithFieldsByStoreIdAndProductId(Long storeId, Long productId);
 
+    @EntityGraph(attributePaths = "fields")
+    List<PersonalizationRule> findByStoreIdAndEnabledTrue(Long storeId);
+
     long countByStoreId(Long storeId);
 
     @Query("""
