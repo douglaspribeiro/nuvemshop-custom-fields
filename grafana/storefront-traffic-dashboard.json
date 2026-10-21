@@ -9,7 +9,9 @@
       "pluginName": "Prometheus"
     }
   ],
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -17,6 +19,181 @@
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "id": 14,
+      "title": "Chamadas por dia fechado · últimos 30 dias",
+      "type": "timeseries",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "maxDataPoints": 10000,
+      "interval": "1h",
+      "timeFrom": "30d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 65,
+            "spanNulls": false,
+            "showPoints": "never",
+            "barAlignment": -1
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) and on() ((hour() == 3) and (minute() == 0))",
+          "interval": "1h",
+          "instant": false,
+          "range": true,
+          "legendFormat": "Chamadas"
+        }
+      ],
+      "description": "Total estimado por dia civil de São Paulo (UTC−03), incluindo vitrine e checkout como nos demais totais do dashboard. Cada ponto à meia-noite representa o dia ANTERIOR: 22/10 00h contém as chamadas de 21/10. Hoje parcial não entra. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece. Coleta ausente não é convertida em zero; increase pode subcontar lacunas e usa extrapolação."
+    },
+    {
+      "id": 15,
+      "title": "Variação diária de chamadas (%) · dias fechados",
+      "type": "timeseries",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "maxDataPoints": 10000,
+      "interval": "1h",
+      "timeFrom": "30d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": false,
+            "showPoints": "always",
+            "barAlignment": -1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(100 * (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) - sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d))) / (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d)) > 0)) and on() ((hour() == 3) and (minute() == 0))",
+          "interval": "1h",
+          "instant": false,
+          "range": true,
+          "legendFormat": "Variação diária"
+        }
+      ],
+      "description": "Compara cada dia fechado de São Paulo com o dia anterior. Cada ponto à meia-noite refere-se ao dia ANTERIOR. Sem percentual quando o dia anterior tem zero chamadas ou não há dados suficientes. Ausência de coleta não equivale a zero. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece."
+    },
+    {
+      "id": 16,
+      "title": "Hoje × ontem · chamadas por minuto até o mesmo horário",
+      "type": "timeseries",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "timeFrom": "now/d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "spanNulls": false,
+            "showPoints": "never",
+            "barAlignment": -1
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval])) * 60",
+          "interval": "1m",
+          "legendFormat": "Hoje",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 1d)) * 60",
+          "interval": "1m",
+          "legendFormat": "Ontem · mesmo horário",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "description": "Taxa de chamadas, incluindo vitrine e checkout, desde meia-noite de São Paulo até agora, sobreposta ao mesmo horário de ontem (offset de 24h). Hoje é parcial. A janela de rate pode incluir minutos antes da meia-noite. Ao selecionar datas absolutas no dashboard, a comparação passa a ser período selecionado × mesmas horas do dia anterior; os rótulos Hoje/Ontem se aplicam à janela padrão."
+    },
     {
       "datasource": "${DS_PROMETHEUS}",
       "fieldConfig": {
@@ -77,7 +254,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 0
+        "y": 16
       },
       "id": 1,
       "maxDataPoints": 100,
@@ -116,83 +293,346 @@
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 16
+      },
       "id": 2,
       "description": "Total estimado pelo Prometheus no intervalo selecionado. Consulta instantânea no fim do período; falhas de coleta podem subcontar chamadas.",
-      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "targets": [
-        { "expr": "sum(increase(ncf_storefront_http_requests_total[$__range]))", "instant": true, "range": false, "refId": "A" }
+        {
+          "expr": "sum(increase(ncf_storefront_http_requests_total[$__range]))",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
       ],
       "title": "Chamadas no período",
       "type": "stat"
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 16
+      },
       "id": 3,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "targets": [
-        { "expr": "sum(increase(ncf_storefront_http_requests_total{kind=~\".*_script\"}[$__range]))", "refId": "A" }
+        {
+          "expr": "sum(increase(ncf_storefront_http_requests_total{kind=~\".*_script\"}[$__range]))",
+          "refId": "A"
+        }
       ],
       "title": "Downloads de scripts",
       "type": "stat"
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 }] }, "unit": "percent" }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 16
+      },
       "id": 4,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "targets": [
-        { "expr": "100 * sum(increase(ncf_storefront_http_requests_total{status=~\"5..\"}[$__range])) / clamp_min(sum(increase(ncf_storefront_http_requests_total[$__range])), 1)", "refId": "A" }
+        {
+          "expr": "100 * sum(increase(ncf_storefront_http_requests_total{status=~\"5..\"}[$__range])) / clamp_min(sum(increase(ncf_storefront_http_requests_total[$__range])), 1)",
+          "refId": "A"
+        }
       ],
       "title": "Erros 5xx no período",
       "type": "stat"
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
       "id": 5,
-      "options": { "displayMode": "gradient", "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }, "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showUnfilled": true, "sizing": "auto", "text": {}, "valueMode": "color" },
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {},
+        "valueMode": "color"
+      },
       "targets": [
-        { "expr": "sum by (kind) (increase(ncf_storefront_http_requests_total[$__range]))", "legendFormat": "{{kind}}", "refId": "A" }
+        {
+          "expr": "sum by (kind) (increase(ncf_storefront_http_requests_total[$__range]))",
+          "legendFormat": "{{kind}}",
+          "refId": "A"
+        }
       ],
       "title": "Volume por tipo no período",
       "type": "bargauge"
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
       "id": 6,
-      "options": { "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
       "targets": [
-        { "expr": "sum by (kind, status) (increase(ncf_storefront_http_requests_total[$__range]))", "format": "table", "instant": true, "legendFormat": "{{kind}} · {{status}}", "refId": "A" }
+        {
+          "expr": "sum by (kind, status) (increase(ncf_storefront_http_requests_total[$__range]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{kind}} · {{status}}",
+          "refId": "A"
+        }
       ],
       "title": "Chamadas por tipo e status",
       "transformations": [
-        { "id": "labelsToFields", "options": {} },
-        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true }, "indexByName": {}, "renameByName": { "Value": "Chamadas" } } }
+        {
+          "id": "labelsToFields",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Chamadas"
+            }
+          }
+        }
       ],
       "type": "table"
     },
     {
       "datasource": "${DS_PROMETHEUS}",
       "description": "Acumula incrementos estimados em blocos sem sobreposição desde o início do intervalo selecionado. Não é uma janela móvel de 24h. Blocos completos têm no mínimo 4 minutos para a coleta de 60s; frações nas bordas e dados ausentes não são reconstruídos. O valor final pode diferir do cartão de total do período.",
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short", "min": 0, "decimals": 0, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 15, "spanNulls": false } }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "fillOpacity": 15,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
       "id": 9,
       "maxDataPoints": 100,
       "interval": "4m",
-      "options": { "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
       "targets": [
-        { "expr": "sum(clamp_min(increase(ncf_storefront_http_requests_total[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))", "interval": "4m", "instant": false, "range": true, "legendFormat": "Chamadas", "refId": "A" }
+        {
+          "expr": "sum(clamp_min(increase(ncf_storefront_http_requests_total[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
+          "interval": "4m",
+          "instant": false,
+          "range": true,
+          "legendFormat": "Chamadas",
+          "refId": "A"
+        }
       ],
       "transformations": [
-        { "id": "calculateField", "options": { "mode": "cumulativeFunctions", "cumulative": { "reducer": "sum" }, "alias": "Acumulado", "replaceFields": true } }
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "cumulativeFunctions",
+            "cumulative": {
+              "reducer": "sum"
+            },
+            "alias": "Acumulado",
+            "replaceFields": true
+          }
+        }
       ],
       "title": "Chamadas acumuladas no período · estimativa",
       "type": "timeseries"
@@ -200,12 +640,50 @@
     {
       "datasource": "${DS_PROMETHEUS}",
       "description": "Top 10 lojas por chamadas recebidas no período. Os nomes vêm do cadastro, associados por store_id. Requisições sem loja validada e downloads servidos pela CDN não entram. Requer a métrica ncf_store_info da nova versão do app.",
-      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "decimals": 0, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
       "id": 7,
-      "options": { "displayMode": "gradient", "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }, "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showUnfilled": true, "sizing": "auto", "text": {}, "valueMode": "color" },
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {},
+        "valueMode": "color"
+      },
       "targets": [
-        { "expr": "topk(10, sum by (store_id) (increase(ncf_storefront_http_requests_total{store_id=~\"[0-9]+\"}[$__range])) * on (store_id) group_left (store_name) topk by (store_id) (1, max by (store_id, store_name) (ncf_store_info)))", "instant": true, "legendFormat": "{{store_name}}", "refId": "A" }
+        {
+          "expr": "topk(10, sum by (store_id) (increase(ncf_storefront_http_requests_total{store_id=~\"[0-9]+\"}[$__range])) * on (store_id) group_left (store_name) topk by (store_id) (1, max by (store_id, store_name) (ncf_store_info)))",
+          "instant": true,
+          "legendFormat": "{{store_name}}",
+          "refId": "A"
+        }
       ],
       "title": "Top 10 lojas por chamadas no período",
       "type": "bargauge"
@@ -213,31 +691,241 @@
     {
       "datasource": "${DS_PROMETHEUS}",
       "description": "Top 20 produtos ativos com campos de personalização por consultas bem-sucedidas de configuração no período selecionado. Não são visitantes únicos: recargas, bots e novas consultas podem aumentar o total. A coleta começa após o deploy desta versão.",
-      "fieldConfig": { "defaults": { "decimals": 0, "unit": "short", "custom": { "align": "auto" } }, "overrides": [] },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "short",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
       "id": 8,
-      "options": { "showHeader": true, "sortBy": [{ "displayName": "Quantidade", "desc": true }] },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Quantidade",
+            "desc": true
+          }
+        ]
+      },
       "targets": [
-        { "expr": "round(sort_desc(topk(20, (sum by (store_id, product_id) (increase(ncf_storefront_personalized_product_requests_total[$__range])) > 0) * on (store_id, product_id) group_left (store_name, product_name) topk by (store_id, product_id) (1, max by (store_id, product_id, store_name, product_name) (ncf_personalized_product_info)))))", "format": "table", "instant": true, "refId": "A" }
+        {
+          "expr": "round(sort_desc(topk(20, (sum by (store_id, product_id) (increase(ncf_storefront_personalized_product_requests_total[$__range])) > 0) * on (store_id, product_id) group_left (store_name, product_name) topk by (store_id, product_id) (1, max by (store_id, product_id, store_name, product_name) (ncf_personalized_product_info)))))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
       ],
       "title": "Produtos personalizados mais consultados · Loja / Produto / Quantidade",
       "transformations": [
-        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "store_id": true, "product_id": true }, "indexByName": { "store_name": 0, "product_name": 1, "Value": 2 }, "renameByName": { "store_name": "Loja", "product_name": "Produto", "Value": "Quantidade" } } }
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "store_id": true,
+              "product_id": true
+            },
+            "indexByName": {
+              "store_name": 0,
+              "product_name": 1,
+              "Value": 2
+            },
+            "renameByName": {
+              "store_name": "Loja",
+              "product_name": "Produto",
+              "Value": "Quantidade"
+            }
+          }
+        }
       ],
       "type": "table"
     },
-    {"datasource": "${DS_PROMETHEUS}", "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 42}, "id": 12, "maxDataPoints": 100, "interval": "1m", "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single"}}, "targets": [{"expr": "100 * sum by (cache) (rate(cache_gets_total{job=\"app-custom-fields\",cache=~\"storefront|plans\",result=\"hit\"}[$__rate_interval])) / clamp_min(sum by (cache) (rate(cache_gets_total{job=\"app-custom-fields\",cache=~\"storefront|plans\"}[$__rate_interval])), 0.000001)", "interval": "1m", "legendFormat": "{{cache}}", "refId": "A"}], "title": "Cache Caffeine · acertos (%)", "description": "Cache local: vitrine expira em 1 minuto; planos em 24 horas, após gravação. Qualquer alteração de plano invalida todo o catálogo após commit. Alterações invalidam após commit. Sem consultas, mostra zero. Requests atendidos pelo cache continuam nas métricas de tráfego.", "type": "timeseries"},
-    {"datasource": "${DS_PROMETHEUS}", "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 42}, "id": 13, "maxDataPoints": 100, "interval": "1m", "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}}, "targets": [{"expr": "sum by (cache) (avg_over_time(cache_size{job=\"app-custom-fields\",cache=~\"storefront|plans\"}[$__interval]))", "legendFormat": "{{cache}}", "refId": "A"}], "title": "Cache Caffeine · entradas estimadas", "description": "Média das entradas estimadas na janela automática; expiradas podem aguardar manutenção. Limites por instância: storefront 10.000; plans 128.", "type": "timeseries"}
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Saúde da coleta · principal",
+      "datasource": "${DS_PROMETHEUS}",
+      "description": "1 = última coleta bem-sucedida; 0 = coleta falhou. Ausência de dados não comprova tráfego zero. Não mede diretamente disponibilidade pública.",
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 12,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "none",
+        "colorMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "max(up{job=\"app-custom-fields\"})",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Cobertura de amostras · principal",
+      "datasource": "${DS_PROMETHEUS}",
+      "description": "Estimativa de amostras presentes versus esperadas com scrape de 60s. Inclui amostras up=0; saúde e cobertura devem ser avaliadas juntas. As bordas do intervalo podem afetar o percentual.",
+      "gridPos": {
+        "x": 12,
+        "y": 54,
+        "w": 12,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "none",
+        "colorMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "clamp_max(100 * sum(count_over_time(up{job=\"app-custom-fields\"}[$__range])) / ($__range_s / 60), 100)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 58
+      },
+      "id": 12,
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum by (cache) (rate(cache_gets_total{job=\"app-custom-fields\",cache=~\"storefront|plans\",result=\"hit\"}[$__rate_interval])) / clamp_min(sum by (cache) (rate(cache_gets_total{job=\"app-custom-fields\",cache=~\"storefront|plans\"}[$__rate_interval])), 0.000001)",
+          "interval": "1m",
+          "legendFormat": "{{cache}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache Caffeine · acertos (%)",
+      "description": "Cache local: vitrine expira em 1 minuto; planos em 24 horas, após gravação. Qualquer alteração de plano invalida todo o catálogo após commit. Alterações invalidam após commit. Sem consultas, mostra zero. Requests atendidos pelo cache continuam nas métricas de tráfego.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 58
+      },
+      "id": 13,
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (cache) (avg_over_time(cache_size{job=\"app-custom-fields\",cache=~\"storefront|plans\"}[$__interval]))",
+          "legendFormat": "{{cache}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache Caffeine · entradas estimadas",
+      "description": "Média das entradas estimadas na janela automática; expiradas podem aguardar manutenção. Limites por instância: storefront 10.000; plans 128.",
+      "type": "timeseries"
+    }
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["nuvemshop", "storefront", "checkout"],
-  "templating": { "list": [] },
-  "time": { "from": "now-24h", "to": "now" },
+  "tags": [
+    "nuvemshop",
+    "storefront",
+    "checkout"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "timepicker": {},
-  "timezone": "browser",
+  "timezone": "America/Sao_Paulo",
   "title": "Nuvemshop · Tráfego de Vitrine",
   "uid": "ncf-storefront-traffic",
-  "version": 5,
+  "version": 6,
   "weekStart": ""
 }
