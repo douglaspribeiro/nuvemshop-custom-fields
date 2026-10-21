@@ -12,6 +12,16 @@ public class NicheTemplateService {
 
     private final List<NicheTemplate> templates = List.of(
             new NicheTemplate(
+                    "personalizacao-infantil",
+                    "Personalização infantil",
+                    "Nome da criança, frase opcional e WhatsApp para produtos personalizados.",
+                    List.of(
+                            new FieldTemplate("Nome da criança", FieldType.TEXT, true, 100, "Ex: Mariana", null, null),
+                            new FieldTemplate("Frase", FieldType.TEXTAREA, false, 200, "Ex: Meu primeiro aniversário", null, null),
+                            new FieldTemplate("WhatsApp", FieldType.TEXT, true, 30, "Ex: +55 (11) 99999-9999", null, null)
+                    )
+            ),
+            new NicheTemplate(
                     "camiseta",
                     "Camiseta",
                     "Nome e numero para uniformes, times e presentes.",
