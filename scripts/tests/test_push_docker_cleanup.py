@@ -21,19 +21,23 @@ class PushDockerCleanupTests(unittest.TestCase):
             for name, body in commands.items():
                 file = directory / name; file.write_text("#!/bin/bash\n" + body); file.chmod(0o700)
             trace = directory / "cleanup.trace"
+            protection = directory / "protected.json"
+            protection.write_text('{}')  # The real helper validates contents; this test exercises shell wiring.
             env = dict(os.environ, PATH=str(directory) + os.pathsep + os.environ["PATH"],
                        GHCR_TOKEN="fixture-not-a-token", GHCR_USER="fixture-owner",
                        CLEANUP_TRACE=str(trace), BUILD_EXIT=str(build_exit))
-            env.pop("GHCR_PROTECTED_REFS_FILE", None)
+            env["GHCR_PROTECTED_REFS_FILE"] = str(protection)
             result = subprocess.run(["bash", str(SCRIPT), "--no-bump", "--skip-precheck", *options],
                                     env=env, capture_output=True, text=True)
             return result, trace.read_text() if trace.exists() else None
 
-    def test_default_publication_does_not_run_cleanup(self):
+    def test_default_publication_applies_cleanup_with_twenty_images(self):
         result, trace = self.run_push([])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIsNone(trace)
-        self.assertIn("limpeza desativada; nenhuma versão antiga foi apagada", result.stdout)
+        self.assertIn("--apply", trace)
+        self.assertIn("--keep\n20", trace)
+        self.assertIn("--min-age-days\n0", trace)
+        self.assertIn("--protected-refs-file", trace)
 
     def test_cleanup_runs_after_publication_and_protects_new_version_and_latest(self):
         result, trace = self.run_push(["--cleanup-ghcr", "--ghcr-keep", "10"])

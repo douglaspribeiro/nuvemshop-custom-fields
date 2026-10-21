@@ -500,7 +500,7 @@ Python 3, Git e Docker Buildx; o push local exige login prévio no GHCR.
 
 ```bash
 ./scripts/release-version.sh --dry-run       # simula sem alterar arquivos
-./scripts/push-docker.sh                     # testa, versiona e publica
+./scripts/push-docker.sh                     # testa, versiona, publica e limpa GHCR (últimas 20 imagens)
 ./scripts/push-docker.sh --release minor      # força incremento minor
 ./scripts/push-docker.sh --set-version 1.2.0  # define versão exata
 ./scripts/push-docker.sh --no-bump            # publica a versão atual do pom

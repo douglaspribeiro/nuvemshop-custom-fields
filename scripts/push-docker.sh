@@ -17,8 +17,8 @@ cd "$PROJECT_ROOT"
 CUSTOM_TAG=""
 BUMP=true
 PRECHECK=true
-CLEANUP_GHCR=false
-CLEANUP_APPLY=false
+CLEANUP_GHCR=true
+CLEANUP_APPLY=true
 CLEANUP_KEEP=20
 CLEANUP_MIN_AGE=0
 CLEANUP_PROTECTED_FILE="${GHCR_PROTECTED_REFS_FILE:-}"
@@ -31,14 +31,15 @@ while [[ $# -gt 0 ]]; do
     --release) BUMP_ARGS+=(--release "${2:?--release exige major|minor|patch|build}"); shift 2 ;;
     --set-version) BUMP_ARGS+=(--set "${2:?--set-version exige X.Y.Z[.B]}"); shift 2 ;;
     --allow-dirty) BUMP_ARGS+=(--allow-dirty); shift ;;
-    --cleanup-ghcr) CLEANUP_GHCR=true; shift ;;
+    --cleanup-ghcr) CLEANUP_GHCR=true; CLEANUP_APPLY=false; shift ;;
     --cleanup-ghcr-apply) CLEANUP_GHCR=true; CLEANUP_APPLY=true; shift ;;
     --ghcr-keep) CLEANUP_KEEP="${2:?--ghcr-keep exige quantidade}"; shift 2 ;;
     --ghcr-min-age-days) CLEANUP_MIN_AGE="${2:?--ghcr-min-age-days exige dias}"; shift 2 ;;
     --ghcr-protected-refs) CLEANUP_PROTECTED_FILE="${2:?--ghcr-protected-refs exige arquivo}"; shift 2 ;;
     -h|--help)
       echo "Uso: $0 [--release major|minor|patch|build] [--set-version X.Y.Z[.B]] [--no-bump] [--tag TAG] [--allow-dirty] [--skip-precheck]"
-      echo "GHCR: --cleanup-ghcr simula a limpeza após publicar; --cleanup-ghcr-apply exclui com arquivo de proteção."
+      echo "GHCR: limpeza real após cada publicação (últimas 20 imagens); exige GHCR_TOKEN e arquivo de proteção."
+      echo "      --cleanup-ghcr apenas simula; --cleanup-ghcr-apply explicita o comportamento padrão."
       echo "      --ghcr-keep N (20), --ghcr-min-age-days N (0, sem proteção por idade), --ghcr-protected-refs arquivo.json"
       exit 0 ;;
     *) echo "Argumento desconhecido: $1" >&2; exit 2 ;;

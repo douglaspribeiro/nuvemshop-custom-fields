@@ -2,11 +2,13 @@
 
 `scripts/push-docker.sh` publica `latest` e a tag da versão. O histórico do GHCR
 não é removido pelo Docker local nem pela retenção de imagens no servidor.
-A limpeza opcional usa somente o pacote pessoal
+A limpeza após cada publicação usa somente o pacote pessoal
 `ghcr.io/$GHCR_USER/nuvemshop-custom-fields` (não outros pacotes nem organizações).
 
-A execução sem opções de limpeza não exclui versões. O workflow
-`.github/workflows/deploy.yml` também apenas publica: não chama este helper.
+`push-docker.sh` executa a exclusão após toda publicação por padrão. Exige
+`GHCR_TOKEN` e `GHCR_PROTECTED_REFS_FILE` (ou `--ghcr-protected-refs`) antes do build.
+`--cleanup-ghcr` troca a exclusão por uma simulação nessa execução.
+O workflow `.github/workflows/deploy.yml` apenas publica: não chama este helper.
 A retenção padrão mantém as últimas 20 imagens publicadas (versões com tag),
 sem proteção adicional por idade. Tags de teste também entram nesse limite.
 `latest` e referências explícitas de produção/rollback continuam protegidas.
@@ -76,9 +78,9 @@ bash scripts/push-docker.sh --cleanup-ghcr-apply \
   --ghcr-protected-refs /tmp/ncf-ghcr-protected.json
 ```
 
-`GHCR_PROTECTED_REFS_FILE` pode fornecer o caminho padrão. O modo de exclusão
-não é ativado apenas por definir essa variável; ainda exige `--apply` ou
-`--cleanup-ghcr-apply`. No push, a tag publicada e `latest` também são protegidas.
+`GHCR_PROTECTED_REFS_FILE` fornece o caminho padrão. No helper isolado, excluir
+continua exigindo `--apply`; no `push-docker.sh`, a exclusão já é o padrão.
+No push, a tag publicada e `latest` também são protegidas.
 
 ## Regras de segurança
 
