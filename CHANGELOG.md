@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.42.4] - 2026-10-21
+
+### Correções
+
+- reconcile personalized sales history and report coverage (`65c6efa`)
+
 ## [1.42.3] - 2026-10-21
 
 ### Correções
