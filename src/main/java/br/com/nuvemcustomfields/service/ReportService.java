@@ -10,12 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashMap;
-import java.util.HashSet;
 
 @Service
 public class ReportService {
@@ -70,13 +65,9 @@ public class ReportService {
         if (orders == null || !orders.isArray()) {
             return result;
         }
-        Map<Long, Set<String>> fieldNames = new HashMap<>();
-        for (var field : fieldRepository.findWithRuleByStoreId(store.getStoreId())) {
-            fieldNames.computeIfAbsent(field.getRule().getProductId(), ignored -> new HashSet<>())
-                    .add(field.getLabel().replace('[', '(').replace(']', ')').strip());
-        }
+        var personalization = new OrderPersonalization(fieldRepository.findWithRuleByStoreId(store.getStoreId()));
         for (JsonNode order : orders) {
-            List<String> properties = collectProperties(order, fieldNames);
+            List<String> properties = personalization.orderProperties(order);
             if (!properties.isEmpty()) {
                 result.add(new PersonalizedOrderSummary(
                         order.path("id").asLong(),
@@ -87,37 +78,6 @@ public class ReportService {
             }
         }
         return result;
-    }
-
-    private List<String> collectProperties(JsonNode order, Map<Long, Set<String>> fieldNames) {
-        List<String> properties = new ArrayList<>();
-        JsonNode products = order.path("products");
-        if (!products.isArray()) {
-            return properties;
-        }
-        for (JsonNode product : products) {
-            Set<String> names = fieldNames.getOrDefault(product.path("product_id").asLong(), Set.of());
-            if (names.isEmpty()) continue;
-            JsonNode node = product.path("properties");
-            if (node.isObject()) {
-                Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-                while (fields.hasNext()) {
-                    Map.Entry<String, JsonNode> entry = fields.next();
-                    if (names.contains(entry.getKey()) && !entry.getValue().asText().isBlank()) {
-                        properties.add(entry.getKey() + ": " + entry.getValue().asText());
-                    }
-                }
-            } else if (node.isArray()) {
-                for (JsonNode property : node) {
-                    String name = property.path("name").asText(property.path("key").asText(""));
-                    String value = property.path("value").asText("");
-                    if (names.contains(name) && !value.isBlank()) {
-                        properties.add(name + ": " + value);
-                    }
-                }
-            }
-        }
-        return properties;
     }
 
     private boolean hasScope(Store store, String requiredScope) {

@@ -55,14 +55,21 @@ class MysqlMigrationContractIT {
             assertThatThrownBy(() -> validateHibernateAndReadField(source, null))
                     .hasStackTraceContaining("missing column [mobile_image_columns]");
 
-            var latest = flyway(source, null);
-            assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+            var columns = flyway(source, "55");
+            assertThat(columns.migrate().migrationsExecuted).isEqualTo(1);
             assertThat(snapshot(jdbc)).isEqualTo(original);
             assertThat(jdbc.queryForObject("SELECT show_image_zoom FROM personalization_fields WHERE id=?", Boolean.class, imageField)).isFalse();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM personalization_fields WHERE mobile_image_columns IS NULL", Integer.class)).isEqualTo(5);
+            // Check V55 independently; later catalog/report migrations are also expected.
+            var latest = flyway(source, null);
+            int pending = latest.info().pending().length;
+            assertThat(latest.migrate().migrationsExecuted).isEqualTo(pending);
             assertThat(latest.validateWithResult().validationSuccessful).isTrue();
+            var upgraded = snapshot(jdbc);
+            // Later migrations may add catalog rows and tables, but must preserve the seeded business data.
+            original.forEach((table, rows) -> assertThat(upgraded.get(table)).containsAll(rows));
             assertThat(latest.migrate().migrationsExecuted).isZero();
-            assertThat(snapshot(jdbc)).isEqualTo(original);
+            assertThat(snapshot(jdbc)).isEqualTo(upgraded);
 
             // Old writers omit both new columns; defaults must work in actual MySQL as well as H2.
             jdbc.update("INSERT INTO personalization_fields (rule_id,label,field_type) VALUES (?,'Campo legado','TEXT')", rule);

@@ -38,6 +38,7 @@ public class BackofficeSalesService {
     private static final int PAGE_SIZE = 200;
     private static final int MAX_PAGES_PER_RANGE = 50; // Limite de 10 mil resultados da API.
 
+    private final br.com.nuvemcustomfields.repository.PersonalizationFieldRepository fields;
     private final StoreRepository stores;
     private final StoreOrderSalesRepository orderSales;
     private final StoreSalesSyncRepository syncStates;
@@ -61,7 +62,9 @@ public class BackofficeSalesService {
     private static final class SyncPaused extends RuntimeException {}
 
     public BackofficeSalesService(StoreRepository stores, StoreOrderSalesRepository orderSales,
-                                  StoreSalesSyncRepository syncStates, NuvemshopApiClient apiClient) {
+                                  StoreSalesSyncRepository syncStates, NuvemshopApiClient apiClient,
+                                  br.com.nuvemcustomfields.repository.PersonalizationFieldRepository fields) {
+        this.fields = fields;
         this.stores = stores;
         this.orderSales = orderSales;
         this.syncStates = syncStates;
@@ -157,13 +160,14 @@ public class BackofficeSalesService {
         syncStates.save(state);
         try {
             checkStopping();
+            var personalization = new OrderPersonalization(fields.findWithRuleByStoreId(store.getStoreId()));
             if (state.isComplete() && state.isPersonalizedValueBackfilled() && state.getLastSyncedAt() != null) {
-                importRange(store, null, null, state.getLastSyncedAt().minus(Duration.ofHours(1)), now);
+                importRange(store, null, null, state.getLastSyncedAt().minus(Duration.ofHours(1)), now, personalization);
             } else {
                 for (int year = 2000; LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant().isBefore(now); year += 5) {
                     Instant start = LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
                     Instant end = LocalDate.of(year + 5, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
-                    importRange(store, start, end.isAfter(now) ? now : end, null, null);
+                    importRange(store, start, end.isAfter(now) ? now : end, null, null, personalization);
                 }
             }
             checkStopping();
@@ -186,7 +190,7 @@ public class BackofficeSalesService {
     }
 
     private void importRange(Store store, Instant createdMin, Instant createdMax,
-                             Instant updatedMin, Instant updatedMax) {
+                             Instant updatedMin, Instant updatedMax, OrderPersonalization personalization) {
         for (int page = 1; page <= MAX_PAGES_PER_RANGE; page++) {
             checkStopping();
             JsonNode orders = apiClient.listOrdersForSales(store, page, PAGE_SIZE,
@@ -200,7 +204,7 @@ public class BackofficeSalesService {
             for (JsonNode order : orders) {
                 long orderId = order.path("id").asLong();
                 if (orderId <= 0) continue;
-                StoreOrderSales sale = summarizeOrder(store.getStoreId(), order);
+                StoreOrderSales sale = summarizeOrder(store.getStoreId(), order, personalization);
                 if (sale.getPersonalizedItems() > 0) {
                     batch.add(sale);
                 } else {
@@ -219,18 +223,18 @@ public class BackofficeSalesService {
                 }
                 Instant midpoint = rangeMin.plusMillis(Duration.between(rangeMin, rangeMax).toMillis() / 2);
                 if (createdMin != null) {
-                    importRange(store, createdMin, midpoint, null, null);
-                    importRange(store, midpoint, createdMax, null, null);
+                    importRange(store, createdMin, midpoint, null, null, personalization);
+                    importRange(store, midpoint, createdMax, null, null, personalization);
                 } else {
-                    importRange(store, null, null, updatedMin, midpoint);
-                    importRange(store, null, null, midpoint, updatedMax);
+                    importRange(store, null, null, updatedMin, midpoint, personalization);
+                    importRange(store, null, null, midpoint, updatedMax, personalization);
                 }
                 return;
             }
         }
     }
 
-    static StoreOrderSales summarizeOrder(Long storeId, JsonNode order) {
+    static StoreOrderSales summarizeOrder(Long storeId, JsonNode order, OrderPersonalization personalization) {
         long total = 0;
         long personalized = 0;
         BigDecimal personalizedProductValue = BigDecimal.ZERO;
@@ -240,8 +244,7 @@ public class BackofficeSalesService {
             for (JsonNode product : order.path("products")) {
                 long quantity = Math.max(0, product.path("quantity").asLong());
                 total += quantity;
-                JsonNode properties = product.path("properties");
-                if ((properties.isArray() || properties.isObject()) && !properties.isEmpty()) {
+                if (!personalization.productProperties(product).isEmpty()) {
                     personalized += quantity;
                     if (quantity > 0) {
                         try {

@@ -24,6 +24,28 @@ import static org.mockito.Mockito.atLeastOnce;
 class BackofficeSalesServiceTest {
 
     private final ObjectMapper json = new ObjectMapper();
+    private final br.com.nuvemcustomfields.repository.PersonalizationFieldRepository fields =
+            mock(br.com.nuvemcustomfields.repository.PersonalizationFieldRepository.class);
+
+    private static List<br.com.nuvemcustomfields.entity.PersonalizationField> configuredFields() {
+        var rule = new br.com.nuvemcustomfields.entity.PersonalizationRule();
+        rule.setProductId(100L);
+        return java.util.stream.Stream.of("Nome", "Texto").map(label -> {
+            var field = new br.com.nuvemcustomfields.entity.PersonalizationField();
+            field.setRule(rule);
+            field.setLabel(label);
+            return field;
+        }).toList();
+    }
+
+    @org.junit.jupiter.api.BeforeEach
+    void configureFields() {
+        when(fields.findWithRuleByStoreId(123L)).thenReturn(configuredFields());
+    }
+
+    private StoreOrderSales summarize(com.fasterxml.jackson.databind.JsonNode order) {
+        return BackofficeSalesService.summarizeOrder(123L, order, new OrderPersonalization(configuredFields()));
+    }
 
     @Test
     void shutdownDrainsWorkerWithoutFinishingHistoricalImport() throws Exception {
@@ -38,7 +60,7 @@ class BackofficeSalesServiceTest {
         when(stores.findAll()).thenReturn(List.of(store));
         when(states.findAll()).thenReturn(List.of());
         var lifecycle = new br.com.nuvemcustomfields.config.DeploymentLifecycleConfiguration();
-        var service = new BackofficeSalesService(stores, sales, states, api);
+        var service = new BackofficeSalesService(stores, sales, states, api, fields);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "backgroundExecutor",
                 lifecycle.deploymentBackgroundExecutor());
         var requested = new java.util.concurrent.CountDownLatch(1);
@@ -77,7 +99,7 @@ class BackofficeSalesServiceTest {
         var state = new StoreSalesSync(123L);
         when(stores.findAll()).thenReturn(List.of(store));
         when(states.findAll()).thenReturn(List.of(state));
-        var service = new BackofficeSalesService(stores, sales, states, api);
+        var service = new BackofficeSalesService(stores, sales, states, api, fields);
         when(api.listOrdersForSales(any(), anyInt(), anyInt(), any(), any(), any(), any()))
                 .thenAnswer(call -> {
                     service.stopSync();
@@ -100,12 +122,12 @@ class BackofficeSalesServiceTest {
     void countsPaidItemQuantitiesAndOnlyCustomizedLineItems() throws Exception {
         var order = json.readTree("""
                 {"id": 91, "created_at": "2026-09-29T10:30:00-03:00", "currency": "BRL", "payment_status": "paid", "status": "open", "products": [
-                  {"quantity": 3, "price": "12.50", "properties": [{"name": "Nome", "value": "Ana"}]},
-                  {"quantity": 2, "price": "7.00", "properties": []}
+                  {"product_id":100,"quantity": 3, "price": "12.50", "properties": [{"name": "Nome", "value": "Ana"}]},
+                  {"product_id":100,"quantity": 2, "price": "7.00", "properties": []}
                 ]}
                 """);
 
-        StoreOrderSales result = BackofficeSalesService.summarizeOrder(123L, order);
+        StoreOrderSales result = summarize(order);
 
         assertThat(result.getTotalItems()).isEqualTo(5);
         assertThat(result.getPersonalizedItems()).isEqualTo(3);
@@ -117,37 +139,52 @@ class BackofficeSalesServiceTest {
     }
 
     @Test
+    void rejectsGiftPropertiesAndCountsOnlyNonemptyConfiguredValues() throws Exception {
+        var order = json.readTree("""
+                {"id":92,"payment_status":"paid","products":[
+                  {"product_id":100,"quantity":2,"price":"10","properties":{"Nome":"Ana","gift":"25533"}},
+                  {"product_id":100,"quantity":3,"price":"20","properties":{"gift":"25533","Nome":" "}},
+                  {"product_id":101,"quantity":4,"price":"30","properties":{"Nome":"Outro app"}}
+                ]}
+                """);
+        var result = summarize(order);
+        assertThat(result.getTotalItems()).isEqualTo(9);
+        assertThat(result.getPersonalizedItems()).isEqualTo(2);
+        assertThat(result.getPersonalizedProductValue()).isEqualByComparingTo("20.00");
+    }
+
+    @Test
     void ignoresUnpaidAndCancelledOrders() throws Exception {
         var unpaid = json.readTree("""
-                {"id": 1, "payment_status": "pending", "products": [{"quantity": 2, "properties": [{"name": "Nome"}]}]}
+                {"id": 1, "payment_status": "pending", "products": [{"product_id":100,"quantity": 2, "properties": [{"name": "Nome", "value":"Ana"}]}]}
                 """);
         var cancelled = json.readTree("""
-                {"id": 2, "payment_status": "paid", "status": "cancelled", "products": [{"quantity": 4}]}
+                {"id": 2, "payment_status": "paid", "status": "cancelled", "products": [{"product_id":100,"quantity": 4}]}
                 """);
 
-        assertThat(BackofficeSalesService.summarizeOrder(123L, unpaid).getTotalItems()).isZero();
-        assertThat(BackofficeSalesService.summarizeOrder(123L, cancelled).getTotalItems()).isZero();
+        assertThat(summarize(unpaid).getTotalItems()).isZero();
+        assertThat(summarize(cancelled).getTotalItems()).isZero();
     }
 
     @Test
     void leavesPersonalizedValueUnknownWhenApiOmitsItsPrice() throws Exception {
         var order = json.readTree("""
-                {"id": 91, "payment_status": "paid", "products": [{"quantity": 2, "properties": [{"name": "Nome"}]}]}
+                {"id": 91, "payment_status": "paid", "products": [{"product_id":100,"quantity": 2, "properties": [{"name": "Nome", "value":"Ana"}]}]}
                 """);
 
-        assertThat(BackofficeSalesService.summarizeOrder(123L, order).getPersonalizedProductValue()).isNull();
+        assertThat(summarize(order).getPersonalizedProductValue()).isNull();
     }
 
     @Test
     void ignoresMissingPriceOnUnpersonalizedProducts() throws Exception {
         var order = json.readTree("""
                 {"id": 91, "payment_status": "paid", "products": [
-                  {"quantity": 2, "properties": [{"name": "Nome"}], "price": "12.50"},
-                  {"quantity": 1, "properties": []}
+                  {"product_id":100,"quantity": 2, "properties": [{"name": "Nome", "value":"Ana"}], "price": "12.50"},
+                  {"product_id":100,"quantity": 1, "properties": []}
                 ]}
                 """);
 
-        assertThat(BackofficeSalesService.summarizeOrder(123L, order).getPersonalizedProductValue())
+        assertThat(summarize(order).getPersonalizedProductValue())
                 .isEqualByComparingTo("25.00");
     }
 
@@ -155,10 +192,10 @@ class BackofficeSalesServiceTest {
     void acceptsNuvemshopOrderTimestampWithoutOffsetColon() throws Exception {
         var order = json.readTree("""
                 {"id": 91, "created_at": "2022-11-15T19:36:59+0000", "payment_status": "paid",
-                 "products": [{"quantity": "1", "price": "12.50"}]}
+                 "products": [{"product_id":100,"quantity": "1", "price": "12.50"}]}
                 """);
 
-        assertThat(BackofficeSalesService.summarizeOrder(123L, order).getCreatedAt())
+        assertThat(summarize(order).getCreatedAt())
                 .isEqualTo(Instant.parse("2022-11-15T19:36:59Z"));
     }
 
@@ -178,7 +215,7 @@ class BackofficeSalesServiceTest {
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull()))
                 .thenReturn(json.readTree("[]"));
 
-        new BackofficeSalesService(stores, sales, states, api).syncOnePendingStore();
+        new BackofficeSalesService(stores, sales, states, api, fields).syncOnePendingStore();
 
         ArgumentCaptor<StoreSalesSync> state = ArgumentCaptor.forClass(StoreSalesSync.class);
         verify(states, org.mockito.Mockito.atLeastOnce()).save(state.capture());
@@ -206,7 +243,7 @@ class BackofficeSalesServiceTest {
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull()))
                 .thenReturn(json.readTree("[]"));
 
-        new BackofficeSalesService(stores, sales, states, api).syncOnePendingStore();
+        new BackofficeSalesService(stores, sales, states, api, fields).syncOnePendingStore();
 
         verify(api, atLeastOnce()).listOrdersForSales(any(), anyInt(), anyInt(), any(), any(),
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull());
@@ -230,13 +267,13 @@ class BackofficeSalesServiceTest {
                 .thenReturn(json.readTree("""
                         [
                           {"id": 1, "payment_status": "paid", "products": [
-                            {"quantity": 1, "price": "10.00", "properties": [{"name": "Texto"}]}]},
+                            {"product_id":100,"quantity": 1, "price": "10.00", "properties": [{"name": "Texto", "value":"Ana"}]}]},
                           {"id": 2, "payment_status": "paid", "products": [
-                            {"quantity": 1, "price": "20.00", "properties": []}]}
+                            {"product_id":100,"quantity": 1, "price": "20.00", "properties": {"gift":"25533"}}]}
                         ]
                         """));
 
-        new BackofficeSalesService(stores, sales, states, api).syncOnePendingStore();
+        new BackofficeSalesService(stores, sales, states, api, fields).syncOnePendingStore();
 
         verify(sales, atLeastOnce()).saveAll(org.mockito.ArgumentMatchers.argThat(rows -> {
             for (StoreOrderSales row : rows) {

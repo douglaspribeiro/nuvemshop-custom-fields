@@ -67,7 +67,9 @@ class PlanPerformanceReportTest {
         order(paid, 1, "2026-10-10T12:00:00Z", 1);
         order(departed, 1, "2026-10-10T12:00:00Z", 1);
         order(erasure, 1, "2026-10-10T12:00:00Z", 1);
-        var sync = new StoreSalesSync(gratis.getStoreId()); sync.setComplete(true); syncs.saveAndFlush(sync);
+        for (var verified : java.util.List.of(free, gratis, paid)) {
+            var sync = new StoreSalesSync(verified.getStoreId()); sync.setComplete(true); syncs.saveAndFlush(sync);
+        }
 
         var report = reports.report(day, day);
         assertThat(report.freeStores()).isEqualTo(2);
@@ -78,10 +80,10 @@ class PlanPerformanceReportTest {
         assertThat(report.freeSellingRate()).isEqualByComparingTo("100.0");
         var row = report.plans().stream().filter(p -> p.plan() == PlanType.FREE).findFirst().orElseThrow();
         assertThat(row.orders()).isEqualTo(2); assertThat(row.items()).isEqualTo(3);
-        assertThat(row.synced()).isZero();
+        assertThat(row.synced()).isEqualTo(1);
         assertThat(report.freeDetails()).extracting(r -> r.id()).containsExactly(free.getStoreId(), gratis.getStoreId());
         assertThat(report.freeDetails().getFirst().products()).isEqualTo(1);
-        assertThat(report.freeDetails().getFirst().salesStatus()).contains("histórico incompleto");
+        assertThat(report.freeDetails().getFirst().salesStatus()).isEqualTo("Com pedidos");
     }
 
     @Test void rendersReportAndExportsSameRangeWithEscapedNames() throws Exception {
@@ -103,6 +105,8 @@ class PlanPerformanceReportTest {
     @Test void distinguishesUnknownHistoryAndNoRecordedOrders() {
         var unknown = store(997669007L, PlanType.FREE);
         var complete = store(997669008L, PlanType.FREE_GRATIS);
+        // A stale aggregate must not turn pending reclassification into a confirmed sale.
+        order(unknown, 1, "2026-10-10T12:00:00Z", 2);
         var sync = new StoreSalesSync(complete.getStoreId()); sync.setComplete(true); syncs.saveAndFlush(sync);
         var report = reports.report(day, day);
         assertThat(report.freeDetails().stream().filter(r -> r.id().equals(unknown.getStoreId())).findFirst().orElseThrow().salesStatus())

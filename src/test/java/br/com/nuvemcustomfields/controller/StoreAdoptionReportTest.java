@@ -60,6 +60,9 @@ class StoreAdoptionReportTest {
         departed.setDepartureReason("Difícil de configurar e/ou utilizar");departed.setDepartureJustification("Não encontrei a opção <script>alert(1)</script>");stores.saveAndFlush(departed);
         var sold=store(997665003L,"vendeu","2026-09-20T12:00:00Z","2026-10-01T12:00:00Z");
         sales.saveAndFlush(new StoreOrderSales(sold.getStoreId(),1L,2,1));
+        var verifiedSync = new StoreSalesSync(sold.getStoreId());
+        verifiedSync.setComplete(true);
+        syncs.saveAndFlush(verifiedSync);
         var report=reports.report(null,null,"adoção-test","");
         assertThat(report.total()).isEqualTo(3);assertThat(report.active()).isEqualTo(1);
         assertThat(report.uninstalled()).isEqualTo(2);assertThat(report.paidActive()).isEqualTo(1);
@@ -76,6 +79,24 @@ class StoreAdoptionReportTest {
         assertThat(page).contains("33,3%","Histórico de vendas incompleto","Difícil de configurar", "&lt;script&gt;")
                 .doesNotContain("<script>alert(1)</script>");
     }
+    @Test void excludesOldSalesUntilHistoricalReclassificationCompletes() {
+        var active=store(997665020L,"recalculando","2026-09-01T12:00:00Z",null);
+        sales.saveAndFlush(new StoreOrderSales(active.getStoreId(),1L,2,1,
+                Instant.parse("2026-10-01T12:00:00Z"),new BigDecimal("10.00"),"BRL"));
+        var sync=new StoreSalesSync(active.getStoreId());
+        syncs.saveAndFlush(sync);
+        assertThat(reports.report(null,null,"adoção-test","").rows().getFirst().getSalesLabel())
+                .isEqualTo("Histórico de vendas incompleto");
+        assertThat(sales.summarizeByStore(Instant.parse("2026-10-01T00:00:00Z"),Instant.parse("2026-11-01T00:00:00Z")))
+                .noneMatch(row -> row.storeId().equals(active.getStoreId()));
+        assertThat(sales.findSales(org.springframework.data.domain.PageRequest.of(0,50)).getContent())
+                .noneMatch(row -> row.getId().getStoreId().equals(active.getStoreId()));
+        sync.setComplete(true);
+        syncs.saveAndFlush(sync);
+        assertThat(reports.report(null,null,"adoção-test","").rows().getFirst().getSalesLabel())
+                .isEqualTo("1 pedido(s) com personalização");
+    }
+
     @Test void excludesCourtesySandboxAndCancelledSubscriptionsFromPaidTotals(){
         var courtesy=store(997665004L,"cortesia","2026-09-01T12:00:00Z",null);courtesy.setCourtesyPremium(true);stores.saveAndFlush(courtesy);subscription(courtesy,PaymentEnvironment.PRODUCTION);
         var sandbox=store(997665005L,"sandbox","2026-09-01T12:00:00Z",null);subscription(sandbox,PaymentEnvironment.SANDBOX);
