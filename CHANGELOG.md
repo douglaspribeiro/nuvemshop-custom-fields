@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.45.0] - 2026-10-23
+
+### Features
+
+- payments: integrate dLocal Go subscriptions for Argentina (`0c1b86a`)
+
 ## [1.44.1] - 2026-10-21
 
 ### Performance
