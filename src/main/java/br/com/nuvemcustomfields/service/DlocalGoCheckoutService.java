@@ -40,7 +40,7 @@ public class DlocalGoCheckoutService {
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
     public String start(Long storeId, PlanType plan) {
-        if (subscriptionService != null) subscriptionService.getObject().expirePendingCheckout(storeId);
+        if (subscriptionService != null) subscriptionService.getObject().preparePendingCheckout(storeId, plan);
         Reservation reservation = transaction.execute(status -> reserve(storeId, plan));
         if (reservation.checkoutUrl() != null) return reservation.checkoutUrl();
         try {

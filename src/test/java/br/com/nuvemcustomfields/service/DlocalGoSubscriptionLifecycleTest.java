@@ -92,4 +92,41 @@ class DlocalGoSubscriptionLifecycleTest {
         service.reconcile(42L);assertThat(local.isAccessActive()).isTrue();
     }
 
+    @Test void choosingAnotherPlanClosesPendingCheckoutWithoutWaitingForExpiration() {
+        local.setProviderSubscriptionId(null);
+        local.setPendingStartedAt(Instant.now());
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        when(gateway.getPlan("20")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",true),
+                new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",false));
+        service.preparePendingCheckout(42L,PlanType.PREMIUM_PLUS);
+        verify(gateway).cancelCheckout("20");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+    }
+    @Test void choosingSamePlanKeepsPendingCheckout() {
+        local.setProviderSubscriptionId(null);
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        when(gateway.getPlan("20")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",true));
+        service.preparePendingCheckout(42L,PlanType.PREMIUM);
+        verify(gateway,never()).cancelCheckout(anyString());
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+    }
+    @Test void paymentCompletedWhileClosingCheckoutIsPreserved() {
+        local.setProviderSubscriptionId(null);
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        when(gateway.getPlan("20")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",true));
+        when(gateway.checkoutSubscription("20")).thenReturn(Optional.empty(),Optional.of(remote("canceled","20","ncf_ref",end,end)));
+        service.preparePendingCheckout(42L,PlanType.PREMIUM_PLUS);
+        verify(gateway).cancelCheckout("20");
+        assertThat(local.isAccessActive()).isTrue();
+        assertThat(local.getLastPaymentId()).isEqualTo("ST-test-1");
+    }
+    @Test void failedCheckoutClosureDoesNotReleaseAnotherPurchase() {
+        local.setProviderSubscriptionId(null);
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        when(gateway.getPlan("20")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",true));
+        doThrow(new PaymentGatewayException("timeout")).when(gateway).cancelCheckout("20");
+        assertThatThrownBy(() -> service.preparePendingCheckout(42L,PlanType.PREMIUM_PLUS)).isInstanceOf(PaymentGatewayException.class);
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+    }
+
 }

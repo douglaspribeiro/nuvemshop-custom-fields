@@ -85,7 +85,11 @@ nova tentativa. Datas sem offset nos exemplos da documentação são interpretad
 como UTC; confirme essa convenção e o calendário de cobrança no sandbox.
 Uma renovação recusada suspende acesso sem tolerância adicional. Cancelamento
 preserva o intervalo já pago e fecha também o plano exclusivo para impedir novas
-contratações pelo link antigo. Checkout sem assinante expira após 30 minutos,
+contratações pelo link antigo. Ao escolher outro plano com checkout pendente sem assinante, o fluxo fecha o
+checkout anterior, consulta novamente o provedor para capturar pagamentos
+concorrentes e inicia a compra do plano escolhido. O mesmo plano retoma o link
+existente. Resposta indeterminada continua exigindo conciliação.
+Checkout sem assinante expira após 30 minutos,
 com consulta posterior ao fechamento para capturar pagamentos concorrentes.
 
 ## Upgrade proporcional

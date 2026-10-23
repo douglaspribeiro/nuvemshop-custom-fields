@@ -76,14 +76,14 @@ class DlocalGoCheckoutServiceTest {
                 mock(org.springframework.beans.factory.ObjectProvider.class);
         when(provider.getObject()).thenReturn(coordinator);
         service.setSubscriptionService(provider);
-        when(coordinator.expirePendingCheckout(42L)).thenAnswer(i -> {
-            local.setStatus(PaymentSubscriptionStatus.CANCELED); return true;
-        });
+        doAnswer(i -> {
+            local.setStatus(PaymentSubscriptionStatus.CANCELED); return null;
+        }).when(coordinator).preparePendingCheckout(42L, PlanType.PREMIUM);
         when(gateway.createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(), anyString()))
                 .thenReturn(new GatewayCheckout(null, "ch_1", "https://checkout-sbx.dlocalgo.com/validate/subscription/test", "pending"));
         assertThat(service.start(42L, PlanType.PREMIUM)).isEqualTo("https://checkout-sbx.dlocalgo.com/validate/subscription/test");
         var order = inOrder(coordinator, gateway);
-        order.verify(coordinator).expirePendingCheckout(42L);
+        order.verify(coordinator).preparePendingCheckout(42L, PlanType.PREMIUM);
         order.verify(gateway).createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(), anyString());
         assertThat(local.getProvider()).isEqualTo(PaymentProviderType.DLOCAL_GO);
     }

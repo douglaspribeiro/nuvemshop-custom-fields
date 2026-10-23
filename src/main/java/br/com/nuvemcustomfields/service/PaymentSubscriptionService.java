@@ -644,6 +644,21 @@ public class PaymentSubscriptionService {
         return false;
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void preparePendingCheckout(Long storeId, PlanType requestedPlan) {
+        expirePendingCheckout(storeId);
+        PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local == null || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()
+                || local.getPlan() == requestedPlan) return;
+        if (local.getProvider() != PaymentProviderType.DLOCAL_GO && local.getProvider() != PaymentProviderType.STRIPE) return;
+        // An unknown creation response or an existing subscriber must be reconciled before replacement.
+        if (!hasText(local.getProviderCheckoutId()) || hasText(local.getProviderSubscriptionId())) return;
+        router.require(local.getProvider()).cancelCheckout(local.getProviderCheckoutId());
+        // A payment can finish while the checkout is being closed. Read authenticated state again.
+        if (local.getProvider() == PaymentProviderType.DLOCAL_GO) synchronizeDlocalGoCheckout(local);
+        else synchronizeStripeCheckout(local.getProviderCheckoutId());
+    }
+
     private PaymentSubscription synchronizeDlocalGoCheckout(PaymentSubscription local) {
         requireProvider(local, PaymentProviderType.DLOCAL_GO);
         var gateway = (br.com.nuvemcustomfields.payment.DlocalGoGateway) router.require(PaymentProviderType.DLOCAL_GO);
