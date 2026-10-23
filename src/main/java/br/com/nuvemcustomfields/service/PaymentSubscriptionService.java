@@ -651,8 +651,17 @@ public class PaymentSubscriptionService {
         if (local == null || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()
                 || local.getPlan() == requestedPlan) return;
         if (local.getProvider() != PaymentProviderType.DLOCAL_GO && local.getProvider() != PaymentProviderType.STRIPE) return;
-        // An unknown creation response or an existing subscriber must be reconciled before replacement.
-        if (!hasText(local.getProviderCheckoutId()) || hasText(local.getProviderSubscriptionId())) return;
+        // A checkout may already have created an unpaid subscription. Reconcile it before closing it.
+        if (hasText(local.getProviderSubscriptionId())) {
+            local = reconcile(storeId);
+            if (local.isAccessActive() || local.getStatus() != PaymentSubscriptionStatus.PENDING) return;
+            PaymentGateway previous = router.require(local.getProvider());
+            previous.cancelImmediately(local.getProviderSubscriptionId());
+            reconcile(storeId);
+            return;
+        }
+        // An unknown creation response must still be reconciled before replacement.
+        if (!hasText(local.getProviderCheckoutId())) return;
         router.require(local.getProvider()).cancelCheckout(local.getProviderCheckoutId());
         // A payment can finish while the checkout is being closed. Read authenticated state again.
         if (local.getProvider() == PaymentProviderType.DLOCAL_GO) synchronizeDlocalGoCheckout(local);

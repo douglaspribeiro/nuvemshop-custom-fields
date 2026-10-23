@@ -129,4 +129,24 @@ class DlocalGoSubscriptionLifecycleTest {
         assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
     }
 
+    @Test void changingPlanClosesAnAlreadyCreatedUnpaidSubscription() {
+        when(gateway.checkoutSubscription("20")).thenReturn(Optional.of(remote("pending","20","ncf_ref",null,null)));
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        when(gateway.getSubscription("20:3")).thenReturn(remote("pending","20","ncf_ref",null,null),
+                remote("canceled","20","ncf_ref",null,null));
+        when(gateway.getLatestInvoice("20:3")).thenReturn(Optional.empty());
+        service.preparePendingCheckout(42L,PlanType.PREMIUM_PLUS);
+        verify(gateway).cancelImmediately("20:3");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.isAccessActive()).isFalse();
+    }
+    @Test void changingPlanNeverCancelsAnExistingSubscriptionThatHasJustBeenPaid() {
+        when(gateway.checkoutSubscription("20")).thenReturn(Optional.of(remote("active","20","ncf_ref",end,null)));
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        service.preparePendingCheckout(42L,PlanType.PREMIUM_PLUS);
+        verify(gateway,never()).cancelImmediately(anyString());
+        assertThat(local.isAccessActive()).isTrue();
+        assertThat(local.getLastPaymentId()).isEqualTo("ST-test-1");
+    }
+
 }
