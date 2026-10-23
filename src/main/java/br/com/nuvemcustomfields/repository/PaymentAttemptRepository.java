@@ -10,4 +10,5 @@ public interface PaymentAttemptRepository extends JpaRepository<PaymentAttempt, 
     Optional<PaymentAttempt> findByCheckoutTokenHash(String checkoutTokenHash);
     Optional<PaymentAttempt> findByExternalReference(String externalReference);
     Optional<PaymentAttempt> findFirstByStoreIdAndStatusInOrderByCreatedAtDesc(Long storeId, Collection<PaymentAttemptStatus> statuses);
+    java.util.List<PaymentAttempt> findTop50ByStatusOrderByUpdatedAtAsc(PaymentAttemptStatus status);
 }

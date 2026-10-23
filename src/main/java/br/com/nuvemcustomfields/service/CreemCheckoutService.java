@@ -40,7 +40,7 @@ public class CreemCheckoutService {
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
     public String start(Long storeId, PlanType plan) {
-        if (subscriptionService != null) subscriptionService.getObject().expirePendingCheckout(storeId);
+        if (subscriptionService != null) subscriptionService.getObject().preparePendingCheckout(storeId, plan);
         Reservation reservation = transaction.execute(status -> reserve(storeId, plan));
         if (reservation.checkoutUrl() != null) return reservation.checkoutUrl();
         try {
@@ -87,10 +87,11 @@ public class CreemCheckoutService {
                 EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN)).isPresent())
             throw new IllegalArgumentException("A tentativa anterior ainda precisa ser conciliada. Contate o suporte.");
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING) {
-            if (local.getProvider() == PaymentProviderType.CREEM && local.getPlan() == plan
-                    && local.getProviderEnvironment() == gateway.environment() && local.getCheckoutUrl() != null)
+            if (local.getPlan() == plan && local.getProvider() == PaymentProviderType.CREEM
+                    && local.getProviderEnvironment() == gateway.environment()
+                    && local.getCheckoutUrl() != null && !local.getCheckoutUrl().isBlank())
                 return new Reservation(store, local.getExternalReference(), local.getCheckoutUrl());
-            throw new IllegalArgumentException("Existe um pagamento pendente. Aguarde a confirmação ou a expiração antes de alterar o plano.");
+            PendingCheckoutReplacement.record(local, attempts);
         }
         if (local != null && local.getProviderSubscriptionId() != null && local.getStatus() != PaymentSubscriptionStatus.CANCELED)
             throw new IllegalArgumentException("Cancele a assinatura anterior antes de iniciar outra.");

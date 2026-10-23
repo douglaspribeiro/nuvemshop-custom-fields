@@ -149,4 +149,17 @@ class DlocalGoSubscriptionLifecycleTest {
         assertThat(local.getLastPaymentId()).isEqualTo("ST-test-1");
     }
 
+    @Test void anotherPlanSelectionClosesOldCheckoutEvenWhenItHasALink() {
+        local.setProviderSubscriptionId(null);
+        local.setCheckoutUrl("https://checkout-sbx.dlocalgo.com/validate/subscription/test");
+        when(stores.findActiveByStoreIdForUpdate(42L)).thenReturn(Optional.of(store));
+        when(gateway.getPlan("20")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",true),
+                new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("active",false));
+        service.preparePendingCheckout(42L,PlanType.PREMIUM_PLUS);
+        verify(gateway).cancelCheckout("20");
+        assertThat(local.getCheckoutUrl()).isNull();
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.getPlan()).isEqualTo(PlanType.PREMIUM);
+    }
+
 }

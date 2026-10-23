@@ -6,5 +6,8 @@ public enum PaymentAttemptStatus {
     COMPLETED,
     FAILED,
     CANCELED,
-    UNKNOWN
+    UNKNOWN,
+    REPLACED,
+    REPLACED_PAID,
+    REPLACED_CLOSED
 }

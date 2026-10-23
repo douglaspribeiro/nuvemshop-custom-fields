@@ -87,10 +87,11 @@ public class StripeCheckoutService {
                 EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN)).isPresent())
             throw new IllegalArgumentException("A tentativa anterior ainda precisa ser conciliada. Contate o suporte.");
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING) {
-            if (local.getProvider() == PaymentProviderType.STRIPE && local.getPlan() == plan
-                    && local.getProviderEnvironment() == gateway.environment() && local.getCheckoutUrl() != null)
+            if (local.getPlan() == plan && local.getProvider() == PaymentProviderType.STRIPE
+                    && local.getProviderEnvironment() == gateway.environment()
+                    && local.getCheckoutUrl() != null && !local.getCheckoutUrl().isBlank())
                 return new Reservation(store, local.getExternalReference(), local.getCheckoutUrl());
-            throw new IllegalArgumentException("Existe um pagamento pendente. Aguarde a confirmação ou a expiração antes de alterar o plano.");
+            PendingCheckoutReplacement.record(local, attempts);
         }
         if (local != null && local.getProviderSubscriptionId() != null && local.getStatus() != PaymentSubscriptionStatus.CANCELED)
             throw new IllegalArgumentException("Cancele a assinatura anterior antes de iniciar outra.");

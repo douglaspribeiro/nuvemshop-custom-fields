@@ -87,4 +87,33 @@ class StripeCheckoutServiceTest {
         order.verify(gateway).createCheckout(eq(store), eq(PlanType.PREMIUM), anyString(), anyString());
         assertThat(local.getProvider()).isEqualTo(PaymentProviderType.STRIPE);
     }
+    @Test void selectingAnotherPlanCreatesCheckoutForTheSelectedPlanAndRetainsOldIdentity() {
+        local = new PaymentSubscription(); local.setStoreId(42L);
+        local.setProvider(PaymentProviderType.STRIPE); local.setProviderEnvironment(PaymentEnvironment.SANDBOX);
+        local.setPlan(PlanType.PREMIUM_PLUS); local.setStatus(PaymentSubscriptionStatus.PENDING);
+        local.setCountryCode("AR"); local.setCurrency("USD"); local.setAmountValue(new BigDecimal("19.99"));
+        local.setExternalReference("existing-reference"); local.setProviderCheckoutId("existing-checkout");
+        local.setCheckoutUrl("https://checkout.stripe.com/ch_1");
+        when(gateway.createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString()))
+                .thenReturn(new GatewayCheckout(null,"new-checkout","https://checkout.test/new-selected-plan","pending"));
+        assertThat(service.start(42L,PlanType.PREMIUM)).isEqualTo("https://checkout.test/new-selected-plan");
+        assertThat(local.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getExternalReference()).isNotEqualTo("existing-reference");
+        assertThat(local.getProviderCheckoutId()).isEqualTo("new-checkout");
+        verify(gateway).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString());
+        verify(attempts).saveAndFlush(argThat(a -> "existing-reference".equals(a.getExternalReference())
+                && a.getStatus()==PaymentAttemptStatus.REPLACED && a.getPlan()==PlanType.PREMIUM_PLUS
+                && "existing-checkout".equals(a.getProviderTransactionId())));
+    }
+    @Test void pendingAttemptWithoutRemoteResourcesCanStartPurchase() {
+        local = new PaymentSubscription(); local.setStoreId(42L);
+        local.setProvider(PaymentProviderType.STRIPE); local.setPlan(PlanType.PREMIUM_PLUS);
+        local.setStatus(PaymentSubscriptionStatus.PENDING);
+        when(gateway.createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString()))
+                .thenReturn(new GatewayCheckout(null,"new-checkout","https://checkout.stripe.com/ch_1","pending"));
+        assertThat(service.start(42L,PlanType.PREMIUM)).isEqualTo("https://checkout.stripe.com/ch_1");
+        assertThat(local.getPlan()).isEqualTo(PlanType.PREMIUM);
+        verify(gateway).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString());
+    }
+
 }

@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.PaymentProviderType;
+import br.com.nuvemcustomfields.entity.PaymentEnvironment;
 import br.com.nuvemcustomfields.entity.PaymentAttempt;
 import br.com.nuvemcustomfields.entity.PaymentAttemptStatus;
 import br.com.nuvemcustomfields.entity.PaymentSubscription;
@@ -650,7 +651,6 @@ public class PaymentSubscriptionService {
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
         if (local == null || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()
                 || local.getPlan() == requestedPlan) return;
-        if (local.getProvider() != PaymentProviderType.DLOCAL_GO && local.getProvider() != PaymentProviderType.STRIPE) return;
         // A checkout may already have created an unpaid subscription. Reconcile it before closing it.
         if (hasText(local.getProviderSubscriptionId())) {
             local = reconcile(storeId);
@@ -660,6 +660,7 @@ public class PaymentSubscriptionService {
             reconcile(storeId);
             return;
         }
+        if (local.getProvider() != PaymentProviderType.DLOCAL_GO && local.getProvider() != PaymentProviderType.STRIPE) return;
         // An unknown creation response must still be reconciled before replacement.
         if (!hasText(local.getProviderCheckoutId())) return;
         router.require(local.getProvider()).cancelCheckout(local.getProviderCheckoutId());
@@ -777,6 +778,8 @@ public class PaymentSubscriptionService {
     public PaymentSubscription synchronizeFromSubscription(PaymentProviderType provider, String subscriptionId) {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
+        PaymentSubscription replaced = reconcileReplacedPayment(gateway, remote, null);
+        if (replaced != null) return replaced;
         PaymentSubscription local = locate(remote);
         if (provider.isStripeOrCreem() || provider.isDodo() || provider == PaymentProviderType.DLOCAL_GO) requireProvider(local, provider);
         return synchronize(local, remote, latestInvoice(gateway, local, remote).orElse(null), "PAYMENT_WEBHOOK");
@@ -786,6 +789,8 @@ public class PaymentSubscriptionService {
     public PaymentSubscription synchronizeFromSubscriptionWithoutPayment(PaymentProviderType provider, String subscriptionId) {
         PaymentGateway gateway = router.require(provider);
         GatewaySubscription remote = gateway.getSubscription(subscriptionId);
+        PaymentSubscription replaced = reconcileReplacedPayment(gateway, remote, null);
+        if (replaced != null) return replaced;
         PaymentSubscription local = locate(remote);
         if (provider.isStripeOrCreem() || provider.isDodo() || provider == PaymentProviderType.DLOCAL_GO) requireProvider(local, provider);
         return synchronize(local, remote, null, "PAYMENT_WEBHOOK");
@@ -806,6 +811,8 @@ public class PaymentSubscriptionService {
         PaymentGateway gateway = router.require(provider);
         GatewayInvoice invoice = gateway.getInvoice(invoiceId);
         GatewaySubscription remote = gateway.getSubscription(invoice.subscriptionId());
+        PaymentSubscription replaced = reconcileReplacedPayment(gateway, remote, invoice);
+        if (replaced != null) return replaced;
         PaymentSubscription local = locate(remote);
         if (provider.isStripeOrCreem() || provider.isDodo() || provider == PaymentProviderType.DLOCAL_GO) requireProvider(local, provider);
         return synchronize(local, remote, invoice, "PAYMENT_WEBHOOK");
@@ -1031,6 +1038,13 @@ public class PaymentSubscriptionService {
         var gateway = (br.com.nuvemcustomfields.payment.StripeGateway) router.require(PaymentProviderType.STRIPE);
         var checkout = gateway.getCheckout(checkoutId);
         String reference = br.com.nuvemcustomfields.payment.StripeGateway.required(checkout, "client_reference_id");
+        PaymentSubscription replaced = replacedCheckoutOwner(reference, PaymentProviderType.STRIPE, gateway.environment());
+        if (replaced != null) {
+            if (!checkoutId.equals(br.com.nuvemcustomfields.payment.StripeGateway.required(checkout, "id")))
+                throw new IllegalArgumentException("Checkout substituído divergente.");
+            String remoteId = br.com.nuvemcustomfields.payment.StripeGateway.resourceId(checkout.path("subscription"));
+            return hasText(remoteId) ? synchronizeFromSubscription(PaymentProviderType.STRIPE, remoteId) : replaced;
+        }
         PaymentSubscription local = subscriptions.findByExternalReference(reference)
                 .orElseThrow(() -> new IllegalArgumentException("Checkout Stripe sem tentativa local."));
         requireProvider(local, PaymentProviderType.STRIPE);
@@ -1065,6 +1079,13 @@ public class PaymentSubscriptionService {
         var gateway = (br.com.nuvemcustomfields.payment.CreemGateway) router.require(PaymentProviderType.CREEM);
         var checkout = gateway.getCheckout(checkoutId);
         String reference = br.com.nuvemcustomfields.payment.CreemGateway.required(checkout, "request_id");
+        PaymentSubscription replaced = replacedCheckoutOwner(reference, PaymentProviderType.CREEM, gateway.environment());
+        if (replaced != null) {
+            if (!checkoutId.equals(br.com.nuvemcustomfields.payment.CreemGateway.required(checkout, "id")))
+                throw new IllegalArgumentException("Checkout substituído divergente.");
+            String remoteId = br.com.nuvemcustomfields.payment.CreemGateway.resourceId(checkout.path("subscription"));
+            return hasText(remoteId) ? synchronizeFromSubscription(PaymentProviderType.CREEM, remoteId) : replaced;
+        }
         PaymentSubscription local = subscriptions.findByExternalReference(reference)
                 .orElseThrow(() -> new IllegalArgumentException("Checkout Creem sem tentativa local."));
         requireProvider(local, PaymentProviderType.CREEM);
@@ -1096,6 +1117,94 @@ public class PaymentSubscriptionService {
     private void requireProvider(PaymentSubscription local, PaymentProviderType provider) {
         if (local.getProvider() != provider || local.getProviderEnvironment() != router.require(provider).environment())
             throw new IllegalArgumentException("Gateway ou ambiente da assinatura divergente.");
+    }
+
+    private PaymentSubscription replacedCheckoutOwner(String reference, PaymentProviderType provider, PaymentEnvironment environment) {
+        if (attempts == null) return null;
+        PaymentAttempt attempt = attempts.findByExternalReference(reference).orElse(null);
+        if (attempt == null || !java.util.EnumSet.of(PaymentAttemptStatus.REPLACED,
+                PaymentAttemptStatus.REPLACED_PAID, PaymentAttemptStatus.REPLACED_CLOSED,
+                PaymentAttemptStatus.CANCELED).contains(attempt.getStatus())) return null;
+        if (attempt.getProvider() != provider || attempt.getEnvironment() != environment)
+            throw new IllegalArgumentException("Provedor ou ambiente da tentativa substituída divergente.");
+        stores.findByStoreIdForUpdate(attempt.getStoreId());
+        PaymentSubscription current = subscriptions.findByStoreId(attempt.getStoreId()).orElseThrow();
+        return Objects.equals(reference, current.getExternalReference()) ? null : current;
+    }
+
+    @Transactional
+    public void reconcileReplacedCheckout(String reference) {
+        if (attempts == null) return;
+        PaymentAttempt attempt = attempts.findByExternalReference(reference).orElseThrow();
+        stores.findByStoreIdForUpdate(attempt.getStoreId());
+        if (attempt.getStatus() != PaymentAttemptStatus.REPLACED || !hasText(attempt.getProviderTransactionId())) return;
+        PaymentGateway gateway = router.require(attempt.getProvider());
+        if (attempt.getEnvironment() != gateway.environment()) return;
+        String checkoutId = attempt.getProviderTransactionId();
+        com.fasterxml.jackson.databind.JsonNode checkout;
+        String subscriptionId;
+        if (gateway instanceof br.com.nuvemcustomfields.payment.DodoGateway dodo) {
+            checkout = dodo.getCheckout(checkoutId);
+            if (!checkoutId.equals(br.com.nuvemcustomfields.payment.DodoGateway.text(checkout, "id")))
+                throw new IllegalArgumentException("Checkout substituído divergente.");
+            String paymentId = br.com.nuvemcustomfields.payment.DodoGateway.text(checkout, "payment_id");
+            if (hasText(paymentId)) {
+                GatewayInvoice invoice = gateway.getInvoice(paymentId);
+                GatewaySubscription remote = gateway.getSubscription(invoice.subscriptionId());
+                if (!reference.equals(remote.externalReference())) throw new IllegalArgumentException("Referência substituída divergente.");
+                reconcileReplacedPayment(gateway, remote, invoice);
+                return;
+            }
+            subscriptionId = null;
+        } else if (gateway instanceof br.com.nuvemcustomfields.payment.CreemGateway creem) {
+            checkout = creem.getCheckout(checkoutId);
+            if (!checkoutId.equals(br.com.nuvemcustomfields.payment.CreemGateway.text(checkout, "id"))
+                    || !reference.equals(br.com.nuvemcustomfields.payment.CreemGateway.text(checkout, "request_id")))
+                throw new IllegalArgumentException("Checkout substituído divergente.");
+            subscriptionId = br.com.nuvemcustomfields.payment.CreemGateway.resourceId(checkout.path("subscription"));
+        } else return;
+        if (hasText(subscriptionId)) {
+            GatewaySubscription remote = gateway.getSubscription(subscriptionId);
+            if (!reference.equals(remote.externalReference())) throw new IllegalArgumentException("Referência substituída divergente.");
+            reconcileReplacedPayment(gateway, remote, null);
+        } else {
+            String status = checkout.path("status").asText(checkout.path("payment_status").asText());
+            attempt.setStatus(java.util.Set.of("expired", "cancelled", "canceled").contains(status)
+                    ? PaymentAttemptStatus.REPLACED_CLOSED : PaymentAttemptStatus.REPLACED);
+            attempts.saveAndFlush(attempt);
+        }
+    }
+
+    private PaymentSubscription reconcileReplacedPayment(PaymentGateway gateway, GatewaySubscription remote, GatewayInvoice invoice) {
+        if (attempts == null || !hasText(remote.externalReference())) return null;
+        PaymentAttempt attempt = attempts.findByExternalReference(remote.externalReference()).orElse(null);
+        if (attempt == null || !java.util.EnumSet.of(PaymentAttemptStatus.REPLACED,
+                PaymentAttemptStatus.REPLACED_PAID, PaymentAttemptStatus.REPLACED_CLOSED,
+                PaymentAttemptStatus.CANCELED).contains(attempt.getStatus())) return null;
+        stores.findByStoreIdForUpdate(attempt.getStoreId());
+        PaymentSubscription current = subscriptions.findByStoreId(attempt.getStoreId()).orElseThrow();
+        if (Objects.equals(current.getExternalReference(), remote.externalReference())) return null;
+        if (attempt.getProvider() != gateway.provider() || attempt.getEnvironment() != gateway.environment())
+            throw new IllegalArgumentException("Provedor ou ambiente da tentativa substituída divergente.");
+        if (invoice == null) invoice = gateway.getLatestInvoice(remote.id()).orElse(null);
+        if (invoice != null && !Objects.equals(remote.id(), invoice.subscriptionId()))
+            throw new IllegalArgumentException("Pagamento divergente da tentativa substituída.");
+        if (!canceled(remote.status())) {
+            gateway.cancelImmediately(remote.id());
+            if (!canceled(gateway.getSubscription(remote.id()).status()))
+                throw new PaymentGatewayException("Cancelamento da assinatura substituída ainda não confirmado.");
+        }
+        if (invoice != null && invoice.approved()) {
+            if (attempt.getStatus() != PaymentAttemptStatus.REPLACED_PAID)
+                LOGGER.error("payments.replaced_checkout.paid store_id={} provider={} subscription_id={} payment_id={}",
+                        attempt.getStoreId(), attempt.getProvider(), remote.id(), invoice.paymentId());
+            attempt.setStatus(PaymentAttemptStatus.REPLACED_PAID);
+            attempt.setLastError("Pagamento recebido em checkout substituído. Assinatura encerrada; verificar reembolso no provedor.");
+        } else if (attempt.getStatus() != PaymentAttemptStatus.REPLACED_PAID) {
+            attempt.setStatus(PaymentAttemptStatus.REPLACED);
+        }
+        attempts.saveAndFlush(attempt);
+        return current;
     }
 
     private PaymentSubscription locate(GatewaySubscription remote) {

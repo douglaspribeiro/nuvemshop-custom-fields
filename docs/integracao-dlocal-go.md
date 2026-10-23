@@ -85,10 +85,10 @@ nova tentativa. Datas sem offset nos exemplos da documentação são interpretad
 como UTC; confirme essa convenção e o calendário de cobrança no sandbox.
 Uma renovação recusada suspende acesso sem tolerância adicional. Cancelamento
 preserva o intervalo já pago e fecha também o plano exclusivo para impedir novas
-contratações pelo link antigo. Ao escolher outro plano com checkout pendente sem assinante, o fluxo fecha o
-checkout anterior, consulta novamente o provedor para capturar pagamentos
-concorrentes e inicia a compra do plano escolhido. O mesmo plano retoma o link
-existente. Resposta indeterminada continua exigindo conciliação.
+contratações pelo link antigo. Ao selecionar o mesmo plano, o checkout pendente é retomado. Ao selecionar outro
+plano, o checkout anterior é encerrado e a compra é criada para o plano escolhido.
+A conciliação verifica novamente o provedor após encerrar a tentativa para capturar
+pagamentos concorrentes. Uma criação remota indeterminada nunca é repetida.
 Checkout sem assinante expira após 30 minutos,
 com consulta posterior ao fechamento para capturar pagamentos concorrentes.
 
@@ -194,3 +194,15 @@ real da conta. Não houve deploy, criação remota de planos ou cobranças reais
 - <https://docs.dlocalgo.com/integration-api/welcome-to-dlocal-go-api/payments/retrieve-a-refund>
 - <https://docs.dlocalgo.com/integration-api/welcome-to-dlocal-go-api/payments/retrieve-refunds>
 - <https://docs.dlocalgo.com/integration-api/welcome-to-dlocal-go-api/payments/retrieve-chargebacks>
+
+## Troca de plano com checkout pendente nos demais provedores
+
+Stripe e dLocal Go encerram o checkout antes da substituição. Creem e Dodo não
+expõem cancelamento de checkout aberto nas APIs usadas nesta integração: a nova
+escolha gera outra tentativa, e a identidade anterior fica em `payment_attempts`
+como `REPLACED`, sem reutilizar seu link nem atribuir seu pagamento ao plano novo.
+A conciliação acompanha essas tentativas e seus webhooks; se uma assinatura surgir
+pelo link antigo, ela é encerrada imediatamente. Pagamento tardio confirmado fica
+registrado como `REPLACED_PAID`, com erro operacional para conferência e reembolso
+no provedor. Isso não estorna automaticamente um pagamento que o cliente faça em
+um link antigo; esse link remoto pode continuar aceitando pagamento até expirar.
