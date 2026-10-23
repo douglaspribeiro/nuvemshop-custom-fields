@@ -295,6 +295,8 @@ public class AdminController {
                 || !paymentSubscriptionService.planAvailable(store, plan)) {
             return "redirect:/admin/billing";
         }
+        if (subscription.getProvider() == PaymentProviderType.DLOCAL_GO)
+            return "redirect:/admin/billing/upgrade/dlocal-go?plan=" + plan.name();
         if (subscription.getProvider() == PaymentProviderType.EFI)
             return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
         model.addAttribute("store", store);
@@ -318,6 +320,8 @@ public class AdminController {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
             var subscription = paymentSubscriptionService.find(store.getStoreId()).orElseThrow();
+            if (subscription.getProvider() == PaymentProviderType.DLOCAL_GO)
+                return "redirect:/admin/billing/upgrade/dlocal-go?plan=" + plan.name();
             if (subscription.getProvider() == PaymentProviderType.EFI)
                 return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
             boolean confirmed = paymentSubscriptionService.upgrade(store.getStoreId(), plan, amount);

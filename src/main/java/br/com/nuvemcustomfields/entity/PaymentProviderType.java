@@ -7,7 +7,8 @@ public enum PaymentProviderType {
     CREEM,
     DODO,
     DODO_TEST,
-    STRIPE;
+    STRIPE,
+    DLOCAL_GO;
 
     public boolean isStripeOrCreem() { return this == STRIPE || this == CREEM; }
 

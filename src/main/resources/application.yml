@@ -131,6 +131,13 @@ backoffice:
   password: ${BACKOFFICE_PASSWORD:admin}
 
 payments:
+  dlocal-go:
+    enabled: ${DLOCAL_GO_ENABLED:false}
+    sandbox: ${DLOCAL_GO_SANDBOX:true}
+    api-key: ${DLOCAL_GO_API_KEY:}
+    secret-key: ${DLOCAL_GO_SECRET_KEY:}
+    allowed-store-ids: ${DLOCAL_GO_ALLOWED_STORE_IDS:}
+    timeout-seconds: ${DLOCAL_GO_TIMEOUT_SECONDS:20}
   stripe:
     enabled: ${STRIPE_ENABLED:false}
     sandbox: ${STRIPE_SANDBOX:true}

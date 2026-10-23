@@ -1,0 +1,19 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="#{admin.billing.upgrade.title}">Upgrade</title>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><main class="shell"><section class="panel">
+<h1 th:text="#{admin.billing.upgrade.heading(${operation.targetPlan.displayName})}">Upgrade</h1>
+<p class="notice error" th:if="${error}" th:text="${error}"></p>
+<p th:text="#{billing.dlocal.upgrade.explanation}"></p>
+<dl><dt th:text="#{billing.dlocal.upgrade.adjustment}"></dt><dd th:text="'ARS '+${#numbers.formatDecimal(operation.dueAmount,1,2)}"></dd>
+<dt th:text="#{billing.dlocal.upgrade.recurring}"></dt><dd th:text="'ARS '+${#numbers.formatDecimal(operation.targetAmount,1,2)}"></dd>
+<dt th:text="#{billing.dlocal.upgrade.periodEnd}"></dt><dd th:text="${#temporals.format(operation.periodEnd,'dd/MM/yyyy','America/Argentina/Buenos_Aires')}"></dd></dl>
+<form th:if="${operation.state.name()=='QUOTED'}" method="post" th:action="@{/admin/billing/upgrade/dlocal-go/pay}">
+<input type="hidden" name="id" th:value="${operation.id}"><button class="button primary" type="submit" th:text="#{admin.billing.upgrade.confirm}"></button></form>
+<p th:if="${operation.state.name()=='COMPLETED'}" th:text="#{admin.billing.upgrade.success}"></p>
+<p th:if="${operation.state.name()=='FAILED' or operation.state.name()=='REVERSED'}" th:text="#{billing.dlocal.upgrade.notApplied}"></p>
+<p th:if="${operation.state.name()!='QUOTED' and operation.state.name()!='COMPLETED' and operation.state.name()!='FAILED' and operation.state.name()!='REVERSED'}" th:text="#{admin.billing.upgrade.pending}"></p>
+<a class="button" th:if="${operation.state.name()=='PENDING' and operation.checkoutUrl!=null}" th:href="${operation.checkoutUrl}" target="_top" th:text="#{billing.dlocal.upgrade.continue}"></a>
+<a class="button" th:href="@{/admin/billing}" th:text="#{admin.billing.upgrade.back}"></a>
+</section></main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>
