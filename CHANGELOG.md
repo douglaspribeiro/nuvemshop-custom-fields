@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.45.3] - 2026-10-23
+
+### Correções
+
+- payments: honor selected plan when replacing pending checkout (`238d811`)
+
 ## [1.45.2] - 2026-10-23
 
 ### Correções
