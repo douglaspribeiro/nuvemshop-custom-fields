@@ -45,6 +45,8 @@ class PersonalizedProductMetricsTest {
         rule.getFields().add(field);
         rules.saveAndFlush(rule);
         catalog.refresh();
+        assertThat(registry.get("ncf.store.info").tag("store_id", store.getStoreId().toString()).gauge().value())
+                .isEqualTo(1);
         assertThat(registry.get("ncf.personalized.product.info")
                 .tags("store_id", store.getStoreId().toString(), "product_name", "Produto personalizado")
                 .gauge().value()).isEqualTo(1);
@@ -71,6 +73,8 @@ class PersonalizedProductMetricsTest {
         assertThat(counter.count()).isEqualTo(before + 1);
         catalog.refresh();
         assertThat(registry.find("ncf.personalized.product.info")
+                .tag("store_id", store.getStoreId().toString()).gauge()).isNull();
+        assertThat(registry.find("ncf.store.info")
                 .tag("store_id", store.getStoreId().toString()).gauge()).isNull();
     }
 

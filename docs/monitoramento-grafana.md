@@ -23,16 +23,20 @@ O contador `ncf_storefront_http_requests_total` inclui apenas requisições de v
 | `checkout_style` | Leitura de estilo pelo checkout |
 | `storefront_script_beacon` | Beacon emitido pelo JavaScript em execução |
 
-O rótulo `store_id` identifica somente lojas ativas validadas pelo backend; parâmetros públicos
-não validados ficam como `unknown`. Não são usados IP, e-mail ou caminho como rótulos.
+O contador não tem `store_id`: `kind`, `method` e `status` bastam para volume, tipo e erros.
+O ranking de lojas usa `ncf_storefront_store_requests_total`, somente com `store_id`, registrado
+apenas para lojas ativas validadas pelo backend; requisições sem loja validada entram só no
+contador geral. Cruzar loja com tipo/método/status multiplicava as séries sem consumidor.
+Não são usados IP, e-mail ou caminho como rótulos.
 
 O contador `ncf_storefront_personalized_product_requests_total`, com `store_id` e `product_id`,
 registra apenas GETs bem-sucedidos da configuração de produtos habilitados com campos disponíveis.
 IDs enviados arbitrariamente pelo cliente não criam séries de produtos.
 
-Os nomes vêm do banco, em métricas separadas: `ncf_store_info` (`store_id`, `store_name`) e
-`ncf_personalized_product_info` (`store_id`, `product_id`, `store_name`, `product_name`). O catálogo
-é atualizado na inicialização e a cada 60 segundos. Produtos desabilitados, sem campos ou de lojas
+Os nomes vêm do banco, em métricas separadas: `ncf_store_info` (`store_id`, `store_name`, somente
+lojas ativas) e `ncf_personalized_product_info` (`store_id`, `product_id`, `store_name`, `product_name`).
+O ranking de lojas usa `last_over_time` no período, para manter o nome de lojas desinstaladas
+durante o intervalo. O catálogo é atualizado na inicialização e a cada 60 segundos. Produtos desabilitados, sem campos ou de lojas
 inativas deixam de aparecer no ranking. Renomear uma loja ou produto atualiza os metadados sem
 reiniciar seu contador. Essas métricas contêm nomes comerciais: mantenha o endpoint restrito.
 
@@ -133,12 +137,17 @@ Os novos painéis mostram taxa de acertos e tamanho estimado com `cache_gets_tot
 e `cache_size`, separadas pelas etiquetas fixas `cache="storefront"` e
 `cache="plans"`, sem loja/produto/URL.
 
-O filtro `custom_fields_budget` no Alloy da infraestrutura descarta somente para
-`job="app-custom-fields"`: `tasks_scheduled_execution_(active_)?seconds_(count|sum|max)`,
-`http_client_requests_active_seconds_(count|sum|max)` e `http_client_requests_seconds_max`.
-Economia estimada: 184 séries antes das poucas séries novas do cache. Preserva
-`ncf_*`, latência HTTP por soma/contagem, JVM e banco. O filtro precisa ser
+O filtro `spring_apps_budget` no Alloy da infraestrutura vale para todos os apps:
+famílias técnicas do Micrometer (`jvm_`, `http_`, `hikaricp_`, `cache_`, `tasks_`,
+`spring_`...) só são enviadas se estiverem no allowlist consumido pelos dashboards;
+`ncf_*` e demais métricas de negócio passam sem lista. Do Custom Fields seguem
+`cache_gets_total`, `cache_size`, `http_server_requests_seconds_(count|sum)`,
+memória/threads/GC da JVM, HikariCP e `logback_events_total`. Ver
+`server-docker-1/docs/plans/reducao-series-allowlist.md`. O filtro precisa ser
 publicado/recarregado na infraestrutura para afetar o envio.
+
+O ranking aceita, por transição, o contador antigo com `store_id`; o `or` na consulta
+pode ser removido após a retenção do Grafana Cloud (14 dias) desde a publicação.
 
 O catálogo de planos ativos tem cache Caffeine separado de **24 horas**
 (`PLANS_CACHE_TTL`), com limite de 128 entradas e métricas `cache="plans"`.

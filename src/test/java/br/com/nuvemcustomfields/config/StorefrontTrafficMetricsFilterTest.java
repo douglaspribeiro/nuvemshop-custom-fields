@@ -48,10 +48,13 @@ class StorefrontTrafficMetricsFilterTest {
 
         filter.doFilter(request, response, (ignoredRequest, ignoredResponse) -> { });
 
-        assertThat(registry.get("ncf.storefront.http.requests")
-                .tags("kind", "storefront_personalization", "method", "GET", "status", "200", "store_id", "unknown")
-                .counter()
-                .count()).isEqualTo(1);
+        var counter = registry.get("ncf.storefront.http.requests")
+                .tags("kind", "storefront_personalization", "method", "GET", "status", "200")
+                .counter();
+        assertThat(counter.count()).isEqualTo(1);
+        assertThat(counter.getId().getTags()).extracting(io.micrometer.core.instrument.Tag::getKey)
+                .containsExactlyInAnyOrder("kind", "method", "status");
+        assertThat(registry.find(StorefrontTrafficMetricsFilter.STORE_REQUEST_METRIC).counter()).isNull();
     }
 
     @Test
@@ -63,7 +66,7 @@ class StorefrontTrafficMetricsFilterTest {
         filter.doFilter(request, new MockHttpServletResponse(), (servletRequest, ignoredResponse) ->
                 servletRequest.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, 123L));
 
-        assertThat(registry.get("ncf.storefront.http.requests").tag("store_id", "123").counter().count()).isEqualTo(1);
+        assertThat(registry.get(StorefrontTrafficMetricsFilter.STORE_REQUEST_METRIC).tag("store_id", "123").counter().count()).isEqualTo(1);
     }
 
     @Test
@@ -80,8 +83,9 @@ class StorefrontTrafficMetricsFilterTest {
         filter.doFilter(valid, new MockHttpServletResponse(), (request, response) -> { });
         filter.doFilter(invalid, new MockHttpServletResponse(), (request, response) -> { });
 
-        assertThat(registry.get("ncf.storefront.http.requests").tag("store_id", "123").counter().count()).isEqualTo(1);
-        assertThat(registry.get("ncf.storefront.http.requests").tag("store_id", "unknown").counter().count()).isEqualTo(1);
+        assertThat(registry.get(StorefrontTrafficMetricsFilter.STORE_REQUEST_METRIC).tag("store_id", "123").counter().count()).isEqualTo(1);
+        assertThat(registry.find(StorefrontTrafficMetricsFilter.STORE_REQUEST_METRIC).tag("store_id", "999").counter()).isNull();
+        assertThat(registry.get("ncf.storefront.http.requests").counter().count()).isEqualTo(2);
     }
 
     @Test
@@ -98,6 +102,7 @@ class StorefrontTrafficMetricsFilterTest {
 
         assertThat(chainCalled).isTrue();
         assertThat(registry.find("ncf.storefront.http.requests").counter()).isNull();
+        assertThat(registry.find(StorefrontTrafficMetricsFilter.STORE_REQUEST_METRIC).counter()).isNull();
         assertThat(registry.find(StorefrontTrafficMetricsFilter.DURATION_METRIC).timer()).isNull();
     }
     @Test

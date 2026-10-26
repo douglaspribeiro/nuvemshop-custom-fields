@@ -30,7 +30,8 @@ public class StorefrontCatalogMetricsService {
     public synchronized void refresh() {
         try {
             // Leia ambos antes de modificar gauges, preservando o último catálogo em falhas.
-            var storeRows=stores.findAll(); var productRows=rules.findActiveProductMetadata();
+            // Só lojas ativas: o ranking só recebe store_id validado como ativo.
+            var storeRows=stores.findAllActive(); var productRows=rules.findActiveProductMetadata();
             Set<Meter.Id> retained=new HashSet<>();
             for (var s:storeRows) {
                 var gauge=Gauge.builder("ncf.store.info",()->1.0)

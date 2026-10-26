@@ -21,7 +21,7 @@ class StorefrontCatalogMetricsServiceTest {
         var store = new Store();
         store.setStoreId(123L);
         store.setStoreName("Minha loja");
-        when(stores.findAll()).thenReturn(List.of(store));
+        when(stores.findAllActive()).thenReturn(List.of(store));
         when(rules.findActiveProductMetadata()).thenReturn(List.of(
                 new PersonalizedProductMetadata(123L, "Minha loja", 456L, "Camiseta")));
         var service = new StorefrontCatalogMetricsService(registry, stores, rules);
@@ -38,7 +38,7 @@ class StorefrontCatalogMetricsServiceTest {
         assertThat(registry.get("ncf.personalized.product.info").tag("product_name", "Camiseta nova").gauge().value()).isEqualTo(1);
         assertThat(counter.count()).isEqualTo(1);
         when(rules.findActiveProductMetadata()).thenReturn(List.of());
-        when(stores.findAll()).thenReturn(List.of());
+        when(stores.findAllActive()).thenReturn(List.of());
         service.refresh();
         assertThat(registry.find("ncf.store.info").gauge()).isNull();
         assertThat(registry.find("ncf.personalized.product.info").gauge()).isNull();
@@ -51,13 +51,13 @@ class StorefrontCatalogMetricsServiceTest {
         var rules = mock(PersonalizationRuleRepository.class);
         var store = new Store();
         store.setStoreId(123L);
-        when(stores.findAll()).thenReturn(List.of(store));
+        when(stores.findAllActive()).thenReturn(List.of(store));
         when(rules.findActiveProductMetadata()).thenReturn(List.of(
                 new PersonalizedProductMetadata(123L, null, 456L, " ")));
         var service = new StorefrontCatalogMetricsService(registry, stores, rules);
         service.refresh();
         assertThat(registry.get("ncf.personalized.product.info").tag("product_name", "Produto 456").gauge().value()).isEqualTo(1);
-        when(stores.findAll()).thenReturn(List.of());
+        when(stores.findAllActive()).thenReturn(List.of());
         when(rules.findActiveProductMetadata()).thenThrow(new DataAccessResourceFailureException("unavailable"));
         service.refresh();
         assertThat(registry.get("ncf.store.info").tag("store_name", "Loja 123").gauge().value()).isEqualTo(1);

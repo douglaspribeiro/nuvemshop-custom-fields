@@ -28,6 +28,7 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
     public static final String PERSONALIZED_PRODUCT_ID_ATTRIBUTE = StorefrontTrafficMetricsFilter.class.getName() + ".personalizedProductId";
     public static final String DURATION_METRIC = "ncf.storefront.http.duration";
     public static final String PRODUCT_REQUEST_METRIC = "ncf.storefront.personalized.product.requests";
+    public static final String STORE_REQUEST_METRIC = "ncf.storefront.store.requests";
 
     private final StorefrontCache cache;
     private final MeterRegistry meterRegistry;
@@ -58,15 +59,22 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
                     .tag("kind", kind)
                     .publishPercentileHistogram(false)
                     .register(meterRegistry));
-            String storeId = activeStoreId(request);
             Counter.builder("ncf.storefront.http.requests")
                     .description("HTTP requests made by storefront and checkout scripts")
                     .tag("kind", kind)
                     .tag("method", request.getMethod())
                     .tag("status", Integer.toString(response.getStatus()))
-                    .tag("store_id", storeId)
                     .register(meterRegistry)
                     .increment();
+            // Loja em contador proprio: cruzar store_id com kind/method/status multiplicava series sem consumidor.
+            String storeId = activeStoreId(request);
+            if (storeId != null) {
+                Counter.builder(STORE_REQUEST_METRIC)
+                        .description("Storefront and checkout requests per validated active store")
+                        .tag("store_id", storeId)
+                        .register(meterRegistry)
+                        .increment();
+            }
             Object product = request.getAttribute(PERSONALIZED_PRODUCT_ID_ATTRIBUTE);
             if ("storefront_personalization".equals(kind) && "GET".equals(request.getMethod())
                     && response.getStatus() >= 200 && response.getStatus() < 300
@@ -87,14 +95,14 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
         }
         // O download do script legado nao passa por controller e traz a loja na query.
         if (!"/assets/nuvemshop-personalizer.js".equals(request.getRequestURI())) {
-            return "unknown";
+            return null;
         }
         try {
             long id = Long.parseLong(request.getParameter("store"));
             return id > 0 && cache.get("active", id, null, () -> storeRepository.findActiveByStoreId(id).isPresent())
-                    ? Long.toString(id) : "unknown";
+                    ? Long.toString(id) : null;
         } catch (NumberFormatException | DataAccessException ignored) {
-            return "unknown";
+            return null;
         }
     }
 

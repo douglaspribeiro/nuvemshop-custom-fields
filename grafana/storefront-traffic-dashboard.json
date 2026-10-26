@@ -679,7 +679,7 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum by (store_id) (increase(ncf_storefront_http_requests_total{store_id=~\"[0-9]+\"}[$__range])) * on (store_id) group_left (store_name) topk by (store_id) (1, max by (store_id, store_name) (ncf_store_info)))",
+          "expr": "topk(10, sum by (store_id) (increase(ncf_storefront_store_requests_total[$__range]) or increase(ncf_storefront_http_requests_total{store_id=~\"[0-9]+\"}[$__range])) * on (store_id) group_left (store_name) topk by (store_id) (1, max by (store_id, store_name) (last_over_time(ncf_store_info[$__range]))))",
           "instant": true,
           "legendFormat": "{{store_name}}",
           "refId": "A"
