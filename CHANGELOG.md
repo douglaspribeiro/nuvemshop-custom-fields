@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.45.4] - 2026-10-26
+
+### Performance
+
+- metrics: split store counter to cut Prometheus series (`c98ea58`)
+
 ## [1.45.3] - 2026-10-23
 
 ### Correções
