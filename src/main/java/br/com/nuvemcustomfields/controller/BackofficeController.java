@@ -158,9 +158,10 @@ public class BackofficeController {
     }
 
     @GetMapping("/backoffice/stores/{storeId}")
-    public String store(@PathVariable Long storeId, Model model) {
+    public String store(@PathVariable Long storeId, Model model, HttpSession session) {
         LOGGER.debug("backoffice.store.open store_id={}", storeId);
         model.addAttribute("store", storeRepository.findByStoreId(storeId).orElseThrow());
+        model.addAttribute("storeEmailToken", BackofficeStoreEmailController.token(session));
         model.addAttribute("planTypes", PlanType.values());
         model.addAttribute("events", planEventRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));

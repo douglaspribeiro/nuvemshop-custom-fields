@@ -29,6 +29,25 @@
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel" id="store-email">
+        <h2>Enviar e-mail ao administrador da loja</h2>
+        <p class="muted">Envie uma mensagem para o e-mail cadastrado da loja.</p>
+        <p>Destinatário: <strong th:text="${store.storeEmail ?: 'Não cadastrado'}">E-mail da loja</strong></p>
+        <p class="notice" th:if="${#strings.isEmpty(store.storeEmail)}">Cadastre um e-mail para esta loja antes de enviar uma mensagem.</p>
+        <form class="form" th:unless="${#strings.isEmpty(store.storeEmail)}"
+              th:action="@{/backoffice/stores/{storeId}/email(storeId=${store.storeId})}" method="post"
+              onsubmit="if (!confirm('Enviar este e-mail ao administrador desta loja?')) return false; this.querySelector('button[type=submit]').disabled = true;">
+            <input type="hidden" name="actionToken" th:value="${storeEmailToken}">
+            <label>Assunto
+                <input type="text" name="subject" maxlength="200" required th:value="${emailSubject}">
+            </label>
+            <label>Mensagem
+                <textarea name="body" rows="7" maxlength="10000" required th:text="${emailBody}"></textarea>
+            </label>
+            <small class="muted">A mensagem será enviada como texto, pelo remetente de e-mail do aplicativo.</small>
+            <div class="row-actions"><button class="button primary" type="submit">Enviar e-mail</button></div>
+        </form>
+    </section>
     <section class="grid two">
         <div class="panel">
             <h2>Plano</h2>
