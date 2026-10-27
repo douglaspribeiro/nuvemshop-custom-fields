@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.46.0.1] - 2026-10-27
+
+### Outros
+
+- Permite enviar e-mail ao administrador da loja pelo backoffice (`f37631b`)
+
 ## [1.46.0] - 2026-10-27
 
 ### Features
