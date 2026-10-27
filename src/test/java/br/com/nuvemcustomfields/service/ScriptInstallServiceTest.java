@@ -25,6 +25,24 @@ class ScriptInstallServiceTest {
      * lancar e abortar o laco, deixando os scripts seguintes sem instalar.
      */
     @Test
+    void recordsHttpStatusAndLastFailureEvenOnFirstAttempt() {
+        Store store = store();
+        when(apiClient.listScripts(store)).thenReturn(new ObjectMapper().createArrayNode());
+        doThrow(org.springframework.web.client.HttpClientErrorException.create(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Not Found",
+                org.springframework.http.HttpHeaders.EMPTY, new byte[0], null))
+                .when(apiClient).createScript(store, 7100L);
+        var service = new ScriptInstallService(apiClient, properties("7100", "", ""), integrationLogService);
+        var registry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        service.registerMetrics(registry);
+        service.installPersonalizerScript(store);
+        org.junit.jupiter.api.Assertions.assertEquals(1.0, registry.get("ncf.scripts.install.failures")
+                .tags("operation", "associate", "status", "404").counter().count());
+        org.junit.jupiter.api.Assertions.assertTrue(registry.get("ncf.scripts.install.last.failure.timestamp.seconds")
+                .gauge().value() > 0);
+    }
+
+    @Test
     void keepsInstallingRemainingScriptsWhenOneScriptIdIsStale() {
         Store store = store();
         when(apiClient.listScripts(store)).thenReturn(new ObjectMapper().createArrayNode());

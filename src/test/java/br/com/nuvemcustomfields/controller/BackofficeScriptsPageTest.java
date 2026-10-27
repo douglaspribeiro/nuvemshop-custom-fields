@@ -64,6 +64,16 @@ class BackofficeScriptsPageTest {
     }
 
     @Test
+    void rendersGlobalScriptsAndRequiresBackofficeSession() throws Exception {
+        mockMvc.perform(get("/backoffice/scripts"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/backoffice/login"));
+        mockMvc.perform(get("/backoffice/scripts").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Verificar e instalar em todas as lojas")));
+    }
+
+    @Test
     void rendersScriptsTableAndFlagsOrphanAndInactiveScripts() throws Exception {
         ArrayNode scripts = new ObjectMapper().createArrayNode();
         scripts.addObject()

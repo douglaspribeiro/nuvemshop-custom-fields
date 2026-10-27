@@ -173,3 +173,36 @@ A medição abrange o processamento dentro da cadeia do filtro, inclusive acerto
 do cache e erros. Exclui a rede até o comprador, a renderização do navegador e o
 trabalho posterior de registro das métricas. Os dados começam após publicar a
 aplicação instrumentada; o contador de tráfego anterior permanece preservado.
+
+## Falhas de instalação de scripts
+
+O dashboard canônico inclui três cartões: quantidade estimada de falhas nas últimas
+24 horas, horário da última falha e sinal vermelho quando houve uma falha nas últimas
+24 horas. São indicadores visuais; não configuram envio de notificações.
+
+- `ncf_scripts_install_failures_total{operation="associate|list|diagnose",status="404|...|other"}`:
+  falhas de associação ou consulta; cada falha de chamada conta uma ocorrência.
+- `ncf_scripts_install_last_failure_timestamp_seconds`: instante da última falha
+  desde a inicialização do processo, zero antes da primeira. O horário permite
+  identificar também uma falha anterior à primeira coleta do contador.
+
+Sem rótulos de loja, script ou mensagem, para limitar séries. Use o log
+`script.install.script_failed` para identificar loja e script. Não há retroativo;
+o contador exige amostras para `increase` e o horário reinicia com o processo.
+As métricas `ncf_*` já passam pelo filtro de coleta do Alloy.
+
+## Verificação global no backoffice
+
+Acesse **Backoffice → Scripts** (`/backoffice/scripts`) e inicie a verificação.
+Apenas lojas ativas com token são selecionadas; a situação da loja é revalidada
+antes de processá-la. O lote preserva scripts existentes e associa os ausentes,
+processando uma loja por vez com pausa mínima de um segundo entre lojas.
+O resultado é confirmado com nova leitura da API, inclusive quando uma tentativa
+individual falha sem interromper os demais scripts. Falhas de uma loja não
+interrompem o lote. Uma execução simultânea é impedida na instância atual.
+
+Progresso e resultados ficam em memória até outro lote ou restart. Após reiniciar,
+inicie outra verificação: a operação é idempotente. Este controle pressupõe uma
+única instância do app; múltiplas réplicas exigem coordenação persistente antes
+de habilitar a ação. Não remove scripts, não publica versões no Partner Portal
+e não garante execução no navegador; verifica associações na API.

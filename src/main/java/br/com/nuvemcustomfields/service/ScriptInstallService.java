@@ -33,6 +33,24 @@ public class ScriptInstallService {
         this.integrationLogService = integrationLogService;
     }
 
+    private io.micrometer.core.instrument.MeterRegistry metrics;
+    private final java.util.concurrent.atomic.AtomicLong lastFailure = new java.util.concurrent.atomic.AtomicLong();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void registerMetrics(io.micrometer.core.instrument.MeterRegistry registry) {
+        this.metrics = registry;
+        registry.gauge("ncf.scripts.install.last.failure.timestamp.seconds", lastFailure);
+        registry.counter("ncf.scripts.install.failures", "operation", "associate", "status", "404");
+    }
+
+    private void recordFailure(String operation, RuntimeException ex) {
+        lastFailure.set(java.time.Instant.now().getEpochSecond());
+        if (metrics == null) return;
+        String status = ex instanceof org.springframework.web.client.RestClientResponseException response
+                ? Integer.toString(response.getStatusCode().value()) : "other";
+        metrics.counter("ncf.scripts.install.failures", "operation", operation, "status", status).increment();
+    }
+
     /**
      * Script legado de vitrine (DOM). Mantido de proposito: a homologacao Nuvemshop exige que
      * o legado e o NubeSDK coexistam enquanto houver temas nao migrados.
@@ -76,7 +94,13 @@ public class ScriptInstallService {
             return;
         }
         LOGGER.info("script.install.configured store_id={} script_ids={}", store.getStoreId(), scriptIds);
-        JsonNode scripts = apiClient.listScripts(store);
+        JsonNode scripts;
+        try {
+            scripts = apiClient.listScripts(store);
+        } catch (RuntimeException ex) {
+            recordFailure("list", ex);
+            throw ex;
+        }
         int installed = 0;
         int failed = 0;
         for (Long scriptId : scriptIds) {
@@ -92,6 +116,7 @@ public class ScriptInstallService {
                 LOGGER.info("script.install.done store_id={} script_id={}", store.getStoreId(), scriptId);
             } catch (RuntimeException ex) {
                 failed++;
+                recordFailure("associate", ex);
                 LOGGER.error(
                         "script.install.script_failed store_id={} script_id={} message={}",
                         store.getStoreId(),
@@ -128,6 +153,7 @@ public class ScriptInstallService {
         try {
             scripts = apiClient.listScripts(store);
         } catch (RuntimeException ex) {
+            recordFailure("diagnose", ex);
             LOGGER.warn("script.diagnose.failed store_id={} message={}", store.getStoreId(), ex.getMessage());
             return ScriptDiagnostics.failed(configured, "Falha ao consultar a API: " + ex.getMessage());
         }

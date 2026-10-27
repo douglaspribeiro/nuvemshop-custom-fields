@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta th:if="${batch.running}" http-equiv="refresh" content="10">
+<title>Scripts de todas as lojas</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head>
+<body><main class="shell">
+<section class="page-header"><div><p class="eyebrow">Backoffice</p><h1>Scripts de todas as lojas</h1>
+<p class="muted">Verifica as lojas ativas e instala os scripts configurados que estiverem ausentes. Preserva as associações existentes.</p></div>
+<a class="button" th:href="@{/backoffice}">Voltar</a></section>
+<p class="notice" th:if="${message}" th:text="${message}"></p>
+<section class="panel"><h2 th:text="${batch.running} ? 'Em andamento' : 'Verificação global'">Verificação global</h2>
+<p th:text="|${batch.processed} de ${batch.total} lojas processadas.|">Progresso</p>
+<p class="muted">Uma loja por vez. Esta página atualiza a cada 10 segundos durante a execução. O progresso fica disponível até a próxima execução ou reinicialização da aplicação; após reiniciar, execute novamente para concluir a verificação.</p>
+<form th:action="@{/backoffice/scripts/reinstall}" method="post"><button class="button primary" type="submit" th:disabled="${batch.running}">Verificar e instalar em todas as lojas</button></form></section>
+<section class="panel" th:unless="${#lists.isEmpty(batch.results)}"><h2>Resultados</h2>
+<div style="overflow-x:auto"><table class="table"><thead><tr><th>Loja</th><th>Resultado</th><th>Detalhe</th></tr></thead><tbody>
+<tr th:each="result : ${batch.results}"><td><a th:href="@{/backoffice/stores/{id}/scripts(id=${result.storeId})}" th:text="${result.storeId}"></a></td><td th:text="${result.status}"></td><td th:text="${result.detail}"></td></tr>
+</tbody></table></div></section></main></body></html>
