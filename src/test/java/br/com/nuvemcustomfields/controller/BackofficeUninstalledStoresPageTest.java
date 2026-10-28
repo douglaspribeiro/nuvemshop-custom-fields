@@ -38,6 +38,7 @@ class BackofficeUninstalledStoresPageTest {
 
     private static final long ACTIVE_ID = 998877661L;
     private static final long UNINSTALLED_ID = 998877662L;
+    private static final long PENDING_ID = 998877663L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -85,6 +86,8 @@ class BackofficeUninstalledStoresPageTest {
         orderSales.deleteById(new StoreOrderSalesId(UNINSTALLED_ID, 102L));
         syncStates.deleteById(ACTIVE_ID);
         syncStates.deleteById(UNINSTALLED_ID);
+        syncStates.deleteById(PENDING_ID);
+        stores.findByStoreId(PENDING_ID).ifPresent(stores::delete);
         stores.findByStoreId(ACTIVE_ID).ifPresent(stores::delete);
         stores.findByStoreId(UNINSTALLED_ID).ifPresent(stores::delete);
     }
@@ -148,6 +151,11 @@ class BackofficeUninstalledStoresPageTest {
 
     @Test
     void dashboardSumsOnlyCompletedActiveStores() throws Exception {
+        Store pending = new Store();
+        pending.setStoreId(PENDING_ID);
+        pending.setStoreName("Teste histórico pendente");
+        stores.save(pending);
+
         orderSales.save(new StoreOrderSales(ACTIVE_ID, 101L, 5, 3));
         orderSales.save(new StoreOrderSales(ACTIVE_ID, 103L, 6, 0));
         orderSales.save(new StoreOrderSales(UNINSTALLED_ID, 102L, 20, 10));
@@ -160,8 +168,8 @@ class BackofficeUninstalledStoresPageTest {
 
         mockMvc.perform(get("/backoffice").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Vendas com personalização</span><strong>1</strong>")))
-                .andExpect(content().string(containsString("<strong>3</strong>")));
+                .andExpect(content().string(containsString("Vendas com personalização</span><strong>1 (parcial)</strong>")))
+                .andExpect(content().string(containsString("Itens personalizados vendidos</span><strong>3 (parcial)</strong>")));
     }
 
     @Test

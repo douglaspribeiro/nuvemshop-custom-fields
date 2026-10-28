@@ -261,7 +261,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "suffix: chamadas/min"
+          "unit": "suffix: /min"
         },
         "overrides": [
           {
@@ -383,13 +383,51 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
-                "value": null
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
               }
             ]
           },
           "unit": "percent",
-          "noValue": "Sem base de comparação"
+          "noValue": "Sem base de comparação",
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
         },
         "overrides": []
       },
@@ -417,14 +455,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m])) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) - ((sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 1d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 2d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 3d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 4d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 5d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 6d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 7d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m])) / 7)) / (((sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 1d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 2d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 3d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 4d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 5d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 6d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 7d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m])) / 7) > 0)",
+          "expr": "100 * (sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m])) and on() (vector(time()) >= (floor(vector((${__to} / 1000 - 10800) / 86400)) * 86400 + 10800)))[24h:1m]) - sum_over_time((avg(label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 1d))), \"historical_day\", \"1\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 2d))), \"historical_day\", \"2\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 3d))), \"historical_day\", \"3\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 4d))), \"historical_day\", \"4\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 5d))), \"historical_day\", \"5\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 6d))), \"historical_day\", \"6\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 7d))), \"historical_day\", \"7\", \"\", \"\")) and on() (vector(time()) >= (floor(vector((${__to} / 1000 - 10800) / 86400)) * 86400 + 10800)))[24h:1m])) / (sum_over_time((avg(label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 1d))), \"historical_day\", \"1\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 2d))), \"historical_day\", \"2\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 3d))), \"historical_day\", \"3\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 4d))), \"historical_day\", \"4\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 5d))), \"historical_day\", \"5\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 6d))), \"historical_day\", \"6\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m] offset 7d))), \"historical_day\", \"7\", \"\", \"\")) and on() (vector(time()) >= (floor(vector((${__to} / 1000 - 10800) / 86400)) * 86400 + 10800)))[24h:1m]) > 0)",
           "instant": true,
           "range": false
         }
       ],
-      "title": "Downloads · hoje × média de 7 dias (%)",
+      "title": "Requests · hoje × média de 7 dias (%)",
       "type": "stat",
-      "description": "Oscilação percentual dos downloads de scripts desde 00h de São Paulo até o fim do período consultado, comparada à média do mesmo trecho horário nos sete dias anteriores. Estimativa pela soma de taxas de 4m em passos de 1m; não é contagem exata. Exige dados nos sete dias e base maior que zero. Lacunas parciais de coleta podem afetar o resultado. Na seleção padrão encerrada em agora, representa o dia atual."
+      "description": "Oscilação percentual dos requests desde 00h de São Paulo até o fim do período consultado, comparada à média dos mesmos horários nos sete dias anteriores. Usa a mesma base do gráfico de chamadas por minuto: em cada ponto, calcula a média apenas dos dias com dados (offsets de 1 a 7 dias), sem converter coleta ausente em zero. Estimativa pela soma de taxas de 4m em passos de 1m; não é contagem exata. Exige alguma base histórica maior que zero. Lacunas parciais de coleta podem afetar o resultado. Na seleção padrão encerrada em agora, representa o dia atual."
     },
     {
       "datasource": "${DS_PROMETHEUS}",
