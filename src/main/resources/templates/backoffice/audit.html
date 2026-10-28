@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice · Auditoria da jornada</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+</head>
+<body>
+<main class="shell reports-shell audit-shell">
+    <header class="page-header">
+        <div><p class="eyebrow">Backoffice · Acompanhamento</p><h1>Auditoria da jornada</h1>
+            <p class="muted">Veja por onde o lojista passou e o que tentou configurar.</p></div>
+        <nav class="row-actions" aria-label="Navegação">
+            <a class="button" th:if="${storeId != null}" th:href="@{/backoffice/stores/{id}(id=${storeId})}">Detalhe da loja</a>
+            <a class="button" th:href="@{/backoffice}">Visão geral</a>
+        </nav>
+    </header>
+    <section class="panel" aria-label="Filtros da auditoria">
+        <form class="audit-filters" method="get" th:action="@{/backoffice/audit}">
+            <label>ID da loja<input type="number" name="storeId" min="1" placeholder="Todas as lojas" th:value="${storeId}"></label>
+            <label>Resultado<select name="outcome"><option value="">Todos os resultados</option>
+                <option th:each="entry : ${outcomes}" th:value="${entry.key}" th:selected="${entry.key == outcome}" th:text="${entry.value}"></option></select></label>
+            <label>Autor da ação<select name="actor"><option value="">Lojista e operador</option>
+                <option th:each="entry : ${actors}" th:value="${entry.key}" th:selected="${entry.key == actor}" th:text="${entry.value}"></option></select></label>
+            <button class="button primary" type="submit">Filtrar</button><a class="button" th:href="@{/backoffice/audit}">Limpar</a>
+        </form>
+    </section>
+    <div class="audit-context">
+        <p class="muted">Mais recentes primeiro · Até 50 eventos por página · Horários de São Paulo</p>
+        <p class="report-note">Os eventos mostram requisições ao servidor. “Requisição concluída” não comprova pagamento, venda ou configuração aplicada na vitrine. Ausência de eventos não prova ausência de uso: a coleta não é retroativa e pode ter lacunas.</p>
+    </div>
+    <section class="panel audit-empty" th:if="${events.empty}">
+        <h2>Nenhum evento encontrado</h2>
+        <p>Não há registros nesta página para os filtros selecionados. Revise os filtros ou volte à primeira página.</p>
+        <a class="button" th:href="@{/backoffice/audit(storeId=${storeId},outcome=${outcome},actor=${actor})}">Primeira página</a>
+    </section>
+    <section class="audit-events" aria-label="Eventos da jornada">
+        <article class="panel audit-event" th:each="event : ${events.content}">
+            <header class="audit-event-heading">
+                <div><p class="eyebrow" th:text="${event.occurredAt}">Horário</p><h2 th:text="${event.action}">Ação</h2></div>
+                <span class="audit-status" th:classappend="${event.outcome}" th:text="${event.outcomeLabel}">Resultado</span>
+            </header>
+            <p class="audit-identity"><a th:href="@{/backoffice/stores/{id}(id=${event.storeId})}" th:text="${event.storeName}">Loja</a>
+                <span th:text="|ID ${event.storeId} · ${event.actor}|"></span>
+                <a th:if="${storeId == null}" th:href="@{/backoffice/audit(storeId=${event.storeId},outcome=${outcome},actor=${actor})}">Ver jornada desta loja</a></p>
+            <p class="muted audit-targets" th:if="${event.productId != null or event.fieldId != null or event.selectedPlan != null}">
+                <span th:if="${event.productId != null}" th:text="|Produto ${event.productId}|"></span>
+                <span th:if="${event.fieldId != null}" th:text="|Campo ${event.fieldId}|"></span>
+                <span th:if="${event.selectedPlan != null}" th:text="|Plano escolhido: ${event.selectedPlan}|"></span>
+            </p>
+            <div class="audit-change"><div><strong>Antes</strong><p th:text="${event.beforeSummary}"></p></div>
+                <div><strong>Depois</strong><p th:text="${event.afterSummary}"></p></div></div>
+            <details class="audit-details"><summary>Ver detalhes do evento</summary>
+                <dl class="audit-metadata">
+                    <div><dt>Registro</dt><dd th:text="${event.id}"></dd></div>
+                    <div><dt>Conclusão</dt><dd th:text="${event.completedAt}"></dd></div>
+                    <div><dt>Jornada</dt><dd th:text="${event.journey ?: 'Não registrada'}"></dd></div>
+                    <div><dt>Requisição</dt><dd th:text="|${event.method} ${event.route}|"></dd></div>
+                    <div><dt>Status HTTP</dt><dd th:text="${event.httpStatus ?: 'Não registrado'}"></dd></div>
+                    <div><dt>Ação técnica</dt><dd th:text="${event.technicalAction}"></dd></div>
+                </dl>
+                <div class="audit-change"><div><h3>Dados anteriores</h3><pre th:text="${event.beforeState}"></pre></div>
+                    <div><h3>Dados posteriores</h3><pre th:text="${event.afterState}"></pre></div></div>
+            </details>
+        </article>
+    </section>
+    <nav class="audit-pagination" aria-label="Páginas da auditoria">
+        <a class="button" th:if="${events.hasPrevious()}" th:href="@{/backoffice/audit(storeId=${storeId},outcome=${outcome},actor=${actor},page=${events.number - 1})}">Anterior</a>
+        <span th:text="|Página ${events.number + 1}|"></span>
+        <a class="button" th:if="${events.hasNext()}" th:href="@{/backoffice/audit(storeId=${storeId},outcome=${outcome},actor=${actor},page=${events.number + 1})}">Próxima</a>
+    </nav>
+</main>
+</body>
+</html>

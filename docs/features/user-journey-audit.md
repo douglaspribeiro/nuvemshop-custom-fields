@@ -43,3 +43,15 @@ Testes MVC usam rotas reais para navegação, rejeição de estilo, criação/ed
 Comando: `mvn -o -q -Dskip.frontend=true test`. Sem alteração visual, commit, push, implantação ou execução de migration em produção nesta etapa.
 
 Resultado final da suíte local: **770 testes, zero falhas, zero erros, 1 ignorado**. Maven terminou com código 0; `git diff --check` passou.
+
+## Tela de consulta no backoffice
+
+Rota: `/backoffice/audit`. Acesso pelo menu **Auditoria** na visão geral ou pelo botão **Auditoria da jornada** no detalhe da loja, já com o ID preenchido.
+
+Filtros combináveis por ID da loja, resultado e autor (lojista/operador). Paginação de 50 eventos, ordenação decrescente por data e ID para desempate, com filtros preservados ao trocar de página. Consulta protegida pela sessão do operador, com `Cache-Control: no-store`, sem gerar novos eventos.
+
+Cada evento mostra data/hora de São Paulo, loja, ação em português, resultado, produto/campo/plano quando registrados e resumo da configuração antes/depois. Os detalhes expansíveis mostram conclusão, jornada, rota, método HTTP, ação técnica e os dados estruturais originais, formatados e escapados. Estados ausentes permanecem explícitos; nenhuma inferência de pagamento, uso da vitrine ou motivo subjetivo é adicionada.
+
+Nenhuma alteração na coleta ou retenção; sem migration nova. Evidências visuais locais em `docs/evidence/audit-ui/`.
+
+Validação da tela: suíte completa com **795 testes, zero falhas/erros, 1 ignorado**; apresentação conferida em Chrome desktop e celular e no estado sem resultados. Sem commit, push ou implantação nesta etapa.
