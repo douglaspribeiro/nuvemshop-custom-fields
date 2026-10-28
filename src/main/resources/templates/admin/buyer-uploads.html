@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Arquivos dos compradores</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('orders')}"></th:block>
+<main class="shell"><section class="page-header"><h1>Arquivos dos compradores</h1><a class="button" href="/admin/products">Produtos e campos</a></section>
+    <section class="panel"><p id="buyer-usage" role="status">Carregando consumo…</p><p id="buyer-warning" class="notice" hidden></p>
+        <p>Um arquivo por campo/item, até 20 MB. JPG, PNG e PDF. Disponível por 90 dias desde a criação do pedido.</p>
+        <p>O espaço considera arquivos temporários e pedidos. A exclusão libera espaço quando concluída. Baixe os arquivos necessários antes de excluir.</p>
+        <a href="/admin/billing">Ver planos</a></section>
+    <section class="panel"><h2>Arquivos por pedido e item</h2><p id="buyer-empty" hidden>Nenhum arquivo vinculado a pedido.</p>
+        <div style="overflow:auto"><table><thead><tr><th>Pedido / item</th><th>Arquivo</th><th>Tamanho</th><th>Disponível até</th><th>Estado</th><th>Ações</th></tr></thead><tbody id="buyer-files"></tbody></table></div></section>
+</main><script src="/assets/buyer-uploads-admin.js" defer></script></body></html>

@@ -17,6 +17,8 @@ import java.security.MessageDigest;
 /** Commit the reservation before HTTP; never hold the store lock during the remote call. */
 @Service
 public class StripeCheckoutService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private BuyerUploadOfferService buyerUploadOffer;
     private final StoreRepository stores;
     private final PaymentSubscriptionRepository subscriptions;
     private final PaymentAttemptRepository attempts;
@@ -96,7 +98,7 @@ public class StripeCheckoutService {
         if (local != null && local.getProviderSubscriptionId() != null && local.getStatus() != PaymentSubscriptionStatus.CANCELED)
             throw new IllegalArgumentException("Cancele a assinatura anterior antes de iniciar outra.");
         String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
-        if (local == null) { local = new PaymentSubscription(); local.setStoreId(storeId); }
+        if (local == null) { local = new PaymentSubscription(); local.setStoreId(storeId); if(buyerUploadOffer!=null) buyerUploadOffer.captureNewSubscription(local,store); }
         local.setProvider(PaymentProviderType.STRIPE); local.setProviderEnvironment(gateway.environment());
         local.setProviderSubscriptionId(null); local.setProviderCheckoutId(null); local.setProviderCustomerId(null);
         local.setProviderPriceId(gateway.priceId(store, plan)); local.setPlan(plan);

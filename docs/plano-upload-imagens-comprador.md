@@ -1,6 +1,8 @@
 # Próxima funcionalidade: envio de imagens pelo comprador
 
-Status: planejamento, ainda indisponível. Próxima etapa após o material da loja de aplicativos.
+Status: documento histórico, substituído pela especificação NC-17 aprovada em 28/10/2026. Recurso ainda indisponível.
+
+**Não usar as propostas abaixo como regras atuais.** O escopo aprovado inclui JPG/JPEG, PNG e PDF; 20 MB por arquivo; Pro/Ultra da nova oferta com 5/25 GB; retenção de pedidos de 90 dias. Remover campos/produtos não deve apagar automaticamente arte de pedidos válidos. Acompanhar a execução e pendências em [NC-17](plans/2026-10-28-nc-17-upload-arquivos-comprador.md).
 
 ## Objetivo e experiência
 

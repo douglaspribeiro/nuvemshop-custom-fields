@@ -1,5 +1,6 @@
 import type { PersonalizationField } from "../shared/config";
 import { messages } from "../shared/i18n";
+import { FILE_REFERENCE } from "./buyer-uploads";
 
 export type FieldValue = string | string[];
 export type ValueMap = Record<string, FieldValue>;
@@ -22,6 +23,11 @@ export function validate(
 		const key = keyOf(field);
 		const raw = values[key];
 		const value = typeof raw === "string" ? raw.trim() : "";
+        if (field.fieldType === "FILE_UPLOAD") {
+            if ((field.required && !value) || (value && !FILE_REFERENCE.test(value)))
+                errors.push({ propertyName: key, label: field.label, message: "Conclua o envio do arquivo antes de adicionar o produto." });
+            continue;
+        }
 
         if (field.fieldType === "CHECKBOX" && field.options.length) {
             const choices = Array.isArray(raw) ? raw : [];
@@ -112,6 +118,9 @@ export function toCartProperties(
             const choices = Array.isArray(raw) ? raw : [];
             const selected = [...new Set(field.options)].filter(option => choices.includes(option));
             if (selected.length) properties[key] = selected.join(", ");
+        } else if (value && field.fieldType === "FILE_UPLOAD") {
+            properties[key] = value;
+            properties[field.label.replace(/\[/g,"(").replace(/\]/g,")").trim()] = value.replace(/\s*—\s*NCF-FILE:.*$/, "");
         } else if (value) {
 			properties[key] = value;
 		}

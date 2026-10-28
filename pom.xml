@@ -34,6 +34,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+        <dependency>
             <groupId>com.dodopayments.api</groupId>
             <artifactId>dodo-payments-java</artifactId>
             <version>1.121.0</version>

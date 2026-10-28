@@ -20,8 +20,8 @@ spring:
       cleanup-cron: ${SPRING_SESSION_JDBC_CLEANUP_CRON:0 * * * * *}
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 20000000B
+      max-request-size: 21000000B
   messages:
     basename: messages
     encoding: UTF-8
@@ -247,3 +247,13 @@ plans:
 pricing:
   fx-estimates:
     enabled: ${FX_ESTIMATES_ENABLED:true}
+
+# Private artwork storage must be provisioned and validated before enabling the offer.
+buyer-uploads:
+  new-offer-enabled: ${BUYER_UPLOAD_NEW_OFFER_ENABLED:false}
+  s3:
+    bucket: ${BUYER_UPLOAD_S3_BUCKET:}
+    region: ${BUYER_UPLOAD_S3_REGION:us-east-2}
+    prefix: ${BUYER_UPLOAD_S3_PREFIX:production/buyer-files}
+  cleanup-delay-ms: ${BUYER_UPLOAD_CLEANUP_DELAY_MS:60000}
+  reconcile-delay-ms: ${BUYER_UPLOAD_RECONCILE_DELAY_MS:300000}

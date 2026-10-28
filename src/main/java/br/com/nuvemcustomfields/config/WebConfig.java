@@ -42,6 +42,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/public/stores/*/buyer-uploads/**")
+                .allowedOriginPatterns("*").allowedMethods("GET","POST","DELETE","OPTIONS")
+                .allowedHeaders("Content-Type","X-Upload-Session","X-Upload-Request").maxAge(1800);
         registry.addMapping("/public/**")
                 .allowedOriginPatterns("*")
                 .allowedMethods("GET", "HEAD", "OPTIONS")

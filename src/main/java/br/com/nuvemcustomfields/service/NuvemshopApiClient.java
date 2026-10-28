@@ -230,6 +230,11 @@ public class NuvemshopApiClient {
         }
     }
 
+    public JsonNode getOrder(Store store,long orderId) {
+        return restClient.get().uri(properties.apiBaseUrl()+"/v1/{storeId}/orders/{id}",store.getStoreId(),orderId)
+                .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
+    }
+
     /** Pagina pedidos para a sincronizacao historica, sem manter dados pessoais no app. */
     public JsonNode listOrdersForSales(Store store, int page, int perPage, Instant createdMin,
                                        Instant createdMax, Instant updatedMin, Instant updatedMax) {

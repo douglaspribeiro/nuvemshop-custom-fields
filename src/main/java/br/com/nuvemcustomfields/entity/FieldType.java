@@ -6,5 +6,6 @@ public enum FieldType {
     SELECT,
     IMAGE_SELECT,
     CHECKBOX,
-    TEXTAREA
+    TEXTAREA,
+    FILE_UPLOAD
 }

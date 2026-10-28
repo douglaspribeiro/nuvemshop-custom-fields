@@ -56,11 +56,13 @@
             if (requiredHelp) requiredHelp.hidden = !wasSelect;
             get('maxLength').closest('label').hidden = !text;
             const placeholderLabel = get('placeholder').closest('label');
-            placeholderLabel.hidden = !text && type.value !== 'SELECT';
+            placeholderLabel.hidden = !text && !['SELECT', 'FILE_UPLOAD'].includes(type.value);
             placeholderLabel.querySelectorAll('[data-select-text]').forEach(element => {
                 element.textContent = type.value === 'SELECT' ? element.dataset.selectText : element.dataset.text;
             });
-            get('optionsText').closest('label').hidden = !['SELECT', 'CHECKBOX'].includes(type.value);
+            get('optionsText').closest('label').hidden = !['SELECT', 'CHECKBOX', 'FILE_UPLOAD'].includes(type.value);
+            const uploadHelp=form.querySelector('.field-upload-help');
+            if(uploadHelp) uploadHelp.hidden=type.value !== 'FILE_UPLOAD';
             const checkboxHelp = form.querySelector('.field-checkbox-help');
             if (checkboxHelp) checkboxHelp.hidden = type.value !== 'CHECKBOX';
             form.querySelector('.field-validation').hidden = !text;
@@ -76,6 +78,10 @@
             if (get('required').checked) title.textContent += ' *';
             wrapper.append(title);
             let input;
+            if(type.value === 'FILE_UPLOAD') {
+                input=document.createElement('input');input.type='file';input.accept='.jpg,.jpeg,.png,.pdf';
+                wrapper.append(input);target.append(wrapper);return;
+            }
             if (type.value === 'IMAGE_SELECT') {
                 const gallery = document.createElement('div');
                 gallery.className = 'field-preview-images';

@@ -64,6 +64,28 @@ describe("SDK storefront without a legacy script", () => {
 			{ headers: { Accept: "application/json" } });
 	});
 
+    it.each([true,false])("revalidates uploaded artwork on the server before cart add, ready=%s",async ready=>{
+        const reference="arte.png (10 bytes) — NCF-FILE:00000000-0000-4000-8000-000000000001";
+        const storage={getItem:vi.fn(async(key:string)=>key.startsWith("ncf-upload-session")?"a".repeat(64):reference),setItem:vi.fn(async()=>{})};
+        Object.assign(nube,{getBrowserAPIs:()=>({asyncSessionStorage:storage,resetForm:vi.fn()})});
+        let valid=true;
+        vi.mocked(fetch).mockImplementation(async url=>String(url).includes("/personalization?")
+            ? {ok:true,json:async()=>({...DISABLED,enabled:true,fields:[{id:11,label:"Arte",propertyName:"_ncf_file_11",fieldType:"FILE_UPLOAD",required:true,maxLength:null,options:["PNG"]}]})} as Response
+            : {ok:valid,json:async()=>valid?{ready:true}:{error:"Arquivo expirado.",code:"upload.expired"}} as Response);
+        await boot();
+        await vi.waitFor(()=>expect(render.mock.calls.length).toBeGreaterThan(1));
+        valid=ready;send.mockClear();add();
+        expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        if(ready){
+            await vi.waitFor(()=>expect(send.mock.calls.some(call=>call[0]==="cart:add")).toBe(true));
+            const payload=send.mock.calls.find(call=>call[0]==="cart:add")![1]();
+            expect(payload.cart.items[0].properties).toEqual({_ncf_file_11:reference,Arte:"arte.png (10 bytes)"});
+        }else{
+            await vi.waitFor(()=>expect(JSON.stringify(render.mock.calls[render.mock.calls.length-1])).toContain("Arquivo expirado."));
+            expect(send.mock.calls.some(call=>call[0]==="cart:add")).toBe(false);
+        }
+    });
+
 	it("shows the custom list prompt, blocks empty choice and sends a real option", async () => {
         vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ ...DISABLED, enabled: true,
             fields: [{ label: "Moagem", propertyName: "Moagem", fieldType: "SELECT", required: false,

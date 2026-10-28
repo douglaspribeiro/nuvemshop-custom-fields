@@ -389,11 +389,18 @@
             return;
         }
         targetForm.dataset.ncfSnapshotBound = "true";
+        let checkingUploads=false,uploadsApproved=false;
         const validateAndRemember = (event) => {
             for (const field of fields) {
                 const name = "properties[" + (field.propertyName || field.label) + "]";
                 const input = Array.from(targetForm.elements).find(element => element.name === name);
                 if (!input) continue;
+                if(field.fieldType === "FILE_UPLOAD" && ((field.required && !input.value) || (input.value && !/NCF-FILE:[a-f0-9-]{36}$/.test(input.value)))) {
+                    event.preventDefault();event.stopImmediatePropagation();
+                    const picker=input.closest(".ncf-field").querySelector("input[type=file]");
+                    if(picker) { picker.setCustomValidity("Conclua o envio do arquivo antes de adicionar o produto.");picker.reportValidity();picker.setCustomValidity(""); }
+                    return;
+                }
                 if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") {
                     const invalid = input.value && !(field.options || []).includes(input.value);
                     input.setCustomValidity(invalid
@@ -410,7 +417,30 @@
                     return;
                 }
             }
+            const uploads=fields.filter(field=>field.fieldType === "FILE_UPLOAD").map(field=>Array.from(targetForm.elements).find(element=>element.name==="properties["+(field.propertyName||field.label)+"]")).filter(input=>input&&input.value);
+            if(uploads.length && !uploadsApproved) {
+                event.preventDefault();event.stopImmediatePropagation();if(checkingUploads)return;checkingUploads=true;
+                const button=event.type === "click" ? event.target.closest("button[type='submit'], input[type='submit'], .js-addtocart, .js-buy-now") : event.submitter;
+                Promise.all(uploads.map(input=>{
+                    const widget=input.closest(".ncf-field");
+                    if(!widget?.ncfValidateUpload)throw new Error("Envio indisponível. Atualize a página e tente novamente.");
+                    return widget.ncfValidateUpload();
+                })).then(()=>{
+                    uploadsApproved=true;
+                    try{if(button)button.click();else targetForm.requestSubmit();}
+                    finally{setTimeout(()=>{uploadsApproved=false;},0);}
+                }).catch(error=>{
+                    const notice=uploads[0]?.closest(".ncf-field")?.querySelector('[role="status"]');
+                    if(notice)notice.textContent=error.message || "Reenvie o arquivo para continuar.";
+                }).finally(()=>{checkingUploads=false;});return;
+            }
             rememberCartSnapshot(targetForm, fields);
+            if(event.type === "submit") queueMicrotask(()=>{
+                for(const field of fields.filter(field=>field.fieldType === "FILE_UPLOAD")){
+                    const input=Array.from(targetForm.elements).find(element=>element.name==="properties["+(field.propertyName||field.label)+"]");
+                    input?.closest(".ncf-field")?.dispatchEvent(new Event("ncf-upload-consumed"));
+                }
+            });
         };
         targetForm.addEventListener("submit", validateAndRemember, true);
         targetForm.addEventListener("click", event => {
@@ -443,7 +473,8 @@
                 const key = field.propertyName || field.label;
                 const input = Array.from(targetForm.elements || [])
                     .find((element) => element.name === "properties[" + key + "]");
-                const value = input && (input.type !== "checkbox" || input.checked) && input.value ? String(input.value).trim() : "";
+                let value = input && (input.type !== "checkbox" || input.checked) && input.value ? String(input.value).trim() : "";
+                if(field.fieldType === "FILE_UPLOAD") value=value.replace(/\s*—\s*NCF-FILE:.*$/, "");
                 return value ? { label: field.label || key, value: value } : null;
             })
             .filter(Boolean);
@@ -838,6 +869,27 @@
     }
 
     function renderField(field) {
+        if (field.fieldType === "FILE_UPLOAD") {
+            const host=document.createElement("div");host.className="ncf-field";
+            const blocked=document.createElement("input");blocked.name="properties["+(field.propertyName||field.label)+"]";
+            blocked.readOnly=true;blocked.required=Boolean(field.required);blocked.setAttribute("aria-label",field.label);
+            if(field.required) blocked.setCustomValidity("Aguarde o carregamento do envio de arquivos.");
+            const text=document.createElement("p");text.textContent=field.label+" — Carregando envio de arquivo…";host.append(text,blocked);
+            const mount=()=>{
+                if(!window.ncfBuyerUploadControl || !host.isConnected)return;
+                const control=window.ncfBuyerUploadControl(Number(storeId),Number(field.productId || findProductId(findProductForm())),field);
+                host.replaceChildren(control.wrapper);
+            };
+            if(window.ncfBuyerUploadControl) setTimeout(mount,0);
+            else {
+                window.addEventListener("ncf-buyer-uploads-ready",mount,{once:true});
+                if(!document.querySelector("script[data-ncf-buyer-uploads]")) {
+                    const loader=document.createElement("script");loader.src=apiOrigin+"/assets/buyer-upload-dom.js";loader.dataset.ncfBuyerUploads="true";
+                    loader.onerror=()=>{text.textContent="Envio indisponível. Entre em contato com a loja.";};document.head.append(loader);
+                }
+            }
+            return host;
+        }
         if (field.fieldType === "CHECKBOX" && (field.options || []).length) return renderCheckboxGroup(field);
         const wrapper = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
         wrapper.className = "ncf-field";

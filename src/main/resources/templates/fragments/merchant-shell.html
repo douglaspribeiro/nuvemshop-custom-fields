@@ -16,6 +16,7 @@
             <a th:href="@{/admin}" th:classappend="${active == 'overview'} ? ' is-active'" th:aria-current="${active == 'overview'} ? 'page'" th:text="#{merchant.nav.overview}">Visão geral</a>
             <a th:href="@{/admin/products}" th:classappend="${active == 'products'} ? ' is-active'" th:aria-current="${active == 'products'} ? 'page'" th:text="#{merchant.nav.products}">Produtos e campos</a>
             <a th:href="@{/admin/dashboard}" th:classappend="${active == 'orders'} ? ' is-active'" th:aria-current="${active == 'orders'} ? 'page'" th:text="#{merchant.nav.orders}">Pedidos personalizados</a>
+            <a th:href="@{/admin/buyer-uploads}">Arquivos dos compradores</a>
             <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>
             <a th:href="@{/admin/billing}" th:classappend="${active == 'billing'} ? ' is-active'" th:aria-current="${active == 'billing'} ? 'page'" th:text="#{merchant.nav.billing}">Planos e cobrança</a>
             <a th:href="@{/admin/help}" th:classappend="${active == 'help'} ? ' is-active'" th:aria-current="${active == 'help'} ? 'page'" th:text="#{merchant.nav.help}">Ajuda</a>

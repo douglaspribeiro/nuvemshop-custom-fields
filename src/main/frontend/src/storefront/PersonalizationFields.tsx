@@ -24,6 +24,7 @@ const TwoColumnImageGrid = mobileImageGrid(2);
 const ThreeColumnImageGrid = mobileImageGrid(3);
 
 type Props = {
+    upload?: (field: PersonalizationField) => NubeComponent;
 	fields: PersonalizationField[];
 	errors: FieldError[];
 	color?: string;
@@ -32,12 +33,12 @@ type Props = {
 	onValueChange: (key: string, value: FieldValue) => void;
 };
 
-export function PersonalizationFields({ fields, errors, color, values, locale, onValueChange }: Props) {
+export function PersonalizationFields({ fields, errors, color, values, locale, onValueChange, upload }: Props) {
 	return (
 		// id e o sinal que o script legado usa para se calar e nao duplicar os campos.
 		<Column id={SDK_MARKER_ID} gap={12} style={{ paddingTop: "12px", paddingBottom: "12px" }}>
 			{fields.map((field) => (
-				<Column gap={4}>{fieldGroup(field, errors, color, onValueChange, values?.[keyOf(field)], locale)}</Column>
+				<Column gap={4}>{field.fieldType === "FILE_UPLOAD" && upload ? [upload(field), ...errors.filter(e => e.propertyName === keyOf(field)).map(e => <Text color="#c9252d">{e.message}</Text>)] : fieldGroup(field, errors, color, onValueChange, values?.[keyOf(field)], locale)}</Column>
 			))}
 		</Column>
 	);

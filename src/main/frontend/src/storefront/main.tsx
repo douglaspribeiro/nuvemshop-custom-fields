@@ -10,6 +10,8 @@ import {
 import { normalizedColor } from "../shared/properties";
 import { createCartImageRenderer } from "./cart-images";
 import { PersonalizationFields } from "./PersonalizationFields";
+import { buyerUploadField, resetBuyerUploadFields } from "./BuyerUploadField";
+import { createBuyerUploads } from "./buyer-uploads";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
 
 const SLOT = "before_product_detail_add_to_cart";
@@ -35,6 +37,7 @@ let textColor: string | undefined;
 
 /** Contador de `cart:add` disparados por nos, para nao reprocessar o proprio evento. */
 let pendingSelfAdds = 0;
+let verifyingUploads = false;
 let reportedNativeGate = false;
 
 let inFlightProduct: number | null = null;
@@ -63,11 +66,14 @@ export function App(nube: NubeSDK) {
 	});
 	nube.on("cart:before_update", (state) => gate(nube, state));
 	nube.on("cart:add:success", (state) => {
+        if(store && productId && config.fields.some(field => field.fieldType === "FILE_UPLOAD")) resetBuyerUploadFields(nube,store,productId);
+        if(store && productId) for(const field of config.fields.filter(f => f.fieldType === "FILE_UPLOAD"))
+            void createBuyerUploads(store,productId,nube.getBrowserAPIs().asyncSessionStorage).forget(field);
         void renderCartImages(state);
 		pendingSelfAdds = 0;
 		values = {};
 		errors = [];
-        if (config.fields.some(field => field.fieldType === "IMAGE_SELECT" || field.fieldType === "CHECKBOX")) render(nube);
+        if (config.fields.some(field => field.fieldType === "IMAGE_SELECT" || field.fieldType === "CHECKBOX" || field.fieldType === "FILE_UPLOAD")) render(nube);
 	});
 	nube.on("cart:add:fail", () => {
 		pendingSelfAdds = 0;
@@ -125,6 +131,7 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 }
 
 function render(nube: NubeSDK) {
+    const renderProduct=productId;
 	nube.render(
 		SLOT,
 		<PersonalizationFields
@@ -133,6 +140,10 @@ function render(nube: NubeSDK) {
 			color={textColor}
             values={values}
             locale={config.locale}
+            upload={field => buyerUploadField(nube,store!,productId!,field,String(values[field.propertyName || field.label] || ""),value => {
+                if(productId!==renderProduct) return;
+                values[field.propertyName || field.label]=value; errors=errors.filter(e => e.propertyName !== (field.propertyName || field.label));
+            }, () => render(nube))}
 			onValueChange={(key, value) => {
 				values[key] = value;
                 if (config.fields.some(field => (field.fieldType === "IMAGE_SELECT" || field.fieldType === "SELECT" || field.fieldType === "CHECKBOX") && (field.propertyName || field.label) === key)) { errors = errors.filter(error => error.propertyName !== key); render(nube); }
@@ -193,6 +204,22 @@ function gate(nube: NubeSDK, state: NubeSDKState | null) {
 	}
 
 	const properties = toCartProperties(config.fields, values);
+    if(config.fields.some(field => field.fieldType === "FILE_UPLOAD" && values[field.propertyName || field.label])) {
+        respond(nube,requestId,false,"validating_uploads");
+        if(verifyingUploads)return;
+        verifyingUploads=true;
+        const checkedProduct=productId;
+        const client=createBuyerUploads(store!,productId!,nube.getBrowserAPIs().asyncSessionStorage);
+        void Promise.all(config.fields.filter(field=>field.fieldType === "FILE_UPLOAD")
+            .map(field=>client.ensure(String(values[field.propertyName || field.label] || ""))))
+            .then(()=>{if(productId===checkedProduct)reissue(nube,payload,properties);})
+            .catch(error=>{
+                if(productId!==checkedProduct)return;
+                errors=config.fields.filter(field=>field.fieldType === "FILE_UPLOAD").map(field=>({propertyName:field.propertyName || field.label,label:field.label,
+                    message:error instanceof Error?error.message:"Reenvie o arquivo para continuar."}));render(nube);
+            }).finally(()=>{verifyingUploads=false;});
+        return;
+    }
 	if (!hasAnyValue(properties)) {
 		respond(nube, requestId, true);
 		return;

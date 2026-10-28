@@ -14,6 +14,8 @@ import java.time.Instant;
 
 @Service
 public class WebhookLifecycleService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private BuyerUploadOrders buyerUploadOrders;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebhookLifecycleService.class);
 
@@ -58,6 +60,9 @@ public class WebhookLifecycleService {
             return;
         }
         switch (payload.event()) {
+            case "order/created", "order/updated", "order/paid" -> {
+                if(payload.storeId()!=null && payload.id()!=null) buyerUploadOrders.order(payload.storeId(),payload.id());
+            }
             case "app/uninstalled" -> handleUninstalled(payload.storeId());
             case "product/deleted" -> handleProductDeleted(payload.storeId(), payload.id());
             case "subscription/updated" -> handleSubscriptionUpdated(payload.storeId());

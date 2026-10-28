@@ -16,6 +16,10 @@ import java.time.Instant;
 @Entity
 @Table(name = "payment_subscriptions")
 public class PaymentSubscription {
+    @Column(name="buyer_upload_offer",length=40)
+    private String buyerUploadOffer;
+    public String getBuyerUploadOffer(){return buyerUploadOffer;}
+    public void setBuyerUploadOffer(String value){buyerUploadOffer=value;}
     @Column(length=64) private String analyticsClientId;
     @Column(length=20) private String analyticsSessionId;
     public String getAnalyticsClientId(){return analyticsClientId;}

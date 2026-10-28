@@ -1,4 +1,6 @@
 import { imageChoices } from "./image-options";
+import { buyerUploadControl } from "./buyer-upload-dom";
+import { createBuyerUploads } from "./buyer-uploads";
 import type { NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { fetchConfig, type PersonalizationConfig } from "../shared/config";
 import { langOf } from "../shared/i18n";
@@ -31,6 +33,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 	let pending: { product: number; variant: number; button: HTMLButtonElement; disabled: boolean } | null = null;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
+    let verifyingUploads=false;
 	const controls = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();
     const checkboxGroups = new Map<string, HTMLInputElement[]>();
     function readValues(): ValueMap {
@@ -123,6 +126,10 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		if (color) container.style.color = color;
 		config.fields.forEach((field, index) => {
             const key = keyOf(field);
+            if (field.fieldType === "FILE_UPLOAD") {
+                const upload=buyerUploadControl(runtime.getState().store.id,productId!,field);
+                controls.set(key,upload.value); container!.append(upload.wrapper); return;
+            }
             if (field.fieldType === "CHECKBOX" && field.options.length) {
                 const group = document.createElement("fieldset");
                 group.style.cssText = "border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0;color:inherit";
@@ -210,7 +217,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		if (!config.enabled || !config.fields.length) report("patagonia_transition_disabled", productId);
 		render();
 	}
-	function click(event: MouseEvent) {
+	async function click(event: MouseEvent) {
 		const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>(BUY) : null;
 		if (!button || button.disabled || !scope?.contains(button) || !container?.isConnected || !config?.enabled) return;
 		const state = runtime.getState();
@@ -219,7 +226,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		// Capture no document precede o onClick React. Nunca dispara o add nativo junto do personalizado.
 		event.preventDefault();
 		event.stopImmediatePropagation();
-		if (pending) return;
+		if (pending || verifyingUploads) return;
 		const values = readValues();
 		for (const input of controls.values()) input.setCustomValidity("");
 		const errors = validate(config.fields, values, config.locale);
@@ -230,6 +237,16 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 			input?.reportValidity();
 			return;
 		}
+        if(config.fields.some(field=>field.fieldType === "FILE_UPLOAD")) {
+            verifyingUploads=true;
+            const checkedProduct=productId;
+            try {
+                const client=createBuyerUploads(state.store.id,productId!);
+                await Promise.all(config.fields.filter(field=>field.fieldType === "FILE_UPLOAD").map(field=>client.ensure(String(values[keyOf(field)] || ""))));
+            } catch(error) {status(error instanceof Error?error.message:"Reenvie o arquivo para continuar.");return;}
+            finally{verifyingUploads=false;}
+            if(productId!==checkedProduct || disposed)return;
+        }
 		variantId = variantFromControls(state) ?? variantId;
 		if (!variantId || !page.data.product.variants?.some((variant) => variant.id === variantId)) {
 			status(strings().variant); return;
@@ -253,6 +270,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		const item = state.eventPayload as { product_id?: number; variant_id?: number } | undefined;
 		if (!pending || item?.product_id !== pending.product || item.variant_id !== pending.variant) return;
 		release();
+        if(success) for(const element of container?.querySelectorAll(".ncf-field") ?? []) element.dispatchEvent(new Event("ncf-upload-consumed"));
 		status(success ? strings().success : strings().failure);
 		report(success ? "patagonia_transition_success" : "patagonia_transition_failed", productId);
 	}

@@ -17,6 +17,8 @@ import java.util.List;
 
 @Service
 public class PersonalizationAdminService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private BuyerUploadLedger buyerUploads;
 
     @org.springframework.beans.factory.annotation.Autowired
     private StorefrontCache storefrontCache;
@@ -161,6 +163,10 @@ public class PersonalizationAdminService {
     }
 
     private void validateImagePlan(Long storeId, Long productId, FieldForm form) {
+        if (form.getFieldType() == FieldType.FILE_UPLOAD) {
+            if (!buyerUploads.usage(storeId).acceptsUploads()) throw new IllegalArgumentException("upload.unavailable");
+            BuyerUploadService.formats(form.getOptionsText());
+        }
         if (form.getFieldType() == FieldType.IMAGE_SELECT) {
             var store = stores.findActiveByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("image.options.invalid"));
             limits.requireImageConfiguration(store, productId, ImageOptions.parse(form.getImageOptionsJson()).size());
@@ -186,6 +192,11 @@ public class PersonalizationAdminService {
         field.setOptionsText(form.getOptionsText() == null || form.getOptionsText().isBlank()
                 ? null
                 : form.getOptionsText().strip());
+        if (form.getFieldType() == FieldType.FILE_UPLOAD) {
+            field.setOptionsText(String.join("\n", BuyerUploadService.formats(form.getOptionsText()).stream().sorted().toList()));
+            field.setMaxLength(100);
+            field.setValidationPattern(null);
+        }
         field.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
     }
 }
