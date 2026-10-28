@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.48.0] - 2026-10-28
+
+### Features
+
+- audit: persist merchant user journeys (`10a2d37`)
+
 ## [1.47.0] - 2026-10-28
 
 ### Features
