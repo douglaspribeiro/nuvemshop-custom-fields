@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.dto.ManagementReport;
+import br.com.nuvemcustomfields.dto.SubscriptionReportRow;
 import br.com.nuvemcustomfields.entity.*;
 import br.com.nuvemcustomfields.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,16 +45,18 @@ public class ManagementReportService {
         var projectedCounts = new TreeMap<String, Long>();
         LocalDate today = LocalDate.now(clock);
         YearMonth month = YearMonth.from(today);
+        var rows = new ArrayList<SubscriptionReportRow>();
         for (Store store : all) {
-            if (!store.isActive() || store.isCourtesyPremium() || store.isBillingSuspended() || !store.getPlan().isBillable()) continue;
+            PaymentSubscription current = store.getStoreId() == null ? null : byStore.get(store.getStoreId());
+            String exclusion = exclusionReason(store, current);
+            rows.add(SubscriptionReportRow.from(store, current, exclusion, clock.getZone()));
+            if (exclusion != null) continue;
             PaymentSubscription subscription = store.getStoreId() == null ? null : byStore.get(store.getStoreId());
             BigDecimal monthlyAmount;
             BigDecimal nextAmount;
             String currency;
             LocalDate next;
             if (subscription != null) {
-                if (subscription.getStatus() != PaymentSubscriptionStatus.ACTIVE || !subscription.isAccessActive()
-                        || subscription.getProviderEnvironment() != PaymentEnvironment.PRODUCTION || subscription.isCancellationPending()) continue;
                 monthlyAmount = subscription.getWinbackRegularAmount() != null && subscription.isWinbackRestorePending()
                         ? subscription.getWinbackRegularAmount() : subscription.getAmountValue();
                 nextAmount = subscription.getAmountValue();
@@ -61,15 +64,12 @@ public class ManagementReportService {
                 next = subscription.getNextPaymentAt() == null ? null : subscription.getNextPaymentAt().atZone(clock.getZone()).toLocalDate();
             } else {
                 // A locally assigned paid plan is not proof of a recurring contract.
-                if (store.getSubscriptionId() == null || store.getSubscriptionId().isBlank()) continue;
                 monthlyAmount = store.getBillingAmountValue();
                 currency = store.getBillingAmountCurrency();
                 // Missing contract prices must not be replaced by today's catalog price.
-                if (monthlyAmount == null) continue;
                 nextAmount = monthlyAmount;
                 next = store.getBillingNextExecution();
             }
-            if (currency == null || currency.isBlank() || monthlyAmount == null) continue;
             currency = currency.strip().toUpperCase(Locale.ROOT);
             mrr.merge(currency, monthlyAmount, BigDecimal::add);
             if (next != null && !next.isBefore(today) && YearMonth.from(next).equals(month) && nextAmount != null) {
@@ -84,6 +84,32 @@ public class ManagementReportService {
                 all.stream().filter(s -> s.getPlan() == PlanType.PREMIUM_PLUS).count(),
                 all.stream().filter(s -> s.getPlan() == PlanType.PREMIUM_ULTRA).count(),
                 mrr.getOrDefault("BRL", BigDecimal.ZERO), events.count(), rules.count(), fieldCount,
-                month, Map.copyOf(mrr), Map.copyOf(projected), Map.copyOf(projectedCounts));
+                month, Map.copyOf(mrr), Map.copyOf(projected), Map.copyOf(projectedCounts),
+                rows.stream().sorted(Comparator.comparing(SubscriptionReportRow::name).thenComparing(r -> String.valueOf(r.id()))).toList(),
+                clock.instant());
+    }
+    private static String exclusionReason(Store store, PaymentSubscription subscription) {
+        if (!store.isActive()) return "Loja inativa";
+        if (store.isCourtesyPremium()) return "Cortesia";
+        if (store.isBillingSuspended()) return "Cobrança suspensa";
+        if (!store.getPlan().isBillable()) return "Plano gratuito";
+        BigDecimal amount;
+        String currency;
+        if (subscription != null) {
+            if (subscription.getProviderEnvironment() != PaymentEnvironment.PRODUCTION) return "Ambiente de teste ou não informado";
+            if (subscription.isCancellationPending()) return "Cancelamento solicitado";
+            if (subscription.getStatus() != PaymentSubscriptionStatus.ACTIVE) return "Assinatura não ativa";
+            if (!subscription.isAccessActive()) return "Acesso da assinatura inativo";
+            amount = subscription.isWinbackRestorePending() && subscription.getWinbackRegularAmount() != null
+                    ? subscription.getWinbackRegularAmount() : subscription.getAmountValue();
+            currency = subscription.getCurrency();
+        } else {
+            if (store.getSubscriptionId() == null || store.getSubscriptionId().isBlank()) return "Sem contrato registrado";
+            amount = store.getBillingAmountValue();
+            currency = store.getBillingAmountCurrency();
+        }
+        if (amount == null) return "Valor contratual não informado";
+        if (currency == null || currency.isBlank()) return "Moeda contratual não informada";
+        return null;
     }
 }

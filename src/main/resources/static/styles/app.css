@@ -553,3 +553,6 @@ input[type="color"] {
 }
 
 .billing-grid.test-plan-selection { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+
+.subscription-table { min-width: 1500px; }
+.subscription-table td { min-width: 145px; vertical-align: top; overflow-wrap: anywhere; }

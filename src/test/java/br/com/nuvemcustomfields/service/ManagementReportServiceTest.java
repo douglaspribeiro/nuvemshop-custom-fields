@@ -125,6 +125,40 @@ class ManagementReportServiceTest {
         assertThat(service.report().projectedPaymentsByCurrency()).isEmpty();
     }
 
+    @Test void rowsPreserveCurrentContractAndExplicitMissingEvidence() {
+        var current = store(PlanType.PREMIUM, false); current.setStoreId(1L);
+        current.setBillingAmountValue(new BigDecimal("999"));
+        var legacy = store(PlanType.PREMIUM_PLUS, false); legacy.setStoreId(2L);
+        var missing = store(PlanType.PREMIUM, false); missing.setStoreId(3L); missing.setBillingAmountCurrency(null);
+        var sub = subscription(1L, "USD", "12.00"); sub.setLastPaymentStatus("paid"); sub.setLastPaymentId("pay-123");
+        when(storeRepository.findAll()).thenReturn(List.of(current, legacy, missing));
+        when(subscriptions.findByStoreIdIn(List.of(1L, 2L, 3L))).thenReturn(List.of(sub));
+        var report = service.report();
+        assertThat(report.subscriptions()).hasSize(3);
+        var row = report.subscriptions().stream().filter(r -> r.id().equals(1L)).findFirst().orElseThrow();
+        assertThat(row.amount()).isEqualTo("12.00");
+        assertThat(row.currency()).isEqualTo("USD");
+        assertThat(row.paymentStatus()).isEqualTo("paid");
+        assertThat(row.paymentId()).isEqualTo("pay-123");
+        assertThat(row.lastSynced()).isEqualTo("Não informado");
+        assertThat(row.eligible()).isTrue();
+        assertThat(report.subscriptions()).anyMatch(r -> r.id().equals(2L) && r.source().equals("Contrato legado") && r.eligible());
+        assertThat(report.subscriptions()).anyMatch(r -> r.id().equals(3L) && !r.eligible() && r.mrrReason().equals("Moeda contratual não informada"));
+        assertThat(report.mrrByCurrency().get("BRL")).isEqualByComparingTo("29.99");
+    }
+
+    @Test void exclusionReasonsFollowTheAggregateRules() {
+        var courtesy = store(PlanType.PREMIUM, true);
+        var suspended = store(PlanType.PREMIUM, false); suspended.setBillingSuspended(true);
+        var missing = store(PlanType.PREMIUM, false); missing.setBillingAmountValue(null);
+        when(storeRepository.findAll()).thenReturn(List.of(courtesy, suspended, missing));
+        var report = service.report();
+        assertThat(report.subscriptions()).extracting(r -> r.mrrReason())
+                .containsExactlyInAnyOrder("Cortesia", "Cobrança suspensa", "Valor contratual não informado");
+        assertThat(report.subscriptions()).allMatch(r -> !r.eligible());
+        assertThat(report.mrrByCurrency()).isEmpty();
+    }
+
     private PaymentSubscription subscription(long storeId, String currency, String amount) {
         var subscription = new PaymentSubscription();
         subscription.setStoreId(storeId); subscription.setCurrency(currency);

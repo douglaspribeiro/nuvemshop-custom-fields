@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class PlanPerformanceReportTest {
     @Autowired StoreRepository stores;
+    @Autowired PaymentSubscriptionRepository subscriptions;
     @Autowired PersonalizationRuleRepository rules;
     @Autowired PersonalizationFieldRepository fields;
     @Autowired StoreOrderSalesRepository sales;
@@ -126,6 +127,15 @@ class PlanPerformanceReportTest {
 
     @Test void blockedStoresAreNotReportedAsHavingNoSalesAndShowTheRequiredAction() throws Exception {
         var blocked=store(997669030L,PlanType.PREMIUM_PLUS);
+        var paid = store(997669031L, PlanType.PREMIUM_ULTRA);
+        paid.setStoreName("Contrato USD · produção"); stores.saveAndFlush(paid);
+        var subscription = new PaymentSubscription(); subscription.setStoreId(paid.getStoreId());
+        subscription.setExternalReference("nc01-fixture"); subscription.setProvider(PaymentProviderType.STRIPE); subscription.setProviderSubscriptionId("sub-fixture-123");
+        subscription.setPlan(PlanType.PREMIUM_ULTRA); subscription.setStatus(PaymentSubscriptionStatus.ACTIVE);
+        subscription.setAccessActive(true); subscription.setAmountValue(new java.math.BigDecimal("12.00")); subscription.setCurrency("USD");
+        subscription.setLastPaymentStatus("paid"); subscription.setLastPaymentId("pay-fixture-123");
+        subscription.setLastSyncedAt(Instant.parse("2026-10-28T12:00:00Z"));
+        subscription.setNextPaymentAt(Instant.parse("2026-11-28T12:00:00Z")); subscriptions.saveAndFlush(subscription);
         var state=new StoreSalesSync(blocked.getStoreId());state.setComplete(true);state.setLastError("AUTH_REQUIRED");syncs.saveAndFlush(state);
         order(blocked,1,"2026-10-10T12:00:00Z",2);
         var report=reports.report(day,day);
@@ -135,7 +145,8 @@ class PlanPerformanceReportTest {
         assertThat(report.syncIssues()).anyMatch(r->r.id().equals(blocked.getStoreId()) && r.syncIssue().contains("Reconectar"));
         String page=mvc.perform(get("/backoffice/reports").session(session).param("from",day.toString()).param("to",day.toString()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(page).contains("Sincronização que precisa de atenção","Reconectar loja: token inválido ou expirado");
+        assertThat(page).contains("Sincronização que precisa de atenção","Reconectar loja: token inválido ou expirado",
+                "Assinaturas e conciliação", "Sem contrato registrado", "Não disponível no sistema", "Valor confirmado: não informado");
         if (System.getProperty("ncf.release.screens") != null) {
             var output=java.nio.file.Path.of(System.getProperty("ncf.release.screens"));java.nio.file.Files.createDirectories(output);
             java.nio.file.Files.writeString(output.resolve("relatorio-incompleto.html"),page);

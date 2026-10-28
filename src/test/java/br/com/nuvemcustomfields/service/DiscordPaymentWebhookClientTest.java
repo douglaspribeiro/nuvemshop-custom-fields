@@ -22,7 +22,7 @@ class DiscordPaymentWebhookClientTest {
         when(stores.findByStoreId(7744400L)).thenReturn(Optional.of(store));
         when(reports.report()).thenReturn(new ManagementReport(0, 0, 0, 0, new BigDecimal("419.53"),
                 0, 0, 0, null, Map.of("BRL", new BigDecimal("419.53"), "USD", new BigDecimal("15.98")),
-                Map.of(), Map.of()));
+                Map.of(), Map.of(), java.util.List.of(), java.time.Instant.EPOCH));
     }
     @Test void upgradeMessageDistinguishesAdjustmentFromRecurringPayment(){
         var n=notification();n.setEventType(PaymentNotificationOutbox.EventType.UPGRADE);n.setStoreName("Dark Hunter");

@@ -18,7 +18,7 @@
         <a class="button" th:href="@{/backoffice}">Voltar</a>
     </section>
     <nav class="report-nav" aria-label="Seções do relatório">
-        <a href="#free">Planos gratuitos</a><a href="#plans">Vendas por plano</a><a href="#revenue">Receita do app</a>
+        <a href="#subscriptions">Assinaturas e conciliação</a><a href="#free">Planos gratuitos</a><a href="#plans">Vendas por plano</a><a href="#revenue">Receita do app</a>
         <a th:href="@{/backoffice/reports/adoption}">Adoção e desinstalações →</a>
     </nav>
     <section class="panel report-filter">
@@ -93,6 +93,28 @@
         <p th:if="${#maps.isEmpty(report.mrrByCurrency)}" class="report-muted">Nenhuma receita recorrente identificada nos contratos com dados disponíveis.</p>
         <p>O MRR usa o valor recorrente contratado; em reconquistas com desconto inicial, usa a mensalidade regular. Contratos sem valor ou moeda registrados não entram na estimativa; não são tratados como receita zero.</p>
         <a class="button" th:href="@{/backoffice/plans}">Gerenciar planos</a>
+    </section>
+    <section id="subscriptions" class="panel">
+        <p class="eyebrow">Posição atual por loja · V1</p>
+        <h2>Assinaturas e conciliação</h2>
+        <p class="report-muted">Dados locais, sem consulta aos provedores. Esta posição não é filtrada pelo período dos pedidos. Uma linha por loja; o contrato atual tem precedência sobre o legado.</p>
+        <p class="report-muted" th:text="|Relatório gerado em ${#temporals.format(report.generatedAt.atZone(T(java.time.ZoneId).of('America/Sao_Paulo')), 'dd/MM/yyyy HH:mm z')}. A última sincronização de cada contrato está na tabela.|">Atualização</p>
+        <p>Valor contratual não comprova pagamento. Valor confirmado e data do último pagamento: não informados no sistema. Repasse líquido: não disponível no sistema. MRR estimado não representa caixa recebido.</p>
+        <div class="report-table-scroll" tabindex="0" role="region" aria-label="Assinaturas por loja, role horizontalmente para ver todas as colunas">
+        <table class="table report-table subscription-table">
+            <thead><tr><th>Loja / plano atribuído</th><th>Contrato / origem</th><th>Assinatura / acesso</th><th>Valor contratado</th><th>Último pagamento</th><th>Próxima cobrança</th><th>MRR</th><th>Última sincronização</th><th>Repasse líquido</th></tr></thead>
+            <tbody><tr th:each="row : ${report.subscriptions}">
+                <td><a th:href="@{/backoffice/stores/{id}(id=${row.id})}" th:text="${row.name}">Loja</a><small th:text="${row.id}"></small><span th:text="${row.plan}"></span></td>
+                <td><span th:text="${row.source}"></span><small th:text="${row.environment}"></small><small th:text="${row.subscriptionId}"></small></td>
+                <td><span th:text="${row.status}"></span><small th:text="|Plano da assinatura: ${row.subscriptionPlan}|"></small><small th:text="${row.access}"></small></td>
+                <td><span th:text="${row.amount}"></span><small th:text="${row.currency}"></small></td>
+                <td><span th:text="${row.paymentStatus}"></span><small th:text="|ID: ${row.paymentId}|"></small><small>Valor confirmado: não informado</small><small>Data: não informada</small></td>
+                <td th:text="${row.nextPayment}"></td>
+                <td><span class="badge" th:text="${row.eligible ? 'Elegível' : 'Excluída'}"></span><small th:unless="${row.eligible}" th:text="${row.mrrReason}"></small></td>
+                <td th:text="${row.lastSynced}"></td><td>Não disponível no sistema</td>
+            </tr><tr th:if="${#lists.isEmpty(report.subscriptions)}"><td colspan="9">Nenhuma loja registrada.</td></tr></tbody>
+        </table></div>
+        <p class="report-note">Elegibilidade e agregados por moeda seguem a mesma regra da seção Receita do app. Contratos legados têm somente os dados registrados; ambiente, status e acesso não são presumidos. Em reconquistas, o MRR usa a mensalidade regular quando registrada; o valor contratado exibido é o valor corrente da assinatura. Dados ausentes não são preenchidos pelo catálogo.</p>
     </section>
     <section class="details metrics">
         <div>

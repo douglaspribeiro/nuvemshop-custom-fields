@@ -14,6 +14,8 @@ public record ManagementReport(
         java.time.YearMonth projectedMonth,
         java.util.Map<String, BigDecimal> mrrByCurrency,
         java.util.Map<String, BigDecimal> projectedPaymentsByCurrency,
-        java.util.Map<String, Long> projectedStoresByCurrency
+        java.util.Map<String, Long> projectedStoresByCurrency,
+        java.util.List<SubscriptionReportRow> subscriptions,
+        java.time.Instant generatedAt
 ) {
 }
