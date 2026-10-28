@@ -114,7 +114,7 @@ public abstract class DodoGateway implements PaymentGateway {
         Instant end = instant(text(data, "next_billing_date"));
         String status = required(data, "status");
         if ("on_hold".equals(status)) status = "past_due";
-        if (List.of("failed", "expired").contains(status)) status = "paused";
+        // Preserve terminal states: a failed creation/expired term requires a new subscription.
         boolean scheduled = data.path("cancel_at_next_billing_date").asBoolean();
         if (scheduled && end == null) throw new PaymentGatewayException("Assinatura Dodo sem fim do período pago.");
         return new GatewaySubscription(required(data, "subscription_id"), null,

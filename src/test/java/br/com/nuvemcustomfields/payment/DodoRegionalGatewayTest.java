@@ -69,5 +69,19 @@ class DodoRegionalGatewayTest {
         assertThat(new DodoTestProperties(true," ","secret","42",20).configured()).isFalse();
         assertThat(DodoMarketPricing.fromMinor(new BigDecimal("9900"),"MXN")).isEqualByComparingTo("99");
     }
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void preservesTerminalAndDeliberatelyPausedStatusesInBothEnvironments(boolean live) {
+        try (var ignored = new AutoCloseGateway(gateway(live))) {
+            String base = live ? "https://live.dodopayments.com" : "https://test.dodopayments.com";
+            for (String status : new String[]{"failed", "expired", "paused"}) {
+                server.expect(requestTo(base + "/subscriptions/sub_" + status)).andRespond(withSuccess(
+                        "{\"subscription_id\":\"sub_" + status + "\",\"status\":\"" + status
+                        + "\",\"currency\":\"USD\",\"recurring_pre_tax_amount\":499,\"product_id\":\"pdt_regional\"}", MediaType.APPLICATION_JSON));
+            }
+            for (String status : new String[]{"failed", "expired", "paused"})
+                assertThat(ignored.gateway.getSubscription("sub_" + status).status()).isEqualTo(status);
+            server.verify();
+        }
+    }
     private record AutoCloseGateway(DodoGateway gateway) implements AutoCloseable { public void close() { gateway.close(); } }
 }

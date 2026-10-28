@@ -649,6 +649,15 @@ public class PaymentSubscriptionService {
     public void preparePendingCheckout(Long storeId, PlanType requestedPlan) {
         expirePendingCheckout(storeId);
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        // Older Dodo adapters persisted terminal failed/expired contracts as PAUSED.
+        // Read authenticated provider state before deciding whether a new purchase is safe.
+        if (local != null && local.getProvider().isDodo() && !local.isAccessActive()
+                && hasText(local.getProviderSubscriptionId())
+                && java.util.EnumSet.of(PaymentSubscriptionStatus.PAUSED, PaymentSubscriptionStatus.ERROR,
+                        PaymentSubscriptionStatus.PAST_DUE).contains(local.getStatus())) {
+            requireProvider(local, local.getProvider());
+            local = reconcile(storeId);
+        }
         if (local == null || local.getStatus() != PaymentSubscriptionStatus.PENDING || local.isAccessActive()
                 || local.getPlan() == requestedPlan) return;
         // A checkout may already have created an unpaid subscription. Reconcile it before closing it.
@@ -957,6 +966,16 @@ public class PaymentSubscriptionService {
                     ? PaymentSubscriptionStatus.CANCELED : PaymentSubscriptionStatus.PAUSED);
             if (canceled(status) || remote.cancellationEffectiveAt() != null) local.setCancellationPending(false);
             deactivate(local, store, source);
+        } else if (terminalDodoContract(local.getProvider(), status)) {
+            // Initial creation failed or the term ended. No recurring contract remains to cancel.
+            local.setStatus(PaymentSubscriptionStatus.CANCELED);
+            local.setCancellationPending(false);
+            local.setCheckoutUrl(null);
+            deactivate(local, store, source);
+            if (attempts != null) attempts.findByExternalReference(local.getExternalReference()).ifPresent(attempt -> {
+                // Retain old reference/checkout identity so late events cannot activate a new purchase.
+                attempt.setStatus(PaymentAttemptStatus.CANCELED); attempts.save(attempt);
+            });
         } else if (local.getProvider().isDodo()
                 && ("paused".equals(status) || "cancelled".equals(status)
                     || remote.currentPeriodEnd() == null || !Instant.now().isBefore(remote.currentPeriodEnd())
@@ -1189,7 +1208,7 @@ public class PaymentSubscriptionService {
         if (invoice == null) invoice = gateway.getLatestInvoice(remote.id()).orElse(null);
         if (invoice != null && !Objects.equals(remote.id(), invoice.subscriptionId()))
             throw new IllegalArgumentException("Pagamento divergente da tentativa substituída.");
-        if (!canceled(remote.status())) {
+        if (!canceled(remote.status()) && !terminalDodoContract(gateway.provider(), remote.status())) {
             gateway.cancelImmediately(remote.id());
             if (!canceled(gateway.getSubscription(remote.id()).status()))
                 throw new PaymentGatewayException("Cancelamento da assinatura substituída ainda não confirmado.");
@@ -1201,10 +1220,15 @@ public class PaymentSubscriptionService {
             attempt.setStatus(PaymentAttemptStatus.REPLACED_PAID);
             attempt.setLastError("Pagamento recebido em checkout substituído. Assinatura encerrada; verificar reembolso no provedor.");
         } else if (attempt.getStatus() != PaymentAttemptStatus.REPLACED_PAID) {
-            attempt.setStatus(PaymentAttemptStatus.REPLACED);
+            attempt.setStatus(terminalDodoContract(gateway.provider(), remote.status())
+                    ? PaymentAttemptStatus.REPLACED_CLOSED : PaymentAttemptStatus.REPLACED);
         }
         attempts.saveAndFlush(attempt);
         return current;
+    }
+
+    private static boolean terminalDodoContract(PaymentProviderType provider, String status) {
+        return provider.isDodo() && ("failed".equals(status) || "expired".equals(status));
     }
 
     private PaymentSubscription locate(GatewaySubscription remote) {

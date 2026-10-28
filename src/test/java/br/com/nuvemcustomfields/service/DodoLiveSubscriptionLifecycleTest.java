@@ -78,6 +78,39 @@ class DodoLiveSubscriptionLifecycleTest {
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","refunded")));
         service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"failed", "expired"})
+    void terminalRemoteStateClosesLegacyPausedContractWithoutCancelRequest(String status) {
+        local.setStatus(PaymentSubscriptionStatus.PAUSED);
+        when(gateway.getSubscription("sub_1")).thenReturn(remote(status,"prod_1","9.99",null));
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","failed")));
+        service.preparePendingCheckout(42L, PlanType.PREMIUM);
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.getProviderStatus()).isEqualTo(status);
+        assertThat(local.getLastPaymentStatus()).isEqualTo("failed");
+        assertThat(local.isAccessActive()).isFalse();
+        verify(gateway,never()).cancel(anyString());
+        verify(gateway,never()).cancelImmediately(anyString());
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"paused", "past_due", "pending", "active"})
+    void recoverableRemoteContractIsNotRetiredToAllowANewCharge(String status) {
+        local.setStatus(PaymentSubscriptionStatus.PAUSED);
+        when(gateway.getSubscription("sub_1")).thenReturn(remote(status,"prod_1","9.99",null));
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","failed")));
+        service.preparePendingCheckout(42L, PlanType.PREMIUM);
+        assertThat(local.getStatus()).isNotEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.getProviderSubscriptionId()).isEqualTo("sub_1");
+        verify(gateway,never()).cancelImmediately(anyString());
+    }
+    @Test void preflightFailureOrWrongEnvironmentCannotRetireContract() {
+        local.setStatus(PaymentSubscriptionStatus.PAUSED);
+        when(gateway.getSubscription("sub_1")).thenThrow(new PaymentGatewayException("timeout"));
+        assertThatThrownBy(() -> service.preparePendingCheckout(42L, PlanType.PREMIUM)).isInstanceOf(PaymentGatewayException.class);
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PAUSED);
+        when(gateway.environment()).thenReturn(PaymentEnvironment.SANDBOX);
+        assertThatThrownBy(() -> service.preparePendingCheckout(42L, PlanType.PREMIUM)).hasMessageContaining("ambiente");
+    }
     void active() { local.setStatus(PaymentSubscriptionStatus.ACTIVE); local.setAccessActive(true); local.setNextPaymentAt(end); store.setPlan(PlanType.PREMIUM); }
     GatewaySubscription remote(String status,String product,String amount,Instant cancellation) {
         return new GatewaySubscription("sub_1",null,"ncf_ref",status,"USD",new BigDecimal(amount),end,"cust_1",product,Instant.now(),end,cancellation);

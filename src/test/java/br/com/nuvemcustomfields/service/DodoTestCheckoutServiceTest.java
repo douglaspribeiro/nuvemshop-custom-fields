@@ -127,4 +127,42 @@ class DodoTestCheckoutServiceTest {
         verify(gateway).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString());
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"failed", "expired"})
+    void legacyPausedFailedPurchaseIsReconciledBeforeCreatingANewCheckout(String remoteStatus) {
+        local = new PaymentSubscription(); local.setStoreId(42L); local.setProvider(PaymentProviderType.DODO_TEST);
+        local.setProviderEnvironment(PaymentEnvironment.SANDBOX); local.setStatus(PaymentSubscriptionStatus.PAUSED);
+        local.setProviderSubscriptionId("sub_old"); local.setProviderCheckoutId("cks_old");
+        local.setExternalReference("old-reference"); local.setProviderPriceId("pdt_test"); local.setPlan(PlanType.PREMIUM);
+        local.setCurrency("USD"); local.setAmountValue(new BigDecimal("9.99"));
+        attempt = new PaymentAttempt(); attempt.setStoreId(42L); attempt.setExternalReference("old-reference");
+        attempt.setProviderTransactionId("cks_old"); attempt.setStatus(PaymentAttemptStatus.OPEN);
+        var oldAttempt = attempt;
+        when(stores.findByStoreId(42L)).thenReturn(Optional.of(store));
+        when(router.require(PaymentProviderType.DODO_TEST)).thenReturn(gateway);
+        when(gateway.getSubscription("sub_old")).thenReturn(new GatewaySubscription("sub_old",null,"old-reference",
+                remoteStatus,"USD",new BigDecimal("9.99"),null,null,"pdt_test",null,null,null));
+        when(gateway.getLatestInvoice("sub_old")).thenReturn(Optional.of(new GatewayInvoice("pay_failed","sub_old","pay_failed",
+                "failed","USD",new BigDecimal("9.99"))));
+        var coordinator = new PaymentSubscriptionService(stores,subscriptions,mock(PlanEventRepository.class),router,
+                mock(NuvemshopApiClient.class),mock(NuvemshopProperties.class),
+                mock(br.com.nuvemcustomfields.properties.MercadoPagoProperties.class),mock(EfiGateway.class),
+                mock(PaymentNotificationService.class),attempts);
+        @SuppressWarnings("unchecked")
+        var provider = (org.springframework.beans.factory.ObjectProvider<PaymentSubscriptionService>)
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(provider.getObject()).thenReturn(coordinator); service.setSubscriptionService(provider);
+        when(gateway.createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString()))
+                .thenReturn(new GatewayCheckout(null,"cks_new","https://checkout.test/new","pending"));
+        assertThat(service.start(42L,PlanType.PREMIUM)).isEqualTo("https://checkout.test/new");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
+        assertThat(local.getProviderSubscriptionId()).isNull();
+        assertThat(local.getExternalReference()).isNotEqualTo("old-reference");
+        assertThat(oldAttempt.getStatus()).isEqualTo(PaymentAttemptStatus.CANCELED);
+        assertThat(oldAttempt.getProviderTransactionId()).isEqualTo("cks_old");
+        var order = inOrder(gateway); order.verify(gateway).getSubscription("sub_old");
+        order.verify(gateway).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString());
+        verify(gateway,never()).cancelImmediately(anyString());
+    }
+
 }

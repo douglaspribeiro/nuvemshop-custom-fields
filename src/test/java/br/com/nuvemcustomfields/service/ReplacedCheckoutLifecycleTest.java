@@ -130,6 +130,20 @@ class ReplacedCheckoutLifecycleTest {
         assertCurrentUnchanged();
     }
 
+    @Test void lateDodoFailureFromRetiredAttemptDoesNotCancelAgainOrChangeTheNewPurchase() {
+        DodoTestGateway dodo = mock(DodoTestGateway.class);
+        old.setProvider(PaymentProviderType.DODO_TEST); old.setStatus(PaymentAttemptStatus.CANCELED);
+        when(router.require(PaymentProviderType.DODO_TEST)).thenReturn(dodo);
+        when(dodo.provider()).thenReturn(PaymentProviderType.DODO_TEST);
+        when(dodo.environment()).thenReturn(PaymentEnvironment.SANDBOX);
+        when(dodo.getInvoice("pay_old")).thenReturn(new GatewayInvoice("pay_old","sub_old","pay_old","failed","USD",BigDecimal.TEN));
+        when(dodo.getSubscription("sub_old")).thenReturn(remote("failed"));
+        assertThat(service.synchronizeFromInvoice(PaymentProviderType.DODO_TEST, "pay_old")).isSameAs(current);
+        verify(dodo,never()).cancelImmediately(anyString());
+        assertThat(old.getStatus()).isEqualTo(PaymentAttemptStatus.REPLACED_CLOSED);
+        assertCurrentUnchanged();
+    }
+
     private void assertCurrentUnchanged() {
         assertThat(current.getStatus()).isEqualTo(PaymentSubscriptionStatus.PENDING);
         assertThat(current.getPlan()).isEqualTo(PlanType.PREMIUM_PLUS);
