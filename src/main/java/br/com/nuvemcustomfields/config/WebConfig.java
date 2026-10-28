@@ -11,16 +11,21 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    private final UserJourneyAuditInterceptor journeyAudit;
+
     private final AdminSessionInterceptor adminSessionInterceptor;
     private final BackofficeSessionInterceptor backofficeSessionInterceptor;
 
-    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor) {
+    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor, UserJourneyAuditInterceptor journeyAudit) {
+        this.journeyAudit = journeyAudit;
         this.adminSessionInterceptor = adminSessionInterceptor;
         this.backofficeSessionInterceptor = backofficeSessionInterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(journeyAudit)
+                .addPathPatterns("/admin/**", "/oauth/callback", "/support", "/support/", "/support/tickets/**");
         registry.addInterceptor(adminSessionInterceptor)
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/embedded", "/admin/nexo/session");
