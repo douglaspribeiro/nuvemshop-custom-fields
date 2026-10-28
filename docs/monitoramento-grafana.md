@@ -84,7 +84,7 @@ não são reconstruídas. Por isso, o final da curva pode diferir do cartão, qu
 em todo o intervalo. A curva é uma estimativa dos incrementos observados, não um registro
 exato de todas as chamadas nem um indicador de disponibilidade da coleta.
 
-Todos os gráficos de séries temporais usam **Max data points = 100**, para que o
+Os gráficos de séries temporais usam normalmente **Max data points = 100**, para que o
 Grafana amplie automaticamente o intervalo conforme o período selecionado, sem
 depender da largura do painel. Em 24h, o intervalo calculado é de aproximadamente
 15 minutos; períodos menores recuperam mais detalhe e períodos maiores usam blocos
@@ -206,3 +206,20 @@ inicie outra verificação: a operação é idempotente. Este controle pressupõ
 única instância do app; múltiplas réplicas exigem coordenação persistente antes
 de habilitar a ação. Não remove scripts, não publica versões no Partner Portal
 e não garante execução no navegador; verifica associações na API.
+
+## Organização e comparação de downloads
+
+O painel de variação diária usa barras. Os quatro indicadores de falhas de consulta
+ou associação ficam no rodapé; o painel “Volume por tipo no período” foi removido.
+Saúde e cobertura da coleta ocupam cartões compactos ao lado dos totais.
+
+“Chamadas por minuto por tipo” usa `rate(...[4m]) * 60`, com janela fixa de quatro
+minutos e até 1.500 pontos. A unidade é chamadas/minuto; cada ponto representa uma
+média nessa janela, mesmo quando o espaçamento entre pontos é maior.
+
+O cartão de downloads mostra a oscilação percentual do dia em São Paulo até o fim
+do período consultado contra a média do mesmo trecho horário dos sete dias
+anteriores. No período padrão encerrado em agora, corresponde ao dia atual.
+A consulta integra taxas de quatro minutos em passos de um minuto. Trata-se de
+uma estimativa; lacunas parciais podem distorcer a comparação. Sem base positiva
+ou dados em algum dos sete dias, o cartão não apresenta um percentual.

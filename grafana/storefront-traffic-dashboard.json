@@ -25,10 +25,10 @@
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 12,
+        "h": 8
       },
       "maxDataPoints": 10000,
       "interval": "1h",
@@ -66,14 +66,15 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) and on() ((hour() == 3) and (minute() == 0))",
+          "expr": "(sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) and on() ((hour() == 3) and (minute() == 0)))[$__range:1h]",
           "interval": "1h",
-          "instant": false,
-          "range": true,
-          "legendFormat": "Chamadas"
+          "instant": true,
+          "range": false,
+          "legendFormat": "Chamadas",
+          "format": "time_series"
         }
       ],
-      "description": "Total estimado por dia civil de São Paulo (UTC−03), incluindo vitrine e checkout como nos demais totais do dashboard. Cada ponto à meia-noite representa o dia ANTERIOR: 22/10 00h contém as chamadas de 21/10. Hoje parcial não entra. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece. Coleta ausente não é convertida em zero; increase pode subcontar lacunas e usa extrapolação."
+      "description": "Total estimado por dia civil de São Paulo (UTC−03), incluindo vitrine e checkout como nos demais totais do dashboard. Cada ponto à meia-noite representa o dia ANTERIOR: 22/10 00h contém as chamadas de 21/10. Hoje parcial não entra. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece. Coleta ausente não é convertida em zero; increase pode subcontar lacunas e usa extrapolação. A consulta instantânea retorna uma subconsulta com passo fixo de 1h, alinhado em UTC, preservando os pontos de 03:00 UTC independentemente do passo automático do Grafana."
     },
     {
       "id": 15,
@@ -81,10 +82,10 @@
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 0
+        "y": 0,
+        "w": 12,
+        "h": 8
       },
       "maxDataPoints": 10000,
       "interval": "1h",
@@ -97,11 +98,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 85,
             "spanNulls": false,
-            "showPoints": "always",
+            "showPoints": "never",
             "barAlignment": -1
           }
         },
@@ -121,29 +122,30 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) - sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d))) / (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d)) > 0)) and on() ((hour() == 3) and (minute() == 0))",
+          "expr": "((100 * (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) - sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d))) / (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d)) > 0)) and on() ((hour() == 3) and (minute() == 0)))[$__range:1h]",
           "interval": "1h",
-          "instant": false,
-          "range": true,
-          "legendFormat": "Variação diária"
+          "instant": true,
+          "range": false,
+          "legendFormat": "Variação diária",
+          "format": "time_series"
         }
       ],
-      "description": "Compara cada dia fechado de São Paulo com o dia anterior. Cada ponto à meia-noite refere-se ao dia ANTERIOR. Sem percentual quando o dia anterior tem zero chamadas ou não há dados suficientes. Ausência de coleta não equivale a zero. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece."
+      "description": "Compara cada dia fechado de São Paulo com o dia anterior. Cada ponto à meia-noite refere-se ao dia ANTERIOR. Sem percentual quando o dia anterior tem zero chamadas ou não há dados suficientes. Ausência de coleta não equivale a zero. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece. A consulta instantânea retorna uma subconsulta com passo fixo de 1h, alinhado em UTC, preservando os pontos de 03:00 UTC independentemente do passo automático do Grafana."
     },
     {
       "id": 16,
-      "title": "Hoje × ontem · chamadas por minuto até o mesmo horário",
+      "title": "Últimas 24 horas × média dos últimos 7 dias · chamadas por minuto",
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
-        "h": 8,
-        "w": 24,
         "x": 0,
-        "y": 8
+        "y": 8,
+        "w": 24,
+        "h": 8
       },
       "maxDataPoints": 100,
       "interval": "1m",
-      "timeFrom": "now/d",
+      "timeFrom": "24h",
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -179,20 +181,20 @@
           "refId": "A",
           "expr": "sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval])) * 60",
           "interval": "1m",
-          "legendFormat": "Hoje",
+          "legendFormat": "Últimas 24 horas",
           "instant": false,
           "range": true
         },
         {
           "refId": "B",
-          "expr": "sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 1d)) * 60",
+          "expr": "avg(label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 1d)) * 60), \"historical_day\", \"1\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 2d)) * 60), \"historical_day\", \"2\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 3d)) * 60), \"historical_day\", \"3\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 4d)) * 60), \"historical_day\", \"4\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 5d)) * 60), \"historical_day\", \"5\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 6d)) * 60), \"historical_day\", \"6\", \"\", \"\") or label_replace((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[$__rate_interval] offset 7d)) * 60), \"historical_day\", \"7\", \"\", \"\"))",
           "interval": "1m",
-          "legendFormat": "Ontem · mesmo horário",
+          "legendFormat": "Média dos 7 dias anteriores · mesmo horário",
           "instant": false,
           "range": true
         }
       ],
-      "description": "Taxa de chamadas, incluindo vitrine e checkout, desde meia-noite de São Paulo até agora, sobreposta ao mesmo horário de ontem (offset de 24h). Hoje é parcial. A janela de rate pode incluir minutos antes da meia-noite. Ao selecionar datas absolutas no dashboard, a comparação passa a ser período selecionado × mesmas horas do dia anterior; os rótulos Hoje/Ontem se aplicam à janela padrão."
+      "description": "Chamadas por minuto nas últimas 24 horas, incluindo vitrine e checkout, comparadas à média dos mesmos horários nos sete dias anteriores (offsets de 1 a 7 dias). A média é calculada entre os dias com dados em cada ponto, sem converter coleta ausente em zero. A janela de rate suaviza a taxa conforme a resolução do painel. Seleção absoluta do dashboard prevalece sobre a janela padrão de 24h."
     },
     {
       "datasource": "${DS_PROMETHEUS}",
@@ -201,62 +203,27 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "A"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "left"
-              },
-              {
-                "id": "custom.axisLabel",
-                "value": "Chamadas/minuto"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "ms"
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "custom.axisLabel",
-                "value": "Tempo médio (ms)"
-              },
-              {
-                "id": "min",
-                "value": 0
-              }
-            ]
+          "unit": "ms",
+          "decimals": 2,
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisLabel": "Tempo médio (ms)"
           }
-        ]
+        },
+        "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 16
+        "y": 16,
+        "w": 24,
+        "h": 8
       },
-      "id": 1,
+      "id": 17,
       "maxDataPoints": 100,
       "interval": "1m",
       "options": {
@@ -275,21 +242,80 @@
       },
       "targets": [
         {
-          "expr": "sum by (kind) (rate(ncf_storefront_http_requests_total[$__rate_interval])) * 60",
+          "expr": "1000 * sum by (kind) (rate(ncf_storefront_http_duration_seconds_sum{job=\"app-custom-fields\"}[$__rate_interval])) / (sum by (kind) (rate(ncf_storefront_http_duration_seconds_count{job=\"app-custom-fields\"}[$__rate_interval])) > 0)",
+          "interval": "1m",
+          "legendFormat": "{{kind}}",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "title": "Tempo médio de resposta por tipo · ms",
+      "type": "timeseries",
+      "description": "Tempo médio de processamento no servidor, em milissegundos, por tipo de chamada da vitrine e do checkout. Média ponderada pelo número de requisições entre as instâncias, incluindo cache e erros. Sem chamadas ou sem coleta, não apresenta zero artificial. Não inclui rede nem renderização do navegador."
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "suffix: chamadas/min"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Chamadas/minuto"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "id": 1,
+      "maxDataPoints": 1500,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind) (rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[4m])) * 60",
           "interval": "1m",
           "legendFormat": "{{kind}} · chamadas/min",
           "refId": "A"
-        },
-        {
-          "expr": "1000 * sum by (kind) (rate(ncf_storefront_http_duration_seconds_sum{job=\"app-custom-fields\"}[$__rate_interval])) / (sum by (kind) (rate(ncf_storefront_http_duration_seconds_count{job=\"app-custom-fields\"}[$__rate_interval])) > 0)",
-          "interval": "1m",
-          "legendFormat": "{{kind}} · tempo médio",
-          "refId": "B"
         }
       ],
-      "title": "Chamadas por minuto e tempo médio por tipo",
+      "title": "Chamadas por minuto por tipo",
       "type": "timeseries",
-      "description": "Volume de chamadas no eixo esquerdo e tempo médio de processamento no servidor, em milissegundos, no direito. Média ponderada na janela de rate, incluindo respostas do cache e erros. Não mede rede ou renderização do navegador. A duração só terá dados após publicar a versão que instrumenta o timer."
+      "description": "Taxa por minuto, calculada sobre uma janela fixa de 4 minutos (coleta a cada 60s). Cada ponto é uma média por minuto nessa janela, não o total entre pontos. O espaçamento dos pontos varia com o período selecionado."
     },
     {
       "datasource": "${DS_PROMETHEUS}",
@@ -313,10 +339,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 12,
-        "y": 16
+        "y": 24,
+        "w": 4,
+        "h": 4
       },
       "id": 2,
       "description": "Total estimado pelo Prometheus no intervalo selecionado. Consulta instantânea no fim do período; falhas de coleta podem subcontar chamadas.",
@@ -352,7 +378,7 @@
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 0,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -362,20 +388,21 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percent",
+          "noValue": "Sem base de comparação"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 16,
-        "y": 16
+        "y": 24,
+        "w": 4,
+        "h": 4
       },
       "id": 3,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -389,12 +416,15 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(ncf_storefront_http_requests_total{kind=~\".*_script\"}[$__range]))",
-          "refId": "A"
+          "refId": "A",
+          "expr": "100 * (sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m])) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) - ((sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 1d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 2d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 3d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 4d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 5d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 6d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 7d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m])) / 7)) / (((sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 1d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 2d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 3d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 4d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 5d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 6d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m]) + sum_over_time((sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\",kind=~\".*_script\"}[4m] offset 7d)) and on() (vector(time()) >= (floor((${__to} / 1000 - 10800) / 86400) * 86400 + 10800)))[24h:1m])) / 7) > 0)",
+          "instant": true,
+          "range": false
         }
       ],
-      "title": "Downloads de scripts",
-      "type": "stat"
+      "title": "Downloads · hoje × média de 7 dias (%)",
+      "type": "stat",
+      "description": "Oscilação percentual dos downloads de scripts desde 00h de São Paulo até o fim do período consultado, comparada à média do mesmo trecho horário nos sete dias anteriores. Estimativa pela soma de taxas de 4m em passos de 1m; não é contagem exata. Exige dados nos sete dias e base maior que zero. Lacunas parciais de coleta podem afetar o resultado. Na seleção padrão encerrada em agora, representa o dia atual."
     },
     {
       "datasource": "${DS_PROMETHEUS}",
@@ -426,10 +456,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 20,
-        "y": 16
+        "y": 24,
+        "w": 4,
+        "h": 4
       },
       "id": 4,
       "options": {
@@ -456,52 +486,82 @@
       "type": "stat"
     },
     {
+      "id": 10,
+      "type": "stat",
+      "title": "Saúde da coleta · principal",
       "datasource": "${DS_PROMETHEUS}",
+      "description": "1 = última coleta bem-sucedida; 0 = coleta falhou. Ausência de dados não comprova tráfego zero. Não mede diretamente disponibilidade pública.",
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 6,
+        "h": 4
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short"
+          "unit": "none",
+          "decimals": 0
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "id": 5,
       "options": {
-        "displayMode": "gradient",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "orientation": "horizontal",
+        "graphMode": "none",
+        "colorMode": "value",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "text": {},
-        "valueMode": "color"
+        }
       },
       "targets": [
         {
-          "expr": "sum by (kind) (increase(ncf_storefront_http_requests_total[$__range]))",
-          "legendFormat": "{{kind}}",
+          "expr": "max(up{job=\"app-custom-fields\"})",
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
-      ],
-      "title": "Volume por tipo no período",
-      "type": "bargauge"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Cobertura de amostras · principal",
+      "datasource": "${DS_PROMETHEUS}",
+      "description": "Estimativa de amostras presentes versus esperadas com scrape de 60s. Inclui amostras up=0; saúde e cobertura devem ser avaliadas juntas. As bordas do intervalo podem afetar o percentual.",
+      "gridPos": {
+        "x": 18,
+        "y": 28,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "none",
+        "colorMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "clamp_max(100 * sum(count_over_time(up{job=\"app-custom-fields\"}[$__range])) / ($__range_s / 60), 100)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ]
     },
     {
       "datasource": "${DS_PROMETHEUS}",
@@ -515,10 +575,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 24
+        "y": 32,
+        "w": 12,
+        "h": 8
       },
       "id": 6,
       "options": {
@@ -570,75 +630,6 @@
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "description": "Acumula incrementos estimados em blocos sem sobreposição desde o início do intervalo selecionado. Não é uma janela móvel de 24h. Blocos completos têm no mínimo 4 minutos para a coleta de 60s; frações nas bordas e dados ausentes não são reconstruídos. O valor final pode diferir do cartão de total do período.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "stepAfter",
-            "fillOpacity": 15,
-            "spanNulls": false
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 46
-      },
-      "id": 9,
-      "maxDataPoints": 100,
-      "interval": "4m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum(clamp_min(increase(ncf_storefront_http_requests_total[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
-          "interval": "4m",
-          "instant": false,
-          "range": true,
-          "legendFormat": "Chamadas",
-          "refId": "A"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "calculateField",
-          "options": {
-            "mode": "cumulativeFunctions",
-            "cumulative": {
-              "reducer": "sum"
-            },
-            "alias": "Acumulado",
-            "replaceFields": true
-          }
-        }
-      ],
-      "title": "Chamadas acumuladas no período · estimativa",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
       "description": "Top 10 lojas por chamadas recebidas no período. Os nomes vêm do cadastro, associados por store_id. Requisições sem loja validada e downloads servidos pela CDN não entram. Requer a métrica ncf_store_info da nova versão do app.",
       "fieldConfig": {
         "defaults": {
@@ -651,10 +642,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 28
+        "y": 32,
+        "w": 12,
+        "h": 8
       },
       "id": 7,
       "options": {
@@ -702,10 +693,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
         "x": 0,
-        "y": 36
+        "y": 40,
+        "w": 24,
+        "h": 10
       },
       "id": 8,
       "options": {
@@ -754,82 +745,73 @@
       "type": "table"
     },
     {
-      "id": 10,
-      "type": "stat",
-      "title": "Saúde da coleta · principal",
       "datasource": "${DS_PROMETHEUS}",
-      "description": "1 = última coleta bem-sucedida; 0 = coleta falhou. Ausência de dados não comprova tráfego zero. Não mede diretamente disponibilidade pública.",
+      "description": "Acumula incrementos estimados em blocos sem sobreposição desde o início do intervalo selecionado. Não é uma janela móvel de 24h. Blocos completos têm no mínimo 4 minutos para a coleta de 60s; frações nas bordas e dados ausentes não são reconstruídos. O valor final pode diferir do cartão de total do período.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "fillOpacity": 15,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "x": 0,
-        "y": 54,
-        "w": 12,
-        "h": 4
+        "y": 50,
+        "w": 24,
+        "h": 8
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "decimals": 0
-        },
-        "overrides": []
-      },
+      "id": 9,
+      "maxDataPoints": 100,
+      "interval": "4m",
       "options": {
-        "graphMode": "none",
-        "colorMode": "value",
-        "reduceOptions": {
+        "legend": {
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
-          "values": false
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
         }
       },
       "targets": [
         {
-          "expr": "max(up{job=\"app-custom-fields\"})",
-          "instant": true,
-          "range": false,
+          "expr": "sum(clamp_min(increase(ncf_storefront_http_requests_total[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
+          "interval": "4m",
+          "instant": false,
+          "range": true,
+          "legendFormat": "Chamadas",
           "refId": "A"
         }
-      ]
-    },
-    {
-      "id": 11,
-      "type": "stat",
-      "title": "Cobertura de amostras · principal",
-      "datasource": "${DS_PROMETHEUS}",
-      "description": "Estimativa de amostras presentes versus esperadas com scrape de 60s. Inclui amostras up=0; saúde e cobertura devem ser avaliadas juntas. As bordas do intervalo podem afetar o percentual.",
-      "gridPos": {
-        "x": 12,
-        "y": 54,
-        "w": 12,
-        "h": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "graphMode": "none",
-        "colorMode": "value",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
+      ],
+      "transformations": [
         {
-          "expr": "clamp_max(100 * sum(count_over_time(up{job=\"app-custom-fields\"}[$__range])) / ($__range_s / 60), 100)",
-          "instant": true,
-          "range": false,
-          "refId": "A"
+          "id": "calculateField",
+          "options": {
+            "mode": "cumulativeFunctions",
+            "cumulative": {
+              "reducer": "sum"
+            },
+            "alias": "Acumulado",
+            "replaceFields": true
+          }
         }
-      ]
+      ],
+      "title": "Chamadas acumuladas no período · estimativa",
+      "type": "timeseries"
     },
     {
       "datasource": "${DS_PROMETHEUS}",
@@ -842,10 +824,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 58
+        "y": 58,
+        "w": 12,
+        "h": 8
       },
       "id": 12,
       "maxDataPoints": 100,
@@ -881,10 +863,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 58
+        "y": 58,
+        "w": 12,
+        "h": 8
       },
       "id": 13,
       "maxDataPoints": 100,
@@ -906,6 +888,238 @@
       "title": "Cache Caffeine · entradas estimadas",
       "description": "Média das entradas estimadas na janela automática; expiradas podem aguardar manutenção. Limites por instância: storefront 10.000; plans 128.",
       "type": "timeseries"
+    },
+    {
+      "id": 18,
+      "title": "Consulta e associação · falhas estimadas em 24h",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 8,
+        "h": 5
+      },
+      "description": "Inclui falhas de consulta e associação de scripts. HTTP 401 indica autenticação recusada; HTTP 404 indica recurso não encontrado. Não comprova falha de execução dos campos na vitrine. Consulte os logs para identificar loja e mensagem. increase exige amostras e pode não contar uma falha anterior à primeira coleta. Sem dados não significa zero.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ncf_scripts_install_failures_total{job=\"app-custom-fields\"}[24h]))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 19,
+      "title": "Consulta e associação · última falha neste processo",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 8,
+        "y": 66,
+        "w": 8,
+        "h": 5
+      },
+      "description": "Inclui falhas de consulta e associação de scripts. HTTP 401 indica autenticação recusada; HTTP 404 indica recurso não encontrado. Não comprova falha de execução dos campos na vitrine. Consulte os logs para identificar loja e mensagem. increase exige amostras e pode não contar uma falha anterior à primeira coleta. Sem dados não significa zero. Horário reinicia com a aplicação; sem valor também pode significar nenhuma falha desde a inicialização.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(max(ncf_scripts_install_last_failure_timestamp_seconds{job=\"app-custom-fields\"}) > 0) * 1000",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "title": "Consulta ou associação · falha recente neste processo",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 16,
+        "y": 66,
+        "w": 8,
+        "h": 5
+      },
+      "description": "Inclui falhas de consulta e associação de scripts. HTTP 401 indica autenticação recusada; HTTP 404 indica recurso não encontrado. Não comprova falha de execução dos campos na vitrine. Consulte os logs para identificar loja e mensagem. increase exige amostras e pode não contar uma falha anterior à primeira coleta. Sem dados não significa zero. Sinaliza falha nas últimas 24h somente desde o restart. Não preserva falhas do processo anterior.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - max(ncf_scripts_install_last_failure_timestamp_seconds{job=\"app-custom-fields\"}) < bool 86400) * (max(ncf_scripts_install_last_failure_timestamp_seconds{job=\"app-custom-fields\"}) > bool 0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Sem falha recente",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "Falha de consulta ou associação",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 21,
+      "title": "Falhas por HTTP e operação · estimativa em 24h",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 71,
+        "w": 24,
+        "h": 5
+      },
+      "description": "Inclui falhas de consulta e associação de scripts. HTTP 401 indica autenticação recusada; HTTP 404 indica recurso não encontrado. Não comprova falha de execução dos campos na vitrine. Consulte os logs para identificar loja e mensagem. increase exige amostras e pode não contar uma falha anterior à primeira coleta. Sem dados não significa zero. Operações: diagnose = verificação; list = consulta antes de instalar; associate = associação. other = falha sem status HTTP.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status, operation) (increase(ncf_scripts_install_failures_total{job=\"app-custom-fields\"}[24h]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "HTTP {{status}} · {{operation}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
     }
   ],
   "refresh": "30s",
