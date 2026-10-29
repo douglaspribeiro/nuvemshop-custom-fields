@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vitrine de teste local</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css}">
+    <style>.demo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px}.demo-cart-line{border-bottom:1px solid #c8d3d8;padding:12px 0;overflow-wrap:anywhere}select,input{max-width:100%}#demo-properties{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+    <script th:src="@{/assets/local-storefront-demo.js}" defer></script>
+    <script th:src="@{/assets/nuvemshop-personalizer.js(store=${storeId})}" defer></script>
+</head>
+<body><main class="shell">
+    <section class="panel">
+        <h1>Vitrine de teste local</h1>
+        <p>Simulação sem compra ou cobrança. Os campos abaixo usam o script real do app. Carrinho, preços e total são demonstrativos; não validam checkout ou pedido da Nuvemshop.</p>
+        <p><a th:href="@{/admin/products}">Painel de produtos</a> · <a th:href="@{/admin/products/{id}/fields(id=${product.id})}">Configurar campos e variantes deste produto</a></p>
+        <form method="get" th:action="@{/local/vitrine}">
+            <label>Produto de teste <select name="productId"><option th:each="item : ${products}" th:value="${item.id}" th:selected="${item.id == product.id}" th:text="${item.name}"></option></select></label>
+            <button class="button" type="submit">Abrir produto</button>
+        </form>
+        <p>Primeiro, crie um campo obrigatório no editor. Ative a condição e marque as duas variantes “Com personalização”. Volte aqui e recarregue a página após salvar.</p>
+    </section>
+    <div class="demo-grid">
+        <section class="panel">
+            <h2 th:text="${product.name}"></h2>
+            <form id="product_form" th:attr="data-product-id=${product.id}">
+                <label>Variante <select name="variant_id" id="demo-variant">
+                    <option th:each="variant : ${variants}" th:value="${variant.id}" th:attr="data-price=${variant.price}" th:text="${variant.name}"></option>
+                </select></label>
+                <p>Preço unitário: <strong id="demo-price"></strong></p>
+                <label>Quantidade <input type="number" name="quantity" min="1" step="1" value="1" required></label>
+                <div><button type="submit" class="button primary">Adicionar ao carrinho de teste</button></div>
+            </form>
+            <p id="demo-config-status" role="status" aria-live="polite"></p>
+        </section>
+        <section class="panel" aria-label="Carrinho de teste">
+            <h2>Carrinho de teste</h2><p>Itens com personalizações diferentes ficam em linhas separadas nesta simulação. Isso não reproduz a mesclagem de itens do bridge SDK.</p>
+            <div id="demo-cart"></div><p>Total simulado: <strong id="demo-total">R$ 0,00</strong></p>
+            <button type="button" class="button" id="demo-clear">Limpar carrinho</button>
+            <h3>Últimos dados enviados pelo formulário</h3><pre id="demo-properties">Nenhum item adicionado.</pre>
+        </section>
+    </div>
+</main></body></html>

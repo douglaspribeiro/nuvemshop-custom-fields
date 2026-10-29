@@ -28,6 +28,21 @@ public class LocalNuvemshopApiClient extends NuvemshopApiClient {
                 .stream().filter(item->query==null || query.isBlank() || item.name().toLowerCase(java.util.Locale.ROOT).contains(query.toLowerCase(java.util.Locale.ROOT))).toList();
         return new ProductPage(products.stream().skip((long)(p-1)*size).limit(size).toList(),p,size,products.size(),(long)p*size<products.size(),query);
     }
+    @Override public ProductSummary getProduct(Store store,long productId){
+        check(store);
+        return listProducts(store,1,50,null).items().stream().filter(p->p.id()==productId).findFirst()
+                .orElseThrow(()->new IllegalArgumentException("Produto fictício não encontrado."));
+    }
+    @Override public List<ProductVariant> listProductVariants(Store store,long productId){
+        getProduct(store,productId);
+        var sizes=productId==900001L?List.of("300 ml","400 ml"):productId==900002L?List.of("P","M"):List.of("Pequeno","Grande");
+        var variants=new java.util.ArrayList<ProductVariant>();
+        for(int size=0;size<sizes.size();size++)for(int personalized=0;personalized<2;personalized++){
+            long id=productId*10+size*2+personalized+1;
+            variants.add(new ProductVariant(id,sizes.get(size)+" / "+(personalized==1?"Com personalização":"Sem personalização"),personalized==1?"60.00":"50.00"));
+        }
+        return List.copyOf(variants);
+    }
     private JsonNode empty(Store s){check(s);return JsonNodeFactory.instance.arrayNode();}
     @Override public JsonNode listWebhooks(Store s){return empty(s);}
     @Override public JsonNode listScripts(Store s){return empty(s);}

@@ -69,6 +69,7 @@ class FeatureRequestServiceTest {
         mvc.perform(post("/admin/suggestions").session(session).param("title","x").param("description","y").param("submissionToken",UUID.randomUUID().toString())).andExpect(status().isForbidden());
         mvc.perform(get("/backoffice/suggestions")).andExpect(redirectedUrl("/backoffice/login"));
         mvc.perform(get("/local/homologacao")).andExpect(status().isNotFound());
+        mvc.perform(get("/local/vitrine")).andExpect(status().isNotFound());
         mvc.perform(post("/local/homologacao").param("accessKey","local-key-12345678901234567890")).andExpect(status().isNotFound());
     }
     @Test void eachStoreSeesOnlyItsOwnSuggestions(){

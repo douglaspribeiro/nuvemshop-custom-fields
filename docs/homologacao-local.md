@@ -144,6 +144,24 @@ Pode testar painel, personalizações, planos e sugestões. Isso **não valida**
 real, iframe/Nexo, vitrine ou checkout reais da Nuvemshop. Esses continuam exigindo
 testes específicos de integração com uma loja real de desenvolvimento.
 
+### Testar NC-20 e NC-21 pelo navegador
+
+Com a aplicação local iniciada e a sessão aberta pela chave em `/local/homologacao`:
+
+1. Abra `/admin/products`, escolha **Caneca de teste** e crie um campo de texto obrigatório, como “Nome”. O plano Free permite esse primeiro produto/campo; não é necessário habilitar pagamentos.
+2. Na seção **Personalização por variante**, marque a condição e selecione **300 ml / Com personalização** e **400 ml / Com personalização**. Salve.
+3. Abra **http://localhost:8080/local/vitrine**. O link também está na página de entrada da homologação. A vitrine tem um link de volta ao editor do produto.
+4. Em **Sem personalização**, confira R$ 50 e os campos ocultos. Em **Com personalização**, confira R$ 60 e o campo obrigatório. Tente adicionar sem preencher: o carrinho deve continuar vazio.
+5. Preencha o nome, escolha quantidade 2 e adicione. O total simulado deve ser R$ 120. Os últimos dados enviados mostram o ID da variante e as propriedades reais do formulário.
+6. Digite outro nome e alterne para a variante sem personalização: o texto é apagado e a adição não envia propriedades. Ao voltar, o campo começa vazio e obrigatório.
+7. Troque a capacidade/tamanho e confira o ID da combinação. A URL guarda `variant` para testar a seleção inicial após recarregar. Para outro produto, use o seletor de produto da vitrine e configure seus campos no editor, respeitando os limites do plano.
+
+As variantes fictícias têm IDs estáveis e preços de R$ 50/R$ 60, sem chamadas à API real. O produto 900001 usa IDs 9000011 a 9000014; as variantes personalizadas são 9000012 e 9000014. Camiseta (900002) e Presente (900003) seguem o mesmo padrão, com seus próprios IDs.
+
+A página usa o **script legado real de personalização** e a API pública local. O carrinho é uma simulação em memória da página: recarregar ou trocar de produto apaga seus itens. Ele mostra linhas separadas para cada adição; não reproduz a limitação de mesclagem do bridge SDK, nem demonstra checkout, estoque, desconto ou pedido da Nuvemshop. SDK e Patagonia continuam cobertos por seus testes automatizados e exigem loja autorizada para homologação real.
+
+Depois de salvar campos/condições no editor, **recarregue a vitrine** para buscar a nova configuração. A rota existe apenas no perfil protegido `local-homolog` e exige a sessão da loja fictícia.
+
 ## 4. Habilitar Efí sandbox
 
 No painel Efí, abra **API → Aplicações → sua aplicação → Homologação** e use
