@@ -35,6 +35,9 @@ public class StoreDataErasureService {
         // Pode chegar antes de app/uninstalled. Conta uma saída por exclusão,
         // separada de desinstalações confirmadas, antes de apagar o cadastro.
         departures.record(storeId, true);
+        jdbcTemplate.update("delete from personalization_image_references where store_id=?",storeId);
+        jdbcTemplate.update("delete from template_applications where store_id=?",storeId);
+        jdbcTemplate.update("delete from store_templates where store_id=?",storeId);
         // A deletion worker retains only the opaque object id and deletion intent.
         // Never keep customer session/order metadata after a permanent erasure.
         jdbcTemplate.update("update buyer_uploads set state='DELETING',delete_reason='ERASED',session_hash='',request_id=id,"

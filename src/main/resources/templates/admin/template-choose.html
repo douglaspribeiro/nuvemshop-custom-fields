@@ -1,0 +1,9 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="#{template.choose}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('templates')}"></th:block><main class="shell">
+<section class="page-header"><div><h1 th:text="#{template.choose}"></h1><p th:text="${template.name}"></p></div><a class="button" href="/admin/templates" th:text="#{template.library}"></a></section>
+<section class="panel"><form class="form inline-form" method="get" action="/admin/templates/choose"><input type="hidden" name="key" th:value="${template.key}"><input name="q" type="search" th:value="${productPage.query}" th:placeholder="#{product.search.placeholder}"><button class="button" th:text="#{common.search}"></button></form>
+<p th:if="${#lists.isEmpty(productPage.items)}" th:text="#{template.products.empty}"></p>
+<ul class="template-fields"><li th:each="product : ${productPage.items}" style="margin:12px 0"><a class="button" th:href="@{/admin/templates/review(key=${template.key},productId=${product.id})}" th:text="${product.name}"></a></li></ul>
+<nav class="pager"><a class="button" th:if="${productPage.hasPrevious()}" th:href="@{/admin/templates/choose(key=${template.key},page=${productPage.previousPage()},q=${productPage.query})}" th:text="#{common.previous}"></a><a class="button" th:if="${productPage.hasNext()}" th:href="@{/admin/templates/choose(key=${template.key},page=${productPage.nextPage()},q=${productPage.query})}" th:text="#{common.next}"></a></nav></section>
+</main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

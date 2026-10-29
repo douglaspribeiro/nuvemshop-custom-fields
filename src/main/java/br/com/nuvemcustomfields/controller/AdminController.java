@@ -558,26 +558,11 @@ public class AdminController {
                 productId,
                 templateId
         );
-        if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
-            LOGGER.warn("admin.onboarding.apply.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
-            redirectAttributes.addFlashAttribute("error", messages.get("flash.product.limit"));
-            return "redirect:/admin/onboarding";
+        try { nicheTemplateService.requireTemplate(templateId); }
+        catch(IllegalArgumentException error) {
+            redirectAttributes.addFlashAttribute("error",messages.get("template.not.found"));return "redirect:/admin/onboarding";
         }
-        int created = personalizationAdminService.applyTemplate(
-                store,
-                productId,
-                productName,
-                nicheTemplateService.requireTemplate(templateId),
-                planLimitService
-        );
-        LOGGER.info(
-                "admin.onboarding.apply.done store_id={} product_id={} created_fields={}",
-                store.getStoreId(),
-                productId,
-                created
-        );
-        redirectAttributes.addFlashAttribute("message", messages.get("flash.template.applied", created));
-        return "redirect:/admin/products/" + productId + "/fields";
+        return "redirect:/admin/templates/review?key=catalog:" + templateId + "&productId=" + productId;
     }
 
     @GetMapping("/admin/products/{productId}/fields")

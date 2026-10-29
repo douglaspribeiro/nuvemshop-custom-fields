@@ -1,6 +1,8 @@
 # Plano: modelos personalizados da loja
 
-Data: 21/10/2026. Status: planejado, implementação pendente.
+Data: 21/10/2026. Status: documento histórico, substituído pelo escopo NC-18 de 28/10/2026.
+
+**Não usar as propostas abaixo como regras atuais.** A NC-18 implementa cópias independentes e aplicação a um produto por operação, com escolha explícita entre adicionar/substituir. Aplicação em lote pertence à NC-19. O modelo infantil foi retirado do catálogo sem apagar configurações existentes. Acompanhar [implementação e validação da NC-18](plans/2026-10-28-nc-18-templates-reutilizaveis.md).
 
 ## Necessidade
 

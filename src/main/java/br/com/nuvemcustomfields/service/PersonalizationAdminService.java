@@ -142,13 +142,20 @@ public class PersonalizationAdminService {
     @Transactional
     public int applyTemplate(Store store, Long productId, String productName, NicheTemplate template, PlanLimitService planLimitService) {
         images.lockStore(store.getStoreId());
+        store=stores.findActiveByStoreId(store.getStoreId()).orElseThrow(()->new StoreTemplateService.Invalid("template.not.found"));
+        if(!hasRule(store.getStoreId(),productId) && !planLimitService.canAddProduct(store))
+            throw new StoreTemplateService.Invalid("template.products.limit");
         PersonalizationRule rule = ensureRule(store.getStoreId(), productId, productName);
+        long limit=planLimitService.fieldLimit(store.getEffectivePlan());
+        if(limit!=-1 && fieldRepository.countByRuleId(rule.getId())+template.fields().size()>limit)
+            throw new StoreTemplateService.Invalid("template.fields.limit");
+        var names=new java.util.HashSet<String>();
+        for(var field:fieldRepository.findByRuleIdOrderBySortOrderAscIdAsc(rule.getId()))names.add(OrderPersonalization.propertyName(field.getLabel()).toLowerCase(java.util.Locale.ROOT));
+        for(var definition:template.fields())if(!names.add(OrderPersonalization.propertyName(definition.label()).toLowerCase(java.util.Locale.ROOT)))
+            throw new StoreTemplateService.Invalid("template.labels.duplicate");
         int created = 0;
-        int sortOrder = 0;
+        int sortOrder = fieldRepository.findByRuleIdOrderBySortOrderAscIdAsc(rule.getId()).stream().mapToInt(PersonalizationField::getSortOrder).max().orElse(-1)+1;
         for (var fieldTemplate : template.fields()) {
-            if (!planLimitService.canAddField(store, rule.getId())) {
-                break;
-            }
             PersonalizationField field = new PersonalizationField();
             var form = fieldTemplate.toForm(sortOrder++);
             validateImagePlan(store.getStoreId(), productId, form);
@@ -173,7 +180,7 @@ public class PersonalizationAdminService {
         }
     }
 
-    private void applyForm(PersonalizationField field, FieldForm form) {
+    void applyForm(PersonalizationField field, FieldForm form) {
         if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");

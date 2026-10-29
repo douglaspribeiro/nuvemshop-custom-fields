@@ -19,6 +19,7 @@ class PersonalizationHistoryIntegrationTest {
     @Autowired jakarta.persistence.EntityManager entityManager;
     void nextRequest() { entityManager.flush(); entityManager.clear(); }
     @Autowired PersonalizationAdminService admin;
+    @Autowired StoreTemplateService templates;
     @Autowired OrderPersonalizationCatalog catalog;
     @Autowired ReportService report;
     @Autowired StoreRepository stores;
@@ -70,6 +71,22 @@ class PersonalizationHistoryIntegrationTest {
         erasure.erase(store.getStoreId());
         assertThat(history.findByStoreId(store.getStoreId())).isEmpty();
         assertThat(snapshots.findByStoreIdOrderByUninstalledAtDesc(store.getStoreId())).isEmpty();
+    }
+    @Test void templateApplicationAndReplacementKeepPreviousOrderPersonalizationReadable() throws Exception {
+        var owner=store();
+        var template=templates.duplicate(owner.getStoreId(),"catalog:caneca","Minha caneca");
+        var preview=templates.preview(owner.getStoreId(),template.key(),100);
+        templates.apply(owner.getStoreId(),template.key(),100,"Caneca",StoreTemplateService.Mode.APPEND,false,
+                java.util.UUID.randomUUID().toString(),preview.reviewToken());nextRequest();
+        var orders=json.readTree("[{\"id\":123,\"number\":55,\"payment_status\":\"paid\",\"products\":[{\"product_id\":100,\"quantity\":1,\"price\":\"10.00\",\"properties\":{\"Nome para gravar\":\"Ana\"}}]}]");
+        when(api.listRecentOrders(owner)).thenReturn(orders);
+        assertThat(report.dashboard(owner).personalizedOrders().getFirst().properties()).containsExactly("Nome para gravar: Ana");
+        templates.delete(owner.getStoreId(),template.id(),template.revision(),true);
+        var replacement=templates.create(owner.getStoreId(),"Novo modelo",null,java.util.List.of(br.com.nuvemcustomfields.dto.TemplateFieldDefinition.from(form("Mensagem"))));
+        var reviewed=templates.preview(owner.getStoreId(),replacement.key(),100);
+        templates.apply(owner.getStoreId(),replacement.key(),100,"Caneca",StoreTemplateService.Mode.REPLACE,true,
+                java.util.UUID.randomUUID().toString(),reviewed.reviewToken());nextRequest();
+        assertThat(report.dashboard(owner).personalizedOrders().getFirst().properties()).containsExactly("Nome para gravar: Ana");
     }
     @Test void productDeletionWebhookPreservesNamesWithoutKeepingTheRule() throws Exception {
         var store=store();

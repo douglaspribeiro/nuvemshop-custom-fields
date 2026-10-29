@@ -1,0 +1,7 @@
+<!doctype html><html xmlns:th="http://www.thymeleaf.org"><body>
+<article class="template-definition" th:fragment="definition"><h3 th:text="${field.label}"></h3><p><span th:text="#{'field.type.'+${field.fieldType}}"></span> · <span th:text="${field.required} ? #{template.required} : #{template.optional}"></span></p>
+<p th:if="${field.placeholder}" th:text="${field.placeholder}"></p><p th:if="${field.optionsText}" th:text="${field.optionsText}" style="white-space:pre-line"></p>
+<p th:if="${field.maxLength != null and field.fieldType.name() != 'IMAGE_SELECT' and field.fieldType.name() != 'FILE_UPLOAD' and field.fieldType.name() != 'CHECKBOX'}" th:text="#{template.length(${field.maxLength})}"></p>
+<p th:if="${field.validationPattern}"><span th:text="#{admin.fields.pattern}"></span>: <code th:text="${field.validationPattern}"></code></p>
+<div class="row-actions" th:if="${field.fieldType.name() == 'IMAGE_SELECT'}"><figure th:each="option : ${field.imageOptions()}"><img width="96" height="96" style="object-fit:contain" th:src="@{/admin/images/{id}(id=${option.id},size='thumbnail')}" th:alt="${option.label}"><figcaption th:text="${option.label}"></figcaption></figure></div>
+</article></body></html>

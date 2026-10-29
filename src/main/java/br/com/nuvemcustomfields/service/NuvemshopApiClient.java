@@ -235,6 +235,13 @@ public class NuvemshopApiClient {
                 .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
     }
 
+    public ProductSummary getProduct(Store store,long productId) {
+        JsonNode product=restClient.get().uri(properties.apiBaseUrl()+"/v1/{storeId}/products/{id}",store.getStoreId(),productId)
+                .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
+        if(product==null || product.path("id").asLong()!=productId)throw new IllegalArgumentException("template.product.invalid");
+        return new ProductSummary(productId,localizedName(product.path("name"),"Produto"));
+    }
+
     /** Pagina pedidos para a sincronizacao historica, sem manter dados pessoais no app. */
     public JsonNode listOrdersForSales(Store store, int page, int perPage, Instant createdMin,
                                        Instant createdMax, Instant updatedMin, Instant updatedMax) {

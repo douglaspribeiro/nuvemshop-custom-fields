@@ -1,0 +1,28 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title th:text="#{template.editor}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page product-field-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('templates')}"></th:block>
+<main class="shell"><section class="page-header"><div><h1 th:text="#{template.editor}"></h1><p th:text="#{template.independent}"></p></div><a class="button" href="/admin/templates" th:text="#{template.library}"></a></section>
+<form id="template-editor" class="form"><section class="panel"><label><span th:text="#{template.name}"></span><input name="templateName" required maxlength="100"></label>
+<label><span th:text="#{template.description}"></span><textarea name="templateDescription" maxlength="500" rows="2"></textarea></label></section>
+<div id="template-fields"></div><div class="row-actions"><button class="button" type="button" id="template-add-field" th:text="#{template.add.field}"></button><button class="button primary" type="submit" th:text="#{template.save}"></button></div>
+<p id="template-status" role="status" aria-live="polite"></p></form></main>
+<template id="template-field-row"><fieldset class="panel field-editor-form image-options-form" style="min-width:0"><legend data-template-heading th:text="#{template.field}"></legend>
+<div class="form"><label><span th:text="#{admin.fields.label}"></span><input name="label" required maxlength="100"></label>
+<label><span th:text="#{template.type}"></span><select name="fieldType"><option th:each="type : ${T(br.com.nuvemcustomfields.entity.FieldType).values()}" th:if="${type.name() != 'FILE_UPLOAD' or editorData.uploadAvailable}" th:value="${type}" th:text="#{'field.type.'+${type}}"></option></select></label>
+<label class="checkbox"><input type="checkbox" name="required"><span th:text="#{template.required}"></span></label>
+<label><span th:text="#{template.max.length}"></span><input name="maxLength" type="number" min="1" max="500" value="100" required></label>
+<label><span th:text="#{admin.fields.placeholder}"></span><input name="placeholder" maxlength="150"></label>
+<input type="hidden" name="validationPattern"><input type="hidden" name="sortOrder" value="0"><th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
+<label><span th:text="#{admin.fields.options}"></span><small class="field-help field-upload-help" hidden th:text="#{template.formats.help}"></small><textarea name="optionsText" rows="3"></textarea></label>
+<section class="image-options-editor" hidden th:attr="data-upload-url=@{/admin/templates/images},data-action='template-write',data-enabled=${editorData.imagesAvailable},data-max-options=${editorData.imageOptionLimit},data-label=#{image.option.label},data-file=#{image.option.file},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-uploading=#{image.uploading},data-failed=#{image.upload.failed},data-incomplete=#{image.options.invalid},data-limit=#{image.options.limit(${editorData.imageOptionLimit})}">
+<input type="hidden" name="imageOptionsJson"><div class="image-options-rows"></div>
+<label class="checkbox"><input name="showImageZoom" type="checkbox" checked><span th:text="#{image.zoom.show}"></span></label>
+<label><span th:text="#{image.mobile.columns}"></span><select name="mobileImageColumns"><option value="" th:text="#{image.mobile.columns.auto}"></option><option value="2">2</option><option value="3">3</option></select></label>
+<button class="button small image-option-add" type="button" th:text="#{image.option.add}"></button><p class="image-options-status" role="status"></p></section>
+<th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
+<div class="row-actions"><button class="button small" type="button" data-field-up th:text="#{image.option.up}"></button><button class="button small" type="button" data-field-down th:text="#{image.option.down}"></button><button class="button small" type="button" data-field-remove th:text="#{template.remove.field}"></button></div></div></fieldset></template>
+<div id="template-ui" hidden th:attr="data-failed=#{template.failed},data-saved=#{template.saved},data-field=#{template.field},data-image-wait=#{template.image.wait},data-unsupported=#{template.upload.unavailable}"></div>
+<script th:inline="javascript">window.ncfTemplateEditor=/*[[${editorData}]]*/ {};</script>
+<script th:src="@{/assets/product-fields-editor.js(v=${assetVersion})}"></script><script th:src="@{/assets/option-images-admin.js(v=${assetVersion})}"></script><script th:src="@{/assets/store-templates.js(v=${assetVersion})}"></script>
+<th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

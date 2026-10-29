@@ -8,6 +8,8 @@ import java.time.Instant;
 
 @Service
 public class UserJourneyAuditService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private StoreTemplateRepository templates;
     private final UserJourneyAuditRepository audits;
     private final PersonalizationRuleRepository rules;
     private final PersonalizationFieldRepository fields;
@@ -33,7 +35,7 @@ public class UserJourneyAuditService {
     private String state(Long storeId, Long productId) {
         // Structural metadata only: no labels, options, tokens, personal data or payment payloads.
         if (productId == null) return "{\"products\":" + rules.countByStoreId(storeId)
-                + ",\"fields\":" + fields.countByStoreId(storeId) + "}";
+                + ",\"fields\":" + fields.countByStoreId(storeId) + ",\"templates\":"+(templates==null?0:templates.countByStoreId(storeId))+"}";
         return rules.findByStoreIdAndProductId(storeId, productId).map(rule -> {
             var metadata = fields.findByRuleIdOrderBySortOrderAscIdAsc(rule.getId()).stream()
                     .map(f -> "{\"id\":" + f.getId() + ",\"type\":\"" + f.getFieldType()

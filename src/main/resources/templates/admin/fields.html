@@ -20,6 +20,10 @@
         <a class="button" th:href="@{/admin/products}" th:text="#{admin.products.title}">Produtos</a>
     </section>
 
+    <p><button type="button" class="button" data-save-product-template th:attr="data-product-id=${rule.productId},data-name=${rule.productName}" th:text="#{template.save.product}"></button></p>
+    <p id="template-status" role="status"></p>
+    <div id="template-ui" hidden th:attr="data-copy-prompt=#{template.copy.prompt},data-failed=#{template.failed},data-saved=#{template.saved}"></div>
+    <script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 

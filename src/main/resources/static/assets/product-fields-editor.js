@@ -1,5 +1,7 @@
 (() => {
-    document.querySelectorAll('.field-editor-form').forEach(form => {
+    function initialize(form) {
+        if(form.dataset.fieldEditorInitialized)return;
+        form.dataset.fieldEditorInitialized="true";
         const get = name => form.querySelector(`[name="${name}"]`);
         const type = get('fieldType');
         let previousRequired = get('required').checked;
@@ -167,5 +169,7 @@
             if (!custom.disabled && !custom.checkValidity()) { event.preventDefault(); advanced.open = true; custom.reportValidity(); }
         });
         visibility(); render();
-    });
+    }
+    window.ncfInitFieldEditor=initialize;
+    document.querySelectorAll('.field-editor-form').forEach(initialize);
 })();

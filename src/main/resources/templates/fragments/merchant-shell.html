@@ -15,6 +15,7 @@
         <div class="merchant-nav-inner">
             <a th:href="@{/admin}" th:classappend="${active == 'overview'} ? ' is-active'" th:aria-current="${active == 'overview'} ? 'page'" th:text="#{merchant.nav.overview}">Visão geral</a>
             <a th:href="@{/admin/products}" th:classappend="${active == 'products'} ? ' is-active'" th:aria-current="${active == 'products'} ? 'page'" th:text="#{merchant.nav.products}">Produtos e campos</a>
+            <a th:href="@{/admin/templates}" th:classappend="${active == 'templates'} ? ' is-active'" th:text="#{template.library}"></a>
             <a th:href="@{/admin/dashboard}" th:classappend="${active == 'orders'} ? ' is-active'" th:aria-current="${active == 'orders'} ? 'page'" th:text="#{merchant.nav.orders}">Pedidos personalizados</a>
             <a th:href="@{/admin/buyer-uploads}">Arquivos dos compradores</a>
             <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>

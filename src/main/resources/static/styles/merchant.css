@@ -263,3 +263,7 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 
 .product-field-page .field-preview-checkbox-group { border:0;padding:0;margin:0;display:grid;gap:10px;min-width:0; }
 .product-field-page .field-preview-checkbox-group legend { margin-bottom:10px;font-weight:700; }
+
+/* Independent template definitions and long merchant labels on mobile. */
+.merchant-page .template-card,.merchant-page .template-definition { min-width:0; overflow-wrap:anywhere; }
+.merchant-page .template-fields .button { white-space:normal; overflow-wrap:anywhere; }

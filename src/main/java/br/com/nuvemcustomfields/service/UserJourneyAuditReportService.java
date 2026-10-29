@@ -39,6 +39,13 @@ public class UserJourneyAuditReportService {
             Map.entry("AdminController.paymentProcessing", "Consulta ao processamento do pagamento"), Map.entry("AdminController.billingReturn", "Retorno do pagamento"),
             Map.entry("AdminController.cancellationPage", "Consulta ao cancelamento"), Map.entry("AdminController.cancelSubscription", "Solicitação de cancelamento"),
             Map.entry("OptionImageController.upload", "Envio de imagem para opções"),
+            Map.entry("StoreTemplateController.library", "Consulta à biblioteca de templates"),
+            Map.entry("StoreTemplateController.create", "Criação de template"),
+            Map.entry("StoreTemplateController.update", "Edição de template"),
+            Map.entry("StoreTemplateController.duplicate", "Duplicação de template"),
+            Map.entry("StoreTemplateController.saveProduct", "Produto salvo como template"),
+            Map.entry("StoreTemplateController.apply", "Aplicação de template a um produto"),
+            Map.entry("StoreTemplateController.delete", "Exclusão de template"),
             Map.entry("FeatureRequestController.form", "Consulta às sugestões"), Map.entry("FeatureRequestController.submit", "Envio de sugestão"),
             Map.entry("PublicPagesController.support", "Acesso ao suporte"), Map.entry("PublicPagesController.supportAlias", "Acesso ao suporte"),
             Map.entry("PublicPagesController.openTicket", "Abertura de chamado"), Map.entry("PublicPagesController.ticket", "Consulta ao chamado"),
@@ -81,7 +88,8 @@ public class UserJourneyAuditReportService {
             }
             if (node.has("products") && node.has("fields"))
                 return quantity(node.path("products").asLong(), "produto", "produtos") + " · "
-                        + quantity(node.path("fields").asLong(), "campo", "campos");
+                        + quantity(node.path("fields").asLong(), "campo", "campos")
+                        + (node.has("templates")?" · "+quantity(node.path("templates").asLong(),"template","templates"):"");
         } catch (Exception ignored) { }
         return "Consulte os dados registrados";
     }
