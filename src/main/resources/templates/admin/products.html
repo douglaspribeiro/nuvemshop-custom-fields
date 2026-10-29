@@ -70,10 +70,19 @@
 
         <div class="merchant-product-list" th:if="${!#lists.isEmpty(products)}">
             <article class="merchant-product" th:each="product : ${products}">
-                <div><h3 th:text="${product.name}">Produto</h3>
-                    <span class="status" th:classappend="${configuredFieldProductIds.contains(product.id)} ? ' is-configured'"
+                <div class="merchant-product-summary">
+                    <div class="merchant-product-thumbnail" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
+                        <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" alt=""
+                             width="64" height="64" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                             onerror="this.hidden=true">
+                    </div>
+                    <div class="merchant-product-details">
+                        <h3 th:text="${product.name}">Produto</h3>
+                        <span class="status" th:classappend="${configuredFieldProductIds.contains(product.id)} ? ' is-configured'"
                           th:text="${configuredFieldProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">Não configurado</span>
-                    <small th:text="#{merchant.products.id(${product.id})}">ID do produto</small>
+                        <small th:text="#{merchant.products.id(${product.id})}">ID do produto</small>
+                    </div>
                 </div>
                 <div class="row-actions">
                     <a class="button small"

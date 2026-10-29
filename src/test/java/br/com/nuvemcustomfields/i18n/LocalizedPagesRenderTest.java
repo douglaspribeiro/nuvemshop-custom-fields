@@ -82,6 +82,20 @@ class LocalizedPagesRenderTest {
                 .thenReturn(new ObjectMapper().createArrayNode());
     }
 
+    @Test
+    void productListRendersThumbnailAndPlaceholderForProductWithoutImage() throws Exception {
+        when(apiClient.listProducts(any(Store.class), anyInt(), anyInt(), nullable(String.class)))
+                .thenReturn(new ProductPage(List.of(
+                        new ProductSummary(PRODUCT_ID, "Caneca", "https://cdn.example.com/caneca.jpg"),
+                        new ProductSummary(PRODUCT_ID + 1, "Sem foto")
+                ), 1, 50, 2L, false, null));
+
+        String body = render("/admin/products", sessionForStoreIn("BR"));
+        assertThat(body).contains("src=\"https://cdn.example.com/caneca.jpg\"", "loading=\"lazy\"");
+        assertThat(body.split("class=\"merchant-product-thumbnail\"", -1)).hasSize(3);
+        assertThat(body.split("<img ", -1)).hasSize(2);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"AR", "MX", "CL", "CO"})
     void rendersEveryMerchantPageInSpanishForLatamStores(String country) throws Exception {

@@ -263,3 +263,9 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 
 .product-field-page .field-preview-checkbox-group { border:0;padding:0;margin:0;display:grid;gap:10px;min-width:0; }
 .product-field-page .field-preview-checkbox-group legend { margin-bottom:10px;font-weight:700; }
+
+.merchant-product-summary { display:flex; align-items:center; gap:14px; min-width:0; }
+.merchant-product-thumbnail { position:relative; flex:0 0 64px; width:64px; height:64px; overflow:hidden; border:1px solid var(--merchant-line); border-radius:8px; background:#f5f7f8; color:var(--merchant-muted); }
+.merchant-product-thumbnail svg { position:absolute; width:26px; height:26px; inset:0; margin:auto; }
+.merchant-product-thumbnail img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:white; }
+.merchant-product-details { min-width:0; overflow-wrap:anywhere; }
