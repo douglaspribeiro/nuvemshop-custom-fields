@@ -40,6 +40,24 @@ describe("Patagonia transition", () => {
 	});
 	afterEach(() => { dispose?.(); dispose = undefined; vi.useRealTimers(); });
 
+    it("uses configured IDs across variant switches and never submits the previous draft", async () => {
+        state=productState(341531127,"patagonia",[{id:101},{id:102}]);
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...configuration,variantRestricted:true,variantIds:[102]}));
+        await vi.waitFor(()=>expect(listeners.has("product:variant_selected")).toBe(true));
+        await Promise.resolve();
+        expect(field()).toBeNull();
+        listeners.get("product:variant_selected")!({...state,eventPayload:{product_id:341531127,variant_id:102}});
+        await ready();field().value="Ana";
+        listeners.get("product:variant_selected")!({...state,eventPayload:{product_id:341531127,variant_id:101}});
+        expect(field()).toBeNull();
+        expect(document.querySelector('[data-ncf-patagonia]')).toBeNull();
+        click();expect(runtime.send).not.toHaveBeenCalled();
+        listeners.get("product:variant_selected")!({...state,eventPayload:{product_id:341531127,variant_id:102}});
+        await ready();expect(field().value).toBe("");click();expect(runtime.send).not.toHaveBeenCalled();
+        field().value="Bia";click();
+        expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{variant_id:102,quantity:2,properties:{Nombre:"Bia"}}]}});
+    });
+
 	it("shows a custom select prompt and requires a choice even for previously optional lists", async () => {
         dispose = startPatagonia(runtime, vi.fn().mockResolvedValue({ ...configuration, fields: [{
             ...configuration.fields[0], fieldType: "SELECT", required: false,

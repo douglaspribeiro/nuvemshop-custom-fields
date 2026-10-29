@@ -53,6 +53,46 @@ describe("SDK storefront without a legacy script", () => {
 		} as unknown as NubeSDKState);
 	}
 
+    it("hides excluded variants, drops stale drafts and reopens empty required fields", async () => {
+        const fields = [{label:"Nome",propertyName:"Nome",fieldType:"TEXT",required:true,maxLength:30,options:[]}];
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,variantRestricted:true,variantIds:[101],fields})} as Response);
+        await boot();
+        const original = field(render.mock.calls[render.mock.calls.length - 1][1])!;
+        original.onChange!({value:"Ana"});
+        listeners.get("product:variant_selected")!({...state,eventPayload:{variant_id:999}} as unknown as NubeSDKState);
+        expect(nube.clearSlot).toHaveBeenCalled();
+        send.mockClear();add("plain",999);
+        expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(true);
+        expect(send.mock.calls.some(c=>c[0]==="cart:add")).toBe(false);
+        listeners.get("product:variant_selected")!({...state,eventPayload:{variant_id:101}} as unknown as NubeSDKState);
+        original.onChange!({value:"Stale callback"});
+        send.mockClear();add();
+        expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        field(render.mock.calls[render.mock.calls.length - 1][1])!.onChange!({value:"Bia"});
+        send.mockClear();add();
+        expect(send.mock.calls.find(c=>c[0]==="cart:add")![1]().cart.items[0]).toMatchObject({variant_id:101,quantity:2,properties:{Nome:"Bia"}});
+    });
+
+    it("resolves a valid initial variant URL without guessing another combination", async () => {
+        state.location.url="https://store.test/product?variant=102";
+        const page=state.location.page;
+        if(page?.type === "product") page.data.product.variants=[{id:101},{id:102}] as typeof page.data.product.variants;
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,variantRestricted:true,variantIds:[102],
+            fields:[{label:"Nome",propertyName:"Nome",fieldType:"TEXT",required:true,maxLength:30,options:[]}]})} as Response);
+        await boot();expect(field(render.mock.calls[render.mock.calls.length-1][1])?.name).toBe("Nome");
+        field(render.mock.calls[render.mock.calls.length-1][1])!.onChange!({value:"Ana"});add("url",102);
+        expect(send.mock.calls.find(c=>c[0]==="cart:add")![1]().cart.items[0].variant_id).toBe(102);
+    });
+
+    it("blocks a conflicting personalization already in the same variant cart line", async () => {
+        await boot();
+        state.cart.items = [{product_id:341531127,variant_id:101,properties:{Nome:"Ana"}}] as unknown as typeof state.cart.items;
+        field(render.mock.calls[render.mock.calls.length - 1][1])!.onChange!({value:"Bia"});
+        add();
+        expect(send.mock.calls[0][1]().eventPayload).toMatchObject({proceed:false,reason:"personalization_cart_conflict"});
+        expect(send.mock.calls.some(c=>c[0]==="cart:add")).toBe(false);
+    });
+
 	it("renders Patagonia fields inside the Worker without DOM or a transition asset", async () => {
 		expect(typeof document).toBe("undefined");
 		expect(typeof window).toBe("undefined");

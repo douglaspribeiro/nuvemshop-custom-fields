@@ -133,7 +133,9 @@ public class PublicPersonalizationController {
                 true,
                 fields,
                 PersonalizationStyleResponse.from(store),
-                StoreLocale.tagFor(store.getStoreCountryCode())
+                StoreLocale.tagFor(store.getStoreCountryCode()),
+                rule.isVariantRestricted(),
+                rule.getVariantIds()
         ));
     }
 

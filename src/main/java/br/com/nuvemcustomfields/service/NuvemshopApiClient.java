@@ -235,6 +235,22 @@ public class NuvemshopApiClient {
                 .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
     }
 
+    public record ProductVariant(Long id, String name, String price) {}
+
+    public java.util.List<ProductVariant> listProductVariants(Store store, long productId) {
+        JsonNode product = restClient.get().uri(properties.apiBaseUrl()+"/v1/{storeId}/products/{id}", store.getStoreId(), productId)
+                .header("Authentication", "bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
+        if (product == null || product.path("id").asLong() != productId) throw new IllegalArgumentException("variant.product.invalid");
+        var variants = new java.util.ArrayList<ProductVariant>();
+        for (JsonNode variant : product.path("variants")) {
+            if (variant.path("id").asLong() <= 0 || variant.path("product_id").asLong(productId) != productId) continue;
+            var names = new java.util.ArrayList<String>();
+            for (JsonNode value : variant.path("values")) names.add(value.isTextual() ? value.asText() : localizedName(value, ""));
+            variants.add(new ProductVariant(variant.path("id").asLong(), String.join(" / ", names), variant.path("price").asText()));
+        }
+        return java.util.List.copyOf(variants);
+    }
+
     public ProductSummary getProduct(Store store,long productId) {
         JsonNode product=restClient.get().uri(properties.apiBaseUrl()+"/v1/{storeId}/products/{id}",store.getStoreId(),productId)
                 .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);

@@ -40,6 +40,24 @@ public class PersonalizationRule {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "variant_restricted", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean variantRestricted;
+
+    @Column(name = "personalization_variant_ids", columnDefinition = "TEXT")
+    private String personalizationVariantIds;
+
+    public boolean isVariantRestricted() { return variantRestricted; }
+    public void setVariantRestricted(boolean restricted) { this.variantRestricted = restricted; }
+    public List<Long> getVariantIds() {
+        if (personalizationVariantIds == null || personalizationVariantIds.isBlank()) return List.of();
+        return java.util.Arrays.stream(personalizationVariantIds.split(",")).map(Long::valueOf).toList();
+    }
+    public void setVariantIds(List<Long> ids) {
+        personalizationVariantIds = ids.stream().distinct().sorted().map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
+    }
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

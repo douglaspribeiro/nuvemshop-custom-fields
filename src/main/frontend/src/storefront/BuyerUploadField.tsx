@@ -7,11 +7,11 @@ import { createBuyerUploads } from "./buyer-uploads";
 const state = new Map<string, { busy: boolean; message: string; form: NubeComponent; value: string }>();
 export function resetBuyerUploadFields(nube:NubeSDK,store:number,product:number) {
     for(const [key,entry] of state) if(key.startsWith(`${store}-${product}-`)) {
-        nube.getBrowserAPIs().resetForm(entry.form);entry.value="";entry.message="";entry.busy=false;
+        nube.getBrowserAPIs().resetForm(entry.form);entry.value="";entry.message="";entry.busy=false;state.delete(key);
     }
 }
 export function buyerUploadField(nube: NubeSDK, store: number, product: number, field: PersonalizationField,
-    value: string, changed: (value: string) => void, refresh: () => void): NubeComponent {
+    value: string, changed: (value: string) => void, refresh: () => void, restore = true): NubeComponent {
     const client = createBuyerUploads(store,product,nube.getBrowserAPIs().asyncSessionStorage);
     const key = `${store}-${product}-${field.id}`;
     let current = state.get(key);
@@ -37,7 +37,7 @@ export function buyerUploadField(nube: NubeSDK, store: number, product: number, 
                 maxSize={20_000_000} />
         </Form.Root>;
         next.form=form;current=next;state.set(key,next);
-        void client.restore(field).then(restored => { if(restored && !next.busy) { next.value=restored;changed(restored); refresh(); } });
+        if (restore) void client.restore(field).then(restored => { if(restored && !next.busy) { next.value=restored;changed(restored); refresh(); } });
     }
     const entry=current;
     if(!value && entry.value) changed(entry.value);

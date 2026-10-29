@@ -12,8 +12,14 @@ public record PersonalizationResponse(
         boolean enabled,
         List<FieldResponse> fields,
         PersonalizationStyleResponse style,
-        String locale
+        String locale,
+        boolean variantRestricted,
+        List<Long> variantIds
 ) {
+
+    public PersonalizationResponse(boolean enabled, List<FieldResponse> fields, PersonalizationStyleResponse style, String locale) {
+        this(enabled, fields, style, locale, false, List.of());
+    }
 
     public static PersonalizationResponse disabled() {
         return new PersonalizationResponse(false, List.of(), PersonalizationStyleResponse.empty(), StoreLocale.PT_BR.toLanguageTag());

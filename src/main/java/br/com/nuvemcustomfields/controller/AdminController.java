@@ -565,6 +565,26 @@ public class AdminController {
         return "redirect:/admin/templates/review?key=catalog:" + templateId + "&productId=" + productId;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private br.com.nuvemcustomfields.service.VariantPersonalizationService variantPersonalization;
+
+    @PostMapping("/admin/products/{productId}/variants")
+    public String saveVariantCondition(@PathVariable Long productId,
+            @RequestParam(defaultValue = "false") boolean restricted,
+            @RequestParam(required = false) List<Long> variantIds, HttpSession session,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirect) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            variantPersonalization.save(store, productId, restricted, variantIds);
+            redirect.addFlashAttribute("message", messages.get("variant.saved"));
+        } catch (IllegalArgumentException ex) {
+            redirect.addFlashAttribute("error", messages.get("variant.selection.invalid"));
+        } catch (RuntimeException ex) {
+            redirect.addFlashAttribute("error", messages.get("variant.load.failed"));
+        }
+        return "redirect:/admin/products/" + productId + "/fields";
+    }
+
     @GetMapping("/admin/products/{productId}/fields")
     public String fields(
             @PathVariable Long productId,
@@ -703,6 +723,15 @@ public class AdminController {
         );
         model.addAttribute("store", store);
         model.addAttribute("rule", rule);
+        try {
+            var variants = apiClient.listProductVariants(store, productId);
+            model.addAttribute("productVariants", variants);
+            var available = variants.stream().map(NuvemshopApiClient.ProductVariant::id).collect(java.util.stream.Collectors.toSet());
+            model.addAttribute("missingVariantIds", rule.getVariantIds().stream().filter(id -> !available.contains(id)).toList());
+        } catch (RuntimeException ex) {
+            model.addAttribute("variantLoadFailed", true);
+        }
+
         model.addAttribute("fieldTypes", FieldType.values());
         model.addAttribute("imagesEnabled", personalizationAdminService.imagesEnabled());
         model.addAttribute("canUseImages", planLimitService.canConfigureImageProduct(store, productId));

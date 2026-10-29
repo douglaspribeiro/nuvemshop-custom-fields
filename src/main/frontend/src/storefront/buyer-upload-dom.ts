@@ -1,7 +1,7 @@
 import type { PersonalizationField } from "../shared/config";
 import { createBuyerUploads } from "./buyer-uploads";
 
-export function buyerUploadControl(store: number, product: number, field: PersonalizationField) {
+export function buyerUploadControl(store: number, product: number, field: PersonalizationField, restore = true) {
     const wrapper=document.createElement("div");wrapper.className="ncf-field";
     const title=document.createElement("label");title.textContent=field.label+(field.required?" *":"");
     const picker=document.createElement("input");picker.type="file";
@@ -17,12 +17,16 @@ export function buyerUploadControl(store: number, product: number, field: Person
     const client=createBuyerUploads(store,product);
     let generation=0,busy=false;
     function set(text:string) {value.value=text;display.value=text.startsWith("__")?"":text.replace(/\s*—\s*NCF-FILE:.*$/, "");value.dispatchEvent(new Event("change",{bubbles:true}));}
-    void client.restore(field).then(restored=>{if(!busy && !generation) {set(restored);if(restored)status.textContent=display.value;}});
+    if (restore) void client.restore(field).then(restored=>{if(!busy && !generation) {set(restored);if(restored)status.textContent=display.value;}});
     picker.addEventListener("change",async()=>{
         const file=picker.files?.[0];if(!file || busy) return;
-        busy=true;generation++;set("__uploading__");value.setCustomValidity("Aguarde o envio e a validação do arquivo.");remove.disabled=true;picker.disabled=true;
-        try {set(await client.upload(field,file,text=>{status.textContent=text;}));value.setCustomValidity("");}
-        catch(error){set("");status.textContent=error instanceof Error?error.message:"Falha de rede. Tente novamente.";value.setCustomValidity(field.required?status.textContent:"");}
+        busy=true;const request=++generation;set("__uploading__");value.setCustomValidity("Aguarde o envio e a validação do arquivo.");remove.disabled=true;picker.disabled=true;
+        try {
+            const uploaded=await client.upload(field,file,text=>{if(request===generation)status.textContent=text;});
+            if(request!==generation){void client.forget(field);return;}
+            set(uploaded);value.setCustomValidity("");
+        }
+        catch(error){if(request!==generation)return;set("");status.textContent=error instanceof Error?error.message:"Falha de rede. Tente novamente.";value.setCustomValidity(field.required?status.textContent:"");}
         finally{busy=false;remove.disabled=false;picker.disabled=false;picker.value="";}
     });
     remove.addEventListener("click",async()=>{

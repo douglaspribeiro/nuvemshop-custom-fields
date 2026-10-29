@@ -1,3 +1,4 @@
+import { personalizationAllowed, eventVariant, conflictsWithCart } from "../shared/variants";
 import { imageChoices } from "./image-options";
 import { buyerUploadControl } from "./buyer-upload-dom";
 import { createBuyerUploads } from "./buyer-uploads";
@@ -28,6 +29,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 	let config: PersonalizationConfig | null = null;
 	let productId: number | null = null;
 	let variantId: number | null = null;
+    let draftGeneration = 0;
 	let container: HTMLDivElement | null = null;
 	let scope: Element | null = null;
 	let pending: { product: number; variant: number; button: HTMLButtonElement; disabled: boolean } | null = null;
@@ -78,16 +80,26 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		config = null;
 		variantId = null;
 	}
-	function selected(state: NubeSDKState) {
-		const payload = state.eventPayload as { id?: number; variant_id?: number; product_id?: number } | undefined;
-		if (payload?.product_id === productId) variantId = payload.variant_id ?? payload.id ?? null;
-	}
+    function updateVariant(next: number | null) {
+        const wasAllowed = config && personalizationAllowed(config, variantId);
+        variantId = next;
+        const allowed = config && personalizationAllowed(config, variantId);
+        if (wasAllowed !== allowed) {
+            draftGeneration++;
+            for (const element of container?.querySelectorAll(".ncf-field") ?? []) element.dispatchEvent(new Event("ncf-upload-consumed"));
+            container?.remove(); container = null; controls.clear(); checkboxGroups.clear();
+            if (!allowed) scope?.removeAttribute("data-ncf-patagonia");
+        }
+        render();
+    }
+    function selected(state: NubeSDKState) { if (state.eventPayload) updateVariant(eventVariant(state)); }
 	function variantFromControls(state: NubeSDKState): number | null {
 		const page = state.location?.page;
 		if (page?.type !== "product") return null;
 		// A seleção inicial pode ter sido emitida antes do carregamento do app.
 		// Lê a seleção explícita do tema; não escolhe a primeira variante do catálogo.
-		const buttons = [...(scope?.querySelectorAll<HTMLButtonElement>('button.btn-variant[aria-pressed="true"]') ?? [])];
+		const root = (scope?.isConnected ? scope : null) ?? document.querySelector('[data-component="product.add-to-cart"]')?.closest("section");
+        const buttons = [...(root?.querySelectorAll<HTMLButtonElement>('button.btn-variant[aria-pressed="true"]') ?? [])];
 		if (!buttons.length) return null;
 		const selectedValues = buttons.map((button) => {
 			const attribute = button.closest("dl")?.querySelector("dt")?.textContent?.trim();
@@ -101,7 +113,9 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		return matches.length === 1 ? matches[0].id : null;
 	}
 	function render() {
-		if (!config?.enabled || !config.fields.length || container?.isConnected) return;
+		if (!config?.enabled || !config.fields.length) return;
+        if (variantId == null) variantId = variantFromControls(runtime.getState());
+        if (!personalizationAllowed(config, variantId) || container?.isConnected) return;
 		const slot = document.querySelector(SLOT);
 		const buy = document.querySelector('[data-component="product.add-to-cart"]');
 		const root = slot?.parentElement ?? buy?.closest("section");
@@ -127,7 +141,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		config.fields.forEach((field, index) => {
             const key = keyOf(field);
             if (field.fieldType === "FILE_UPLOAD") {
-                const upload=buyerUploadControl(runtime.getState().store.id,productId!,field);
+                const upload=buyerUploadControl(runtime.getState().store.id,productId!,field,!config?.variantRestricted);
                 controls.set(key,upload.value); container!.append(upload.wrapper); return;
             }
             if (field.fieldType === "CHECKBOX" && field.options.length) {
@@ -227,7 +241,11 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		if (pending || verifyingUploads) return;
-		const values = readValues();
+		const chosen = variantFromControls(state) ?? variantId;
+        if (chosen !== variantId) updateVariant(chosen);
+        if (!personalizationAllowed(config, variantId)) return;
+        const checkedVariant = variantId, checkedDraft = draftGeneration;
+        const values = readValues();
 		for (const input of controls.values()) input.setCustomValidity("");
 		const errors = validate(config.fields, values, config.locale);
 		for (const error of errors) controls.get(error.propertyName)?.setCustomValidity(error.message);
@@ -245,7 +263,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
                 await Promise.all(config.fields.filter(field=>field.fieldType === "FILE_UPLOAD").map(field=>client.ensure(String(values[keyOf(field)] || ""))));
             } catch(error) {status(error instanceof Error?error.message:"Reenvie o arquivo para continuar.");return;}
             finally{verifyingUploads=false;}
-            if(productId!==checkedProduct || disposed)return;
+            if(productId!==checkedProduct || disposed || variantId!==checkedVariant || draftGeneration!==checkedDraft)return;
         }
 		variantId = variantFromControls(state) ?? variantId;
 		if (!variantId || !page.data.product.variants?.some((variant) => variant.id === variantId)) {
@@ -255,6 +273,9 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		const quantity = quantityInput ? Number(quantityInput.value) : 1;
 		if (!Number.isSafeInteger(quantity) || quantity < 1) { status(strings().quantity); return; }
 		const item = { product_id: productId, variant_id: variantId, quantity, properties: toCartProperties(config.fields, values) };
+        if (conflictsWithCart(state, productId, variantId, item.properties)) {
+            status(langOf(config.locale) === "pt" ? "Esta variante já está no carrinho com outros dados. Revise o carrinho antes de continuar." : "Esta variante ya está en el carrito con otros datos. Revisá el carrito antes de continuar."); return;
+        }
 		pending = { product: productId!, variant: variantId, button, disabled: button.disabled };
 		button.disabled = true;
 		status(strings().pending);

@@ -1,3 +1,4 @@
+import { personalizationAllowed, eventVariant, conflictsWithCart } from "../shared/variants";
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import {
 	DISABLED,
@@ -31,6 +32,7 @@ let config: PersonalizationConfig = DISABLED;
 let store: number | null = null;
 let productId: number | null = null;
 let variantId: number | null = null;
+let draftGeneration = 0;
 let values: ValueMap = {};
 let errors: FieldError[] = [];
 let textColor: string | undefined;
@@ -40,7 +42,8 @@ let pendingSelfAdds = 0;
 let verifyingUploads = false;
 let reportedNativeGate = false;
 
-let inFlightProduct: number | null = null;
+let inFlightProduct: string | null = null;
+let configGeneration = 0;
 
 /** Ultimo desfecho do syncProduct, enviado no beacon de diagnostico. */
 let outcome = "boot";
@@ -62,10 +65,12 @@ export function App(nube: NubeSDK) {
 	nube.on("location:updated", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
     nube.on("cart:update", state => void renderCartImages(state));
 	nube.on("product:variant_selected", (state) => {
-		variantId = readVariantId(state) ?? variantId;
+		setVariant(nube, eventVariant(state));
 	});
 	nube.on("cart:before_update", (state) => gate(nube, state));
 	nube.on("cart:add:success", (state) => {
+        const addedProduct = (state.eventPayload as {product_id?: number} | undefined)?.product_id;
+        if (addedProduct != null && addedProduct !== productId) { void renderCartImages(state); return; }
         if(store && productId && config.fields.some(field => field.fieldType === "FILE_UPLOAD")) resetBuyerUploadFields(nube,store,productId);
         if(store && productId) for(const field of config.fields.filter(f => f.fieldType === "FILE_UPLOAD"))
             void createBuyerUploads(store,productId,nube.getBrowserAPIs().asyncSessionStorage).forget(field);
@@ -96,30 +101,35 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 		return;
 	}
 
-	if (nextProduct === productId && config.enabled) {
-		render(nube);
+	if (nextProduct === productId && nextStore === store && config.enabled) {
+        const selected = readVariantId(state);
+        if (selected != null) setVariant(nube, selected);
+        else render(nube);
 		outcome = "rendered";
 		return;
 	}
 
 	// Tres gatilhos podem chamar isto quase juntos; sem o guard sao dois fetch e o
 	// segundo zera os valores que o cliente ja digitou.
-	if (inFlightProduct === nextProduct) {
+	if (inFlightProduct === `${nextStore}:${nextProduct}`) {
 		return;
 	}
 
 	store = nextStore;
 	productId = nextProduct;
+    config = DISABLED;
+    nube.clearSlot(SLOT);
 	variantId = readVariantId(state);
 	values = {};
 	errors = [];
 
-	inFlightProduct = nextProduct;
-	try {
-		config = await fetchConfig(nextStore, nextProduct);
-	} finally {
-		inFlightProduct = null;
-	}
+	const request = ++configGeneration;
+    draftGeneration++;
+    inFlightProduct = `${nextStore}:${nextProduct}`;
+    const loaded = await fetchConfig(nextStore, nextProduct);
+    if (request !== configGeneration || store !== nextStore || productId !== nextProduct) return;
+    inFlightProduct = null;
+    config = loaded;
 	if (!config.enabled || config.fields.length === 0) {
 		outcome = config.enabled ? "config_without_fields" : "config_disabled";
 		clear(nube);
@@ -130,7 +140,24 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	outcome = "rendered";
 }
 
+function setVariant(nube: NubeSDK, next: number | null) {
+    const wasAllowed = personalizationAllowed(config, variantId);
+    variantId = next;
+    if (wasAllowed !== personalizationAllowed(config, next)) {
+        draftGeneration++;
+        values = {}; errors = [];
+        if (store && productId && config.fields.some(f => f.fieldType === "FILE_UPLOAD")) {
+            resetBuyerUploadFields(nube, store, productId);
+            const client = createBuyerUploads(store, productId, nube.getBrowserAPIs().asyncSessionStorage);
+            for (const field of config.fields.filter(f => f.fieldType === "FILE_UPLOAD")) void client.forget(field);
+        }
+    }
+    render(nube);
+}
+
 function render(nube: NubeSDK) {
+    if (!config.enabled || !personalizationAllowed(config, variantId)) { nube.clearSlot(SLOT); return; }
+    const renderGeneration = draftGeneration;
     const renderProduct=productId;
 	nube.render(
 		SLOT,
@@ -141,10 +168,13 @@ function render(nube: NubeSDK) {
             values={values}
             locale={config.locale}
             upload={field => buyerUploadField(nube,store!,productId!,field,String(values[field.propertyName || field.label] || ""),value => {
-                if(productId!==renderProduct) return;
+                if(productId!==renderProduct || draftGeneration !== renderGeneration || !personalizationAllowed(config,variantId)) {
+                    void createBuyerUploads(store!,renderProduct!,nube.getBrowserAPIs().asyncSessionStorage).forget(field); return;
+                }
                 values[field.propertyName || field.label]=value; errors=errors.filter(e => e.propertyName !== (field.propertyName || field.label));
-            }, () => render(nube))}
+            }, () => render(nube), !config.variantRestricted)}
 			onValueChange={(key, value) => {
+                if (draftGeneration !== renderGeneration) return;
 				values[key] = value;
                 if (config.fields.some(field => (field.fieldType === "IMAGE_SELECT" || field.fieldType === "SELECT" || field.fieldType === "CHECKBOX") && (field.propertyName || field.label) === key)) { errors = errors.filter(error => error.propertyName !== key); render(nube); }
 			}}
@@ -153,6 +183,7 @@ function render(nube: NubeSDK) {
 }
 
 function clear(nube: NubeSDK) {
+    configGeneration++; draftGeneration++; inFlightProduct = null;
 	config = DISABLED;
 	productId = null;
 	variantId = null;
@@ -195,6 +226,17 @@ function gate(nube: NubeSDK, state: NubeSDKState | null) {
 		return;
 	}
 
+    if (payload.item?.variant_id != null) {
+        const page = state?.location?.page;
+        const valid = page?.type === "product" && page.data.product.variants.some(v => v.id === payload.item?.variant_id);
+        setVariant(nube, valid ? payload.item.variant_id : null);
+    }
+    if (!personalizationAllowed(config, variantId)) {
+        if (conflictsWithCart(state, productId, variantId, {})) {
+            respond(nube, requestId, false, "personalization_cart_conflict"); return;
+        }
+        respond(nube, requestId, true); return;
+    }
 	const found = validate(config.fields, values, config.locale);
 	if (found.length > 0) {
 		errors = found;
@@ -204,15 +246,22 @@ function gate(nube: NubeSDK, state: NubeSDKState | null) {
 	}
 
 	const properties = toCartProperties(config.fields, values);
+    if (conflictsWithCart(state, productId, payload.item?.variant_id ?? variantId, properties)) {
+        errors = [{ propertyName: config.fields[0].propertyName || config.fields[0].label, label: config.fields[0].label,
+            message: config.locale.startsWith("es") ? "Esta variante ya está en el carrito con otros datos. Revisá el carrito antes de continuar." : "Esta variante já está no carrinho com outros dados. Revise o carrinho antes de continuar." }];
+        render(nube); respond(nube, requestId, false, "personalization_cart_conflict"); return;
+    }
+
     if(config.fields.some(field => field.fieldType === "FILE_UPLOAD" && values[field.propertyName || field.label])) {
         respond(nube,requestId,false,"validating_uploads");
         if(verifyingUploads)return;
         verifyingUploads=true;
         const checkedProduct=productId;
+        const checkedVariant=variantId, checkedGeneration=draftGeneration;
         const client=createBuyerUploads(store!,productId!,nube.getBrowserAPIs().asyncSessionStorage);
         void Promise.all(config.fields.filter(field=>field.fieldType === "FILE_UPLOAD")
             .map(field=>client.ensure(String(values[field.propertyName || field.label] || ""))))
-            .then(()=>{if(productId===checkedProduct)reissue(nube,payload,properties);})
+            .then(()=>{if(productId===checkedProduct && variantId===checkedVariant && draftGeneration===checkedGeneration)reissue(nube,payload,properties);})
             .catch(error=>{
                 if(productId!==checkedProduct)return;
                 errors=config.fields.filter(field=>field.fieldType === "FILE_UPLOAD").map(field=>({propertyName:field.propertyName || field.label,label:field.label,
@@ -270,18 +319,16 @@ function alreadyInCart(state: NubeSDKState | null, product: number | null): bool
 }
 
 function readVariantId(state: NubeSDKState | null): number | null {
-	const fromEvent = (state?.eventPayload ?? null) as Record<string, unknown> | null;
-	const direct = fromEvent?.variant_id;
-	if (typeof direct === "number" && direct > 0) {
-		return direct;
-	}
-	const nested = (fromEvent?.variant as Record<string, unknown> | undefined)?.id;
-	if (typeof nested === "number" && nested > 0) {
-		return nested;
-	}
+	const selected = eventVariant(state);
+    if (selected != null) return selected;
 	const page = state?.location?.page;
 	if (page?.type === "product") {
 		const variants = page.data?.product?.variants ?? [];
+        try {
+            const selected = Number(new URL(state!.location.url).searchParams.get("variant"));
+            if (variants.some(v => v.id === selected)) return selected;
+        } catch { /* The SDK may not provide a URL before hydration. */ }
+
 		if (variants.length === 1) {
 			return variants[0]?.id ?? null;
 		}

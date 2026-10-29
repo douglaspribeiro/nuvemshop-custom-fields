@@ -28,6 +28,8 @@ export type PersonalizationStyle = {
 
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationResponse. */
 export type PersonalizationConfig = {
+    variantRestricted?: boolean;
+    variantIds?: number[];
 	enabled: boolean;
 	fields: PersonalizationField[];
 	style: PersonalizationStyle;
@@ -82,6 +84,8 @@ export async function fetchConfig(
 function normalize(config: PersonalizationConfig): PersonalizationConfig {
 	return {
 		enabled: true,
+        variantRestricted: config.variantRestricted === true,
+        variantIds: (config.variantIds ?? []).filter(id => Number.isSafeInteger(id) && id > 0),
 		fields: (config.fields ?? []).filter((field) => !!field?.label).map(field => ({
             ...field,
             imageOptions: (field.imageOptions ?? []).map(option => ({...option,

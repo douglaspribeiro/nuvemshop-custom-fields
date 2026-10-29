@@ -49,6 +49,22 @@
         <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
     </section>
 
+    <section class="panel">
+        <h2 th:text="#{variant.title}">Personalização por variante</h2>
+        <p th:text="#{variant.help}"></p>
+        <p class="notice error" th:if="${variantLoadFailed}" th:text="#{variant.load.failed}"></p>
+        <form th:unless="${variantLoadFailed}" method="post" th:action="@{/admin/products/{id}/variants(id=${rule.productId})}">
+            <label><input type="checkbox" name="restricted" value="true" th:checked="${rule.variantRestricted}"> <span th:text="#{variant.restrict}"></span></label>
+            <p class="notice error" th:if="${missingVariantIds != null and !#lists.isEmpty(missingVariantIds)}" th:text="#{variant.missing(${missingVariantIds})}"></p>
+            <div th:each="variant : ${productVariants}">
+                <label><input type="checkbox" name="variantIds" th:value="${variant.id}" th:checked="${#lists.contains(rule.variantIds, variant.id)}">
+                    <span th:text="${variant.name}"></span> · <span th:text="${variant.price}"></span> · ID <span th:text="${variant.id}"></span>
+                </label>
+            </div>
+            <button type="submit" class="button primary" th:text="#{variant.save}"></button>
+        </form>
+    </section>
+
     <section class="field-editor-layout" th:classappend="${!canAddField} ? ' fields-edit-only'">
 
         <div class="panel" th:unless="${#lists.isEmpty(rule.fields)}">

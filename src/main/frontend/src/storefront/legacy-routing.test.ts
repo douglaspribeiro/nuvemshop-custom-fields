@@ -155,3 +155,23 @@ it.each([true,false])('serializes all selected legacy options and requires at le
     boxes[0].click();expect(properties()).toEqual(['Cartão, impresso']);expect(submit().defaultPrevented).toBe(false);
     boxes[1].click();expect(properties()).toEqual([]);expect(submit().defaultPrevented).toBe(required);
 });
+
+
+it("disables native properties on plain variants and returns to empty required fields",async()=>{
+    dom=new JSDOM(`<head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" data-product-id="456"><input name="variant_id" value="101"><button type="submit">Comprar</button></form></body>`,
+        {url:"https://store.test/products/test",runScripts:"outside-only"});
+    Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,variantRestricted:true,variantIds:[102],
+        fields:[{label:"Nome",propertyName:"Nome",fieldType:"TEXT",required:true}],style:{}})})});
+    Object.defineProperty(dom.window.document,"readyState",{value:"complete",configurable:true});dom.window.eval(source);
+    const form=dom.window.document.querySelector("form")!;
+    await vi.waitFor(()=>expect(form.querySelector(".ncf-personalization")).not.toBeNull());
+    const variant=form.querySelector<HTMLInputElement>('[name="variant_id"]')!;
+    const input=form.querySelector<HTMLInputElement>('[name="properties[Nome]"]')!;
+    const change=(id:string)=>{variant.value=id;variant.dispatchEvent(new dom.window.Event("change",{bubbles:true}));};
+    expect(input.disabled).toBe(true);expect(new dom.window.FormData(form).has("properties[Nome]")).toBe(false);
+    change("102");expect(input.disabled).toBe(false);input.value="Ana";
+    change("101");expect(input.value).toBe("");expect(new dom.window.FormData(form).has("properties[Nome]")).toBe(false);
+    change("102");expect(input.value).toBe("");
+    const event=new dom.window.Event("submit",{cancelable:true});form.dispatchEvent(event);expect(event.defaultPrevented).toBe(true);
+});

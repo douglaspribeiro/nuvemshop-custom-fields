@@ -94,8 +94,9 @@
             styleConfig = config.style || styleConfig || {};
             rememberFieldLabels(config.fields);
             whenSdkFieldsAbsent(config.fields, productId, function () {
-                renderFields(form, config.fields, styleConfig);
-                bindCartSnapshot(form, config.fields);
+                renderFields(form, config.fields, styleConfig, !config.variantRestricted);
+                const syncVariant = bindVariantCondition(form, config);
+                bindCartSnapshot(form, config.fields, syncVariant);
                 renderStoredCartProperties();
                 syncCartPropertyColors();
                 form.dataset.ncfInjected = "true";
@@ -310,13 +311,13 @@
         return meta && meta.content ? meta.content : null;
     }
 
-    function renderFields(targetForm, fields, style) {
+    function renderFields(targetForm, fields, style, restoreUploads = true) {
         const container = document.createElement("div");
         container.className = "ncf-personalization";
         applyProductTextColor(container, style);
 
         fields.forEach((field) => {
-            container.appendChild(renderField(field));
+            container.appendChild(renderField(field, restoreUploads));
         });
 
         const submit = targetForm.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
@@ -328,6 +329,38 @@
         } else {
             targetForm.appendChild(container);
         }
+    }
+
+    function bindVariantCondition(targetForm, config) {
+        const container = targetForm.querySelector(".ncf-personalization");
+        const sync = () => {
+            const variant = Number(findVariantId(targetForm));
+            const allowed = !config.variantRestricted || (config.variantIds || []).includes(variant);
+            container.hidden = !allowed;
+            container.style.display = allowed ? "" : "none";
+            container.querySelectorAll("input,select,textarea,button").forEach(input => {
+                if (!allowed) {
+                    if (input.type === "checkbox" || input.type === "radio") input.checked = false;
+                    else input.value = "";
+                    input.setCustomValidity?.("");
+                    if (input.tagName === "SELECT") input.dispatchEvent(new Event("change"));
+                }
+                if (!allowed && !input.disabled) { input.dataset.ncfVariantDisabled = "true"; input.disabled = true; }
+                else if (allowed && input.dataset.ncfVariantDisabled === "true") { delete input.dataset.ncfVariantDisabled; input.disabled = false; }
+            });
+            container.querySelectorAll(".ncf-field").forEach(widget => {
+                if (allowed) delete widget.dataset.ncfVariantCleared;
+                else if (!widget.dataset.ncfVariantCleared) {
+                    widget.dataset.ncfVariantCleared = "true";
+                    widget.dispatchEvent(new Event("ncf-upload-consumed"));
+                }
+            });
+            return allowed;
+        };
+        targetForm.addEventListener("change", () => { sync(); setTimeout(sync, 0); });
+        const timer = setInterval(() => { if (!targetForm.isConnected) clearInterval(timer); else sync(); }, 200);
+        sync();
+        return sync;
     }
 
     function findActionContainer(targetForm, submit) {
@@ -384,13 +417,14 @@
         });
     }
 
-    function bindCartSnapshot(targetForm, fields) {
+    function bindCartSnapshot(targetForm, fields, syncVariant = () => true) {
         if (!targetForm || targetForm.dataset.ncfSnapshotBound === "true") {
             return;
         }
         targetForm.dataset.ncfSnapshotBound = "true";
         let checkingUploads=false,uploadsApproved=false;
         const validateAndRemember = (event) => {
+            if (!syncVariant()) return;
             for (const field of fields) {
                 const name = "properties[" + (field.propertyName || field.label) + "]";
                 const input = Array.from(targetForm.elements).find(element => element.name === name);
@@ -400,6 +434,10 @@
                     const picker=input.closest(".ncf-field").querySelector("input[type=file]");
                     if(picker) { picker.setCustomValidity("Conclua o envio do arquivo antes de adicionar o produto.");picker.reportValidity();picker.setCustomValidity(""); }
                     return;
+                }
+                if (field.fieldType === "CHECKBOX" && (field.options || []).length) {
+                    const box = input.closest(".ncf-field").querySelector("input[type=checkbox]");
+                    box?.dispatchEvent(new Event("change"));
                 }
                 if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") {
                     const invalid = input.value && !(field.options || []).includes(input.value);
@@ -421,11 +459,13 @@
             if(uploads.length && !uploadsApproved) {
                 event.preventDefault();event.stopImmediatePropagation();if(checkingUploads)return;checkingUploads=true;
                 const button=event.type === "click" ? event.target.closest("button[type='submit'], input[type='submit'], .js-addtocart, .js-buy-now") : event.submitter;
+                const checkedVariant = findVariantId(targetForm);
                 Promise.all(uploads.map(input=>{
                     const widget=input.closest(".ncf-field");
                     if(!widget?.ncfValidateUpload)throw new Error("Envio indisponível. Atualize a página e tente novamente.");
                     return widget.ncfValidateUpload();
                 })).then(()=>{
+                    if (findVariantId(targetForm) !== checkedVariant || !syncVariant()) return;
                     uploadsApproved=true;
                     try{if(button)button.click();else targetForm.requestSubmit();}
                     finally{setTimeout(()=>{uploadsApproved=false;},0);}
@@ -473,7 +513,7 @@
                 const key = field.propertyName || field.label;
                 const input = Array.from(targetForm.elements || [])
                     .find((element) => element.name === "properties[" + key + "]");
-                let value = input && (input.type !== "checkbox" || input.checked) && input.value ? String(input.value).trim() : "";
+                let value = input && !input.disabled && (input.type !== "checkbox" || input.checked) && input.value ? String(input.value).trim() : "";
                 if(field.fieldType === "FILE_UPLOAD") value=value.replace(/\s*—\s*NCF-FILE:.*$/, "");
                 return value ? { label: field.label || key, value: value } : null;
             })
@@ -868,7 +908,7 @@
         return ((0.2126 * color.red) + (0.7152 * color.green) + (0.0722 * color.blue)) / 255;
     }
 
-    function renderField(field) {
+    function renderField(field, restoreUploads = true) {
         if (field.fieldType === "FILE_UPLOAD") {
             const host=document.createElement("div");host.className="ncf-field";
             const blocked=document.createElement("input");blocked.name="properties["+(field.propertyName||field.label)+"]";
@@ -877,8 +917,9 @@
             const text=document.createElement("p");text.textContent=field.label+" — Carregando envio de arquivo…";host.append(text,blocked);
             const mount=()=>{
                 if(!window.ncfBuyerUploadControl || !host.isConnected)return;
-                const control=window.ncfBuyerUploadControl(Number(storeId),Number(field.productId || findProductId(findProductForm())),field);
+                const control=window.ncfBuyerUploadControl(Number(storeId),Number(field.productId || findProductId(findProductForm())),field,restoreUploads);
                 host.replaceChildren(control.wrapper);
+                host.closest("form")?.dispatchEvent(new Event("change", {bubbles:true}));
             };
             if(window.ncfBuyerUploadControl) setTimeout(mount,0);
             else {
