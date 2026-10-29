@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.49.0] - 2026-10-28
+
+### Features
+
+- backoffice: add user journey audit screen (`bd300dc`)
+
 ## [1.48.1] - 2026-10-28
 
 ### Correções
