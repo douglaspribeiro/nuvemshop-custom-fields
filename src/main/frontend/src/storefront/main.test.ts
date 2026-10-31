@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { DISABLED } from "../shared/config";
 
-type Node = { type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void; options?: {label: string; value: string}[]; value?: string };
+type Node = { disabled?: boolean; type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void; options?: {label: string; value: string}[]; value?: string };
 
 describe("SDK storefront without a legacy script", () => {
 	let state: NubeSDKState;
@@ -53,6 +53,88 @@ describe("SDK storefront without a legacy script", () => {
 		} as unknown as NubeSDKState);
 	}
 
+    function action(node: Node): Node | undefined {
+        if(node.type === "button" && String(node.children).includes("Adicionar com personalização")) return node;
+        for(const child of node.children ?? []) {const found=action(child);if(found)return found;}
+    }
+    function quantity(node: Node): Node | undefined {
+        if(node.type === "numberfield")return node;
+        for(const child of node.children ?? []) {const found=quantity(child);if(found)return found;}
+    }
+    it("validates and sends through its own Patagonia button without a native gate event",async()=>{
+        await boot();
+        let tree=render.mock.calls[render.mock.calls.length-1][1] as Node;
+        action(tree)!.onClick!();
+        expect(send.mock.calls.some(c=>c[0]==="cart:add")).toBe(false);
+        tree=render.mock.calls[render.mock.calls.length-1][1];
+        field(tree)!.onChange!({value:"Ana"});
+        quantity(tree)!.onChange!({value:"3"});
+        action(tree)!.onClick!();
+        const calls=send.mock.calls.filter(c=>c[0]==="cart:add");
+        expect(calls).toHaveLength(1);
+        expect(calls[0][1]().cart.items).toEqual([{product_id:341531127,variant_id:101,quantity:3,properties:{Nome:"Ana"}}]);
+        expect(send.mock.calls.some(c=>c[0]==="cart:before_update:result")).toBe(false);
+        action(tree)!.onClick!();
+        expect(send.mock.calls.filter(c=>c[0]==="cart:add")).toHaveLength(1);
+    });
+    it("rejects an unresolved variant or invalid quantity on its direct button",async()=>{
+        await boot();
+        let tree=render.mock.calls[render.mock.calls.length-1][1] as Node;
+        field(tree)!.onChange!({value:"Ana"});quantity(tree)!.onChange!({value:"1.5"});action(tree)!.onClick!();
+        expect(send.mock.calls.some(c=>c[0]==="cart:add")).toBe(false);
+        expect(JSON.stringify(render.mock.calls[render.mock.calls.length-1][1])).toContain("quantidade inteira");
+    });
+    it("does not expose the Patagonia direct action on other themes",async()=>{
+        state.store.theme="other";await boot();
+        expect(action(render.mock.calls[render.mock.calls.length-1][1])).toBeUndefined();
+    });
+
+    it("blocks a different personalization for an existing cart line", async () => {
+        await boot();
+        state.cart.items = [{product_id:341531127,variant_id:101,properties:{Nome:"Ana"}}] as unknown as typeof state.cart.items;
+        field(currentTree())!.onChange!({value:"Bia"});
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.some(c => c[0] === "cart:add")).toBe(false);
+        expect(JSON.stringify(currentTree())).toContain("outros dados");
+    });
+    function success(properties: unknown, variant = 101) {
+        listeners.get("cart:add:success")!({...state, eventPayload: {
+            product_id: 341531127, variant_id: variant, properties,
+        }} as unknown as NubeSDKState);
+    }
+    function currentTree(): Node { return render.mock.calls[render.mock.calls.length - 1][1]; }
+    it("preserves filled values after an unrelated native addition", async () => {
+        await boot();
+        field(currentTree())!.onChange!({value: "Ana"});
+        success([]);
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0].properties).toEqual({Nome: "Ana"});
+    });
+    it("preserves the draft when the SDK acknowledgement omits properties", async () => {
+        await boot();
+        field(currentTree())!.onChange!({value: "Ana"});
+        action(currentTree())!.onClick!();
+        success([]);
+        send.mockClear();
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0].properties).toEqual({Nome: "Ana"});
+    });
+    it("preserves edits made during submission and clears only the confirmed draft", async () => {
+        await boot();
+        field(currentTree())!.onChange!({value: "Ana"});
+        action(currentTree())!.onClick!();
+        field(currentTree())!.onChange!({value: "Bia"});
+        success({Nome: "Ana"});
+        send.mockClear();
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0].properties).toEqual({Nome: "Bia"});
+        success([{name: "Nome", value: "Bia"}]);
+        send.mockClear();
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.some(c => c[0] === "cart:add")).toBe(false);
+    });
+
+
 	it("renders Patagonia fields inside the Worker without DOM or a transition asset", async () => {
 		expect(typeof document).toBe("undefined");
 		expect(typeof window).toBe("undefined");
@@ -61,7 +143,7 @@ describe("SDK storefront without a legacy script", () => {
 		expect(field(render.mock.calls[0][1])?.name).toBe("Nome");
 		expect(vi.mocked(fetch)).toHaveBeenCalledWith(
 			"https://app.test/public/stores/7278258/personalization?productId=341531127",
-			{ headers: { Accept: "application/json" } });
+			expect.objectContaining({ headers: { Accept: "application/json" } }));
 	});
 
 	it("shows the custom list prompt, blocks empty choice and sends a real option", async () => {
@@ -98,7 +180,8 @@ describe("SDK storefront without a legacy script", () => {
         send.mockClear(); add();
         expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
         (checkbox().onChange as unknown as (e:{value:boolean})=>void)({value:true});
-        listeners.get('cart:add:success')!(state);
+        send.mockClear(); add();
+        success({Confirmo: locale === 'pt-BR' ? 'Sim' : 'Sí'});
         expect((checkbox() as unknown as {checked:boolean}).checked).toBe(false);
     });
 
@@ -120,7 +203,7 @@ describe("SDK storefront without a legacy script", () => {
         listeners.get('cart:add:fail')!(state);checks()[0].onChange!({value:false});
         send.mockClear();add();
         expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Adicionais:'Embalagem'});
-        listeners.get('cart:add:success')!(state);
+        success({Adicionais: 'Embalagem'});
         expect(checks().map(box=>box.checked)).toEqual([false,false,false]);
     });
 

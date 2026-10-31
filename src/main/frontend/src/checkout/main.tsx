@@ -4,6 +4,7 @@ import { PersonalizationSummary } from "../shared/PersonalizationSummary";
 import { createConfigurationLoader, imageProperties } from "../shared/selected-images";
 import { appOrigin, safeState, storeId } from "../shared/config";
 import { collectItemProperties, normalizedColor, normalizeProperties, type ItemProperties } from "../shared/properties";
+import { installPersonalizationGuard } from "./personalization-guard";
 
 const SLOT = "after_line_items";
 
@@ -11,10 +12,12 @@ let textColor: string | undefined;
 let locale: string | null = null;
 
 export function App(nube: NubeSDK) {
-    const configFor = createConfigurationLoader();
+    const validatePersonalization = installPersonalizationGuard(nube);
+    const configFor = createConfigurationLoader(validatePersonalization.configFor);
     let latestState = safeState(nube);
     let generation = 0;
     const refresh = async (state: NubeSDKState | null) => {
+        void validatePersonalization(state);
         latestState = state;
         const current = ++generation;
         render(nube, state);

@@ -15,7 +15,11 @@ const config = {...DISABLED, enabled:true, fields:[{
 function cartItem(id:number, value:string) {
     return {id,product_id:100,name:"Caderno",properties:{Capa:value,Nome:"Ana",_interna:"oculta"}};
 }
-const currentTree = () => JSON.stringify(vi.mocked(nube.render).mock.calls.slice(-1)[0]?.[1]);
+const currentTree = () => JSON.stringify(vi.mocked(nube.render).mock.calls.filter(([slot])=>slot==="after_line_items").slice(-1)[0]?.[1]);
+const validation = () => {
+    const update=vi.mocked(nube.send).mock.calls.filter(([event])=>event==="cart:validate").slice(-1)[0]?.[1];
+    return update?.({} as NubeSDKState)?.cart?.validation;
+};
 const response = (body:unknown) => ({ok:true,json:async()=>body}) as Response;
 async function boot() { const {App}=await import("./main");App(nube); }
 
@@ -38,7 +42,7 @@ it("shows text and each item's selected thumbnail in the checkout summary",async
     expect(currentTree()).toContain("Nome: Ana");expect(currentTree()).not.toContain("oculta");
     expect(currentTree()).toContain("#123456");
     expect(vi.mocked(fetch).mock.calls.filter(([url])=>String(url).includes("personalization"))).toHaveLength(1);
-    expect(nube.send).not.toHaveBeenCalled();
+    await vi.waitFor(()=>expect(validation()).toEqual({status:"success"}));
 });
 
 it("refreshes selections and clears the summary when the cart becomes empty",async()=>{
@@ -48,6 +52,7 @@ it("refreshes selections and clears the summary when the cart becomes empty",asy
     await vi.waitFor(()=>{expect(currentTree()).toContain("https://app.test/public/azul");expect(currentTree()).not.toContain("https://app.test/public/floral");});
     state={...state,cart:{items:[]}} as unknown as NubeSDKState;listeners.get("cart:update")!(state);
     expect(nube.clearSlot).toHaveBeenCalledWith("after_line_items");
+    await vi.waitFor(()=>expect(validation()).toEqual({status:"success"}));
 });
 
 it("keeps custom field names visible during configuration failures",async()=>{
@@ -57,7 +62,7 @@ it("keeps custom field names visible during configuration failures",async()=>{
     });
     await boot();await vi.waitFor(()=>expect(currentTree()).toContain("Nome: Ana"));
     expect(currentTree()).toContain("Capa: Floral");expect(currentTree()).not.toContain("/public/floral");
-    expect(nube.send).not.toHaveBeenCalled();
+    await vi.waitFor(()=>expect(validation()).toEqual({status:"fail",reason:expect.any(String)}));
 });
 
 it("ignores slow image and style responses after an item is removed",async()=>{

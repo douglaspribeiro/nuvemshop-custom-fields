@@ -65,17 +65,22 @@ export async function fetchConfig(
 	store: number,
 	productId: number,
 ): Promise<PersonalizationConfig> {
-	const url = `${appOrigin()}/public/stores/${store}/personalization?productId=${productId}`;
 	try {
-		const response = await fetch(url, { headers: { Accept: "application/json" } });
-		if (!response.ok) {
-			return DISABLED;
-		}
-		const body = (await response.json()) as PersonalizationConfig;
-		return body?.enabled ? normalize(body) : DISABLED;
+		return await fetchConfigRequired(store, productId);
 	} catch {
 		return DISABLED;
 	}
+}
+
+/** Checkout must distinguish an unconfigured product from a failed policy lookup. */
+export async function fetchConfigRequired(store: number, productId: number): Promise<PersonalizationConfig> {
+    const response = await fetch(`${appOrigin()}/public/stores/${store}/personalization?productId=${productId}`,
+        { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
+    if (!response.ok) throw new Error("personalization_policy_unavailable");
+    const body = await response.json() as PersonalizationConfig;
+    if (typeof body?.enabled !== "boolean" || (body.enabled && !Array.isArray(body.fields)))
+        throw new Error("personalization_policy_invalid");
+    return body.enabled ? normalize(body) : DISABLED;
 }
 
 function normalize(config: PersonalizationConfig): PersonalizationConfig {
