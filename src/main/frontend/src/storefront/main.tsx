@@ -1,5 +1,5 @@
-import { Button, Column, NumberField, Text } from "@tiendanube/nube-sdk-jsx";
-import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
+import { Button, Column, NumberField, Select, Text } from "@tiendanube/nube-sdk-jsx";
+import type { NubeComponent, NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import {
 	DISABLED,
 	type PersonalizationConfig,
@@ -30,6 +30,8 @@ let config: PersonalizationConfig = DISABLED;
 let store: number | null = null;
 let productId: number | null = null;
 let variantId: number | null = null;
+/** Variant controlled by our Patagonia action. The theme does not expose its initial choice to the SDK. */
+let directVariantId: number | null = null;
 let values: ValueMap = {};
 let errors: FieldError[] = [];
 let textColor: string | undefined;
@@ -68,7 +70,12 @@ export function App(nube: NubeSDK) {
 	nube.on("location:updated", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
     nube.on("cart:update", state => void renderCartImages(state));
 	nube.on("product:variant_selected", (state) => {
-		variantId = readVariantId(state) ?? variantId;
+		const selected = readVariantId(state);
+		if (selected != null) {
+			variantId = selected;
+			directVariantId = selected;
+			render(nube);
+		}
 	});
 	nube.on("cart:before_update", (state) => gate(nube, state));
 	nube.on("cart:add:success", (state) => {
@@ -77,7 +84,7 @@ export function App(nube: NubeSDK) {
         const sent = submitted;
         // Native additions and late acknowledgements must never erase an unsent draft.
         if (!sent || added?.product_id !== sent.product || added?.variant_id !== sent.variant
-            || sent.product !== productId || sent.variant !== (variantId ?? undefined) || sent.generation !== draftGeneration) return;
+            || sent.product !== productId || sent.variant !== selectedVariantId(nube) || sent.generation !== draftGeneration) return;
         submitted = null;
         pendingSelfAdds = 0;
         directPending = false;
@@ -140,6 +147,7 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	store = nextStore;
 	productId = nextProduct;
 	variantId = readVariantId(state);
+	directVariantId = variantId ?? initialVariantId(state);
 	values = {};
 	errors = [];
     draftGeneration++; submitted = null;
@@ -179,21 +187,44 @@ function render(nube: NubeSDK) {
 		/>;
     if (!isPatagonia(nube)) { nube.render(SLOT, fields); return; }
     const es = config.locale.startsWith("es");
+    const state = safeState(nube);
+    const variants = productVariants(state);
+    const selected = variants.find(variant => variant.id === directVariantId) ?? variants[0];
+    const selectedValues = selected?.values?.map(value => localized(value, config.locale)) ?? [];
+    const attributes = productAttributeLabels(state, selectedValues.length, config.locale);
+    const variantSelectors = selected && variants.length > 1 ? attributes.map((label, index) => {
+            const choices = [...new Set(variants.filter(variant => variant.values.every((value, valueIndex) =>
+                valueIndex === index || localized(value, config.locale) === selectedValues[valueIndex]))
+                .map(variant => localized(variant.values[index], config.locale)).filter(Boolean))];
+            return <Select name={`ncf-variant-${index}`} label={label} value={selectedValues[index] ?? ""}
+                options={choices.map(value => ({label: value, value}))}
+                disabled={directPending} onChange={event => {
+                    const matched = variants.find(variant => variant.values.every((value, valueIndex) =>
+                        localized(value, config.locale) === (valueIndex === index ? event.value : selectedValues[valueIndex])));
+                    if (matched) { directVariantId = matched.id; directMessage = ""; render(nube); }
+                }} />;
+        }) : [];
+    // The SDK renderer does not flatten a dynamic JSX array. Build the children array explicitly.
+    const variantControls: NubeComponent = selected && variants.length > 1
+        ? {type: "col", gap: 8, children: [<Text>{es ? "Variante del producto" : "Variação do produto"}</Text>, ...variantSelectors]}
+        : {type: "col", gap: 0, children: []};
     nube.render(SLOT, <Column gap={8}>{fields}
+        {variantControls}
         <Text>{es ? "Completá los datos y usá este botón para agregar tu producto personalizado." : "Preencha os dados e use este botão para adicionar seu produto personalizado."}</Text>
         <NumberField name="ncf-personalized-quantity" label={es ? "Cantidad personalizada" : "Quantidade personalizada"}
             min={1} step={1} value={directQuantity} disabled={directPending}
             onChange={event => { directQuantity = Number(event.value); }} />
         <Button disabled={directPending} onClick={() => {
             if (productId !== renderProduct || draftGeneration !== renderGeneration || directPending) return;
-            if (!Number.isSafeInteger(directQuantity) || directQuantity < 1 || variantId == null) {
+            const selectedId = selectedVariantId(nube);
+            if (!Number.isSafeInteger(directQuantity) || directQuantity < 1 || selectedId == null) {
                 directMessage = es ? "Seleccioná una variante y una cantidad entera mayor que cero." : "Selecione uma variação e uma quantidade inteira maior que zero.";
                 render(nube); return;
             }
             const state = safeState(nube);
             if (!state) return;
             directMessage = "";
-            gate(nube, {...state, eventPayload: {action: "ADD", item: {product_id: productId, variant_id: variantId,
+            gate(nube, {...state, eventPayload: {action: "ADD", item: {product_id: productId, variant_id: selectedId,
                 previous_quantity: 0, new_quantity: directQuantity}}} as NubeSDKState, true);
         }}>{directPending ? (es ? "Agregando…" : "Adicionando…") : (es ? "Agregar con personalización" : "Adicionar com personalização")}</Button>
         <Text>{directMessage}</Text>
@@ -208,6 +239,7 @@ function clear(nube: NubeSDK) {
 	config = DISABLED;
 	productId = null;
 	variantId = null;
+	directVariantId = null;
 	values = {};
 	errors = [];
     draftGeneration++; submitted = null;
@@ -345,6 +377,35 @@ function readVariantId(state: NubeSDKState | null): number | null {
 		}
 	}
 	return null;
+}
+
+function productVariants(state: NubeSDKState | null) {
+    const page = state?.location?.page;
+    return page?.type === "product" ? [...(page.data.product.variants ?? [])]
+        .sort((left, right) => left.position - right.position) : [];
+}
+
+function initialVariantId(state: NubeSDKState | null): number | null {
+    return productVariants(state)[0]?.id ?? null;
+}
+
+function selectedVariantId(nube: NubeSDK): number | undefined {
+    return isPatagonia(nube) ? directVariantId ?? undefined : variantId ?? undefined;
+}
+
+function localized(value: unknown, locale: string): string {
+    if (typeof value === "string") return value;
+    if (!value || typeof value !== "object") return "";
+    const labels = value as Record<string, unknown>;
+    const preferred = labels[locale] ?? labels[locale.split("-")[0]] ?? Object.values(labels).find(label => typeof label === "string");
+    return typeof preferred === "string" ? preferred : "";
+}
+
+function productAttributeLabels(state: NubeSDKState | null, count: number, locale: string): string[] {
+    const page = state?.location?.page;
+    const attributes = page?.type === "product" ? page.data.product.attributes ?? [] : [];
+    return Array.from({length: count}, (_, index) => localized(attributes[index], locale)
+        || (locale.startsWith("es") ? `Opción ${index + 1}` : `Opção ${index + 1}`));
 }
 
 /**

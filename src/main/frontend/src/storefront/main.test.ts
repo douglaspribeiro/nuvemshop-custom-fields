@@ -61,6 +61,14 @@ describe("SDK storefront without a legacy script", () => {
         if(node.type === "numberfield")return node;
         for(const child of node.children ?? []) {const found=quantity(child);if(found)return found;}
     }
+    function variantSelect(node: Node | Node[]): Node | undefined {
+        if (Array.isArray(node)) {
+            for (const child of node) { const found = variantSelect(child); if (found) return found; }
+            return undefined;
+        }
+        if (node.type === "select" && node.name?.startsWith("ncf-variant-")) return node;
+        for (const child of node.children ?? []) { const found = variantSelect(child as Node | Node[]); if (found) return found; }
+    }
     it("validates and sends through its own Patagonia button without a native gate event",async()=>{
         await boot();
         let tree=render.mock.calls[render.mock.calls.length-1][1] as Node;
@@ -87,6 +95,22 @@ describe("SDK storefront without a legacy script", () => {
     it("does not expose the Patagonia direct action on other themes",async()=>{
         state.store.theme="other";await boot();
         expect(action(render.mock.calls[render.mock.calls.length-1][1])).toBeUndefined();
+    });
+    it("controls the Patagonia variant itself when the theme omits its selected-variant event", async () => {
+        const page = state.location.page;
+        if (page?.type === "product") page.data.product.variants = [
+            {id: 101, position: 2, values: [{es: "Una"}, {es: "Flores"}]},
+            {id: 102, position: 3, values: [{es: "Dos"}, {es: "Flores"}]},
+        ] as typeof page.data.product.variants;
+        if (page?.type === "product") page.data.product.attributes = [{es: "Mascotas"}, {es: "Diseño"}] as typeof page.data.product.attributes;
+        await boot();
+        let tree = currentTree();
+        field(tree)!.onChange!({value: "Ana"});
+        expect(JSON.stringify(tree)).toContain("ncf-variant-0");
+        variantSelect(tree)!.onChange!({value: "Dos"});
+        tree = currentTree();
+        action(tree)!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0]).toMatchObject({variant_id: 102, properties: {Nome: "Ana"}});
     });
 
     it("blocks a different personalization for an existing cart line", async () => {

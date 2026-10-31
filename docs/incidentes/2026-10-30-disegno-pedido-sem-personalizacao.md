@@ -37,7 +37,7 @@ Correção da hipótese inicial: o adaptador DOM é histórico e não pode ser i
 
 ## Correção local e validação
 
-- SDK da vitrine: ação própria **Agregar con personalización** no Patagonia, com validação, quantidade própria, variante selecionada, proteção contra cliques duplicados durante o envio e envio direto via `cart:add`.
+- SDK da vitrine: ação própria **Agregar con personalización** no Patagonia, com validação, quantidade própria e seleção da variante pelo próprio app. O tema não entrega a variante inicial nem o evento de troca ao SDK; depender desses sinais impediria ou enviaria a combinação errada. A ação também protege contra cliques duplicados e envia diretamente via `cart:add`.
 - Os conflitos existentes de personalização na mesma variante continuam bloqueados.
 - SDK do checkout: habilita `has_cart_validation`, verifica os valores efetivamente presentes em cada linha, bloqueia com indicação de produto/campos faltantes. Consulta com falha permanece bloqueada e oferece tentar novamente; não é confundida com produto sem configuração. Respostas antigas não liberam um carrinho mais recente.
 - A leitura estrita da configuração usa timeout de 8 segundos e cache curto por produto dentro da sessão.
