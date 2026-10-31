@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.50.2] - 2026-10-31
+
+### Correções
+
+- control Patagonia variants in personalization action (`745bfb7`)
+
 ## [1.50.1] - 2026-10-30
 
 ### Correções
