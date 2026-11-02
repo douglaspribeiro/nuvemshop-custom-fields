@@ -827,8 +827,34 @@ public class PaymentSubscriptionService {
         return synchronize(local, remote, invoice, "PAYMENT_WEBHOOK");
     }
 
+    @Transactional(readOnly = true)
+    public boolean shouldShowRefundNotice(Long storeId) {
+        return shouldShowRefundNotice(storeId, Instant.now());
+    }
+
+    boolean shouldShowRefundNotice(Long storeId, Instant now) {
+        // Use the earliest paid-plan activation across subscriptions, never a renewal,
+        // checkout creation, free trial or courtesy. Missing history is not a recent start.
+        return planEvents.findFirstByStoreIdAndToPlanInAndSourceInOrderByCreatedAtAscIdAsc(storeId,
+                        java.util.List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA),
+                        java.util.List.of("BILLING", "EFI_CHECKOUT", "PAYMENT_WEBHOOK", "PAYMENT_RECONCILE",
+                                "STRIPE_CHECKOUT", "CREEM_CHECKOUT", "DLOCAL_GO_CHECKOUT",
+                                "PENDING_TIMEOUT_RECONCILE", "PENDING_TIMEOUT", "PAYMENT_UPGRADE"))
+                .map(PlanEvent::getCreatedAt)
+                .filter(start -> !start.isAfter(now)
+                        && now.isBefore(start.plus(java.time.Duration.ofDays(7))))
+                .isPresent();
+    }
+
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void cancel(Long storeId) {
+        cancel(storeId, null);
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void cancel(Long storeId, String reason) {
+        if (reason != null && reason.strip().length() > 2000)
+            throw new IllegalArgumentException("Motivo do cancelamento inválido.");
         stores.findByStoreIdForUpdate(storeId);
         PaymentSubscription local = subscriptions.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura nao encontrada."));
@@ -844,6 +870,7 @@ public class PaymentSubscriptionService {
                 throw new IllegalStateException("Não foi possível confirmar o fim do período pago. Contate o suporte antes de cancelar.");
             }
         }
+        if (reason != null && !reason.isBlank()) local.setCancellationReason(reason.strip());
         local.setCancellationPending(true);
         local.setCancellationRequestedAt(Instant.now());
         subscriptions.saveAndFlush(local);

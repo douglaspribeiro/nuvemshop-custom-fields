@@ -37,6 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class PremiumBonusPageTest {
     @Autowired MockMvc mvc;
+    @Autowired br.com.nuvemcustomfields.repository.PlanEventRepository planEvents;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entityManager;
     @Autowired StoreRepository stores;
     @Autowired PaymentSubscriptionRepository paymentSubscriptions;
     @Autowired PersonalizationRuleRepository rules;
@@ -167,10 +170,45 @@ class PremiumBonusPageTest {
                 .andExpect(content().string(containsString("Gerenciar assinatura")))
                 .andExpect(content().string(not(containsString("action=\"/admin/billing/cancel\""))));
         mvc.perform(get("/admin/billing/cancel").session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Tem certeza de que deseja cancelar")))
-                .andExpect(content().string(containsString("24/10/2026")));
+                .andExpect(content().string(containsString("Desativar a renovação automática?")))
+                .andExpect(content().string(containsString("24/10/2026")))
+                .andExpect(content().string(containsString("name=\"reason\"")))
+                .andExpect(content().string(containsString("É opcional.")))
+                .andExpect(content().string(not(containsString("Para solicitar cancelamento com estorno, abra um ticket de suporte. A solicitação será analisada pela nossa equipe."))))
+                .andExpect(result -> {
+                    var textarea = java.util.regex.Pattern.compile("<textarea[^>]*name=\"reason\"[^>]*>")
+                            .matcher(result.getResponse().getContentAsString());
+                    assertThat(textarea.find()).isTrue();
+                    assertThat(textarea.group()).doesNotContain("required");
+                });
+        var firstPaid = new br.com.nuvemcustomfields.entity.PlanEvent();
+        firstPaid.setStoreId(store.getStoreId());
+        firstPaid.setFromPlan(PlanType.FREE);
+        firstPaid.setToPlan(PlanType.PREMIUM);
+        firstPaid.setSource("PAYMENT_WEBHOOK");
+        planEvents.saveAndFlush(firstPaid);
+        mvc.perform(get("/admin/billing/cancel").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Para solicitar cancelamento com estorno, abra um ticket de suporte. A solicitação será analisada pela nossa equipe.")));
+        jdbc.update("UPDATE plan_events SET created_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(8 * 86400)), firstPaid.getId());
+        var renewal = new br.com.nuvemcustomfields.entity.PlanEvent();
+        renewal.setStoreId(store.getStoreId());
+        renewal.setFromPlan(PlanType.PREMIUM);
+        renewal.setToPlan(PlanType.PREMIUM);
+        renewal.setSource("PAYMENT_WEBHOOK");
+        planEvents.saveAndFlush(renewal);
+        entityManager.clear();
+        mvc.perform(get("/admin/billing/cancel").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("Para solicitar cancelamento com estorno, abra um ticket de suporte. A solicitação será analisada pela nossa equipe."))));
         mvc.perform(post("/admin/billing/cancel").session(session)).andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/billing"));
+        for (String invalidReason : new String[]{"a".repeat(2001)}) {
+            mvc.perform(post("/admin/billing/cancel").session(session)
+                            .param("confirm", "true").param("reason", invalidReason))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/admin/billing/cancel"))
+                    .andExpect(flash().attributeExists("error"));
+        }
         assertThat(paymentSubscriptions.findByStoreId(store.getStoreId()).orElseThrow().getStatus())
                 .isEqualTo(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.ACTIVE);
 
@@ -178,6 +216,7 @@ class PremiumBonusPageTest {
         paymentSubscriptions.saveAndFlush(subscription);
         mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
                 .andExpect(content().string(containsString("Acesso até:")))
+                .andExpect(content().string(containsString("Renovação automática desativada")))
                 .andExpect(content().string(not(containsString("Próxima cobrança:"))))
                 .andExpect(content().string(not(containsString("Gerenciar assinatura"))));
     }

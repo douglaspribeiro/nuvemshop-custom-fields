@@ -67,7 +67,7 @@
                 <button class="button primary payment-submit" id="payment-submit" type="submit">
                     <span th:text="${upgradeAdjustment!=null ? 'Confirmar upgrade e pagar '+formattedAmount : 'Confirmar e pagar'}">Confirmar e pagar</span><span aria-hidden="true">→</span>
                 </button>
-                <p class="payment-submit-note" th:text="${upgradeAdjustment!=null ? 'Ao confirmar, você autoriza o ajuste único de hoje e a mudança de sua assinatura para a mensalidade indicada. O cartão informado paga apenas o ajuste; o cartão da assinatura não será trocado.' : 'Ao confirmar, você autoriza a cobrança mensal indicada no resumo. O cancelamento pode ser feito pelo painel.'}"></p>
+                <p class="payment-submit-note" th:text="${upgradeAdjustment!=null ? 'Ao confirmar, você autoriza o ajuste único de hoje e a mudança de sua assinatura para a mensalidade indicada. O cartão informado paga apenas o ajuste; o cartão da assinatura não será trocado.' : 'Ao confirmar, você autoriza a cobrança mensal indicada no resumo. A renovação automática pode ser desativada pelo painel.'}"></p>
             </form>
             <div class="payment-trust">
                 <div class="payment-processor">
@@ -97,7 +97,7 @@
             <div class="payment-summary-divider"></div>
             <div class="payment-summary-line" th:if="${upgradeAdjustment==null}"><span th:text="${discounted ? 'Primeiro mês (cupom)' : 'Assinatura mensal'}">Assinatura mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
             <div class="payment-summary-line payment-summary-total"><span th:text="${upgradeAdjustment!=null ? 'Ajuste único hoje' : (discounted ? 'Primeira mensalidade' : 'Total mensal')}">Total mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>
-            <p class="payment-summary-caption" th:text="${upgradeAdjustment!=null ? 'O upgrade será liberado após confirmar o pagamento e a alteração na Efí. Se ficar pendente, não pague novamente.' : 'Seu plano será ativado após a confirmação do primeiro pagamento. Você pode cancelar a qualquer momento pelo painel.'}"></p>
+            <p class="payment-summary-caption" th:text="${upgradeAdjustment!=null ? 'O upgrade será liberado após confirmar o pagamento e a alteração na Efí. Se ficar pendente, não pague novamente.' : 'Seu plano será ativado após a confirmação do primeiro pagamento. Você pode desativar a renovação automática a qualquer momento pelo painel.'}"></p>
         </aside>
     </div>
 </main>

@@ -148,6 +148,10 @@
             <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
             <p>Última cobrança: <span th:text="${paymentSubscription.lastPaymentId ?: '-'}">-</span>
                 / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
+            <div th:if="${!#strings.isEmpty(paymentSubscription.cancellationReason)}">
+                <strong>Motivo do cancelamento</strong>
+                <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${paymentSubscription.cancellationReason}"></p>
+            </div>
             <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
             <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
             <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.technicalError ?: paymentSubscription.lastError)}" th:text="${paymentSubscription.technicalError ?: paymentSubscription.lastError}">Erro técnico</p>

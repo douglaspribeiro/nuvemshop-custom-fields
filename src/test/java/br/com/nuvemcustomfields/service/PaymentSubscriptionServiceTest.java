@@ -10,6 +10,9 @@ import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -226,8 +229,10 @@ class PaymentSubscriptionServiceTest {
         assertThat(local.isCancellationPending()).isTrue();
     }
 
-    @Test
-    void selfServiceCancellationKeepsPaidAccessUntilNextBillingDate() {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "  Preciso reutilizar os campos em vários produtos.  "})
+    void selfServiceCancellationKeepsPaidAccessUntilNextBillingDate(String reason) {
         PaymentSubscription local = local();
         local.setStatus(PaymentSubscriptionStatus.ACTIVE);
         local.setAccessActive(true);
@@ -245,13 +250,37 @@ class PaymentSubscriptionServiceTest {
         when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
         when(subscriptions.save(local)).thenReturn(local);
 
-        service.cancel(123L);
+        service.cancel(123L, reason);
 
+        assertThat(local.getCancellationReason()).isEqualTo(reason == null || reason.isBlank() ? null : reason.strip());
         verify(gateway).cancel("sub-1");
         assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
         assertThat(local.isAccessActive()).isTrue();
         assertThat(local.getNextPaymentAt()).isEqualTo(paidUntil);
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"0,true", "604799,true", "604800,false", "691200,false", "-1,false"})
+    void refundNoticeUsesFirstPaidActivationAndStrictSevenDayWindow(long elapsedSeconds, boolean expected) {
+        Instant now = Instant.parse("2026-11-02T12:00:00Z");
+        PlanEvent event = new PlanEvent();
+        org.springframework.test.util.ReflectionTestUtils.setField(event, "createdAt", now.minusSeconds(elapsedSeconds));
+        when(events.findFirstByStoreIdAndToPlanInAndSourceInOrderByCreatedAtAscIdAsc(eq(123L), anyCollection(), anyCollection()))
+                .thenReturn(Optional.of(event));
+        assertThat(service.shouldShowRefundNotice(123L, now)).isEqualTo(expected);
+    }
+
+    @Test
+    void refundNoticeDoesNotTreatMissingHistoryAsNewSubscription() {
+        assertThat(service.shouldShowRefundNotice(123L, Instant.now())).isFalse();
+    }
+
+    @Test
+    void invalidCancellationReasonDoesNotContactProvider() {
+        assertThatThrownBy(() -> service.cancel(123L, "a".repeat(2001)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(router, gateway);
     }
 
     @Test

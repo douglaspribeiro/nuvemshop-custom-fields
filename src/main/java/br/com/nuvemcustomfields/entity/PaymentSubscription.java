@@ -102,6 +102,8 @@ public class PaymentSubscription {
     private Instant graceUntil;
     @Column(name = "cancellation_pending", nullable = false)
     private boolean cancellationPending;
+    @Column(name = "cancellation_reason", length = 2000)
+    private String cancellationReason;
     @Column(name = "cancellation_requested_at")
     private Instant cancellationRequestedAt;
     @Column(name = "cancellation_effective_at")
@@ -189,6 +191,8 @@ public class PaymentSubscription {
     public void setGraceUntil(Instant value) { graceUntil = value; touch(); }
     public boolean isCancellationPending() { return cancellationPending; }
     public void setCancellationPending(boolean value) { cancellationPending = value; touch(); }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String value) { cancellationReason = value; touch(); }
     public Instant getCancellationRequestedAt() { return cancellationRequestedAt; }
     public void setCancellationRequestedAt(Instant value) { cancellationRequestedAt = value; touch(); }
     public Instant getCancellationEffectiveAt() { return cancellationEffectiveAt; }

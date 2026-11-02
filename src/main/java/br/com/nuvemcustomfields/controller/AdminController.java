@@ -459,11 +459,13 @@ public class AdminController {
                 || subscription.isCancellationPending()) return "redirect:/admin/billing";
         model.addAttribute("store", store);
         model.addAttribute("paymentSubscription", subscription);
+        model.addAttribute("showRefundNotice", paymentSubscriptionService.shouldShowRefundNotice(store.getStoreId()));
         return "admin/billing-cancel";
     }
 
     @PostMapping("/admin/billing/cancel")
     public String cancelSubscription(@RequestParam(defaultValue = "false") boolean confirm,
+                                     @RequestParam(defaultValue = "") String reason,
                                      HttpSession session, RedirectAttributes redirectAttributes) {
         Store store = adminStoreService.requireCurrentStore(session);
         var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
@@ -477,8 +479,13 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("error", messages.get("admin.billing.cancel.unavailable"));
             return "redirect:/admin/billing";
         }
+        if (reason.strip().length() > 2000) {
+            redirectAttributes.addFlashAttribute("error", messages.get("admin.billing.cancel.reason.invalid"));
+            redirectAttributes.addFlashAttribute("cancellationReason", reason.length() <= 2000 ? reason : reason.substring(0, 2000));
+            return "redirect:/admin/billing/cancel";
+        }
         try {
-            paymentSubscriptionService.cancel(store.getStoreId());
+            paymentSubscriptionService.cancel(store.getStoreId(), reason);
             redirectAttributes.addFlashAttribute("message", messages.get("admin.billing.cancelled"));
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
