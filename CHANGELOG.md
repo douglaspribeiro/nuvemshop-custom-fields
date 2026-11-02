@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.51.0] - 2026-11-02
+
+### Features
+
+- clarify renewal cancellation and collect optional feedback (`154ac0e`)
+
 ## [1.50.2] - 2026-10-31
 
 ### Correções
