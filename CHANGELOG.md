@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.52.0] - 2026-11-03
+
+### Features
+
+- recover failed renewals with grace period and email notices (`cd6dfc9`)
+
+### Correções
+
+- prevent duplicate personalization from concurrent legacy scripts (`b9f18ec`)
+
 ## [1.51.1] - 2026-11-03
 
 ### Outros
