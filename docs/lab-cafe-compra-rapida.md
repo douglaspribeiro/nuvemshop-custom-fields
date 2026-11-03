@@ -2,6 +2,22 @@
 
 Data: 03/11/2026. Loja 959276, `https://shop.labcafe.com.ar/`, tema Idea.
 
+## Verificação após a publicação informada pelo usuário
+
+Na primeira consulta após a publicação em 03/11/2026, a leitura confirmou:
+
+- Container em execução: `NUVEMSHOP_SCRIPT_ID=12174`.
+- A API de scripts da loja retorna `LegadoV2` 12174 ativo, evento `onload`, versão 1 publicada (`legadov2/1.js`). O legado antigo 9344 também continua ativo, evento `onfirstinteraction`, versão 8.
+- O SHA-256 do arquivo novo publicado era idêntico ao arquivo local daquela etapa: `a042b63dab6247a63ee01bcb1dee3e3bb764566575a6cb1740287b6c1f05d39d`.
+- Contudo, o HTML público da página inicial e de `/productos/cafe-colombia-la-marianela-250grs/` ainda referencia apenas `legado-js/8.js` para este app. A repetição da leitura da página inicial com query nova e `Cache-Control: no-cache` trouxe a mesma referência antiga.
+- O arquivo antigo servido não contém `installQuickBuyRedirect` nem `quick_buy_redirect`.
+
+Conclusão: publicação e configuração do novo ID confirmadas; entrega do script novo na vitrine ainda não confirmada. Não afirmar que a compra rápida foi corrigida nessa loja. A origem da diferença entre API e HTML ainda precisa ser investigada. Nenhuma associação ou configuração foi alterada durante esta checagem.
+
+A sessão não disponibiliza navegador conectado; não houve teste de clique, desktop/celular, carrinho ou checkout. Essa inspeção HTTP não substitui o teste de interface solicitado.
+
+Após a publicação posterior da proteção contra duplicidade nos dois legados, a API passou a indicar as versões 9 (`Legado-js`) e 2 (`LegadoV2`), com arquivos idênticos à correção. A última consulta pública da LAB Cafe nesta sessão ainda entregava apenas `legado-js/8.js`, tanto na página inicial quanto no produto. A Velo, por outro lado, já entregava as versões 9 e 2. Esses resultados são distintos por loja; a publicação no Partner não comprova entrega imediata na LAB Cafe.
+
 ## Evidência atual
 
 - Cadastro ativo, plano interno `PREMIUM_PLUS` (Pro), 14 regras de produto habilitadas.

@@ -41,6 +41,16 @@ Não houve publicação, commit, push, pedido ou pagamento nesta execução. Nã
 
 ## Verificação local
 
+### Proteção contra dois legados ativos (03/11/2026)
+
+No produto `https://www.velopapelariacatolica.com.br/produtos/agenda-catolica-2027-carlo-acutis/`, loja 8389134, o HTML público entrega os dois scripts `legado-js/8.js` (primeira interação) e `legadov2/1.js` (onload). A checagem `data-ncf-injected` anterior à consulta não impedia duas inicializações pendentes de renderizar os campos.
+
+O legado agora reserva um runtime por loja e página antes de qualquer consulta. Também confere novamente o formulário imediatamente antes de renderizar, preservando campos e valores já existentes. O teste com dois IDs carregados antes da resposta da API verifica apenas uma consulta, um conjunto de campos e um único valor por propriedade.
+
+150 testes aprovados, TypeScript, sintaxe do legado e `git diff --check` aprovados nesta correção. Posteriormente, o usuário publicou o mesmo arquivo nos dois registros: `legado-js/9.js` e `legadov2/2.js`, ambos com SHA-256 `4c3adc5225b8710cb505670dd687b3e5d99af8d68b51afbed986feaa4b93cbb0`, idêntico ao arquivo local corrigido. A última consulta HTTP da Velo nesta sessão já entregou as versões 9 e 2. O usuário informou funcionamento correto no Chrome; não houve verificação visual independente nesta sessão.
+
+Durante a coexistência, publicar o mesmo arquivo corrigido nos dois registros legados; um arquivo antigo já publicado não passa a respeitar a proteção nova automaticamente. A retirada do legado antigo precisa ocorrer após confirmar a entrega do novo nas lojas, pois a LAB Cafe ainda vinha recebendo somente o antigo nas checagens anteriores. Não alterar o script NubeSDK como parte desta correção de duplicidade entre legados.
+
 149 testes aprovados em 16 arquivos. TypeScript, build ESM/IIFE, sintaxe do JavaScript legado e `git diff --check` aprovados.
 
 Os testes cobrem múltiplos IDs de loja, compra rápida normal, redirecionamento, ID de recomendação, cards dinâmicos, falha de política, cliques repetidos, submit com o botão original, modal SDK, adição direta SDK, quantidade de item personalizado, ausência de URL e descarte de respostas atrasadas. JSDOM substitui apenas a navegação por uma função de teste, pois não implementa mudança de página; isso não substitui o aceite no navegador.

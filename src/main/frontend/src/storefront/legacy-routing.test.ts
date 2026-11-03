@@ -7,6 +7,36 @@ const source = readFileSync(new URL("../../../resources/static/assets/nuvemshop-
 let dom: JSDOM;
 afterEach(() => dom?.window.close());
 
+it("initializes one form when two legacy script IDs load before the policy returns", async () => {
+    dom = new JSDOM(`<html><head>
+        <script src="https://apps-scripts.tiendanube.com/campos-personalizados7/legado-js/9.js?store=8389134"></script>
+        <script src="https://apps-scripts.tiendanube.com/campos-personalizados7/legadov2/2.js?store=8389134"></script>
+        </head><body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
+        {url: "https://store.test/produtos/agenda/", runScripts: "outside-only"});
+    let finish!: (value: unknown) => void;
+    const pending = new Promise(resolve => {finish = resolve;});
+    const fetch = vi.fn((url: string) => url.includes("/personalization?") ? pending
+        : Promise.resolve({ok: true, json: async () => ({})}));
+    Object.assign(dom.window, {fetch, LS: {theme: {code: "idea"}}});
+    Object.defineProperty(dom.window.document, "readyState", {value: "complete", configurable: true});
+    let current = dom.window.document.scripts[0];
+    Object.defineProperty(dom.window.document, "currentScript", {get: () => current});
+    dom.window.eval(source);
+    current = dom.window.document.scripts[1];
+    dom.window.eval(source);
+    expect(fetch.mock.calls.filter(([url]) => url.includes("/personalization?"))).toHaveLength(1);
+    finish({ok: true, json: async () => ({enabled: true, fields: [
+        {label: "Nome", propertyName: "Nome", fieldType: "TEXT", required: true},
+    ], style: {}})});
+    await vi.waitFor(() => expect(dom.window.document.querySelectorAll(".ncf-personalization")).toHaveLength(1));
+    const input = dom.window.document.querySelector<HTMLInputElement>("[name='properties[Nome]']")!;
+    input.value = "Maria";
+    dom.window.eval(source);
+    expect(dom.window.document.querySelectorAll(".ncf-personalization")).toHaveLength(1);
+    expect(new dom.window.FormData(dom.window.document.querySelector("form")!).getAll("properties[Nome]"))
+        .toEqual(["Maria"]);
+});
+
 async function boot(theme?: string, lightspeed = true, lsTheme?: string) {
 	dom = new JSDOM(`<html><head>
 		<script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script>

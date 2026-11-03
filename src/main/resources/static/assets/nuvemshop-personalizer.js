@@ -38,6 +38,12 @@
     const storeId = scriptUrl.searchParams.get("store") || getStoreId();
     const apiOrigin = isAppOrigin(scriptUrl.origin) ? scriptUrl.origin : appOrigin;
 
+    // Versões/IDs coexistentes compartilham o mesmo runtime por loja e página.
+    // A reserva precisa acontecer antes de qualquer fetch ou callback assíncrono.
+    const runtimeKey = "__ncfLegacyRuntime:" + storeId;
+    if (storeId && window[runtimeKey]) return;
+    if (storeId) window[runtimeKey] = true;
+
     injectStyles();
     watchCartPropertyColors();
     ready(forceForegroundMediumWhite);
@@ -175,11 +181,13 @@
             styleConfig = config.style || styleConfig || {};
             rememberFieldLabels(config.fields);
             whenSdkFieldsAbsent(config.fields, productId, function () {
+                // Outra inicialização pode ter concluído durante a consulta/espera pelo SDK.
+                if (form.dataset.ncfInjected === "true" || form.querySelector(".ncf-personalization")) return;
+                form.dataset.ncfInjected = "true";
                 renderFields(form, config.fields, styleConfig);
                 bindCartSnapshot(form, config.fields);
                 renderStoredCartProperties();
                 syncCartPropertyColors();
-                form.dataset.ncfInjected = "true";
                 track("injected", { storeId: storeId, productId: productId });
             });
         });
