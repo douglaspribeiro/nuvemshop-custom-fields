@@ -34,7 +34,7 @@ public class PaymentReconciliationJob {
     public void reconcile() {
         var statuses = EnumSet.of(PaymentSubscriptionStatus.PENDING, PaymentSubscriptionStatus.ACTIVE,
                 PaymentSubscriptionStatus.PAST_DUE, PaymentSubscriptionStatus.PAUSED,
-                PaymentSubscriptionStatus.CANCELED);
+                PaymentSubscriptionStatus.CANCELED, PaymentSubscriptionStatus.ERROR);
         for (PaymentProviderType provider : PaymentProviderType.values()) {
             if (!router.operational(provider)) continue;
             for (var subscription : repository.findByProviderAndStatusIn(provider, statuses)) {
@@ -55,6 +55,9 @@ public class PaymentReconciliationJob {
     public void expireCanceledAccess() {
         service.expireCanceledAccess();
     }
+
+    @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")
+    public void expireRenewalGrace() { service.expireRenewalGrace(); }
 
     @Scheduled(fixedDelayString = "${payments.pending-expiration-delay-ms:60000}")
     public void expirePendingPayments() {

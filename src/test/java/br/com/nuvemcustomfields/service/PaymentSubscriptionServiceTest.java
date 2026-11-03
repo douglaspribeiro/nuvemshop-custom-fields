@@ -8,6 +8,7 @@ import br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository;
 import br.com.nuvemcustomfields.repository.PaymentAttemptRepository;
 import br.com.nuvemcustomfields.repository.PlanEventRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.repository.RenewalFailureEmailRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,6 +40,22 @@ class PaymentSubscriptionServiceTest {
             new BigDecimal("19.99"), new BigDecimal("29.99")), efi, paymentNotifications
     );
 
+    @Test void reactivationUsesThePreviousUltraContractAndRejectsAChangedPlanBeforeCharging() {
+        Store store = store(); store.setPlan(PlanType.FREE);
+        PaymentSubscription sub = local(); sub.setProvider(PaymentProviderType.EFI);
+        sub.setPlan(PlanType.PREMIUM_ULTRA); sub.setStatus(PaymentSubscriptionStatus.ERROR); sub.setAccessActive(false);
+        when(stores.findActiveByStoreId(123L)).thenReturn(Optional.of(store));
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(sub));
+        when(efi.environment()).thenReturn(br.com.nuvemcustomfields.entity.PaymentEnvironment.PRODUCTION);
+        assertThat(service.reactivationPlan(123L)).contains(PlanType.PREMIUM_ULTRA);
+        assertThatThrownBy(() -> service.reactivateWithEfi(123L, PlanType.PREMIUM, null, "token", null))
+            .hasMessageContaining("plano anterior mudou");
+        verify(efi, never()).cancel(anyString());
+        sub.setAccessActive(true); sub.setStatus(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(service.reactivationPlan(123L)).isEmpty();
+    }
+
     @Test
     void activatesPlanOnlyAfterApprovedInvoice() {
         PaymentSubscription local = local();
@@ -59,6 +76,48 @@ class PaymentSubscriptionServiceTest {
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         verify(events).save(any(PlanEvent.class));
         verify(paymentNotifications).enqueue(eq(local), argThat(invoice -> "payment-1".equals(invoice.paymentId())));
+    }
+
+    @Test void aFailedRenewalKeepsAccessForOneDayThenExpiresAndCanRecover() {
+        var mailQueue=mock(RenewalFailureEmailRepository.class);
+        service.setRenewalFailures(new RenewalFailurePolicy(mailQueue));
+        var local=local(); local.setProvider(PaymentProviderType.EFI); local.setAccessActive(true);
+        local.setStatus(PaymentSubscriptionStatus.ACTIVE);
+        var store=store(); store.setPlan(local.getPlan());
+        var remote=new GatewaySubscription("sub-1","plan-1","ncf_123_ref","active","BRL",new BigDecimal("19.99"),Instant.now().plusSeconds(86400));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote);
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(new GatewayInvoice("charge-2","sub-1","charge-2","unpaid")));
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store)); when(subscriptions.save(local)).thenReturn(local);
+        service.synchronizeFromSubscription(PaymentProviderType.EFI,"sub-1");
+        assertThat(local.isAccessActive()).isTrue(); assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PAST_DUE);
+        local.setGraceUntil(Instant.now().minusSeconds(1));
+        service.synchronizeFromSubscription(PaymentProviderType.EFI,"sub-1");
+        assertThat(local.isAccessActive()).isFalse(); assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ERROR);
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(new GatewayInvoice("charge-2","sub-1","charge-2","paid")));
+        service.synchronizeFromSubscription(PaymentProviderType.EFI,"sub-1");
+        assertThat(local.isAccessActive()).isTrue(); assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getRenewalFailureDetectedAt()).isNull(); assertThat(local.getGraceUntil()).isNull();
+        verify(mailQueue,times(1)).save(any(RenewalFailureEmail.class));
+    }
+
+    @Test void anUnconfirmedReplacementCannotKeepPaidAccessBeyondTheOriginalGrace() {
+        service.setRenewalFailures(new RenewalFailurePolicy(mock(RenewalFailureEmailRepository.class)));
+        var sub=local(); sub.setProvider(PaymentProviderType.EFI); sub.setStatus(PaymentSubscriptionStatus.PENDING);
+        sub.setAccessActive(false); sub.startRenewalFailure(Instant.now().minusSeconds(90000),"old-charge");
+        var store=store(); store.setPlan(PlanType.PREMIUM);
+        when(subscriptions.findExpiredRenewalGraceStoreIds(any(),any())).thenReturn(java.util.List.of(123L));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(sub)); when(subscriptions.save(sub)).thenReturn(sub);
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1","plan-1","ncf_123_ref","active","BRL",new BigDecimal("19.99"),null));
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        service.expireRenewalGrace();
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE); assertThat(sub.getStatus()).isEqualTo(PaymentSubscriptionStatus.ERROR);
     }
 
     @Test

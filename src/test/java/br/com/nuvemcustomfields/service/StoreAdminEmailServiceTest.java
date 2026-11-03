@@ -35,6 +35,24 @@ class StoreAdminEmailServiceTest {
         assertThat(mail.getValue().getText()).isEqualTo("Olá,\nConfira seu plano. <b>Texto</b>");
     }
 
+    @Test void sendsAnEscapedHtmlButtonAndPlainTextAlternative() throws Exception {
+        recipient("owner@example.com");
+        var message = new jakarta.mail.internet.MimeMessage(jakarta.mail.Session.getInstance(new java.util.Properties()));
+        when(sender.createMimeMessage()).thenReturn(message);
+        service.sendAction(12L, "Renovação", "Olá <script>não executar</script>", "Reativar meu plano Ultra", "https://app.example.com/admin/billing/reactivate?storeId=12");
+        message.saveChanges();
+        verify(sender).send(message);
+        assertThat(message.getAllRecipients()).extracting(Object::toString).containsExactly("owner@example.com");
+        var bytes = new java.io.ByteArrayOutputStream(); message.writeTo(bytes);
+        assertThat(message.getContentType()).contains("multipart");
+        // Inspect the alternative body independently from transport encoding.
+        var root = (jakarta.mail.Multipart) message.getContent();
+        var related = (jakarta.mail.Multipart) root.getBodyPart(0).getContent();
+        var alternatives = (jakarta.mail.Multipart) related.getBodyPart(0).getContent();
+        assertThat(alternatives.getBodyPart(0).getContent().toString()).contains("https://app.example.com/admin/billing/reactivate?storeId=12");
+        assertThat(alternatives.getBodyPart(1).getContent().toString()).contains("Reativar meu plano Ultra", "&lt;script&gt;").doesNotContain("<script>");
+    }
+
     @Test void rejectsMissingOrMultipleRecipients() {
         for (String email : new String[]{null, "invalid", "a@example.com,b@example.com"}) {
             recipient(email);

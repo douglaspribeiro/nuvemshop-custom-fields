@@ -36,6 +36,12 @@
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel" th:if="${reactivationPlan != null}">
+        <h2 th:text="'Reative seu plano ' + ${reactivationPlan.displayName}"></h2>
+        <p>Seu plano anterior já está selecionado. Confira o valor e informe os dados de pagamento para reativar.</p>
+        <a class="button primary" th:href="@{/admin/billing/reactivate(storeId=${store.storeId})}"
+           th:text="'Reativar meu plano ' + ${reactivationPlan.displayName}"></a>
+    </section>
     <p class="notice" th:if="${paymentSubscription != null and paymentSubscription.upgradePlan != null}"
        th:text="#{admin.billing.upgrade.pending}">Confirmando alteração de plano.</p>
     <section class="panel plan-strip billing-current">

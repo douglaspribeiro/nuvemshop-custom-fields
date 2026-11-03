@@ -25,7 +25,8 @@
         <div class="payment-main">
             <a class="payment-back" th:href="@{/admin/billing}">← Voltar aos planos</a>
             <div class="payment-heading">
-                <h1 th:text="${upgradeAdjustment!=null ? 'Pagar ajuste do upgrade' : 'Finalizar assinatura'}">Finalizar assinatura</h1>
+                <h1 th:text="${reactivation == true ? 'Reativar meu plano ' + plan.displayName : (upgradeAdjustment!=null ? 'Pagar ajuste do upgrade' : 'Finalizar assinatura')}">Finalizar assinatura</h1>
+                <p class="notice" th:if="${reactivation == true}">Você está reativando o mesmo plano da assinatura anterior. Ao confirmar, o contrato com erro será cancelado e uma nova assinatura será criada com o cartão informado. Haverá uma nova cobrança e o ciclo mensal começará a partir desta contratação.</p>
                 <p th:text="${upgradeAdjustment!=null ? 'Este pagamento é um ajuste único. Você continuará com uma única assinatura e sua data de renovação não muda.' : 'Preencha seus dados para concluir o pagamento do plano.'}"></p>
                 <p class="payment-mobile-price">Plano <span th:text="${plan.displayName}">Essencial</span> <strong th:text="${formattedAmount}">R$ 19,99</strong><span th:text="${upgradeAdjustment!=null ? ' de ajuste hoje' : (discounted ? ' no primeiro mês' : ' / mês')}"> / mês</span></p>
             </div>
@@ -33,7 +34,7 @@
             <p class="notice error payment-flash" th:if="${error}" th:text="${error}">Erro</p>
 
             <section class="payment-panel" aria-labelledby="payment-form-title">
-            <form id="efi-payment-form" th:action="${upgradeAdjustment!=null} ? @{/admin/billing/upgrade/efi/pay} : @{/admin/billing/pay}" method="post"
+            <form id="efi-payment-form" th:action="${reactivation == true} ? @{/admin/billing/reactivate} : (${upgradeAdjustment!=null} ? @{/admin/billing/upgrade/efi/pay} : @{/admin/billing/pay})" method="post"
                   th:attr="data-payee-code=${payeeCode},data-environment=${efiEnvironment},data-single-charge=${upgradeAdjustment!=null}">
                 <input th:if="${upgradeAdjustment!=null}" type="hidden" name="adjustmentId" th:value="${upgradeAdjustment.id}">
                 <input type="hidden" name="plan" th:value="${plan.name()}">
@@ -65,7 +66,7 @@
 
                 <p id="payment-error" class="notice error" role="alert" tabindex="-1" hidden></p>
                 <button class="button primary payment-submit" id="payment-submit" type="submit">
-                    <span th:text="${upgradeAdjustment!=null ? 'Confirmar upgrade e pagar '+formattedAmount : 'Confirmar e pagar'}">Confirmar e pagar</span><span aria-hidden="true">→</span>
+                    <span th:text="${reactivation == true ? 'Atualizar cartão e reativar — ' + formattedAmount : (upgradeAdjustment!=null ? 'Confirmar upgrade e pagar '+formattedAmount : 'Confirmar e pagar')}">Confirmar e pagar</span><span aria-hidden="true">→</span>
                 </button>
                 <p class="payment-submit-note" th:text="${upgradeAdjustment!=null ? 'Ao confirmar, você autoriza o ajuste único de hoje e a mudança de sua assinatura para a mensalidade indicada. O cartão informado paga apenas o ajuste; o cartão da assinatura não será trocado.' : 'Ao confirmar, você autoriza a cobrança mensal indicada no resumo. A renovação automática pode ser desativada pelo painel.'}"></p>
             </form>

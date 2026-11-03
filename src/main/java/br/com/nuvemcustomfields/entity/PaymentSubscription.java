@@ -100,6 +100,17 @@ public class PaymentSubscription {
     private String lastPaymentStatus;
     @Column(name = "grace_until")
     private Instant graceUntil;
+    @Column(name = "renewal_failure_detected_at") private Instant renewalFailureDetectedAt;
+    @Column(name = "renewal_failure_payment_id", length = 120) private String renewalFailurePaymentId;
+    public Instant getRenewalFailureDetectedAt() { return renewalFailureDetectedAt; }
+    public String getRenewalFailurePaymentId() { return renewalFailurePaymentId; }
+    public void startRenewalFailure(Instant now, String paymentId) {
+        if (renewalFailureDetectedAt == null) {
+            renewalFailureDetectedAt = now; renewalFailurePaymentId = paymentId;
+            graceUntil = now.plus(java.time.Duration.ofDays(1)); touch();
+        }
+    }
+    public void clearRenewalFailure() { renewalFailureDetectedAt = null; renewalFailurePaymentId = null; graceUntil = null; touch(); }
     @Column(name = "cancellation_pending", nullable = false)
     private boolean cancellationPending;
     @Column(name = "cancellation_reason", length = 2000)

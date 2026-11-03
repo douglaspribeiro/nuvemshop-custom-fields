@@ -62,6 +62,7 @@ public class BackofficeController {
     private final String appVersion;
     private final StoreDepartureService departures;
     private final br.com.nuvemcustomfields.repository.WinbackCampaignRepository winbackCampaigns;
+    private final br.com.nuvemcustomfields.service.RenewalFailureEmailService renewalEmails;
 
     public BackofficeController(
             BackofficeProperties properties,
@@ -78,7 +79,8 @@ public class BackofficeController {
             PaymentConfigurationService paymentConfigurationService,
             @Value("${APP_VERSION:dev}") String appVersion,
             StoreDepartureService departures,
-            br.com.nuvemcustomfields.repository.WinbackCampaignRepository winbackCampaigns
+            br.com.nuvemcustomfields.repository.WinbackCampaignRepository winbackCampaigns,
+            br.com.nuvemcustomfields.service.RenewalFailureEmailService renewalEmails
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -95,6 +97,7 @@ public class BackofficeController {
         this.appVersion = appVersion;
         this.departures = departures;
         this.winbackCampaigns = winbackCampaigns;
+        this.renewalEmails = renewalEmails;
     }
 
     @GetMapping("/backoffice/login")
@@ -166,6 +169,11 @@ public class BackofficeController {
         model.addAttribute("events", planEventRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("paymentSubscription", paymentSubscriptionRepository.findByStoreId(storeId).orElse(null));
+        var renewalEmail = renewalEmails.preview(storeId);
+        model.addAttribute("renewalEmail", renewalEmail);
+        model.addAttribute("renewalAutomaticState", renewalEmails.automaticState(storeId));
+        if (renewalEmail.eligible()) model.addAttribute("renewalEmailToken",
+                BackofficeRenewalFailureEmailController.token(session, storeId, renewalEmail.fingerprint()));
         LOGGER.debug("backoffice.store.loaded store_id={}", storeId);
         return "backoffice/store";
     }

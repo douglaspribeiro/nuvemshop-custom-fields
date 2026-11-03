@@ -215,6 +215,7 @@ public class AdminController {
         model.addAttribute("planDefinitions", planLimitService.planDefinitions());
         model.addAttribute("billingEnabled", paymentSubscriptionService.anyGatewayEnabled());
         model.addAttribute("billingAvailable", available);
+        model.addAttribute("reactivationPlan", paymentSubscriptionService.reactivationPlan(store.getStoreId()).orElse(null));
         boolean dodoTest = subscription != null && subscription.isAccessActive()
                 ? subscription.getProvider().isDodo()
                 : paymentSubscriptionService.provider(store).map(PaymentProviderType::isDodo).orElse(false);
@@ -375,6 +376,35 @@ public class AdminController {
         model.addAttribute("payeeCode", paymentSubscriptionService.efiPayeeCode());
         model.addAttribute("efiEnvironment", paymentSubscriptionService.efiSandbox() ? "sandbox" : "production");
         return "admin/billing-payment";
+    }
+
+    @GetMapping("/admin/billing/reactivate")
+    public String reactivatePage(@RequestParam(required = false) Long storeId, HttpSession session, Model model,
+                                 HttpServletResponse response) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        if (storeId != null && !storeId.equals(store.getStoreId())) return "redirect:/admin/billing";
+        var previous = paymentSubscriptionService.reactivationPlan(store.getStoreId());
+        if (previous.isEmpty()) return "redirect:/admin/billing";
+        String view = efiPaymentPage(previous.get(), session, model, response);
+        model.addAttribute("reactivation", true);
+        return view;
+    }
+
+    @PostMapping("/admin/billing/reactivate")
+    public String reactivateEfi(@RequestParam PlanType plan, @RequestParam String payerName,
+            @RequestParam String cpf, @RequestParam String payerEmail, @RequestParam String phone,
+            @RequestParam String birth, @RequestParam String paymentToken, @RequestParam(required = false) String couponCode,
+            HttpSession session, RedirectAttributes flash) {
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            paymentSubscriptionService.reactivateWithEfi(store.getStoreId(), plan,
+                new EfiGateway.EfiPayer(payerName, cpf.replaceAll("\\D", ""), payerEmail, normalizeEfiPhone(phone), birth), paymentToken, couponCode);
+            return "redirect:/admin/billing/processing";
+        } catch (RuntimeException ex) {
+            LOGGER.warn("payments.efi.reactivation_failed store_id={} type={}", store.getStoreId(), ex.getClass().getSimpleName());
+            flash.addFlashAttribute("error", merchantError(ex));
+            return "redirect:/admin/billing/reactivate";
+        }
     }
 
     @PostMapping("/admin/billing/pay")

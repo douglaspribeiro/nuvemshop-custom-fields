@@ -24,6 +24,40 @@ public class StoreAdminEmailService {
     }
 
     public void send(Long storeId, String subject, String body) {
+        var mail = prepare(storeId, subject, body);
+        try { sender.send(mail); }
+        catch (RuntimeException ex) { throw deliveryFailure(storeId, ex); }
+        LOGGER.info("store.admin_email.sent store_id={}", storeId);
+    }
+
+    public void sendAction(Long storeId, String subject, String body, String actionLabel, String actionUrl) {
+        var plain = prepare(storeId, subject, body);
+        java.net.URI uri;
+        try { uri = java.net.URI.create(actionUrl); }
+        catch (RuntimeException ex) { throw new IllegalArgumentException("Link do aplicativo inválido."); }
+        if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null)
+            throw new IllegalArgumentException("O link do aplicativo deve usar HTTPS.");
+        try {
+            var mail = sender.createMimeMessage();
+            var helper = new org.springframework.mail.javamail.MimeMessageHelper(mail, true, "UTF-8");
+            helper.setFrom(plain.getFrom()); helper.setTo(plain.getTo()); helper.setSubject(plain.getSubject());
+            String html = "<html><body><div style=\"font-family:Arial,sans-serif;line-height:1.6;max-width:620px;margin:auto\">"
+                + "<div style=\"white-space:pre-wrap\">" + org.springframework.web.util.HtmlUtils.htmlEscape(body) + "</div>"
+                + "<p><a style=\"display:inline-block;padding:12px 20px;background:#175cd3;color:white;text-decoration:none;border-radius:6px\" href=\""
+                + org.springframework.web.util.HtmlUtils.htmlEscape(actionUrl) + "\">"
+                + org.springframework.web.util.HtmlUtils.htmlEscape(actionLabel) + "</a></p></div></body></html>";
+            helper.setText(body + "\n\n" + actionLabel + ": " + actionUrl, html);
+            sender.send(mail);
+        } catch (jakarta.mail.MessagingException | RuntimeException ex) { throw deliveryFailure(storeId, ex); }
+        LOGGER.info("store.admin_email.sent store_id={}", storeId);
+    }
+
+    private IllegalStateException deliveryFailure(Long storeId, Exception ex) {
+        LOGGER.warn("store.admin_email.failed store_id={} type={}", storeId, ex.getClass().getSimpleName());
+        return new IllegalStateException("Não foi possível confirmar o envio. Confira o provedor de e-mail antes de tentar novamente.");
+    }
+
+    private SimpleMailMessage prepare(Long storeId, String subject, String body) {
         var store = stores.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja não encontrada."));
         String recipient = store.getStoreEmail();
@@ -48,12 +82,6 @@ public class StoreAdminEmailService {
         mail.setTo(recipient);
         mail.setSubject(subject.strip());
         mail.setText(body.strip());
-        try {
-            sender.send(mail);
-        } catch (RuntimeException ex) {
-            LOGGER.warn("store.admin_email.failed store_id={} type={}", storeId, ex.getClass().getSimpleName());
-            throw new IllegalStateException("Não foi possível confirmar o envio. Confira o provedor de e-mail antes de tentar novamente.");
-        }
-        LOGGER.info("store.admin_email.sent store_id={}", storeId);
+        return mail;
     }
 }
