@@ -12,6 +12,7 @@ import { normalizedColor, normalizeProperties } from "../shared/properties";
 import { createCartImageRenderer } from "./cart-images";
 import { PersonalizationFields } from "./PersonalizationFields";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
+import { installQuickBuyRedirect } from "./quick-buy";
 
 const SLOT = "before_product_detail_add_to_cart";
 
@@ -56,6 +57,7 @@ let outcome = "boot";
 export function App(nube: NubeSDK) {
 	// Sem este opt-in a plataforma nunca dispara cart:before_update.
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
+    const quickBuy = installQuickBuyRedirect(nube);
 
 	startDiagnostics(nube);
     const renderCartImages = createCartImageRenderer(nube);
@@ -67,7 +69,7 @@ export function App(nube: NubeSDK) {
 	// de "SDK pronto". syncProduct e idempotente, then chamar de varios lugares e seguro.
 	void syncProduct(nube, safeState(nube));
 	nube.on("page:loaded", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
-	nube.on("location:updated", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
+	nube.on("location:updated", (state) => { quickBuy.locationChanged(); void syncProduct(nube, state); void renderCartImages(state); });
     nube.on("cart:update", state => void renderCartImages(state));
 	nube.on("product:variant_selected", (state) => {
 		const selected = readVariantId(state);
@@ -77,7 +79,7 @@ export function App(nube: NubeSDK) {
 			render(nube);
 		}
 	});
-	nube.on("cart:before_update", (state) => gate(nube, state));
+	nube.on("cart:before_update", (state) => { if (!quickBuy.intercept(state)) gate(nube, state); });
 	nube.on("cart:add:success", (state) => {
         void renderCartImages(state);
         const added = state.eventPayload as {product_id?: number; variant_id?: number; properties?: unknown} | undefined;

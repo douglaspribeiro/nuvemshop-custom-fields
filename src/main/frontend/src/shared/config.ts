@@ -73,9 +73,9 @@ export async function fetchConfig(
 }
 
 /** Checkout must distinguish an unconfigured product from a failed policy lookup. */
-export async function fetchConfigRequired(store: number, productId: number): Promise<PersonalizationConfig> {
+export async function fetchConfigRequired(store: number, productId: number, timeoutMs = 8000): Promise<PersonalizationConfig> {
     const response = await fetch(`${appOrigin()}/public/stores/${store}/personalization?productId=${productId}`,
-        { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
+        { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok) throw new Error("personalization_policy_unavailable");
     const body = await response.json() as PersonalizationConfig;
     if (typeof body?.enabled !== "boolean" || (body.enabled && !Array.isArray(body.fields)))

@@ -54,7 +54,88 @@
         syncCartPropertyColors();
         forceForegroundMediumWhite();
     });
+    installQuickBuyRedirect();
     ready(initialize);
+
+    function installQuickBuyRedirect() {
+        const policies = new Map();
+        const replaying = new WeakSet();
+        const cardSelector = ".js-item-product[data-product-id], [data-component='product-list-item'][data-product-id]";
+
+        function policy(productId) {
+            if (!policies.has(productId)) {
+                const controller = new AbortController();
+                const timer = window.setTimeout(() => controller.abort(), 5000);
+                const pending = fetch(apiOrigin + "/public/stores/" + encodeURIComponent(storeId)
+                    + "/personalization?productId=" + encodeURIComponent(productId), {
+                    credentials: "omit", headers: { Accept: "application/json" }, signal: controller.signal
+                }).then(response => {
+                    if (!response.ok) throw new Error("quick_buy_policy_unavailable");
+                    return response.json();
+                }).then(config => {
+                    if (typeof config?.enabled !== "boolean" || (config.enabled && !Array.isArray(config.fields))) {
+                        throw new Error("quick_buy_policy_invalid");
+                    }
+                    return config.enabled && config.fields.length > 0;
+                }).catch(() => {
+                    // Sem política, a página do produto é o caminho para conferir os campos.
+                    policies.delete(productId);
+                    return true;
+                }).finally(() => window.clearTimeout(timer));
+                policies.set(productId, pending);
+            }
+            return policies.get(productId);
+        }
+
+        function productUrl(card) {
+            const link = card.querySelector("a.item-link[href], a.js-product-item-image-link-private[href], a.js-item-image-link[href]")
+                || Array.from(card.querySelectorAll("a[href]")).find(link => /\/(productos|produtos|products)\//.test(link.getAttribute("href")));
+            if (!link) return null;
+            try {
+                const url = new URL(link.getAttribute("href"), window.location.href);
+                return url.origin === window.location.origin && url.pathname !== window.location.pathname
+                    ? url.href : null;
+            } catch (ignored) { return null; }
+        }
+
+        function intercept(event) {
+            const target = event.target instanceof Element ? event.target : null;
+            const control = event.type === "submit" ? target
+                : target && target.closest(".js-item-buy-open, .js-quickshop-modal-open, .js-quickshop-open, .js-addtocart, [type='submit'], [data-component='product-list-item.show-add-to-cart'], [data-component='product-list-item.add-to-cart']");
+            const card = control && control.closest(cardSelector);
+            if (!card || replaying.has(control)) return;
+            const url = productUrl(card);
+            if (!url || !/^\d+$/.test(card.dataset.productId || "")) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (control.dataset.ncfQuickBuyPending === "true") return;
+            control.dataset.ncfQuickBuyPending = "true";
+            const submitter = event.submitter;
+            void policy(card.dataset.productId).then(needsFields => {
+                delete control.dataset.ncfQuickBuyPending;
+                if (needsFields) {
+                    track("quick_buy_redirect", { storeId: storeId, productId: card.dataset.productId });
+                    window.location.assign(url);
+                    return;
+                }
+                replaying.add(control);
+                try {
+                    if (event.type === "submit") control.requestSubmit(submitter || undefined);
+                    else control.click();
+                } finally { replaying.delete(control); }
+            });
+        }
+
+        document.addEventListener("click", intercept, true);
+        document.addEventListener("submit", intercept, true);
+        // Antecipar só os cards de interesse evita consultar o catálogo inteiro em cada visita.
+        function warm(event) {
+            const card = event.target instanceof Element && event.target.closest(cardSelector);
+            if (card && /^\d+$/.test(card.dataset.productId || "")) void policy(card.dataset.productId);
+        }
+        document.addEventListener("pointerover", warm, true);
+        document.addEventListener("focusin", warm, true);
+    }
 
     function initialize() {
         // Patagonia usa React sem form de compra e não fornece cart:before_update.
@@ -256,14 +337,15 @@
     }
 
     function findProductForm() {
-        return document.querySelector("#product_form")
-            || document.querySelector("form[action*='/cart/add']")
-            || document.querySelector("form[action*='/comprar']")
-            || document.querySelector("form[action*='/carrinho']")
-            || document.querySelector("form.js-product-form")
-            || document.querySelector("form[data-product-id]")
-            || document.querySelector("[data-product-id] form")
-            || document.querySelector("form");
+        // Formulários dos cards pertencem à compra rápida, inclusive nas recomendações da PDP.
+        const selectors = ["#product_form", "form[action*='/cart/add']", "form[action*='/comprar']",
+            "form[action*='/carrinho']", "form.js-product-form", "form[data-product-id]", "[data-product-id] form", "form"];
+        for (const selector of selectors) {
+            const form = Array.from(document.querySelectorAll(selector))
+                .find(candidate => !candidate.closest(".js-item-product, [data-component='product-list-item']"));
+            if (form) return form;
+        }
+        return null;
     }
 
     function findProductId(targetForm) {
