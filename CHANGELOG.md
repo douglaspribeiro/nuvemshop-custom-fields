@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.51.1] - 2026-11-03
+
+### Outros
+
+- one click buy (`df7bd44`)
+
 ## [1.51.0] - 2026-11-02
 
 ### Features
