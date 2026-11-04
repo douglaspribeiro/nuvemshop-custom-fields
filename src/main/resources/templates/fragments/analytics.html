@@ -1,13 +1,19 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <body>
-<th:block th:fragment="googleAnalytics" th:if="${ga4MeasurementId != null and !#strings.isEmpty(ga4MeasurementId)}">
+<th:block th:fragment="googleAnalytics" th:if="${ga4MeasurementId != null and !#strings.isEmpty(ga4MeasurementId) and ga4OperatorSession != true}">
     <!-- Google tag (gtag.js) -->
     <script async th:src="@{https://www.googletagmanager.com/gtag/js(id=${ga4MeasurementId})}"></script>
     <script th:inline="javascript">
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
+        const merchantContext = /*[[${ga4StoreContext}]]*/ {};
+        const merchantStore = merchantContext && merchantContext.store_id;
+        gtag('set', 'user_properties', {store_id: merchantStore || null});
+        if (merchantStore) {
+            gtag('set', {store_id: merchantStore, app_area: 'merchant_admin', admin_screen: merchantContext.admin_screen});
+        }
         // URLs de OAuth e billing podem ter parâmetros sensíveis; não os envie ao GA.
         gtag('config', /*[[${ga4MeasurementId}]]*/ '', {
             page_location: window.location.origin + window.location.pathname,
@@ -15,6 +21,11 @@
             allow_google_signals: false,
             allow_ad_personalization_signals: false
         });
+        if (merchantStore) {
+            gtag('event', 'admin_page_view', {
+                store_id: merchantStore, app_area: 'merchant_admin', admin_screen: merchantContext.admin_screen
+            });
+        }
     </script>
 </th:block>
 <th:block th:fragment="billingEvents(step)">
