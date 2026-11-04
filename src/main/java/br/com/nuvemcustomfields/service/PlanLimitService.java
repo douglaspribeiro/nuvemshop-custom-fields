@@ -22,6 +22,9 @@ public class PlanLimitService {
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ConfigurationPlanPolicy configurationPolicy;
+
     public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository, PlanCatalogService catalog) {
         this.catalog = catalog;
         this.ruleRepository = ruleRepository;
@@ -60,10 +63,13 @@ public class PlanLimitService {
         return index >= 0 ? index < limit : products.size() < limit;
     }
     public boolean imageProductVisible(Store store, Long productId) {
+        var allowed = allowedProducts(store);
+        if (allowed != null && !allowed.contains(productId)) return false;
         long limit = imageProductLimit(store.getEffectivePlan());
         if (limit == UNLIMITED) return true;
         if (limit == 0) return false;
-        var products = imageProductIds(store.getStoreId());
+        var products = imageProductIds(store.getStoreId()).stream()
+                .filter(id -> allowed == null || allowed.contains(id)).toList();
         int index = products.indexOf(productId);
         return index >= 0 && index < limit;
     }
@@ -77,11 +83,16 @@ public class PlanLimitService {
     }
 
     public List<PersonalizationField> storefrontFields(Store store, List<PersonalizationField> fields) {
+        var allowed = fields.isEmpty() ? null : allowedProducts(store);
+        if (allowed != null) {
+            if (!allowed.contains(fields.getFirst().getRule().getProductId())) return List.of();
+        }
         long limit = fieldLimit(store.getEffectivePlan());
         boolean hasImages = fields.stream().anyMatch(field -> field.getFieldType() == FieldType.IMAGE_SELECT);
         long imageLimit = hasImages ? imageProductLimit(store.getEffectivePlan()) : 0;
         var visibleProducts = imageLimit > 0
-                ? imageProductIds(store.getStoreId()).stream().limit(imageLimit).collect(java.util.stream.Collectors.toSet())
+                ? imageProductIds(store.getStoreId()).stream().filter(id -> allowed == null || allowed.contains(id))
+                    .limit(imageLimit).collect(java.util.stream.Collectors.toSet())
                 : java.util.Set.<Long>of();
         var ordered = fields.stream()
                 .filter(field -> field.getFieldType() != FieldType.IMAGE_SELECT
@@ -91,6 +102,17 @@ public class PlanLimitService {
             return ordered.toList();
         }
         return ordered.limit(limit).toList();
+    }
+
+    private java.util.Set<Long> allowedProducts(Store store) {
+        return configurationPolicy == null ? null : configurationPolicy.evaluate(store,
+                ruleRepository.findWithFieldsByStoreIdOrderByCreatedAtAscIdAsc(store.getStoreId())).allowedProducts();
+    }
+
+    public boolean hasStorefrontFields(Store store, List<br.com.nuvemcustomfields.entity.PersonalizationRule> rules) {
+        // Evaluate once, rather than reloading the whole catalog for every candidate product.
+        if (configurationPolicy != null) return !configurationPolicy.evaluate(store, rules).allowedProducts().isEmpty();
+        return rules.stream().anyMatch(rule -> !storefrontFields(store, rule.getFields()).isEmpty());
     }
 
     public java.util.Map<String, PlanAsset> planDefinitions() {

@@ -86,8 +86,7 @@ public class PublicPersonalizationController {
         return cache.get("store-state", storeId, null, () -> {
             Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
             if (store == null) return new StoreState(false, false);
-            boolean visible = ruleRepository.findByStoreIdAndEnabledTrue(storeId).stream()
-                    .anyMatch(rule -> !planLimitService.storefrontFields(store, rule.getFields()).isEmpty());
+            boolean visible = planLimitService.hasStorefrontFields(store, ruleRepository.findByStoreIdAndEnabledTrue(storeId));
             return new StoreState(true, visible);
         });
     }

@@ -12,6 +12,12 @@ public interface PersonalizationRuleRepository extends JpaRepository<Personaliza
 
     List<PersonalizationRule> findByStoreIdOrderByProductNameAsc(Long storeId);
 
+    @EntityGraph(attributePaths = "fields")
+    List<PersonalizationRule> findWithFieldsByStoreIdOrderByCreatedAtAscIdAsc(Long storeId);
+
+    @Query("select distinct r.storeId from PersonalizationRule r")
+    List<Long> findConfiguredStoreIds();
+
     Optional<PersonalizationRule> findByStoreIdAndProductId(Long storeId, Long productId);
 
     @EntityGraph(attributePaths = "fields")
@@ -26,7 +32,7 @@ public interface PersonalizationRuleRepository extends JpaRepository<Personaliza
             select new br.com.nuvemcustomfields.dto.PersonalizedProductMetadata(s.storeId, s.storeName, r.productId, r.productName)
             from Store s, PersonalizationRule r
             where r.storeId = s.storeId and s.uninstalledAt is null and s.erasureRequestedAt is null
-              and r.enabled = true
+              and r.enabled = true and r.planPaused = false
               and exists (select f.id from PersonalizationField f where f.rule.id = r.id)
             """)
     List<br.com.nuvemcustomfields.dto.PersonalizedProductMetadata> findActiveProductMetadata();

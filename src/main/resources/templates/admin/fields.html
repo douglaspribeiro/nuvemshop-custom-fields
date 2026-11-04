@@ -23,6 +23,7 @@
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
+    <p class="notice warning" th:if="${planPausedProductIds != null and planPausedProductIds.contains(rule.productId)}" th:text="#{plan.pause.detail}">Configuração pausada pelo plano.</p>
     <section class="panel merchant-ftue-banner" th:if="${#lists.isEmpty(rule.fields)}">
         <span class="merchant-step-number" aria-hidden="true">2</span>
         <div><strong th:text="#{merchant.ftue.create}">Crie o primeiro campo</strong>
