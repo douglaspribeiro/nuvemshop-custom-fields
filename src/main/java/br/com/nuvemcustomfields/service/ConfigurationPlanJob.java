@@ -12,8 +12,8 @@ public class ConfigurationPlanJob {
     public ConfigurationPlanJob(PersonalizationRuleRepository rules, ConfigurationPlanService service) {
         this.rules = rules; this.service = service;
     }
-    @Scheduled(fixedDelayString = "${personalization.plan-reconcile-delay-ms:60000}",
-            initialDelayString = "${personalization.plan-reconcile-delay-ms:60000}")
+    @Scheduled(fixedDelayString = "${personalization.plan-reconcile-delay-ms:43200000}",
+            initialDelayString = "${personalization.plan-reconcile-delay-ms:43200000}")
     public void reconcile() {
         for (var storeId : rules.findConfiguredStoreIds()) {
             try { service.reconcile(storeId); }

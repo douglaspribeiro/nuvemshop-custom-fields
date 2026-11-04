@@ -14,7 +14,9 @@ A pausa usa exclusivamente `plan_paused` e `plan_paused_at`. Não muda `enabled`
 
 ## Aplicação e carrinhos em andamento
 
-Um reconciliador persistente por loja executa a cada 60 segundos, com lock da loja, cobrindo alterações de cobrança, downgrade/upgrade, suspensão, reativação, bônus expirado/concedido e edições/exclusões de campos. É idempotente: avaliações repetidas não geram novo aviso. Falha em uma loja não interrompe as demais; a próxima execução tenta novamente. O primeiro ciclo após implantação também trata lojas Free já excedentes e cria os respectivos avisos.
+Um reconciliador persistente por loja executa com intervalo de 12 horas após o término de cada execução, com lock da loja, cobrindo alterações de cobrança, downgrade/upgrade, suspensão, reativação, bônus expirado/concedido e edições/exclusões de campos. Por padrão, a primeira execução ocorre 12 horas após a inicialização da aplicação; reiniciar a aplicação reinicia essa espera. O intervalo e a espera inicial usam `personalization.plan-reconcile-delay-ms`, cujo padrão é `43200000` ms. É idempotente: avaliações repetidas não geram novo aviso. Falha em uma loja não interrompe as demais; a próxima execução tenta novamente. O primeiro ciclo após implantação também trata lojas Free já excedentes e cria os respectivos avisos.
+
+A rotina de 12 horas persiste as pausas/reativações e enfileira os avisos. A validação do plano nas consultas da loja e no admin permanece ativa, portanto uma configuração pode deixar de ser oferecida antes da rotina de 12 horas. O e-mail é enfileirado quando a rotina persiste a nova pausa; esse intervalo não concede uma carência adicional de 12 horas.
 
 A API pública avalia a mesma política ao carregar configurações, mesmo antes da persistência da pausa. Respostas já em cache podem durar até o TTL configurado (padrão um minuto); mudanças persistidas invalidam o cache após commit. Uma página já aberta não é removida remotamente do navegador.
 
