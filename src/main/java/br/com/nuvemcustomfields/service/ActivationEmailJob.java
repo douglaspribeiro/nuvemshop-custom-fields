@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @Service
 public class ActivationEmailJob {
     private static final Logger log = LoggerFactory.getLogger(ActivationEmailJob.class);
-    private static final String VERSION = "nc39-v1";
+    private static final String VERSION = "nc39-v2";
     private final StoreRepository stores;
     private final PersonalizationRuleRepository rules;
     private final ActivationEmailOutboxRepository outbox;
@@ -35,6 +35,8 @@ public class ActivationEmailJob {
     private final PersonalizationFieldHistoryRepository history;
     private final ActivationEmailProtectionService protection;
     private final SesEventsProperties sesEvents;
+    private final ActivationEmailTemplates templates;
+    private final ActivationEmailDeliveryMetrics deliveryMetrics;
     @Value("${activation.email.enabled:false}") private boolean enabled;
     @Value("${activation.email.dry-run:true}") private boolean dryRun;
     @Value("${activation.email.allowlist:}") private String allowlistText;
@@ -44,10 +46,10 @@ public class ActivationEmailJob {
     public ActivationEmailJob(StoreRepository stores, PersonalizationRuleRepository rules,
             ActivationEmailOutboxRepository outbox, StoreAdminEmailService mail, PlatformTransactionManager manager,
             PersonalizationFieldHistoryRepository history, ActivationEmailProtectionService protection,
-            SesEventsProperties sesEvents) {
+            SesEventsProperties sesEvents, ActivationEmailTemplates templates, ActivationEmailDeliveryMetrics deliveryMetrics) {
         this.stores = stores; this.rules = rules; this.outbox = outbox; this.mail = mail;
         this.tx = new TransactionTemplate(manager);
-        this.history = history; this.protection = protection; this.sesEvents = sesEvents;
+        this.history = history; this.protection = protection; this.sesEvents = sesEvents; this.templates = templates; this.deliveryMetrics = deliveryMetrics;
         this.tx.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
@@ -59,11 +61,9 @@ public class ActivationEmailJob {
     void scheduleAt(Instant now) {
         if (!enabled) { log.debug("nc39.schedule.skipped reason=disabled"); return; }
         Instant startAt = startAt();
-        if (startAt == null) return;
         Set<Long> allowlist = parseAllowlist();
         log.debug("nc39.schedule.started dry_run={} allowlisted_stores={}", dryRun, allowlist.size());
         for (Store candidate : stores.findAllActive()) {
-            if (!allowlist.contains(candidate.getStoreId())) continue;
             try { tx.executeWithoutResult(status -> scheduleStore(candidate.getStoreId(), startAt, now)); }
             catch (RuntimeException ex) { log.warn("nc39.schedule.failed store_id={} type={}", candidate.getStoreId(), ex.getClass().getSimpleName()); }
         }
@@ -75,24 +75,24 @@ public class ActivationEmailJob {
         Store store = stores.findActiveByStoreIdForUpdate(storeId).orElse(null);
         if (store == null) return;
         Instant installed = store.getInstalledAt();
-        if (installed == null || installed.isBefore(startAt) || store.isErasurePending()) return;
+        if (installed == null || store.isErasurePending()) return;
         String blocked = protection.reason(store.getStoreId());
         if (blocked != null) { suppressPending(store, blocked); return; }
-        if (configured(store.getStoreId())) {
-            if (!outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED")) {
-                var activated = new ActivationEmailOutbox(store.getStoreId(), installed, "ACTIVATED", now, VERSION);
-                activated.activated();
-                outbox.save(activated);
-                log.info("nc39.activation.detected store_id={} event_id={}", store.getStoreId(), activated.getId());
-            }
-            suppressPending(store, "first_activation");
-            return;
+        boolean currentConfiguration = rules.hasConfiguredFields(store.getStoreId());
+        boolean activated = currentConfiguration || history.existsByStoreId(store.getStoreId())
+                || outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED");
+        if (activated && !outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED")) {
+            var event = new ActivationEmailOutbox(store.getStoreId(), installed, "ACTIVATED", now, VERSION);
+            event.activated(); outbox.save(event);
+            log.info("nc39.activation.detected store_id={} event_id={}", store.getStoreId(), event.getId());
         }
-        if (outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED")) {
-            suppressPending(store, "first_activation"); return;
+        if (currentConfiguration) { suppressPending(store, "first_activation"); return; }
+        if (activated) outbox.findByStoreIdAndInstalledAtAndState(store.getStoreId(), installed, ActivationEmailOutbox.State.PENDING)
+                .stream().filter(event -> !event.getStep().equals("D11")).forEach(event -> suppress(event, "first_activation"));
+        if (!activated && startAt != null && !installed.isBefore(startAt) && parseAllowlist().contains(store.getStoreId())) {
+            enqueueDue(store, installed, now, "D3", Duration.ofHours(72));
+            enqueueDue(store, installed, now, "D7", Duration.ofHours(168));
         }
-        enqueueDue(store, installed, now, "D3", Duration.ofHours(72));
-        enqueueDue(store, installed, now, "D7", Duration.ofHours(168));
         enqueueDue(store, installed, now, "D11", Duration.ofHours(264));
     }
 
@@ -103,21 +103,27 @@ public class ActivationEmailJob {
 
     private void enqueueDue(Store store, Instant installed, Instant now, String step, Duration delay) {
         Instant due = installed.plus(delay);
-        if (due.isAfter(now) || outbox.existsByStoreIdAndInstalledAtAndStep(store.getStoreId(), installed, step)) return;
+        if (due.isAfter(now)) return;
+        if (outbox.existsByStoreIdAndInstalledAtAndStep(store.getStoreId(), installed, step)) {
+            if ("D11".equals(step)) outbox.findByStoreIdAndInstalledAtAndStep(store.getStoreId(), installed, step)
+                    .filter(ActivationEmailOutbox::resumeD11).ifPresent(event ->
+                            log.info("nc39.email.d11_resumed store_id={} event_id={}", store.getStoreId(), event.getId()));
+            return;
+        }
         var event = new ActivationEmailOutbox(store.getStoreId(), installed, step, due, VERSION);
-        if (now.isAfter(due.plus(Duration.ofHours(24)))) suppress(event, "stage_expired");
+        if (!"D11".equals(step) && now.isAfter(due.plus(Duration.ofHours(24)))) suppress(event, "stage_expired");
         outbox.save(event);
         log.info("nc39.email.queued store_id={} event_id={} step={} due_at={} state={}",
                 store.getStoreId(), event.getId(), step, due, event.getState());
     }
 
     private boolean configured(Long storeId) {
-        // Onboarding stops after the first saved configuration, even if later paused or deleted.
+        // D3/D7 stop after the first saved configuration, even if later deleted; D11 checks current fields.
         return rules.hasConfiguredFields(storeId) || history.existsByStoreId(storeId);
     }
 
     public void dispatchDue(Instant now) {
-        if (!enabled || startAt() == null) return;
+        if (!enabled) return;
         for (var candidate : outbox.findDue(now, PageRequest.of(0, 50))) {
             try { dispatch(candidate.getId(), now); }
             catch (RuntimeException ex) { log.warn("nc39.dispatch.failed event_id={} type={}", candidate.getId(), ex.getClass().getSimpleName()); }
@@ -126,7 +132,7 @@ public class ActivationEmailJob {
 
     public void dispatch(Long id, Instant now) {
         Instant startAt = startAt();
-        if (!enabled || startAt == null) return;
+        if (!enabled) return;
         Delivery delivery = tx.execute(status -> claim(id, now, startAt));
         if (delivery == null) return;
         log.info("nc39.email.claimed store_id={} event_id={} step={} attempt={}",
@@ -137,6 +143,7 @@ public class ActivationEmailJob {
             if (blocked != null) { finish(id, event -> suppress(event, blocked)); return; }
             mail.sendActivation(delivery.storeId(), id, delivery.recipient(), delivery.copy().subject(),
                     delivery.copy().body(), delivery.unsubscribeUrl(), sesEvents.configurationSet());
+            deliveryMetrics.sent(delivery.step());
             finish(id, event -> event.sent(now));
             log.info("nc39.email.sent store_id={} event_id={}", delivery.storeId(), id);
         } catch (IllegalArgumentException ex) {
@@ -157,39 +164,82 @@ public class ActivationEmailJob {
         Store store = stores.findActiveByStoreIdForUpdate(storeId).orElse(null);
         var event = outbox.findForUpdate(id).orElse(null);
         if (event == null || event.getState() != ActivationEmailOutbox.State.PENDING || event.getNextAttemptAt().isAfter(now)) return null;
-        // Also suppress any previously queued D15; changing flags must not revive this stage.
-        if (event.getStep().equals("D15")) { suppress(event, "d15_temporarily_disabled"); return null; }
-        if (!Set.of("D3", "D7", "D11").contains(event.getStep())) { suppress(event, "unsupported_stage"); return null; }
-        if (store == null || store.isErasurePending() || !event.getInstalledAt().equals(store.getInstalledAt())) {
-            suppress(event, "store_inactive_or_reinstalled"); return null;
+        String reason = candidateReason(store, event, now, startAt);
+        if (reason != null) {
+            if (!Set.of("not_due", "invalid_start_at").contains(reason)) suppress(event, reason);
+            return null;
         }
-        if (store.getInstalledAt().isBefore(startAt)) { suppress(event, "outside_cohort"); return null; }
-        if (outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED")) { suppress(event, "first_activation"); return null; }
-        if (configured(store.getStoreId())) { suppress(event, "first_activation"); return null; }
-        Duration stageAge = switch (event.getStep()) {
-            case "D3" -> Duration.ofHours(72);
-            case "D7" -> Duration.ofHours(168);
-            case "D11" -> Duration.ofHours(264);
-            default -> throw new IllegalStateException("Unsupported activation stage");
-        };
-        if (now.isAfter(event.getInstalledAt().plus(stageAge).plus(Duration.ofHours(24)))) {
-            suppress(event, "stage_expired"); return null;
-        }
-        if (now.isBefore(store.getInstalledAt().plus(stageAge))) return null;
-        Set<Long> allowlist = parseAllowlist();
-        if (allowlist.isEmpty() || !allowlist.contains(store.getStoreId())) { suppress(event, "not_allowlisted"); return null; }
-        String blocked = protection.reason(store.getStoreId());
-        if (blocked != null) { suppress(event, blocked); return null; }
         if (!dryRun && !protection.ready()) { log.debug("nc39.email.deferred event_id={} reason=feedback_not_configured", id); return null; }
         if (!suppressionReady) { log.debug("nc39.email.deferred event_id={} reason=suppression_not_ready", id); return null; }
         if (dryRun) {
             event.simulated(); log.info("nc39.email.simulated store_id={} step={}", store.getStoreId(), event.getStep()); return null;
         }
-        MailCopy copy = copy(event.getStep(), store.getStoreCountryCode(), store.getStoreName());
+        var copy = templates.copy(event.getStep(), store.getStoreCountryCode(), store.getStoreName());
         String unsubscribeUrl = protection.prepare(event, store.getStoreEmail());
+        event.templateVersion(VERSION);
         event.claim();
         outbox.saveAndFlush(event); // Committed by REQUIRES_NEW before any SMTP call.
         return new Delivery(store.getStoreId(), copy, event.getStep(), event.getAttempts(), store.getStoreEmail(), unsubscribeUrl);
+    }
+
+    public enum AudienceState { ELIGIBLE, WAITING, BLOCKED, HANDLED, REVIEW }
+    public record Audience(AudienceState state, String reason) { }
+    public Audience audience(Store store, String step, Instant now) {
+        var installed = store.getInstalledAt();
+        if (installed == null) return new Audience(AudienceState.BLOCKED, "store_inactive_or_reinstalled");
+        var existing = outbox.findByStoreIdAndInstalledAtAndStep(store.getStoreId(), installed, step).orElse(null);
+        if (existing != null && existing.getState() != ActivationEmailOutbox.State.PENDING) {
+            if (existing.getState() == ActivationEmailOutbox.State.REVIEW || existing.getState() == ActivationEmailOutbox.State.CLAIMED
+                    || existing.getState() == ActivationEmailOutbox.State.FAILED)
+                return new Audience(AudienceState.REVIEW, "review_required");
+            boolean resumeD11 = existing.canResumeD11();
+            if (!resumeD11) return existing.getState() == ActivationEmailOutbox.State.SUPPRESSED
+                    ? new Audience(AudienceState.BLOCKED, existing.getSuppressionReason())
+                    : new Audience(AudienceState.HANDLED, "already_handled");
+        }
+        var event = existing == null ? new ActivationEmailOutbox(store.getStoreId(), installed, step, installed.plus(stageAge(step)), VERSION) : existing;
+        String reason = candidateReason(store, event, now, startAt());
+        if (reason != null) return new Audience(reason.equals("not_due") ? AudienceState.WAITING : AudienceState.BLOCKED, reason);
+        if (existing != null && existing.getState() == ActivationEmailOutbox.State.PENDING && existing.getNextAttemptAt().isAfter(now))
+            return new Audience(AudienceState.WAITING, "retry_wait");
+        if (!StoreAdminEmailService.validRecipient(store.getStoreEmail())) return new Audience(AudienceState.BLOCKED, "invalid_recipient");
+        return new Audience(AudienceState.ELIGIBLE, "eligible");
+    }
+    public java.util.Map<String, Boolean> controls() {
+        boolean feedback = protection.ready(), smtp = mail.configured();
+        return java.util.Map.of("enabled", enabled, "dry_run", dryRun, "suppression_ready", suppressionReady,
+                "cohort_valid", startAt() != null, "allowlist_nonempty", !parseAllowlist().isEmpty(),
+                "feedback_configured", feedback, "smtp_configured", smtp,
+                "live_enabled", enabled && !dryRun && suppressionReady && feedback && smtp);
+    }
+
+    private String candidateReason(Store store, ActivationEmailOutbox event, Instant now, Instant startAt) {
+        if (event.getStep().equals("D15")) return "d15_temporarily_disabled";
+        if (!Set.of("D3", "D7", "D11").contains(event.getStep())) return "unsupported_stage";
+        boolean d11 = event.getStep().equals("D11");
+        if (store == null || store.getInstalledAt() == null || store.isErasurePending()
+                || !event.getInstalledAt().equals(store.getInstalledAt())) return "store_inactive_or_reinstalled";
+        if (!d11 && startAt == null) return "invalid_start_at";
+        if (!d11 && store.getInstalledAt().isBefore(startAt)) return "outside_cohort";
+        if (d11 ? rules.hasConfiguredFields(store.getStoreId())
+                : outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED") || configured(store.getStoreId())) return "first_activation";
+        if (d11 && outbox.existsByStoreIdAndStepAndStateIn(store.getStoreId(), "D11", Set.of(
+                ActivationEmailOutbox.State.SENT, ActivationEmailOutbox.State.CLAIMED,
+                ActivationEmailOutbox.State.REVIEW, ActivationEmailOutbox.State.SIMULATED,
+                ActivationEmailOutbox.State.FAILED))) return "already_contacted";
+        Duration stageAge = stageAge(event.getStep());
+        if (!d11 && now.isAfter(event.getInstalledAt().plus(stageAge).plus(Duration.ofHours(24)))) return "stage_expired";
+        if (now.isBefore(store.getInstalledAt().plus(stageAge))) return "not_due";
+        if (!d11 && !parseAllowlist().contains(store.getStoreId())) return "not_allowlisted";
+        return protection.reason(store.getStoreId());
+    }
+    private Duration stageAge(String step) {
+        return switch (step) {
+            case "D3" -> Duration.ofHours(72);
+            case "D7" -> Duration.ofHours(168);
+            case "D11" -> Duration.ofHours(264);
+            default -> throw new IllegalArgumentException("Unsupported activation stage");
+        };
     }
 
     private void finish(Long id, java.util.function.Consumer<ActivationEmailOutbox> update) {
@@ -216,20 +266,5 @@ public class ActivationEmailJob {
         catch (RuntimeException ex) { return Set.of(); }
     }
 
-    private MailCopy copy(String step, String country, String name) {
-        boolean es = country != null && Set.of("AR", "MX", "CL", "CO", "UY").contains(country.toUpperCase());
-        String store = name == null || name.isBlank() ? "" : name.strip();
-        if ("D3".equals(step)) return new MailCopy(es ? "Empezá a personalizar tu primer producto" : "Configure seu primeiro produto personalizado",
-                es ? "¡Hola" + (store.isEmpty() ? "" : " " + store) + "! Elegí un producto y agregá los campos que tu cliente debe completar. Abrí la aplicación desde el administrador de Tiendanube. Si necesitás ayuda, contactanos desde el soporte de la aplicación. Equipo Campos Personalizados."
-                        : "Olá" + (store.isEmpty() ? "" : " " + store) + "! Escolha um produto e adicione os campos que seu cliente deve preencher. Abra o aplicativo pelo painel da Nuvemshop. Se precisar de ajuda, fale conosco pelo suporte do aplicativo. Equipe Campos Personalizados.");
-        if ("D7".equals(step)) return new MailCopy(es ? "¿Necesitás ayuda para personalizar tu primer producto?" : "Precisa de ajuda para personalizar seu primeiro produto?",
-                es ? "¡Hola" + (store.isEmpty() ? "" : " " + store) + "! Elegí un producto, configurá los campos y revisá su página en la tienda. Si tenés alguna dificultad, abrí el soporte dentro de la aplicación y contanos qué producto querés personalizar. Equipo Campos Personalizados."
-                        : "Olá" + (store.isEmpty() ? "" : " " + store) + "! Escolha um produto, configure os campos e confira a página na loja. Se tiver dificuldade, abra o suporte dentro do aplicativo e conte qual produto deseja personalizar. Equipe Campos Personalizados.");
-        if ("D11".equals(step)) return new MailCopy(es ? "¿Te ayudamos a configurar tu primer producto?" : "Vamos ajudar a configurar seu primeiro produto?",
-                es ? "Este es el último correo de esta secuencia de activación. Abrí la aplicación desde Tiendanube para configurar tu primer producto. Si necesitás ayuda, contactanos desde el soporte de la aplicación. Equipo Campos Personalizados."
-                        : "Este é o último e-mail desta sequência de ativação. Abra o aplicativo pelo painel da Nuvemshop para configurar seu primeiro produto. Se precisar de ajuda, fale conosco pelo suporte do aplicativo. Equipe Campos Personalizados.");
-        throw new IllegalArgumentException("Unsupported activation stage");
-    }
-    private record MailCopy(String subject, String body) { }
-    private record Delivery(Long storeId, MailCopy copy, String step, int attempt, String recipient, String unsubscribeUrl) { }
+    private record Delivery(Long storeId, ActivationEmailTemplates.Copy copy, String step, int attempt, String recipient, String unsubscribeUrl) { }
 }

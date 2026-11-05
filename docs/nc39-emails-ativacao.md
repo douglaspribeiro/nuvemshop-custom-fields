@@ -2,7 +2,7 @@
 
 ## Sequência e estado atual
 
-A sequência é **D3 → D7 → D11**, contados desde `stores.installed_at`, sem reiniciar o prazo em acessos. D11 substitui o antigo contato D15 por decisão de 04/11/2026. O texto D11 oferece ajuda para configurar o primeiro produto e informa que é o último e-mail desta sequência. Não promete desconto, não anuncia vencimento do teste e não cria cobrança.
+A sequência é **D3 → D7 → D11**, contados desde `stores.installed_at`, sem reiniciar o prazo em acessos. D11 substitui o antigo contato D15 por decisão de 04/11/2026. O D11 lembra o lojista de configurar os campos dos produtos e oferece suporte. Por decisão de 05/11/2026, não anuncia que é o último contato. Não promete desconto, não anuncia vencimento do teste e não cria cobrança.
 
 D15 não é mais agendado. Registros D15 antigos, quando processados, são suprimidos com `d15_temporarily_disabled`; não são transformados em envios atrasados D11. A ação específica no último dia do futuro free trial continua pendente, conforme o [plano de ofertas gratuitas temporárias](plano-free-temporario.md#comunicação-no-fim-do-teste--referência-aprovada-em-04112026).
 
@@ -10,11 +10,11 @@ O fluxo permanece **desativado por padrão**, com simulação por padrão. Valid
 
 ## Agendamento e elegibilidade
 
-- D3 orienta a configurar o primeiro produto; D7 oferece ajuda; D11 encerra a sequência de apoio.
-- A rotina consulta somente lojas ativas permitidas na lista de teste e cuja instalação esteja na data de corte ou depois dela. Cada loja é revalidada sob lock antes de gravar a fila.
+- D3 orienta a configurar o primeiro produto; D7 oferece ajuda; D11 lembra a configuração dos campos.
+- A rotina consulta lojas ativas e revalida cada uma sob lock antes de gravar a fila. D3/D7 exigem a lista de lojas e a data de corte. **D11 abrange qualquer loja ativa com pelo menos 11 dias de instalação e sem campos configurados atualmente**, inclusive lojas de 30, 90 dias ou mais; essa etapa não usa lista nem corte de instalação.
 - A unicidade é `(store_id, installed_at, step)`. Um registro D3 não impede a criação posterior de D7 ou D11. Repetir a rotina não repete a etapa.
-- Não há envio antes do dia previsto. Cada etapa tem uma janela de até 24 horas depois do vencimento; etapas perdidas são suprimidas, não enviadas em bloco muito depois.
-- A sequência para se já existem campos configurados, mesmo que atualmente pausados ou desativados, ou se o histórico registra campos que foram excluídos. Isso evita pedir a alguém que já configurou o app para configurar seu “primeiro produto”. A rotina grava ACTIVATED e suprime pendências da instalação; esse marcador também impede a retomada posterior.
+- Não há envio antes do dia previsto. D3/D7 têm janela de até 24 horas após o vencimento e não são enviados retroativamente. D11 permanece elegível a partir de 264 horas, sem expiração no D12. Uma loja antiga recebe somente D11, sem receber D3/D7 atrasados.
+- Campos ainda salvos em um produto, inclusive pausados ou desativados, impedem as três etapas. D3/D7 também param após o primeiro histórico de configuração ou marcador ACTIVATED. Pela nova regra, D11 avalia a ausência **atual** de campos: se os produtos anteriores foram excluídos e nenhum continua configurado, a loja pode receber o lembrete genérico D11, sem afirmar que se trata de seu primeiro produto.
 - Desinstalação e solicitação de exclusão impedem envio. Um registro cuja data de instalação diverge do cadastro é suprimido. Uma reinstalação que preserve a data original não reinicia etapas já registradas. Exclusão LGPD remove a fila NC-39.
 - Falhas em uma loja ou mensagem são registradas e não interrompem o processamento das demais.
 
@@ -28,7 +28,7 @@ Estados: PENDING, CLAIMED, SENT, SIMULATED, SUPPRESSED, FAILED, REVIEW e ACTIVAT
 - SIMULATED não chama SMTP e é terminal; desligar a simulação posteriormente não reenvia automaticamente essa mesma etapa.
 - Erros de validação anteriores ao SMTP têm no máximo três tentativas, com espera de 1 e 2 minutos entre elas.
 - Resultado SMTP incerto fica REVIEW e nunca é reenviado automaticamente. CLAIMED remanescente após interrupção também exige análise operacional. Não há promessa de entrega exatamente uma vez via SMTP.
-- Etapas fora da lista D3/D7/D11 são suprimidas. A flag global e a data de corte são verificadas também nas entradas diretas de processamento.
+- Etapas fora da lista D3/D7/D11 são suprimidas. A flag global é verificada também nas entradas diretas. Data de corte e allowlist continuam exigidas para D3/D7; D11 independe delas.
 
 ## Configuração e logs
 
@@ -36,8 +36,8 @@ Estados: PENDING, CLAIMED, SENT, SIMULATED, SUPPRESSED, FAILED, REVIEW e ACTIVAT
 | --- | --- | --- |
 | `activation.email.enabled` | `false` | Habilitação global |
 | `activation.email.dry-run` | `true` | Simulação sem SMTP |
-| `activation.email.start-at` | vazio | Data de corte ISO-8601; ausente/inválida impede processamento |
-| `activation.email.allowlist` | vazio | IDs das lojas permitidas, separados por vírgula |
+| `activation.email.start-at` | vazio | Data de corte ISO-8601 para D3/D7; ausente/inválida impede essas etapas, sem impedir D11 |
+| `activation.email.allowlist` | vazio | IDs permitidos para D3/D7, separados por vírgula; D11 não usa a lista |
 | `activation.email.suppression-ready` | `false` | Liberação operacional explícita; a configuração real de feedback também é verificada pelo código |
 | `activation.email.schedule-delay-ms` | `60000` | Intervalo do agendamento NC-39; separado da rotina NC-04 de 12 horas |
 
@@ -90,10 +90,59 @@ Para operar a sequência, o ambiente precisa de:
 - O consumidor compartilhado se chama `SesEventConsumer`. A leitura e a consulta de quantidade na fila são horárias por padrão, com primeira execução após uma hora de processo: `AWS_SES_EVENTS_POLL_DELAY_MS=3600000` e `AWS_SES_EVENTS_ATTRIBUTES_DELAY_MS=3600000`. Reinstanciar o app reinicia a espera. Um bounce/complaint pode levar até esse ciclo para ser aplicado; o descadastro via link é imediato. Painéis e métricas estão descritos em [monitoramento Grafana](monitoramento-grafana.md#consumo-horário-dos-eventos-de-e-mail-ses).
 - `AWS_SES_EVENTS_ENABLED=true`, `AWS_SES_EVENTS_QUEUE_URL`, `AWS_SES_EVENTS_REGION` e `AWS_SES_CONFIGURATION_SET` configurados. O Configuration Set precisa publicar pelo menos Send, Delivery, Bounce e Complaint no SNS inscrito nessa fila SQS; Subscription também pode ser consumido quando o gerenciamento de contatos SES estiver em uso. O link próprio de descadastro funciona independentemente desse recurso de contatos.
 - Política SQS permitindo escrita somente pelo tópico SNS autorizado; credenciais da aplicação com ReceiveMessage/DeleteMessage/GetQueueAttributes conforme a operação do consumidor; DLQ/redrive e monitoramento dos erros `ses.events.poll_failed`/`ses.events.event_failed`, compartilhados pelo consumidor.
-- Data de corte ISO-8601 em `ACTIVATION_EMAIL_START_AT`, IDs explícitos em `ACTIVATION_EMAIL_ALLOWLIST` e liberação `ACTIVATION_EMAIL_SUPPRESSION_READY=true`. Só então `ACTIVATION_EMAIL_ENABLED=true` e, para envio, `ACTIVATION_EMAIL_DRY_RUN=false`.
+- Liberação `ACTIVATION_EMAIL_SUPPRESSION_READY=true`, `ACTIVATION_EMAIL_ENABLED=true` e, para envio real, `ACTIVATION_EMAIL_DRY_RUN=false`. Esses controles habilitam D11 para toda a base elegível. D3/D7 exigem adicionalmente data de corte ISO-8601 em `ACTIVATION_EMAIL_START_AT` e IDs explícitos em `ACTIVATION_EMAIL_ALLOWLIST`.
 
 Mesmo com a liberação manual, envio real fica pendente se feedback estiver desativado, fila/região/Configuration Set estiverem ausentes ou a URL pública não for HTTPS. Simulação não envia SMTP e continua terminal; não use a mesma linha SIMULATED esperando um envio posterior automático.
 
 A implementação das três integrações está concluída no código. A comprovação operacional em AWS e caixa postal real é uma etapa separada: publicar a versão, confirmar a rota pública e o fluxo SES → SNS → SQS, usar uma loja/caixa de teste autorizada, conferir as tags/cabeçalhos, executar descadastro e simular bounce/complaint do SES para verificar a supressão no banco. A campanha não foi habilitada, não foi implantada e nenhum e-mail real foi enviado nesta implementação.
 
 Referências oficiais usadas para o contrato: [cabeçalhos SMTP e tags SES](https://docs.aws.amazon.com/ses/latest/dg/event-publishing-send-email.html), [campos de bounce, complaint e subscription](https://docs.aws.amazon.com/ses/latest/dg/event-publishing-retrieving-sns-contents.html) e [exemplos de eventos](https://docs.aws.amazon.com/ses/latest/dg/event-publishing-retrieving-sns-examples.html).
+
+## Regra D11 e textos atualizados em 05/11/2026
+
+D11 já aceito pelo SMTP (SENT), reservado (CLAIMED), incerto (REVIEW), simulado
+(SIMULATED) ou com tentativas esgotadas (FAILED) não é recriado, inclusive quando
+houver outra data de instalação registrada para a mesma loja. Revisão operacional
+continua necessária para os resultados incertos.
+
+Somente supressões D11 das regras de público substituídas (`stage_expired`,
+`outside_cohort`, `not_allowlisted`, `first_activation`) podem voltar a PENDING.
+Isso ocorre sob lock e após conferir loja ativa, ausência atual de campos e
+proteções de contato. Supressões por descadastro, bounce, reclamação ou instalação
+incompatível não são revertidas. D15 continua desativado. Essa mudança não habilita
+a campanha por si só e não altera os padrões de simulação/desativação.
+
+Assuntos, corpos e rodapés dos três e-mails ficam em `messages.properties` (PT) e
+`messages_es.properties` (ES), nas chaves `activation.email.d3.*`,
+`activation.email.d7.*`, `activation.email.d11.*` e
+`activation.email.unsubscribe`. A resolução usa `StoreLocale.forCountry`, a mesma
+regra do app: Brasil/Portugal em português, demais países cadastrados em espanhol,
+país ausente em português. A mensagem recebe o nome da loja como argumento, não
+como padrão de formatação. Os envios usam versão de template `nc39-v2`; mensagens
+antigas já enviadas não têm sua versão alterada.
+
+**D11 PT — assunto:** Lembrete: configure os campos personalizados dos seus produtos
+
+> Olá {nome da loja}! Sua loja ainda está sem produtos com campos personalizados configurados. Abra o aplicativo pelo painel da Nuvemshop, escolha um produto e adicione os campos que seus clientes devem preencher.
+>
+> Se precisar de ajuda, fale conosco pelo suporte do aplicativo.
+>
+> Equipe Campos Personalizados.
+
+**D11 ES — assunto:** Recordatorio: configurá los campos personalizados de tus productos
+
+> ¡Hola {nombre de la tienda}! Tu tienda todavía no tiene productos con campos personalizados configurados. Abrí la aplicación desde el administrador de Tiendanube, elegí un producto y agregá los campos que tus clientes deben completar.
+>
+> Si necesitás ayuda, contactanos desde el soporte de la aplicación.
+>
+> Equipo Campos Personalizados.
+
+Cada versão inclui o próprio link de descadastro, no mesmo idioma. Alterar os
+arquivos de mensagens exige publicar uma nova versão da aplicação.
+
+Validação final em 05/11/2026: **994 testes Java, zero falhas/erros e um ignorado**.
+Cobertura inclui D11 em lojas de 11/30/90 dias, ausência de envio retroativo D3/D7,
+recuperação apenas das antigas supressões de público, preservação de bloqueios de
+contato e resultados incertos, ausência atual de configuração, métricas somente
+leitura, contador de envios confirmados e assuntos/corpos/rodapés PT/ES nos bundles
+e no transporte MIME. A campanha não foi habilitada e nenhum e-mail real foi enviado.

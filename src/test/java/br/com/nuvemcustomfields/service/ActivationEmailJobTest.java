@@ -14,6 +14,11 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ActivationEmailJobTest {
+    static ActivationEmailTemplates templates() {
+        var messages=new org.springframework.context.support.ResourceBundleMessageSource();
+        messages.setBasename("messages");messages.setDefaultEncoding("UTF-8");messages.setFallbackToSystemLocale(false);
+        return new ActivationEmailTemplates(messages);
+    }
     static final Instant NOW=Instant.parse("2026-11-04T12:00:00Z");
     final StoreRepository stores=mock(StoreRepository.class);
     final PersonalizationRuleRepository rules=mock(PersonalizationRuleRepository.class);
@@ -23,7 +28,7 @@ class ActivationEmailJobTest {
     final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
     final ActivationEmailProtectionService protection=mock(ActivationEmailProtectionService.class);
     final br.com.nuvemcustomfields.properties.SesEventsProperties ses=new br.com.nuvemcustomfields.properties.SesEventsProperties(true,"queue","us-east-1","config");
-    final ActivationEmailJob job=new ActivationEmailJob(stores,rules,outbox,mail,manager,history,protection,ses);
+    final ActivationEmailJob job=new ActivationEmailJob(stores,rules,outbox,mail,manager,history,protection,ses,templates(),new ActivationEmailDeliveryMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
     Store store;
     @BeforeEach void configure() {
         when(protection.ready()).thenReturn(true);
@@ -105,9 +110,9 @@ class ActivationEmailJobTest {
         job.scheduleAt(NOW);job.dispatchDue(NOW);job.dispatch(1L,NOW);
         verifyNoInteractions(stores,outbox,mail);
     }
-    @Test void malformedStartDateCannotEnableAnyEntryPoint() {
-        ReflectionTestUtils.setField(job,"startAtText","invalid");job.scheduleAt(NOW);job.dispatch(1L,NOW);
-        verifyNoInteractions(stores,outbox,mail);
+    @Test void malformedStartDateKeepsD3PendingWithoutSending() {
+        ReflectionTestUtils.setField(job,"startAtText","invalid");var e=event("D3");job.dispatch(1L,NOW);
+        assertThat(e.getState()).isEqualTo(ActivationEmailOutbox.State.PENDING);verifyNoInteractions(mail);
     }
     @Test void simulationConsumesNoSmtpAttempt() {
         ReflectionTestUtils.setField(job,"dryRun",true);var e=event("D3");job.dispatch(1L,NOW);
@@ -163,7 +168,7 @@ class ActivationEmailJobTest {
     }
     @Test void d11IsHelpCopyWithoutDiscountOrTrialExpiryPromise() {
         store=store(NOW.minus(Duration.ofDays(11)));store.setStoreCountryCode("AR");event("D11");job.dispatch(1L,NOW);
-        var body=org.mockito.ArgumentCaptor.forClass(String.class);verify(mail).sendActivation(eq(12L),any(),anyString(),contains("primer producto"),body.capture(),anyString(),anyString());
-        assertThat(body.getValue()).contains("último correo", "soporte").doesNotContain("30%","15 días","venció","cobro");
+        var body=org.mockito.ArgumentCaptor.forClass(String.class);verify(mail).sendActivation(eq(12L),any(),anyString(),contains("Recordatorio"),body.capture(),anyString(),anyString());
+        assertThat(body.getValue()).contains("campos personalizados", "soporte").doesNotContain("último correo", "30%","15 días","venció","cobro");
     }
 }

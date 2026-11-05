@@ -3,6 +3,8 @@ package br.com.nuvemcustomfields.service;
 import br.com.nuvemcustomfields.entity.*;
 import br.com.nuvemcustomfields.repository.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +31,8 @@ class ActivationEmailFlowIntegrationTest {
     @Autowired PersonalizationFieldHistoryRepository history;
     @Autowired ActivationEmailOutboxRepository queue;
     @Autowired StoreDataErasureService erasure;
+    @Autowired ActivationEmailMetricsSnapshotService metricsSnapshots;
+    @Autowired io.micrometer.core.instrument.MeterRegistry registry;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean StoreAdminEmailService mail;
     @MockitoBean ActivationEmailProtectionService protection;
@@ -44,6 +48,7 @@ class ActivationEmailFlowIntegrationTest {
         ReflectionTestUtils.setField(job,"enabled",true);ReflectionTestUtils.setField(job,"dryRun",false);
         ReflectionTestUtils.setField(job,"suppressionReady",true);ReflectionTestUtils.setField(job,"allowlistText",String.valueOf(STORE));
         ReflectionTestUtils.setField(job,"startAtText",installed.minusSeconds(86400).toString());
+        clearInvocations(mail);
     }
     @AfterEach void cleanup() {
         ReflectionTestUtils.setField(job,"enabled",false);
@@ -148,4 +153,91 @@ class ActivationEmailFlowIntegrationTest {
         assertThat(stores.findByStoreId(STORE).orElseThrow().getInstalledAt()).isEqualTo(installed);
         assertThat(rows()).hasSize(1);verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
     }
+    void installationAge(int days) {
+        installed=Instant.now().minus(Duration.ofDays(days)).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        jdbc.update("update stores set installed_at=? where store_id=?",java.sql.Timestamp.from(installed),STORE);
+    }
+    @ParameterizedTest @ValueSource(ints={11,30,90})
+    void d11ReachesAnyOldUnconfiguredStoreOnceWithoutRetroactiveD3D7(int days) {
+        installationAge(days);
+        ReflectionTestUtils.setField(job,"startAtText",Instant.now().minusSeconds(86400).toString());
+        ReflectionTestUtils.setField(job,"allowlistText","");
+        job.scheduleAt(day(days));job.scheduleAt(day(days+30));
+        assertThat(rows()).extracting(ActivationEmailOutbox::getStep).containsExactly("D11");
+        assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SENT);
+        verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
+    }
+    @Test void d11StillWorksWithoutACohortButNeverBeforeElevenDays() {
+        installationAge(30);ReflectionTestUtils.setField(job,"startAtText","");
+        job.scheduleAt(day(11).minusSeconds(1));assertThat(rows()).noneMatch(e->e.getStep().equals("D11"));
+        job.scheduleAt(day(11));assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SENT);
+    }
+    @ParameterizedTest @ValueSource(strings={"stage_expired","outside_cohort","not_allowlisted","first_activation"})
+    void onlySupersededAudienceSuppressionsCanResumeD11(String reason) {
+        installationAge(30);var event=pending("D11",11);event.suppress(reason);queue.saveAndFlush(event);
+        job.scheduleAt(day(30));
+        assertThat(row("D11").getId()).isEqualTo(event.getId());assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SENT);
+        verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
+    }
+    @ParameterizedTest @ValueSource(strings={"unsubscribe","ses_bounce","ses_complaint","ses_unsubscribe","store_inactive_or_reinstalled"})
+    void privacyAndOtherSuppressionReasonsRemainTerminal(String reason) {
+        installationAge(30);var event=pending("D11",11);event.suppress(reason);queue.saveAndFlush(event);
+        job.scheduleAt(day(30));assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);
+        assertThat(row("D11").getSuppressionReason()).isEqualTo(reason);verifyNoInteractions(mail);
+    }
+    @Test void currentlyConfiguredPausedProductStillBlocksOldStoreD11() {
+        installationAge(30);configureProduct(true);job.scheduleAt(day(30));
+        assertThat(rows()).noneMatch(e->e.getStep().equals("D11"));verifyNoInteractions(mail);
+    }
+    @Test void deletedPastConfigurationDoesNotPreventD11WhenNoProductIsCurrentlyConfigured() {
+        installationAge(30);history.saveAndFlush(new PersonalizationFieldHistory(STORE,10L,"Nome antigo"));
+        job.scheduleAt(day(30));assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SENT);
+        assertThat(rows()).noneMatch(e->e.getStep().equals("D3")||e.getStep().equals("D7"));
+    }
+    @ParameterizedTest @ValueSource(strings={"SENT","CLAIMED","REVIEW","SIMULATED","FAILED"})
+    void aPreviouslyHandledD11NeverRestartsOnAnotherInstallation(String state) {
+        installationAge(30);var older=new ActivationEmailOutbox(STORE,installed.minusSeconds(86400),"D11",day(11),"nc39-v1");
+        ReflectionTestUtils.setField(older,"state",ActivationEmailOutbox.State.valueOf(state));queue.saveAndFlush(older);
+        job.scheduleAt(day(30));assertThat(queue.findByStoreIdAndInstalledAtAndStep(STORE,installed,"D11").orElseThrow().getSuppressionReason()).isEqualTo("already_contacted");
+        verifyNoInteractions(mail);
+    }
+
+    @Test void audienceMetricsAreReadOnlyEvenWhenCampaignIsDisabled() {
+        installationAge(30);ReflectionTestUtils.setField(job,"enabled",false);
+        ReflectionTestUtils.setField(job,"startAtText","");ReflectionTestUtils.setField(job,"allowlistText","");
+        var snapshot=metricsSnapshots.collect(day(30));
+        assertThat(snapshot.eligible().get("D11")).isEqualTo(1);
+        assertThat(snapshot.ready().get("D11")).isZero();assertThat(snapshot.stores().get("eligible")).isEqualTo(1);
+        assertThat(rows()).isEmpty();verify(mail,never()).sendActivation(any(),any(),any(),any(),any(),any(),any());
+    }
+    @Test void audienceMetricsAndPersistedStatesTrackAConfirmedSendWithoutCountingItAgain() {
+        installationAge(30);when(mail.configured()).thenReturn(true);
+        var before=metricsSnapshots.collect(day(30));assertThat(before.ready().get("D11")).isEqualTo(1);
+        double counter=registry.get("ncf.activation.email.sent").tag("step","D11").counter().count();
+        job.scheduleAt(day(30));job.scheduleAt(day(31));
+        var after=metricsSnapshots.collect(day(31));assertThat(after.eligible().get("D11")).isZero();
+        assertThat(after.outbox().get("D11:SENT")).isGreaterThanOrEqualTo(1);
+        assertThat(registry.get("ncf.activation.email.sent").tag("step","D11").counter().count()).isEqualTo(counter+1);
+    }
+    @Test void smtpUncertaintyAndSimulationAreNotCountedAsConfirmedSends() {
+        installationAge(30);
+        double counter=registry.get("ncf.activation.email.sent").tag("step","D11").counter().count();
+        ReflectionTestUtils.setField(job,"dryRun",true);job.scheduleAt(day(30));
+        assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SIMULATED);
+        assertThat(registry.get("ncf.activation.email.sent").tag("step","D11").counter().count()).isEqualTo(counter);
+        queue.delete(row("D11"));ReflectionTestUtils.setField(job,"dryRun",false);
+        doThrow(new IllegalStateException()).when(mail).sendActivation(any(),any(),any(),any(),any(),any(),any());
+        job.scheduleAt(day(30));assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.REVIEW);
+        assertThat(registry.get("ncf.activation.email.sent").tag("step","D11").counter().count()).isEqualTo(counter);
+    }
+    @Test void currentConfigurationAndInvalidAddressAreVisibleAsAudienceBlocks() {
+        installationAge(30);configureProduct(false);
+        var snapshot=metricsSnapshots.collect(day(30));assertThat(snapshot.blocked().get("first_activation")).isEqualTo(1);
+        assertThat(snapshot.eligible().get("D11")).isZero();
+        jdbc.update("delete from personalization_fields where rule_id in (select id from personalization_rules where store_id=?)",STORE);
+        jdbc.update("update stores set store_email='invalid' where store_id=?",STORE);
+        snapshot=metricsSnapshots.collect(day(30));assertThat(snapshot.blocked().get("invalid_recipient")).isEqualTo(1);
+        assertThat(rows()).isEmpty();
+    }
+
 }

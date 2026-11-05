@@ -28,6 +28,12 @@ class BackofficeStoreEmailPageTest {
     @Autowired br.com.nuvemcustomfields.service.RenewalFailureEmailService renewalEmails;
     @MockitoBean StoreAdminEmailService emails;
 
+    private void assertNoEmailSent() {
+        verify(emails,never()).send(any(),any(),any());
+        verify(emails,never()).sendAction(any(),any(),any(),any(),any());
+        verify(emails,never()).sendActivation(any(),any(),any(),any(),any(),any(),any());
+    }
+
     @Test void rendersRenewalPreviewAndOnlySendsAfterAnAuthenticatedPost() throws Exception {
         var store = new Store(); store.setStoreId(987654322L); store.setStoreName("Loja Dark Hunter");
         store.setStoreEmail("owner@example.com"); store.setStoreCountryCode("BR");
@@ -51,7 +57,7 @@ class BackofficeStoreEmailPageTest {
         mvc.perform(get(path).session(session)).andExpect(status().isOk())
             .andExpect(content().string(containsString("Enviar aviso de renovação falhou")))
             .andExpect(content().string(containsString("Reativar meu plano Ultra")));
-        verifyNoInteractions(emails);
+        assertNoEmailSent();
         var notice = renewalEmails.preview(store.getStoreId());
         String token = BackofficeRenewalFailureEmailController.token(session, store.getStoreId(), notice.fingerprint());
         mvc.perform(post(path + "/payment/renewal-failure-email").session(session)
@@ -80,7 +86,7 @@ class BackofficeStoreEmailPageTest {
                 .andExpect(model().attributeExists("storeEmailToken"));
         mvc.perform(post(path + "/email").session(session).param("actionToken", "bad")
                 .param("subject", "Aviso").param("body", "Olá")).andExpect(status().isForbidden());
-        verifyNoInteractions(emails);
+        assertNoEmailSent();
         mvc.perform(post(path + "/email").session(session)
                 .param("actionToken", BackofficeStoreEmailController.token(session))
                 .param("subject", "Aviso").param("body", "Olá")

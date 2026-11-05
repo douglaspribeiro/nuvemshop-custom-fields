@@ -34,7 +34,10 @@ public class ActivationEmailProtectionService {
     public boolean ready() {
         try {
             var uri = java.net.URI.create(baseUrl);
-            return events.enabled() && hasText(events.queueUrl()) && hasText(events.region())
+            var queue = java.net.URI.create(events.queueUrl());
+            return events.enabled() && "https".equals(queue.getScheme()) && queue.getHost() != null
+                    && queue.getUserInfo() == null && queue.getQuery() == null && queue.getFragment() == null
+                    && queue.getPath() != null && queue.getPath().length() > 1 && hasText(events.region())
                     && events.configurationSet() != null && events.configurationSet().matches("[A-Za-z0-9_-]{1,64}") && "https".equals(uri.getScheme())
                     && uri.getHost() != null && uri.getUserInfo() == null && uri.getQuery() == null && uri.getFragment() == null;
         } catch (RuntimeException ex) { return false; }
@@ -62,7 +65,7 @@ public class ActivationEmailProtectionService {
     public boolean spanish(String token) {
         var event = tokenEvent(token);
         var store = stores.findByStoreId(event.getStoreId()).orElseThrow(ActivationEmailProtectionService::invalidLink);
-        return Set.of("AR", "MX", "CL", "CO", "UY").contains(Objects.toString(store.getStoreCountryCode(), "").toUpperCase(Locale.ROOT));
+        return "es".equals(br.com.nuvemcustomfields.i18n.StoreLocale.forCountry(store.getStoreCountryCode()).getLanguage());
     }
     @Transactional
     public void unsubscribe(String token) {

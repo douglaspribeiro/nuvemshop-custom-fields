@@ -16,11 +16,13 @@ public class StoreAdminEmailService {
     private final StoreRepository stores;
     private final SesProperties properties;
     private final JavaMailSender sender;
+    private final ActivationEmailTemplates templates;
 
-    public StoreAdminEmailService(StoreRepository stores, SesProperties properties, JavaMailSender sender) {
+    public StoreAdminEmailService(StoreRepository stores, SesProperties properties, JavaMailSender sender, ActivationEmailTemplates templates) {
         this.stores = stores;
         this.properties = properties;
         this.sender = sender;
+        this.templates = templates;
     }
 
     public void send(Long storeId, String subject, String body) {
@@ -42,7 +44,7 @@ public class StoreAdminEmailService {
             var message = sender.createMimeMessage();
             var helper = new org.springframework.mail.javamail.MimeMessageHelper(message, false, "UTF-8");
             helper.setFrom(plain.getFrom()); helper.setTo(recipient); helper.setSubject(plain.getSubject());
-            helper.setText(body + "\n\nParar de receber estes e-mails / Dejar de recibir estos correos: " + unsubscribeUrl);
+            helper.setText(body + "\n\n" + templates.unsubscribe(stores.findByStoreId(storeId).map(s -> s.getStoreCountryCode()).orElse(null), unsubscribeUrl));
             message.setHeader("X-SES-CONFIGURATION-SET", configurationSet);
             message.setHeader("X-SES-MESSAGE-TAGS", "nc39_event=" + eventId + ", nc39_store=" + storeId);
             message.setHeader("List-Unsubscribe", "<" + unsubscribeUrl + ">");
@@ -79,19 +81,20 @@ public class StoreAdminEmailService {
         return new IllegalStateException("Não foi possível confirmar o envio. Confira o provedor de e-mail antes de tentar novamente.");
     }
 
+    public boolean configured() { return properties.configured(); }
+    public static boolean validRecipient(String recipient) {
+        try {
+            if (recipient == null || recipient.isBlank() || recipient.contains("\r") || recipient.contains("\n")) return false;
+            var address = new InternetAddress(recipient, true); address.validate();
+            return recipient.equals(address.getAddress());
+        } catch (AddressException ex) { return false; }
+    }
+
     private SimpleMailMessage prepare(Long storeId, String subject, String body) {
         var store = stores.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja não encontrada."));
         String recipient = store.getStoreEmail();
-        try {
-            if (recipient == null || recipient.isBlank() || recipient.contains("\r") || recipient.contains("\n"))
-                throw new AddressException();
-            var address = new InternetAddress(recipient, true);
-            address.validate();
-            if (!recipient.equals(address.getAddress())) throw new AddressException();
-        } catch (AddressException ex) {
-            throw new IllegalArgumentException("A loja não possui um e-mail válido cadastrado.");
-        }
+        if (!validRecipient(recipient)) throw new IllegalArgumentException("A loja não possui um e-mail válido cadastrado.");
         if (subject == null || subject.isBlank() || subject.length() > 200
                 || subject.contains("\r") || subject.contains("\n"))
             throw new IllegalArgumentException("Informe um assunto de até 200 caracteres, em uma única linha.");

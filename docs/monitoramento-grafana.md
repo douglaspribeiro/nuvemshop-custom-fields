@@ -319,3 +319,65 @@ de remoção após processamento e as mesmas métricas. Também consulta os atri
 da fila imediatamente, sem aguardar o próximo horário. Uma falha nessa consulta
 é apresentada separadamente e não transforma falha de leitura em fila vazia.
 O botão não dispara campanhas e não altera o intervalo automático de uma hora.
+
+## Elegibilidade de ativação e gráfico de envios
+
+A seção **Ativação · elegibilidade e envios D3 / D7 / D11** mostra lojas elegíveis,
+liberadas para envio real, pendências persistidas, revisões de entrega, bloqueios
+e controles da campanha. O snapshot é calculado somente em leitura na inicialização
+e a cada hora (`ACTIVATION_EMAIL_METRICS_DELAY_MS`, padrão `3600000`), mesmo quando
+a campanha está desligada. A consulta não enfileira, reserva, simula ou envia.
+
+D11 inclui qualquer instalação ativa de pelo menos 11 dias sem campos configurados
+atualmente, sem limite máximo de idade e sem restrição de corte/lista. D3/D7
+preservam essas restrições e sua janela de 24h. Todas as etapas respeitam o
+bloqueio de contato e o histórico de entrega. A avaliação usa o mesmo método de
+público do worker e exige endereço válido para contar uma loja como elegível.
+
+| Métrica | Significado |
+| --- | --- |
+| `ncf_activation_email_stores{status}` | Lojas distintas por eligible/waiting/blocked/handled/review |
+| `ncf_activation_email_eligible{step}` | Candidatas D3/D7/D11, independentemente das flags globais |
+| `ncf_activation_email_ready{step}` | Candidatas com os controles locais de envio real liberados |
+| `ncf_activation_email_blocked{reason}` | Lojas cuja situação final é blocked, uma causa por loja |
+| `ncf_activation_email_outbox{step,state}` | Quantidade atual de mensagens persistidas, excluindo ACTIVATED |
+| `ncf_activation_email_control{control}` | Habilitação, simulação, proteções e configuração local |
+| `ncf_activation_email_snapshot_timestamp_seconds` | Último snapshot bem-sucedido |
+| `ncf_activation_email_metrics_failures_total` | Falhas de atualização do snapshot |
+| `ncf_activation_email_sent_total{step}` | Retornos confirmados do transporte, separados por etapa |
+
+A situação da loja prioriza uma etapa elegível; depois revisão, D11 já tratado,
+aguardo de prazo e bloqueio. O motivo de bloqueio prioriza D11 quando aplicável.
+As contagens da fila incluem histórico de lojas inativas e não são o mesmo público
+das lojas elegíveis. SIMULATED, CLAIMED, REVIEW e FAILED não são envios novos aptos
+a reprocessamento automático. O worker sempre revalida antes do envio.
+
+O **gráfico de linha** usa `increase(ncf_activation_email_sent_total[1h])`:
+cada ponto estima quantos envios foram confirmados na hora móvel anterior, em
+linhas D3/D7/D11. O contador aumenta após retorno bem-sucedido do transporte,
+inclusive se houver falha posterior ao registrar o estado no banco. Resultados
+SMTP incertos não são contados como confirmados. Simulações ficam separadas no
+estado SIMULATED da fila. O gráfico não comprova entrega, abertura ou leitura.
+
+Contadores de envio começam em zero ao iniciar a versão instrumentada e não
+recuperam envios anteriores. `increase` exige amostras e trata reinícios; lacunas
+e envios anteriores à primeira coleta não são reconstruídos. Os stocks persistidos
+podem diminuir por exclusão LGPD e são gauges, nunca tratados como contadores.
+Os gráficos usam máximo entre réplicas para não somar snapshots duplicados do
+mesmo banco. Contadores de envio, por outro lado, são somados entre instâncias.
+
+Antes do primeiro snapshot, as contagens são desconhecidas (NaN), não zero.
+Falhas mantêm o timestamp anterior; o dashboard oculta snapshots com mais de
+65 minutos. Não há labels de loja, e-mail, ID de mensagem ou token. Os valores
+são estimativas operacionais com atualização horária; configuração de SMTP/SES
+não comprova autorização ou conectividade do provedor.
+
+Publicar o JSON pelo fluxo normal da infraestrutura e a imagem do app é necessário
+para os novos dados. Esta alteração não modifica o checkout no servidor, não
+publica imagens e não habilita o envio real da campanha.
+
+Validação desta etapa em 05/11/2026: suíte Java com 994 testes, zero falhas/erros e
+um ignorado; catálogo Grafana válido e cópias do dashboard iguais. As onze consultas
+novas foram executadas com sucesso no datasource real, ainda sem séries desta versão.
+A consulta remota foi somente leitura e confirmou checkout limpo no servidor.
+Nenhuma publicação de dashboard, alteração do servidor, push ou deploy nesta etapa.

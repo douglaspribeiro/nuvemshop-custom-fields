@@ -41,7 +41,17 @@ public class ActivationEmailOutbox {
     public int getAttempts() { return attempts; }
     public Instant getNextAttemptAt() { return nextAttemptAt; }
     public String getTemplateVersion() { return templateVersion; }
+    public void templateVersion(String version) { this.templateVersion = version; }
     public String getSuppressionReason() { return suppressionReason; }
+    /** Only superseded D11 audience rules may be reversed; privacy/delivery suppressions remain terminal. */
+    public boolean canResumeD11() {
+        return "D11".equals(step) && state == State.SUPPRESSED && suppressionReason != null
+                && java.util.Set.of("stage_expired", "outside_cohort", "not_allowlisted", "first_activation").contains(suppressionReason);
+    }
+    public boolean resumeD11() {
+        if (!canResumeD11()) return false;
+        state = State.PENDING; suppressionReason = null; return true;
+    }
     public void claim() { state = State.CLAIMED; attempts++; }
     public void review() { state = State.REVIEW; suppressionReason = "smtp_result_unknown"; }
     public void sent(Instant at) { state = State.SENT; sentAt = at; }

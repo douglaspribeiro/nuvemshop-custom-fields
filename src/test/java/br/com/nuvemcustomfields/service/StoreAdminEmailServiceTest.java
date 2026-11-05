@@ -5,6 +5,8 @@ import br.com.nuvemcustomfields.properties.SesProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -13,10 +15,15 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class StoreAdminEmailServiceTest {
+    static ActivationEmailTemplates templates() {
+        var messages=new org.springframework.context.support.ResourceBundleMessageSource();
+        messages.setBasename("messages");messages.setDefaultEncoding("UTF-8");messages.setFallbackToSystemLocale(false);
+        return new ActivationEmailTemplates(messages);
+    }
     private final StoreRepository stores = mock(StoreRepository.class);
     private final JavaMailSender sender = mock(JavaMailSender.class);
     private final SesProperties config = new SesProperties("smtp.example.com", 587, "user", "secret", "support@example.com");
-    private final StoreAdminEmailService service = new StoreAdminEmailService(stores, config, sender);
+    private final StoreAdminEmailService service = new StoreAdminEmailService(stores, config, sender, templates());
 
     private void recipient(String email) {
         var store = new Store();
@@ -75,7 +82,7 @@ class StoreAdminEmailServiceTest {
 
     @Test void failsClearlyWhenNotConfigured() {
         recipient("owner@example.com");
-        var service = new StoreAdminEmailService(stores, new SesProperties(null, 0, null, null, null), sender);
+        var service = new StoreAdminEmailService(stores, new SesProperties(null, 0, null, null, null), sender, templates());
         assertThatThrownBy(() -> service.send(12L, "Assunto", "Mensagem"))
                 .hasMessageContaining("não está configurado");
         verifyNoInteractions(sender);
@@ -96,6 +103,22 @@ class StoreAdminEmailServiceTest {
         assertThatThrownBy(()->service.sendActivation(12L,1L,"updated@example.com","Ajuda","Mensagem",
                 "https://app.test/unsubscribe?token=token\r\nBcc: victim@example.com","config")).isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(sender);
+    }
+
+    @ParameterizedTest @ValueSource(strings={"BR","MX","PE"})
+    void activationMimeUsesLocalizedSubjectBodyAndFooter(String country) throws Exception {
+        var store=new Store();store.setStoreEmail("owner@example.com");store.setStoreCountryCode(country);
+        when(stores.findByStoreId(12L)).thenReturn(Optional.of(store));
+        var message=new jakarta.mail.internet.MimeMessage(jakarta.mail.Session.getInstance(new java.util.Properties()));
+        when(sender.createMimeMessage()).thenReturn(message);
+        var copy=templates().copy("D11",country,"Minha loja");
+        service.sendActivation(12L,1L,"owner@example.com",copy.subject(),copy.body(),"https://app.test/unsubscribe?token=test","config");
+        assertThat(message.getSubject()).isEqualTo(copy.subject());String body=message.getContent().toString();
+        if(country.equals("BR")) assertThat(body).contains("Sua loja ainda está sem produtos","Parar de receber estes e-mails:")
+                .doesNotContain("Dejar de recibir", "último e-mail");
+        else assertThat(body).contains("Tu tienda todavía no tiene productos","Dejar de recibir estos correos:")
+                .doesNotContain("Parar de receber", "último correo");
+        verify(sender).send(message);
     }
 
 }
