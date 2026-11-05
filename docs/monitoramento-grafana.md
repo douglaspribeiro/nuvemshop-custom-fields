@@ -292,3 +292,30 @@ sucesso no datasource real, ainda sem séries porque esta versão instrumentada 
 app não foi implantada. Sem verificação visual no navegador. A atualização do JSON
 canônico está pendente de commit nos checkouts local e do servidor; versionar e
 publicar o catálogo para preservar a mudança nas próximas sincronizações da infra.
+
+## Consumo manual no backoffice
+
+Em **Backoffice → Eventos de e-mail** (`/backoffice/email-events`), o botão
+**Executar consumo da fila** solicita uma execução imediata em segundo plano.
+A página acompanha a execução e mostra recebidas, tratadas, remoções confirmadas,
+falhas, horários e atualização da quantidade na fila para o Grafana. Atualiza a
+cada cinco segundos somente enquanto a execução estiver em andamento.
+
+A ação exige sessão autenticada do backoffice, POST e token vinculado à sessão.
+GET não consome a fila. O botão fica desabilitado quando há uma execução em
+andamento ou a configuração está incompleta; erros de URL indicam que se deve
+usar a URL completa da fila, em vez do nome isolado. A flag
+`AWS_SES_EVENTS_ENABLED` continua necessária.
+
+Execução manual e agendada compartilham uma reserva em memória por instância:
+um clique repetido ou a rotina automática não inicia outro consumo simultâneo.
+A reserva é liberada também em falhas e rejeição do executor durante shutdown.
+O resultado fica em memória até a próxima execução ou reinicialização. Instâncias
+diferentes continuam sujeitas à entrega pelo menos uma vez do SQS e à deduplicação
+persistida dos processadores.
+
+O consumo manual usa os mesmos limites de lotes e duração, a mesma confirmação
+de remoção após processamento e as mesmas métricas. Também consulta os atributos
+da fila imediatamente, sem aguardar o próximo horário. Uma falha nessa consulta
+é apresentada separadamente e não transforma falha de leitura em fila vazia.
+O botão não dispara campanhas e não altera o intervalo automático de uma hora.
