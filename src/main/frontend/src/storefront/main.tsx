@@ -15,7 +15,6 @@ import { PersonalizationFields, SDK_MARKER_ID } from "./PersonalizationFields";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
 import { installQuickBuy } from "./quick-buy";
 import { createCartAdder } from "./cart-add";
-import { createNativeProductPurchase } from "./native-product-purchase";
 
 const SLOT = "before_product_detail_add_to_cart";
 
@@ -41,7 +40,6 @@ let errors: FieldError[] = [];
 let textColor: string | undefined;
 
 let cartAdder: ReturnType<typeof createCartAdder>;
-let nativeProductPurchase: ReturnType<typeof createNativeProductPurchase>;
 let reportedNativeGate = false;
 let draftGeneration = 0;
 let directPending = false;
@@ -61,7 +59,6 @@ export function App(nube: NubeSDK) {
 	// Sem este opt-in a plataforma nunca dispara cart:before_update.
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
     cartAdder = createCartAdder(nube);
-    nativeProductPurchase = createNativeProductPurchase(nube,(product,reason)=>report(store,product,reason));
     const quickBuy = installQuickBuy(nube, cartAdder);
 
 	startDiagnostics(nube);
@@ -180,7 +177,6 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 }
 
 function render(nube: NubeSDK) {
-    void nativeProductPurchase.update(isPatagonia(nube) && config.enabled && !config.paused && config.fields.length ? productId : null);
     if (config.paused) { nube.render(SLOT, <Column id={SDK_MARKER_ID} style={{paddingTop:"12px",paddingBottom:"12px"}}><Text>{messages(config.locale).personalizationPaused}</Text></Column>); return; }
     if (!config.enabled) { nube.clearSlot(SLOT); return; }
     const renderProduct = productId;
@@ -249,7 +245,6 @@ function isPatagonia(nube: NubeSDK): boolean {
 }
 
 function clear(nube: NubeSDK) {
-    void nativeProductPurchase.update(null);
 	config = DISABLED;
 	productId = null;
 	variantId = null;

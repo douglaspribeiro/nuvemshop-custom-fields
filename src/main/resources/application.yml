@@ -259,3 +259,23 @@ activation:
     suppression-ready: ${ACTIVATION_EMAIL_SUPPRESSION_READY:false}
     schedule-delay-ms: ${ACTIVATION_EMAIL_SCHEDULE_DELAY_MS:3600000}
     metrics-delay-ms: ${ACTIVATION_EMAIL_METRICS_DELAY_MS:3600000}
+
+
+
+#Sentry
+sentry:
+  dsn: https://ef7209d9ab41230f5eedbce8b5099957@o4512380875112448.ingest.us.sentry.io/4512380949889024
+  # Add data like request headers and IP for users,
+  # see https://docs.sentry.io/platforms/java/guides/spring-boot/data-management/data-collected/ for more info
+  send-default-pii: true
+  # Enable sending logs to Sentry
+  logs:
+    enabled: true
+  # Set traces-sample-rate to 1.0 to capture 100% of transactions for tracing.
+  # We recommend adjusting this value in production.
+  traces-sample-rate: 1.0
+  # Set profile-session-sample-rate to 1.0 to profile 100% of profile sessions.
+  profile-session-sample-rate: 1.0
+  # Set profile-lifecycle to trace to automatically start and stop
+  # profiling when a transaction starts and finishes.
+  profile-lifecycle: TRACE

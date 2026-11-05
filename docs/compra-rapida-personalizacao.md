@@ -2,7 +2,7 @@
 
 ## Storefront SDK — atualização de 05/11/2026
 
-**Em validação; não publicar como solução completa.** O [teste real no Patagonia](incidentes/2026-11-05-patagonia-compra-rapida-sdk.md) confirmou a persistência de 1 En Grano e 6 Molido pelo fluxo do app, mas também uma compra nativa sem os campos e sem o evento de validação. O opt-in ficou true no Worker e false no runtime da página. Essa pendência impede afirmar equivalência ao legado.
+**Entrega com limitação conhecida, aceita em 05/11/2026.** O [teste real no Patagonia](incidentes/2026-11-05-patagonia-compra-rapida-sdk.md) confirmou 1 En Grano e 6 Molido pelo fluxo do app até o checkout. O botão nativo ainda pode adicionar sem propriedades. A entrega não exige CSS por loja nem ponte DOM experimental e não bloqueia o checkout por personalização ausente. A configuração de opt-in da app estava ativa; a ausência do evento no caminho nativo não deve ser atribuída ao valor de configuração raiz do runtime.
 
 No Patagonia, os cards configurados oferecem a ação **Personalizar**, com formulário no modal do SDK, inclusive para variante única. Essa ação usa somente os componentes do app; o botão nativo não foi removido nem protegido por CSS fora do slot. A consulta cobre os produtos presentes nos dados da página, com descarte de respostas de navegação anterior.
 
