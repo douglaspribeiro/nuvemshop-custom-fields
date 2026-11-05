@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.54.0] - 2026-11-05
+
+### Features
+
+- add D11 catch-up, localized email templates and activation metrics (`f925750`)
+- add manual SES queue consumption in backoffice (`977f5bd`)
+
 ## [1.53.0] - 2026-11-05
 
 ### Features
