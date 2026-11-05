@@ -208,7 +208,7 @@ export function installQuickBuy(nube: NubeSDK, adder = createCartAdder(nube)) {
             const visible=[...cards.values()].filter(card=>card.loading || card.config == null || (card.config.enabled && card.config.fields.length));
             if(!visible.length){nube.clearSlot("before_product_grid_item_name");return;}
             nube.render("before_product_grid_item_name",visible.map(card=><Column key={card.product.id} gap={4}>
-                <Button disabled={card.loading} onClick={()=>{
+                <Button key={card.product.id} ariaLabel={es ? "Personalizar este producto con Campos Personalizados" : "Personalizar este produto com Campos Personalizados"} disabled={card.loading} onClick={()=>{
                     if(own !== catalogGeneration)return;
                     if(!card.config || !card.product.variants?.length){redirect(state!,card.product.id);return;}
                     close();active=card.product;

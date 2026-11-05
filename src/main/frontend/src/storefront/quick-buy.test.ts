@@ -10,7 +10,7 @@ let nube:NubeSDK;
 let quick:ReturnType<typeof installQuickBuy>;
 const configured={...DISABLED,enabled:true,fields:[{label:"Moagem",propertyName:"Moagem",fieldType:"SELECT",required:true,options:["En Grano","Molido"]}]};
 const product={id:456,canonical_url:"/produtos/cafe/",variants:[{id:789,values:[{pt:"Padrão"}]}]};
-type Node={type?:string;name?:string;id?:string;value?:string;children?:Node[];onChange?:(event:{value:string})=>void;onClick?:()=>void};
+type Node={__internalId?:string;type?:string;name?:string;id?:string;value?:string;children?:Node[];onChange?:(event:{value:string})=>void;onClick?:()=>void};
 function nodes(value:unknown):Node[]{
  if(!value || typeof value!=="object")return[];
  if(Array.isArray(value))return value.flatMap(nodes);
@@ -154,4 +154,15 @@ it("does not restore catalog actions after navigating away during policy lookup"
  const pending=quick.syncCatalog(state);const count=render.mock.calls.length;
  quick.locationChanged();resolve({ok:true,json:async()=>configured});await pending;
  expect(render.mock.calls).toHaveLength(count);
+});
+
+it("keeps action event identifiers separate for two configured cards",async()=>{
+ state.location.page={type:'products',data:{products:[product,{...product,id:999}]}} as unknown as NubeSDKState['location']['page'];
+ await quick.syncCatalog(state);
+ const cards=render.mock.calls.filter(([slot])=>slot==='before_product_grid_item_name').slice(-1)[0][1];
+ const actions=cards.map((card:unknown)=>nodes(card).find(n=>n.type==='button'));
+ expect(actions[0].__internalId).not.toBe(actions[1].__internalId);
+ actions[0].onClick!();
+ const first=render.mock.calls.filter(([slot])=>slot==='modal_content').slice(-1)[0][1];
+ expect(nodes(first).some(n=>n.name==='ncf-quickbuy-456-Moagem')).toBe(true);
 });

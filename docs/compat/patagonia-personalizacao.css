@@ -1,0 +1,15 @@
+/* Install in Patagonia's advanced theme CSS, alongside the updated Storefront SDK.
+   Only hide the native action when this app supplies a replacement on that card. */
+.js-item-product:has([data-slot="before_product_grid_item_name"] button[aria-label="Personalizar este producto con Campos Personalizados"]) .item-actions > button,
+.js-item-product:has([data-slot="before_product_grid_item_name"] button[aria-label="Personalizar este produto com Campos Personalizados"]) .item-actions > button {
+    display: none !important;
+}
+
+/* Keep the app's validated purchase action in the product purchase section.
+   Unconfigured/paused products have no matching app action and retain native purchase. */
+section:has(> [data-slot="before_product_detail_add_to_cart"] button[aria-label="Agregar con personalización"]) [data-component="product.add-to-cart"],
+section:has(> [data-slot="before_product_detail_add_to_cart"] button[aria-label="Agregar con personalización"]) [data-component="wallet.buy-now"],
+section:has(> [data-slot="before_product_detail_add_to_cart"] button[aria-label="Adicionar com personalização"]) [data-component="product.add-to-cart"],
+section:has(> [data-slot="before_product_detail_add_to_cart"] button[aria-label="Adicionar com personalização"]) [data-component="wallet.buy-now"] {
+    display: none !important;
+}
