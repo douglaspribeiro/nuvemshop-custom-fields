@@ -24,6 +24,8 @@ const TwoColumnImageGrid = mobileImageGrid(2);
 const ThreeColumnImageGrid = mobileImageGrid(3);
 
 type Props = {
+    markerId?: string;
+    namePrefix?: string;
 	fields: PersonalizationField[];
 	errors: FieldError[];
 	color?: string;
@@ -32,12 +34,12 @@ type Props = {
 	onValueChange: (key: string, value: FieldValue) => void;
 };
 
-export function PersonalizationFields({ fields, errors, color, values, locale, onValueChange }: Props) {
+export function PersonalizationFields({ fields, errors, color, values, locale, onValueChange, markerId = SDK_MARKER_ID, namePrefix = "" }: Props) {
 	return (
 		// id e o sinal que o script legado usa para se calar e nao duplicar os campos.
-		<Column id={SDK_MARKER_ID} gap={12} style={{ paddingTop: "12px", paddingBottom: "12px" }}>
+		<Column id={markerId} gap={12} style={{ paddingTop: "12px", paddingBottom: "12px" }}>
 			{fields.map((field) => (
-				<Column gap={4}>{fieldGroup(field, errors, color, onValueChange, values?.[keyOf(field)], locale)}</Column>
+				<Column key={namePrefix + keyOf(field)} gap={4}>{fieldGroup(field, errors, color, onValueChange, values?.[keyOf(field)], locale, namePrefix)}</Column>
 			))}
 		</Column>
 	);
@@ -48,9 +50,9 @@ function fieldGroup(
 	errors: FieldError[],
 	color: string | undefined,
 	onValueChange: (key: string, value: FieldValue) => void,
-    selected?: FieldValue, locale?: string,
+    selected?: FieldValue, locale?: string, namePrefix = "",
 ): NubeComponent[] {
-	const children: NubeComponent[] = [input(field, color, onValueChange, selected, locale)];
+	const children: NubeComponent[] = [input(field, color, onValueChange, selected, locale, namePrefix)];
 	const error = errors.find((candidate) => candidate.propertyName === keyOf(field));
 	if (error) {
 		children.push(
@@ -66,9 +68,10 @@ function input(
 	field: PersonalizationField,
 	color: string | undefined,
 	onValueChange: (key: string, value: FieldValue) => void,
-    selected?: FieldValue, locale?: string,
+    selected?: FieldValue, locale?: string, namePrefix = "",
 ): NubeComponent {
 	const key = keyOf(field);
+    const name = namePrefix + key;
 	const label = (field.required || field.fieldType === "SELECT") ? `${field.label} *` : field.label;
 	const handle = (event: { value?: string }) => onValueChange(key, event.value ?? "");
 	const labelStyle = color ? { color } : undefined;
@@ -78,13 +81,13 @@ function input(
             const choices = Array.isArray(selected) ? selected : [];
             const options = [...new Set(field.options)];
             const children: NubeComponent[] = [<Text color={color}>{label}</Text>,
-                ...options.map((option, index) => <Checkbox name={`${key}__option_${index}`} label={option}
+                ...options.map((option, index) => <Checkbox key={`${name}__option_${index}`} name={`${name}__option_${index}`} label={option}
                     checked={choices.includes(option)} style={{label: labelStyle}}
                     onChange={event => onValueChange(key, options.filter(candidate => candidate === option
                         ? event.value : choices.includes(candidate)))} />)];
             return <Column gap={8}>{children}</Column>;
         }
-        return <Checkbox name={key} label={label} checked={Boolean(selected)}
+        return <Checkbox key={name} name={name} label={label} checked={Boolean(selected)}
             onChange={event => onValueChange(key, event.value ? (locale?.startsWith("es") ? "Sí" : "Sim") : "")}
             style={{ label: labelStyle }} />;
     }
@@ -114,7 +117,7 @@ function input(
 	if (field.fieldType === "SELECT") {
 		return (
 			<Select
-				name={key}
+				key={name} name={name}
 				label={label}
 				value={typeof selected === "string" ? selected : ""}
 				options={[
@@ -129,8 +132,9 @@ function input(
 	if (field.fieldType === "TEXTAREA") {
 		return (
 			<Textarea
-				name={key}
+				key={name} name={name}
 				label={label}
+				value={typeof selected === "string" ? selected : ""}
 				maxLength={field.maxLength ?? undefined}
 				onChange={handle}
 				style={{ label: labelStyle }}
@@ -141,8 +145,9 @@ function input(
 	// que o lojista configura, entao NUMBER e validado em values.ts.
 	return (
 		<Field
-			name={key}
+			key={name} name={name}
 			label={label}
+			value={typeof selected === "string" ? selected : ""}
 			placeholder={field.placeholder ?? undefined}
 			onChange={handle}
 			style={{ label: labelStyle }}

@@ -8,12 +8,13 @@ import {
 	safeState,
 	storeId,
 } from "../shared/config";
-import { normalizedColor, normalizeProperties } from "../shared/properties";
+import { normalizedColor } from "../shared/properties";
 import { messages } from "../shared/i18n";
 import { createCartImageRenderer } from "./cart-images";
 import { PersonalizationFields, SDK_MARKER_ID } from "./PersonalizationFields";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
-import { installQuickBuyRedirect } from "./quick-buy";
+import { installQuickBuy } from "./quick-buy";
+import { createCartAdder } from "./cart-add";
 
 const SLOT = "before_product_detail_add_to_cart";
 
@@ -38,8 +39,7 @@ let values: ValueMap = {};
 let errors: FieldError[] = [];
 let textColor: string | undefined;
 
-/** Contador de `cart:add` disparados por nos, para nao reprocessar o proprio evento. */
-let pendingSelfAdds = 0;
+let cartAdder: ReturnType<typeof createCartAdder>;
 let reportedNativeGate = false;
 let draftGeneration = 0;
 let directPending = false;
@@ -58,19 +58,21 @@ let outcome = "boot";
 export function App(nube: NubeSDK) {
 	// Sem este opt-in a plataforma nunca dispara cart:before_update.
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
-    const quickBuy = installQuickBuyRedirect(nube);
+    cartAdder = createCartAdder(nube);
+    const quickBuy = installQuickBuy(nube, cartAdder);
 
 	startDiagnostics(nube);
     const renderCartImages = createCartImageRenderer(nube);
     void renderCartImages(safeState(nube));
+    void quickBuy.syncCatalog(safeState(nube));
 
 	// Tres gatilhos de proposito. O script roda com event=onfirstinteraction, entao sobe
 	// depois da pagina montada: `location:updated` pode nunca disparar (nada navegou) e o
 	// getState() imediato pode ainda nao estar hidratado. `page:loaded` e o sinal oficial
 	// de "SDK pronto". syncProduct e idempotente, then chamar de varios lugares e seguro.
 	void syncProduct(nube, safeState(nube));
-	nube.on("page:loaded", (state) => { void syncProduct(nube, state); void renderCartImages(state); });
-	nube.on("location:updated", (state) => { quickBuy.locationChanged(); void syncProduct(nube, state); void renderCartImages(state); });
+	nube.on("page:loaded", (state) => { void syncProduct(nube, state); void renderCartImages(state); void quickBuy.syncCatalog(state); });
+	nube.on("location:updated", (state) => { quickBuy.locationChanged(); void syncProduct(nube, state); void renderCartImages(state); void quickBuy.syncCatalog(state); });
     nube.on("cart:update", state => void renderCartImages(state));
 	nube.on("product:variant_selected", (state) => {
 		const selected = readVariantId(state);
@@ -83,13 +85,13 @@ export function App(nube: NubeSDK) {
 	nube.on("cart:before_update", (state) => { if (!quickBuy.intercept(state)) gate(nube, state); });
 	nube.on("cart:add:success", (state) => {
         void renderCartImages(state);
+        quickBuy.finished(state, true);
         const added = state.eventPayload as {product_id?: number; variant_id?: number; properties?: unknown} | undefined;
         const sent = submitted;
         // Native additions and late acknowledgements must never erase an unsent draft.
         if (!sent || added?.product_id !== sent.product || added?.variant_id !== sent.variant
             || sent.product !== productId || sent.variant !== selectedVariantId(nube) || sent.generation !== draftGeneration) return;
         submitted = null;
-        pendingSelfAdds = 0;
         directPending = false;
         const properties = Array.isArray(added.properties)
             ? Object.fromEntries(added.properties.filter(p => p && typeof p === "object")
@@ -105,14 +107,15 @@ export function App(nube: NubeSDK) {
         }
         directMessage = config.locale.startsWith("es") ? "Revisá la personalización en el carrito." : "Confira a personalização no carrinho.";
         void renderCartImages(state);
-		pendingSelfAdds = 0;
 		values = {};
 		errors = [];
-        if (isPatagonia(nube) || config.fields.some(field => field.fieldType === "IMAGE_SELECT" || field.fieldType === "CHECKBOX")) render(nube);
+        render(nube);
 	});
-	nube.on("cart:add:fail", () => {
+	nube.on("cart:add:fail", (state) => {
+        const failed=state.eventPayload as {product_id?:number;variant_id?:number}|undefined;
+        cartAdder.settle(failed?.product_id,failed?.variant_id);
+        quickBuy.finished(state, false);
         submitted = null;
-		pendingSelfAdds = 0;
         directPending = false;
         directMessage = config.locale.startsWith("es") ? "No pudimos agregar el producto. Revisá el carrito antes de intentar nuevamente." : "Não foi possível adicionar o produto. Confira o carrinho antes de tentar novamente.";
         render(nube);
@@ -187,7 +190,8 @@ function render(nube: NubeSDK) {
 			onValueChange={(key, value) => {
                 if (productId !== renderProduct || draftGeneration !== renderGeneration) return;
 				values[key] = value;
-                if (config.fields.some(field => (field.fieldType === "IMAGE_SELECT" || field.fieldType === "SELECT" || field.fieldType === "CHECKBOX") && (field.propertyName || field.label) === key)) { errors = errors.filter(error => error.propertyName !== key); render(nube); }
+                errors = errors.filter(error => error.propertyName !== key);
+                render(nube);
 			}}
 		/>;
     if (!isPatagonia(nube)) { nube.render(SLOT, fields); return; }
@@ -218,7 +222,7 @@ function render(nube: NubeSDK) {
         <Text>{es ? "Completá los datos y usá este botón para agregar tu producto personalizado." : "Preencha os dados e use este botão para adicionar seu produto personalizado."}</Text>
         <NumberField name="ncf-personalized-quantity" label={es ? "Cantidad personalizada" : "Quantidade personalizada"}
             min={1} step={1} value={directQuantity} disabled={directPending}
-            onChange={event => { directQuantity = Number(event.value); }} />
+            onChange={event => { directQuantity = Number(event.value); render(nube); }} />
         <Button disabled={directPending} onClick={() => {
             if (productId !== renderProduct || draftGeneration !== renderGeneration || directPending) return;
             const selectedId = selectedVariantId(nube);
@@ -255,19 +259,12 @@ function clear(nube: NubeSDK) {
 /**
  * Intercepta a adicao nativa ao carrinho. `properties` nao pode ser anexada ao
  * evento nativo, entao cancelamos e reemitimos via `cart:add`, que aceita properties.
- * O checkout confere os valores persistidos mesmo quando o tema não dispara o gate.
+ * As propriedades persistidas identificam as diferentes personalizações da mesma variante.
  */
 function gate(nube: NubeSDK, state: NubeSDKState | null, direct = false) {
 	const payload = (state?.eventPayload ?? null) as BeforeUpdatePayload | null;
 	const requestId = payload?.request_id;
 	if (!requestId && !direct) {
-		return;
-	}
-
-	// Este ADD e o nosso proprio reenvio: libera sem reprocessar.
-	if (!direct && pendingSelfAdds > 0) {
-		pendingSelfAdds--;
-		respond(nube, requestId, true);
 		return;
 	}
 	if (!direct && !reportedNativeGate) {
@@ -295,31 +292,10 @@ function gate(nube: NubeSDK, state: NubeSDKState | null, direct = false) {
 	}
 
 	const properties = toCartProperties(config.fields, values);
-    // The bridge may merge by variant without replacing properties. Never submit
-    // different personalization into that existing line.
-    const requestedVariant = payload.item?.variant_id ?? variantId;
-    const existing = state?.cart?.items?.find(item => item.product_id === productId && item.variant_id === requestedVariant);
-    const saved = Object.fromEntries(normalizeProperties(existing?.properties).map(p => [p.name, p.value]));
-    if (existing && (Object.keys(saved).length !== Object.keys(properties).length
-        || Object.entries(properties).some(([key, value]) => saved[key] !== value))) {
-        errors = [{propertyName: config.fields[0].propertyName || config.fields[0].label,
-            label: config.fields[0].label, message: config.locale.startsWith("es")
-                ? "Este producto ya está en el carrito con otros datos. Retiralo del carrito antes de agregar la nueva personalización."
-                : "Este produto já está no carrinho com outros dados. Remova-o do carrinho antes de adicionar a nova personalização."}];
-        render(nube);
-        respond(nube, requestId, false, "personalization_cart_conflict");
-        return;
-    }
 
 	if (!direct && !hasAnyValue(properties)) {
 		respond(nube, requestId, true);
 		return;
-	}
-
-	// Limitacao conhecida da plataforma: se o produto ja esta no carrinho, o bridge
-	// resolve o cart:add como bump de quantidade e descarta properties.
-	if (alreadyInCart(state, itemProductId ?? productId)) {
-		report(store, productId, "reissue_properties_dropped_item_in_cart");
 	}
 
 	errors = [];
@@ -348,20 +324,11 @@ function reissue(
 	const quantity = Math.max(1, next - previous);
 	const variant_id = payload.item?.variant_id ?? variantId ?? undefined;
 
+    if (!variant_id) return;
     submitted = {product: product_id, variant: variant_id, generation: draftGeneration,
         values: JSON.stringify(values), properties: {...properties}};
-	pendingSelfAdds++;
     if (!payload.request_id && isPatagonia(nube)) { directPending = true; render(nube); }
-	nube.send("cart:add", () => ({
-		cart: { items: [{ product_id, variant_id, quantity, properties }] },
-	}));
-}
-
-function alreadyInCart(state: NubeSDKState | null, product: number | null): boolean {
-	if (product == null) {
-		return false;
-	}
-	return (state?.cart?.items ?? []).some((item) => item?.product_id === product);
+    cartAdder.add({product_id, variant_id, quantity, properties});
 }
 
 function readVariantId(state: NubeSDKState | null): number | null {

@@ -123,13 +123,13 @@ describe("SDK storefront without a legacy script", () => {
         expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0]).toMatchObject({variant_id: 102, properties: {Nome: "Ana"}});
     });
 
-    it("blocks a different personalization for an existing cart line", async () => {
+    it("sends different personalization without modifying an existing cart line", async () => {
         await boot();
         state.cart.items = [{product_id:341531127,variant_id:101,properties:{Nome:"Ana"}}] as unknown as typeof state.cart.items;
         field(currentTree())!.onChange!({value:"Bia"});
         action(currentTree())!.onClick!();
-        expect(send.mock.calls.some(c => c[0] === "cart:add")).toBe(false);
-        expect(JSON.stringify(currentTree())).toContain("outros dados");
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0]).toMatchObject({variant_id:101,properties:{Nome:"Bia"}});
+        expect(state.cart.items[0].properties).toEqual({Nome:"Ana"});
     });
     function success(properties: unknown, variant = 101) {
         listeners.get("cart:add:success")!({...state, eventPayload: {
@@ -300,6 +300,40 @@ describe("SDK storefront without a legacy script", () => {
         expect(send).not.toHaveBeenCalled();
         listeners.get("cart:update")!({...state,cart:{items:[]}} as unknown as NubeSDKState);
         expect(nube.clearSlot).toHaveBeenCalledWith("before_line_item");
+    });
+
+    it("sends 1 En Grano and 1 Molido from quick buy, then 5 Molido from the PDP", async()=>{
+        await boot();
+        const product={id:341531127,canonical_url:'/produtos/cafe/',variants:[{id:101}]};
+        state={...state,location:{url:'https://store.test/',page:{type:'home',data:{sections:[]}}}} as unknown as NubeSDKState;
+        listeners.get('location:updated')!(state);
+        const quickTree=()=>render.mock.calls.filter(([slot])=>slot==='before_quick_buy_add_to_cart').slice(-1)[0]?.[1];
+        listeners.get('quickbuy:open')!({...state,eventPayload:product} as unknown as NubeSDKState);
+        await vi.waitFor(()=>expect(quickTree()).toBeDefined());
+        const first={id:11,product_id:341531127,variant_id:101,quantity:1,name:'Café',properties:{Nome:'En Grano'}};
+        field(quickTree())!.onChange!({value:'En Grano'});action(quickTree())!.onClick!();
+        // The SDK can omit the variant on the echo outside the product page.
+        listeners.get('cart:before_update')!({...state,eventPayload:{request_id:'echo-grano',action:'ADD',item:{product_id:341531127,variant_id:null,previous_quantity:0,new_quantity:1}}} as unknown as NubeSDKState);
+        state={...state,cart:{items:[first]}} as unknown as NubeSDKState;
+        listeners.get('cart:add:success')!({...state,eventPayload:first} as unknown as NubeSDKState);
+        const second={...first,id:22,properties:{Nome:'Molido'}};
+        field(quickTree())!.onChange!({value:'Molido'});action(quickTree())!.onClick!();
+        listeners.get('cart:before_update')!({...state,eventPayload:{request_id:'echo-molido',action:'ADD',item:{product_id:341531127,variant_id:null,previous_quantity:1,new_quantity:2}}} as unknown as NubeSDKState);
+        state={...state,cart:{items:[first,second]}} as unknown as NubeSDKState;
+        listeners.get('cart:add:success')!({...state,eventPayload:second} as unknown as NubeSDKState);
+        const count=render.mock.calls.filter(([slot])=>slot==='before_product_detail_add_to_cart').length;
+        state={...state,location:{url:'https://store.test/produtos/cafe/',page:{type:'product',data:{product}}}} as unknown as NubeSDKState;
+        listeners.get('location:updated')!(state);
+        await vi.waitFor(()=>expect(render.mock.calls.filter(([slot])=>slot==='before_product_detail_add_to_cart').length).toBeGreaterThan(count));
+        const pdpTree=()=>render.mock.calls.filter(([slot])=>slot==='before_product_detail_add_to_cart').slice(-1)[0][1];
+        field(pdpTree())!.onChange!({value:'Molido'});quantity(pdpTree())!.onChange!({value:'5'});action(pdpTree())!.onClick!();
+        const items=send.mock.calls.filter(([event])=>event==='cart:add').map(([,fn])=>fn().cart.items[0]);
+        expect(items).toEqual([
+            {product_id:341531127,variant_id:101,quantity:1,properties:{Nome:'En Grano'}},
+            {product_id:341531127,variant_id:101,quantity:1,properties:{Nome:'Molido'}},
+            {product_id:341531127,variant_id:101,quantity:5,properties:{Nome:'Molido'}},
+        ]);
+        expect(state.cart.items[0]).toEqual(first);
     });
 
 });

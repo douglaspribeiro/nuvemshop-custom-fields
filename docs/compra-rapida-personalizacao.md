@@ -1,5 +1,36 @@
 # Compra rápida com personalização
 
+## Storefront SDK — atualização de 05/11/2026
+
+**Em validação; não publicar como solução completa.** O [teste real no Patagonia](incidentes/2026-11-05-patagonia-compra-rapida-sdk.md) confirmou a persistência de 1 En Grano e 6 Molido pelo fluxo do app, mas também uma compra nativa sem os campos e sem o evento de validação. O opt-in ficou true no Worker e false no runtime da página. Essa pendência impede afirmar equivalência ao legado.
+
+No Patagonia, os cards configurados oferecem a ação **Personalizar**, com formulário no modal do SDK, inclusive para variante única. Essa ação usa somente os componentes do app; o botão nativo não foi removido nem protegido por CSS fora do slot. A consulta cobre os produtos presentes nos dados da página, com descarte de respostas de navegação anterior.
+
+A compra rápida do SDK agora renderiza os campos no slot `before_quick_buy_add_to_cart`, usando a mesma configuração e validação da página do produto. Há controle de quantidade e ação explícita “Adicionar com personalização” / “Agregar con personalización”. Uma variante única é identificada pelo produto do modal; com várias variantes e sem variante informada pelo tema, a pessoa precisa escolher uma opção válida. A adição nativa interceptada usa a variante do evento e a diferença entre as quantidades, sem converter a quantidade total em nova adição.
+
+Os rascunhos e nomes dos controles são separados por produto e pelo formulário da página principal. Fechar/reabrir preserva as respostas ainda não confirmadas. Sucesso só limpa as respostas quando o evento confirma as propriedades enviadas. Falha, confirmação incompleta e timeout preservam os dados; timeout não faz nova tentativa automaticamente. Respostas atrasadas não substituem o formulário de outro produto.
+
+A trava que impedia outra personalização de uma variante já no carrinho foi removida. A documentação atual da plataforma estabelece que propriedades diferentes separam linhas; o app envia cada adição com suas próprias propriedades. Isso substitui a premissa antiga de que `cart:add` sempre perdia as respostas de um item já existente. O complemento visual do carrinho continua identificado pelo ID da linha.
+
+O controle dos eventos gerados pelas próprias adições foi compartilhado entre página e compra rápida: produto e delta de quantidade identificam uma entrada pendente; a variante desambigua quando está disponível. Entradas expiram em três segundos e são consumidas uma vez. O evento não fornece origem/correlação suficiente para distinguir perfeitamente dois eventos simultâneos idênticos; esse limite consta da documentação da plataforma.
+
+### Compatibilidade e fallback
+
+Patagonia oferece o slot de compra rápida, mas não a descoberta de slots. Nos demais temas, a implementação consulta `getAvailableSlots().getStatic()`. Sem slot, sem metadados de variante ou em falha de configuração, mantém o encaminhamento para a página do produto; sem URL confiável, mostra instrução. Produto sem campos ou com configuração pausada mantém a compra nativa. Adições diretas na grade sem modal aberto continuam usando o fallback. Não há seleção de lojas por ID.
+
+A captura do botão nativo depende de `cart:before_update`. O incidente anterior no Patagonia mostrou uma versão do tema sem esse evento. A ação explícita do app envia os dados diretamente; antes de liberar o aceite do tema, é necessário verificar também o botão nativo com campo vazio/preenchido. Este ajuste não recria uma barreira no checkout nem altera o adaptador DOM histórico.
+
+### Validação e arquivo de publicação após resolver a pendência
+
+- Testes cobrem campos obrigatórios, variante, quantidade, isolamento de rascunhos, confirmação/falha, eventos próprios e expiração. O cenário integrado verifica os envios de 1 En Grano e 1 Molido pela compra rápida, seguidos de 5 Molido pela página do produto, sem modificar as respostas do carrinho recebido.
+- A execução inicial do bundle usa um SDK simulado. O teste real posterior confirmou a separação/gravação das linhas pelo caminho explícito até o checkout; não houve pedido finalizado nem pagamento. O botão nativo continua pendente.
+- Publicar **somente** `src/main/frontend/dist/nuvemshop-storefront-sdk.js` no registro de **Storefront SDK** do Partner Portal (ID anteriormente observado: 11470; conferir no portal). Não exige mudança no checkout, nos legados ou no backend nesta etapa.
+- Aceite pendente em tema SDK: repetir o roteiro em desktop e celular; comparar 1 En Grano e 6 Molido no carrinho após recarregar, no checkout e no pedido de teste. Conferir botões nativo/do app, produtos sem campos, mudança de variante, incremento/remoção e fechamento/reabertura do modal. Se o tema ainda não emite o evento, registrar essa limitação; o teste em Idea não substitui esse aceite.
+
+Referências verificadas: [eventos do carrinho](https://tiendanube.dev/apps/nube-sdk/events/cart), [evento de compra rápida](https://tiendanube.dev/apps/nube-sdk/events/ui-and-custom), [slots e compatibilidade dos temas](https://tiendanube.dev/es-AR/apps/nube-sdk/slots/storefront-slots).
+
+## Histórico do legado e das versões anteriores
+
 ## Atualização de 05/11/2026: campos na compra rápida
 
 A pedido do usuário, o legado passa a preencher o formulário local da compra rápida com os mesmos campos e validações da página de produto. Isso substitui o redirecionamento descrito abaixo para cards que possuem formulário. A abertura nativa é retomada depois da injeção; uma primeira tentativa de adicionar/submeter apenas abre o preenchimento, sem adicionar o item. Depois, a compra usa o formulário nativo com `properties[...]`. Reabrir preserva as respostas sem duplicar campos. Recomendações usam a identidade do card, independentemente do produto da página.
