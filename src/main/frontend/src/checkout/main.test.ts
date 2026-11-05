@@ -97,3 +97,14 @@ it("never blocks when initial cart state is unavailable or requests fail",async(
     state=null as unknown as NubeSDKState;vi.mocked(fetch).mockRejectedValue(new Error("offline"));
     await boot();expect(validation()).toEqual({status:"success"});
 });
+
+it("shows and updates separate quantities for personalized lines of the same product",async()=>{
+ state={...state,cart:{items:[{...cartItem(1,"Floral"),quantity:1},{...cartItem(2,"Azul"),quantity:6}]}} as unknown as NubeSDKState;
+ await boot();
+ expect(currentTree()).toContain("1 × Caderno");expect(currentTree()).toContain("6 × Caderno");
+ await vi.waitFor(()=>expect(currentTree()).toContain("https://app.test/public/azul"));
+ expect(currentTree()).toContain("1 × Caderno");expect(currentTree()).toContain("6 × Caderno");
+ state={...state,cart:{items:[{...cartItem(2,"Azul"),quantity:3}]}} as unknown as NubeSDKState;
+ listeners.get("cart:update")!(state);
+ await vi.waitFor(()=>{expect(currentTree()).toContain("3 × Caderno");expect(currentTree()).not.toContain("6 × Caderno");});
+});

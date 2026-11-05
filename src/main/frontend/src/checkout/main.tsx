@@ -32,6 +32,7 @@ export function App(nube: NubeSDK) {
         if (!store || !items.length) return;
         const groups = await Promise.all(items.map(async item => ({
             productName: item.name || "Produto",
+            quantity: item.quantity,
             fields: item.product_id > 0 ? imageProperties(item, await configFor(store, item.product_id)) : normalizeProperties(item.properties),
         })));
         if (current !== generation) return;

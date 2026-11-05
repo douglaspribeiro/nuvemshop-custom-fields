@@ -21,9 +21,10 @@ function card(id: number) {
         </div></div>`;
 }
 
-async function boot(options: { store?: number; policy?: (id: number) => Promise<unknown>; pdp?: boolean } = {}) {
+async function boot(options: { store?: number; policy?: (id: number) => Promise<unknown>; pdp?: boolean; cart?: boolean } = {}) {
     dom = new JSDOM(`<html lang="es"><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=${options.store ?? 959276}"></script></head>
         <body>${options.pdp ? '<form id="product_form" data-product-id="333"><button type="submit">Comprar</button></form>' : ""}
+        ${options.cart ? '<form action="/comprar/" class="js-ajax-cart-panel"><input type="submit" name="go_to_checkout" value="Iniciar compra"></form><form action="/search/"><input name="q"></form>' : ""}
         ${card(44960054)}${card(128433426)}</body></html>`,
         { url: "https://shop.labcafe.com.ar/" + (options.pdp ? "productos/actual/" : ""), runScripts: "outside-only" });
     const navigate = vi.fn();
@@ -78,7 +79,7 @@ it("uses the recommendation card ID instead of the current product and preserves
  const form=document.querySelector<HTMLFormElement>('[data-product-id="555"] form')!;
  form.querySelector<HTMLInputElement>(".ncf-field input")!.value="Molido";
  form.addEventListener("submit",e=>e.preventDefault());form.requestSubmit();
- expect(dom.window.localStorage.getItem("ncf-cart-properties:959276") || JSON.stringify(dom.window.localStorage)).toContain("555");
+ expect(new dom.window.FormData(form).get("properties[Molienda]")).toBe("Molido");
 });
 it.each([123,959276,5656805])("shows quick-buy fields for store %s",async store=>{
  const {document,navigate}=await boot({store});document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
@@ -119,4 +120,57 @@ it("validates select choices and keeps answers isolated between products",async(
  expect(theme).toHaveBeenCalledTimes(1);expect(forms[1].querySelector("select")!.value).toBe("");
  const forged=document.createElement("option");forged.value="Invalid";selected.append(forged);selected.value="Invalid";
  forms[0].querySelector<HTMLElement>("input[type=submit]")!.click();expect(theme).toHaveBeenCalledTimes(1);
+});
+
+
+it("never injects required fields into the cart or search form on a listing", async () => {
+ const {document}=await boot({cart:true});
+ document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
+ await vi.waitFor(()=>expect(document.querySelector('.js-item-product .ncf-field')).not.toBeNull());
+ expect(document.querySelector('.js-ajax-cart-panel .ncf-personalization')).toBeNull();
+ expect(document.querySelector('form[action="/search/"] .ncf-personalization')).toBeNull();
+ const checkout=document.querySelector<HTMLFormElement>('.js-ajax-cart-panel')!;
+ const submit=vi.fn(e=>e.preventDefault());checkout.addEventListener('submit',submit);checkout.requestSubmit();
+ expect(submit).toHaveBeenCalledTimes(1);
+});
+it("keeps PDP fields inside the product form when a cart form is also present",async()=>{
+ const {document}=await boot({pdp:true,cart:true,policy:async()=>({enabled:true,fields:[{label:"Nome",fieldType:"TEXT",required:true}]})});
+ await vi.waitFor(()=>expect(document.querySelector('#product_form .ncf-field')).not.toBeNull());
+ expect(document.querySelector('.js-ajax-cart-panel .ncf-personalization')).toBeNull();
+});
+
+it("uses persisted line identity for different choices of the same product, ignoring local drafts",async()=>{
+ const {document}=await boot();
+ const ls=(dom.window as unknown as {LS:{cart:unknown}}).LS;
+ ls.cart={items:[
+   {id:11,product_id:44960054,quantity:1,properties:{Molienda:"En Grano"}},
+   {id:22,product_id:44960054,quantity:6,properties:[{name:"Molienda",value:"Molido"}]},
+ ]};
+ dom.window.localStorage.setItem("ncf:cart-properties:959276",JSON.stringify([{productId:44960054,productName:"Café",fields:[{label:"Molienda",value:"Molido"}],createdAt:Date.now()}]));
+ document.body.insertAdjacentHTML("beforeend",'<div class="js-cart-item" data-item-id="11"><a class="js-cart-item-name">Café</a></div><div class="js-cart-item" data-item-id="22"><a class="js-cart-item-name">Café</a></div><div class="js-cart-item"><a class="js-cart-item-name">Café sin identidad</a></div>');
+ await vi.waitFor(()=>expect(document.querySelector('[data-item-id="11"] .ncf-cart-property-list')?.textContent).toBe("Molienda: En Grano"));
+ expect(document.querySelector('[data-item-id="22"] .ncf-cart-property-list')?.textContent).toBe("Molienda: Molido");
+ expect(document.querySelectorAll('.ncf-cart-property-list')).toHaveLength(2);
+ // Reordering rows must not swap the answers.
+ document.body.append(document.querySelector('[data-item-id="11"]')!);
+ await new Promise(resolve=>setTimeout(resolve,150));
+ expect(document.querySelector('[data-item-id="11"] .ncf-cart-property-list')?.textContent).toBe("Molienda: En Grano");
+ // A native cart refresh must replace an outdated label.
+ (ls.cart as {items:unknown[]}).items=[{id:22,properties:{Molienda:"En Grano"}}];
+ document.body.append(document.createElement('span'));
+ await vi.waitFor(()=>expect(document.querySelector('[data-item-id="22"] .ncf-cart-property-list')?.textContent).toBe("Molienda: En Grano"));
+ expect(document.querySelector('[data-item-id="11"] .ncf-cart-property-list')).toBeNull();
+});
+
+it("refreshes cart labels from the native productAddedToCart event payload",async()=>{
+ const {document}=await boot();
+ const ls=(dom.window as unknown as {LS:Record<string,unknown>}).LS;
+ ls.events={productAddedToCart:'productAddedToCart'};
+ ls.on=(name:string,callback:EventListener)=>document.addEventListener(name,callback);
+ ls.cart={items:[{id:22,properties:{Molienda:'En Grano'}}]};
+ document.body.insertAdjacentHTML('beforeend','<div class="js-cart-item" data-item-id="22"><a class="js-cart-item-name">Café</a></div>');
+ await vi.waitFor(()=>expect(document.querySelector('.ncf-cart-property-list')?.textContent).toBe('Molienda: En Grano'));
+ document.dispatchEvent(new dom.window.CustomEvent('productAddedToCart',{detail:{cart:{products:[{id:22,quantity:6,properties:{Molienda:'Molido'}}]}}}));
+ expect(document.querySelector('.ncf-cart-property-list')?.textContent).toBe('Molienda: Molido');
+ expect(document.querySelectorAll('.ncf-cart-property-list')).toHaveLength(1);
 });

@@ -1,5 +1,62 @@
 # LAB Cafe: redirecionamento da compra rápida
 
+## Correção de rótulos trocados e quantidade no checkout — 05/11/2026
+
+O usuário validou a persistência pelo próprio navegador: adicionou 1 En Grano e 1 Molido pela compra rápida, depois 5 Molido pela página do produto. O carrinho parecia atribuir as cinco unidades a En Grano, mas o checkout confirmou os dados corretos: 1 En Grano e 6 Molido. Isso distingue erro de apresentação no carrinho de erro de gravação; não foi concluído um pedido.
+
+O legado usava respostas locais associadas pelo nome/ID do produto, o que não distingue duas linhas do mesmo produto com personalizações diferentes. Essa associação foi removida. O complemento visual agora usa somente as propriedades persistidas da linha, identificada pelo ID do item no carrinho; sem identificação confiável, não inventa respostas. O evento nativo `productAddedToCart` atualiza a fonte a partir de `event.detail.cart`. Rótulos antigos são atualizados ou removidos quando deixam de corresponder à linha. Regressões cobrem reordenação, propriedades em objeto/array e atualização pelo evento nativo.
+
+O resumo de personalizações no checkout passa a mostrar a quantidade por linha (`1 × produto`, `6 × produto`) e acompanha alterações do carrinho, inclusive após carregamento de imagens/configuração.
+
+Publicação necessária desta etapa: o arquivo `src/main/resources/static/assets/nuvemshop-personalizer.js` em **ambos os legados**, para os rótulos; e `src/main/frontend/dist/nuvemshop-checkout-sdk.js` no **checkout-v1**, para a quantidade. As versões publicadas anteriormente ainda não contêm estas alterações. Repetir o cenário do usuário depois da publicação e conferir carrinho e checkout. Nenhum backend ou migração é necessário.
+
+
+## Aceite automatizado após publicação dos dois legados — 05/11/2026
+
+Investigação adicional do impedimento: a requisição AJAX nativa sem o app enviou somente `add_to_cart`, `quantity` e `add_to_cart_enhanced`, com Origin e Referer da própria loja; recebeu HTTP 403 e JSON sem erros explicativos. Também foi enviado o formulário diretamente pelo navegador, sem AJAX e com os scripts do app bloqueados na sessão: o POST respondeu HTTP 302, e o conteúdo subsequente exibiu “El carrito de compras está vacío.” Não foi identificada a causa da recusa. Não atribuir a Cloudflare, estoque, senha ou restrição de loja de desenvolvimento sem evidência adicional. Nenhum item ou pedido foi persistido nesses testes.
+
+O Playwright executou os arquivos reais entregues pela plataforma, sem substituição de respostas. A loja de teste entregou `legadov2/5.js` e `legado-js/12.js`; ambos têm SHA-256 `e6e86219a351d02cc8bda153dcbb5101319316945706f2b3fe8fc5b6f83dca5e`, igual ao arquivo local corrigido.
+
+Nos quatro cenários (compra rápida e página do produto, desktop e celular), foi observado um único campo do produto, nenhum campo editável no carrinho ou busca, bloqueio da tentativa vazia e envio de `properties[Moido ou Granel]=En Grano` ao preencher. Após recarregar, continuou sem seletor indevido no carrinho.
+
+A adição retornou HTTP 403 (`success=false`, `errors=[]`) nos quatro cenários. Uma execução independente na página do produto, bloqueando todos os scripts do app apenas naquela sessão, enviou a compra nativa sem properties e recebeu o mesmo HTTP 403. A resposta informa `server=cloudflare`, o que não identifica por si só a origem ou a causa do bloqueio. Os carrinhos permaneceram vazios. Persistência das respostas e entrada no checkout continuam pendentes; não houve pedido ou pagamento. Evidências e screenshots estão em `/tmp/cajas-published-{quickbuy,product}-{desktop,mobile}.{json,png}` nesta máquina.
+
+
+## Correção do seletor indevido no carrinho — loja de teste Idea
+
+O usuário disponibilizou `cajaspersonalizadas2.mitiendanube.com`, produto `379192178`, tema Idea, com o campo obrigatório **Moido ou Granel**. O acesso à vitrine protegida foi autorizado para o teste; a senha não é registrada aqui.
+
+O Playwright confirmou que o legado publicado `legadov2/4.js` inseria o seletor no formulário `.js-ajax-cart-panel[action='/comprar/']`, que contém `go_to_checkout`. A seleção genérica de formulários tratava esse formulário como produto e reutilizava o primeiro ID de produto encontrado na página. Isso explica a escolha solicitada novamente dentro do carrinho.
+
+A correção local exclui formulários de checkout/carrinho, elimina a seleção genérica de qualquer `form` e não busca a identidade do produto em outro elemento da página para identificar um formulário. Os campos continuam nos formulários de produto e compra rápida.
+
+Validação: 158 testes frontend, TypeScript, sintaxe e diff check aprovados. Foram adicionadas regressões com carrinho, busca, cards e formulário principal do produto na mesma página. No Playwright, substituindo apenas o arquivo do legado naquela sessão e usando a configuração real do produto, desktop e celular mostraram um campo na compra rápida, zero campos editáveis no carrinho antes e depois da tentativa de adição, bloqueio da adição vazia e serialização da opção escolhida na requisição nativa. O painel abriu com opacidade final 1 nos dois formatos.
+
+A plataforma retornou HTTP 403 na adição nessa sessão de teste; o carrinho ficou vazio e nenhum item persistido precisou ser removido. A persistência até checkout/pedido continua sem aceite; essa limitação não invalida a reprodução e correção do local indevido de injeção dos campos.
+
+**Publicação pendente desta correção:** `src/main/resources/static/assets/nuvemshop-personalizer.js` nos registros `Legado-js` e `LegadoV2` que coexistem em produção. Esta loja de teste carrega somente `LegadoV2`. Após publicar, recarregar a vitrine e conferir que o carrinho não contém o seletor. Não exige novo bundle de checkout ou migração.
+
+## Verificação posterior com Playwright e configurações removidas
+
+O lojista informou que removeu todas as configurações para liberar as vendas. A API pública consultada pelo navegador confirmou `enabled=false, fields=[]` para o produto `44960054` e também para `44959877`. Nenhuma configuração da loja foi recriada ou reativada nesta execução.
+
+O HTML e a rede entregam `legado-js/11.js` e `legadov2/4.js`, ambos contendo `installQuickBuyFields`. A compra rápida nativa do produto sem campos abriu no desktop sem navegar para a página do produto.
+
+Em contextos isolados de desktop (1365×1000) e celular (390×844), foi interceptada apenas a resposta de configuração do produto `44960054`, simulando o SELECT obrigatório **Molido o en Grano?** com opções de teste. Essa configuração não foi gravada no servidor. Nos dois contextos:
+
+- Foi localizado um único campo no formulário da compra rápida, sem navegação para a página do produto.
+- A tentativa vazia não gerou requisição de adição.
+- A escolha de teste foi serializada na requisição nativa `POST /comprar/` como `properties[Molido o en Grano?]=En Grano`.
+- A Nuvem respondeu HTTP 403 com `success=false, errors=[]`. O carrinho continuou vazio antes e após recarregar.
+
+Uma comparação em contexto isolado, bloqueando apenas os scripts deste app naquela sessão e usando a compra nativa sem campos, também recebeu HTTP 403 com a mesma resposta e carrinho vazio. Isso comprova que o 403 ocorre sem executar o app; sua causa não foi identificada. Não atribuir o 403 à personalização nem concluir que compradores reais recebem o mesmo erro.
+
+O pop-up da loja interferiu nos cliques e precisou ser fechado pelos controles da interface. Capturas iniciais também ocorreram durante a animação do painel (opacidade zero em um ancestral). Uma repetição visual posterior não encontrou o campo dentro do prazo. Portanto, o aceite visual e de primeiro clique ainda precisa de uma execução estável; localizar o elemento no DOM não comprova sua legibilidade final.
+
+**Aceite ainda pendente:** gravação real no carrinho, passagem ao checkout e properties no pedido. Os testes atuais não comprovam esse fluxo completo. O carrinho ficou vazio nas tentativas observadas, sem item persistido para remover; nenhum pedido ou pagamento foi concluído. Usar uma loja/produto de homologação autorizado com campos ativos para retomar o aceite, preservando as configurações removidas da LAB Cafe.
+
+O histórico abaixo registra a implementação e as verificações anteriores.
+
 ## Atualização de 05/11/2026: campos na compra rápida
 
 A pedido do usuário, o legado passa a preencher o formulário local da compra rápida com os mesmos campos e validações da página de produto. Isso substitui o redirecionamento descrito abaixo para cards que possuem formulário. A abertura nativa é retomada depois da injeção; uma primeira tentativa de adicionar/submeter apenas abre o preenchimento, sem adicionar o item. Depois, a compra usa o formulário nativo com `properties[...]`. Reabrir preserva as respostas sem duplicar campos. Recomendações usam a identidade do card, independentemente do produto da página.

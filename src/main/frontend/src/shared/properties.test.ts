@@ -37,7 +37,7 @@ describe("collectItemProperties", () => {
 		] as unknown as CartItem[];
 
 		expect(collectItemProperties(items)).toEqual([
-			{ productName: "Caneca", fields: [{ name: "Nome", value: "Ana" }] },
+			{ productName: "Caneca", quantity: undefined, fields: [{ name: "Nome", value: "Ana" }] },
 		]);
 	});
 

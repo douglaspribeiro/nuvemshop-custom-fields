@@ -51,7 +51,7 @@ export function PersonalizationSummary({ title, groups, color }: Props) {
 							modifiers={["bold"]}
 							style={{ fontSize: "16px", marginBottom: "8px" }}
 						>
-							{group.productName}
+							{group.quantity ? `${group.quantity} × ${group.productName}` : group.productName}
 						</Text>
 						<PersonalizationValues fields={group.fields} color={color} />
 					</Column>
