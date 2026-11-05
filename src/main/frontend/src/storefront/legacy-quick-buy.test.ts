@@ -30,7 +30,7 @@ async function boot(options: { store?: number; policy?: (id: number) => Promise<
     const fetch = vi.fn(async (url: string) => {
         const id = Number(new URL(url).searchParams.get("productId"));
         return { ok: true, json: async () => id
-            ? options.policy ? options.policy(id) : { enabled: id === 44960054, fields: [{label: "Molienda", fieldType: "TEXT"}] }
+            ? options.policy ? options.policy(id) : { enabled: id === 44960054, fields: [{label: "Molienda", fieldType: "TEXT", required: true}] }
             : {} };
     });
     Object.assign(dom.window, { fetch, __navigate: navigate, LS: {
@@ -42,120 +42,81 @@ async function boot(options: { store?: number; policy?: (id: number) => Promise<
     return { navigate, fetch, document: dom.window.document };
 }
 
-it("redirects a personalized card before the theme can open quick buy or add an item", async () => {
-    const {navigate, document} = await boot();
-    const theme = vi.fn();
-    document.addEventListener("click", theme);
-    document.querySelector("use")!.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("https://shop.labcafe.com.ar/productos/cafe-44960054/"));
-    expect(theme).not.toHaveBeenCalled();
-    expect(document.querySelector(".ncf-field")).toBeNull();
+it("shows fields before opening the native quick-buy panel without navigation", async () => {
+ const {document,navigate}=await boot(); const theme=vi.fn(e=>e.preventDefault());
+ const opener=document.querySelector<HTMLElement>(".js-item-buy-open")!;opener.addEventListener("click",theme);opener.click();opener.click();
+ await vi.waitFor(()=>expect(theme).toHaveBeenCalledTimes(1));
+ expect(document.querySelectorAll(".ncf-field")).toHaveLength(1);expect(navigate).not.toHaveBeenCalled();
+});
+it("blocks empty required input and submits completed properties through the native form", async () => {
+ const {document}=await boot();document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
+ await vi.waitFor(()=>expect(document.querySelector(".ncf-field input")).not.toBeNull());
+ const form=document.querySelector("form")!;const submit=form.querySelector<HTMLInputElement>("input[type=submit]")!;
+ const theme=vi.fn(e=>e.preventDefault());form.addEventListener("click",theme);
+ submit.click();expect(theme).not.toHaveBeenCalled();
+ const input=form.querySelector<HTMLInputElement>(".ncf-field input")!;input.value="En grano";
+ submit.click();expect(theme).toHaveBeenCalledTimes(1);
+ expect(new dom.window.FormData(form).get("properties[Molienda]")).toBe("En grano");
+ document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
+ expect(form.querySelectorAll(".ncf-field")).toHaveLength(1);expect(input.value).toBe("En grano");
+});
+it("does not add an item on a first direct submit before fields load", async () => {
+ const {document,navigate}=await boot();const form=document.querySelector("form")!;const theme=vi.fn(e=>e.preventDefault());form.addEventListener("submit",theme);
+ form.requestSubmit(form.querySelector<HTMLInputElement>("input[type=submit]")!);
+ await vi.waitFor(()=>expect(form.querySelector(".ncf-field")).not.toBeNull());expect(theme).not.toHaveBeenCalled();expect(navigate).not.toHaveBeenCalled();
+});
+it("retains native quick buy and original submitter for a product without fields", async () => {
+ const {document,navigate}=await boot();const form=document.querySelectorAll("form")[1];const button=form.querySelector<HTMLInputElement>("input[type=submit]")!;
+ const theme=vi.fn(e=>e.preventDefault());form.addEventListener("submit",theme);form.requestSubmit(button);
+ await vi.waitFor(()=>expect(theme).toHaveBeenCalledTimes(1));expect(theme.mock.calls[0][0].submitter).toBe(button);expect(navigate).not.toHaveBeenCalled();
+});
+it("uses the recommendation card ID instead of the current product and preserves separate forms", async () => {
+ const {document,navigate}=await boot({pdp:true,policy:async id=>({enabled:id===555,fields:[{label:"Molienda",fieldType:"TEXT",required:true}]})});
+ document.body.insertAdjacentHTML("beforeend",card(555));document.querySelector<HTMLElement>('[data-product-id="555"] .js-item-buy-open')!.click();
+ await vi.waitFor(()=>expect(document.querySelector('[data-product-id="555"] .ncf-field')).not.toBeNull());
+ expect(document.querySelector("#product_form .ncf-field")).toBeNull();expect(navigate).not.toHaveBeenCalled();
+ const form=document.querySelector<HTMLFormElement>('[data-product-id="555"] form')!;
+ form.querySelector<HTMLInputElement>(".ncf-field input")!.value="Molido";
+ form.addEventListener("submit",e=>e.preventDefault());form.requestSubmit();
+ expect(dom.window.localStorage.getItem("ncf-cart-properties:959276") || JSON.stringify(dom.window.localStorage)).toContain("555");
+});
+it.each([123,959276,5656805])("shows quick-buy fields for store %s",async store=>{
+ const {document,navigate}=await boot({store});document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
+ await vi.waitFor(()=>expect(document.querySelector(".ncf-field")).not.toBeNull());expect(navigate).not.toHaveBeenCalled();
+});
+it("falls back to the product page on lookup failure",async()=>{
+ const {document,navigate}=await boot({policy:async()=>{throw Error("offline");}});document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
+ await vi.waitFor(()=>expect(navigate).toHaveBeenCalledTimes(1));expect(document.querySelector(".ncf-field")).toBeNull();
+});
+it("falls back safely when a theme has no local quick-buy form",async()=>{
+ const {document,navigate}=await boot();document.querySelector("form")!.remove();document.querySelector<HTMLElement>(".js-item-buy-open")!.click();
+ await vi.waitFor(()=>expect(navigate).toHaveBeenCalledTimes(1));
+});
+it("does not fetch the entire catalog on startup",async()=>{
+ const {fetch}=await boot();expect(fetch.mock.calls.filter(([url])=>url.includes("/personalization?"))).toHaveLength(0);
 });
 
-it("keeps normal quick buy for a product without fields and reuses its policy", async () => {
-    const {navigate, document, fetch} = await boot();
-    const control = document.querySelectorAll(".js-item-buy-open")[1] as HTMLAnchorElement;
-    const theme = vi.fn(event => event.preventDefault());
-    control.addEventListener("click", theme);
-    control.click();
-    await vi.waitFor(() => expect(theme).toHaveBeenCalledTimes(1));
-    expect(navigate).not.toHaveBeenCalled();
-    expect(fetch.mock.calls.filter(([url]) => url.includes("productId=128433426"))).toHaveLength(1);
+it("warms only interested cards and keeps the PDP purchase untouched",async()=>{
+ const {document,fetch}=await boot({pdp:true});const form=document.querySelector<HTMLFormElement>("#product_form")!;
+ const theme=vi.fn(e=>e.preventDefault());form.addEventListener("submit",theme);form.requestSubmit();expect(theme).toHaveBeenCalledTimes(1);
+ const opener=document.querySelector<HTMLElement>(".js-item-buy-open")!;
+ opener.dispatchEvent(new dom.window.Event("pointerover",{bubbles:true}));opener.dispatchEvent(new dom.window.Event("focusin",{bubbles:true}));
+ await vi.waitFor(()=>expect(fetch.mock.calls.filter(([url])=>url.includes("productId=44960054"))).toHaveLength(1));
+ expect(fetch.mock.calls.some(([url])=>url.includes("productId=128433426"))).toBe(false);
 });
-
-it("intercepts a direct submit before any native cart mutation", async () => {
-    const {navigate, document} = await boot();
-    const form = document.querySelector("form")!;
-    const theme = vi.fn();
-    form.addEventListener("submit", theme);
-    form.requestSubmit(form.querySelector<HTMLInputElement>("input[type=submit]")!);
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
-    expect(theme).not.toHaveBeenCalled();
+it("supports component-marked cards and modal opening buttons",async()=>{
+ const {document,navigate}=await boot();const product=document.querySelector<HTMLElement>(".js-item-product")!;
+ product.className="other-theme";product.dataset.component="product-list-item";
+ const opener=product.querySelector<HTMLElement>(".js-item-buy-open")!;opener.className="js-quickshop-modal-open";opener.click();
+ await vi.waitFor(()=>expect(product.querySelector(".ncf-field")).not.toBeNull());expect(navigate).not.toHaveBeenCalled();
 });
-
-it("replays a non-personalized submit exactly once with the original submitter", async () => {
-    const {navigate, document} = await boot();
-    const form = document.querySelectorAll("form")[1];
-    const submitter = form.querySelector<HTMLInputElement>("input[type=submit]")!;
-    const theme = vi.fn(event => event.preventDefault());
-    form.addEventListener("submit", theme);
-    form.requestSubmit(submitter);
-    await vi.waitFor(() => expect(theme).toHaveBeenCalledTimes(1));
-    expect(theme.mock.calls[0][0].submitter).toBe(submitter);
-    expect(navigate).not.toHaveBeenCalled();
-});
-
-it("covers dynamically inserted cards and ignores the current PDP product ID", async () => {
-    const {navigate, document} = await boot({pdp: true, policy: async id => ({enabled: id === 555, fields: [{label: "Molienda"}]})});
-    document.body.insertAdjacentHTML("beforeend", card(555));
-    (document.querySelectorAll(".js-item-buy-open")[2] as HTMLElement).click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("https://shop.labcafe.com.ar/productos/cafe-555/"));
-});
-
-it("keeps the PDP purchase action available", async () => {
-    const {navigate, document} = await boot({pdp: true});
-    const theme = vi.fn(event => event.preventDefault());
-    const form = document.querySelector<HTMLFormElement>("#product_form")!;
-    form.addEventListener("submit", theme); form.requestSubmit();
-    expect(theme).toHaveBeenCalledTimes(1); expect(navigate).not.toHaveBeenCalled();
-});
-
-it("does not redirect to an external card URL", async () => {
-    const {navigate, document} = await boot();
-    document.querySelector(".item-link")!.setAttribute("href", "https://external.test/productos/cafe/");
-    const theme = vi.fn(event => event.preventDefault());
-    const control = document.querySelector<HTMLElement>(".js-item-buy-open")!;
-    control.addEventListener("click", theme); control.click();
-    expect(theme).toHaveBeenCalledTimes(1); expect(navigate).not.toHaveBeenCalled();
-});
-
-it("waits for an unknown policy and coalesces repeated clicks", async () => {
-    let resolvePolicy!: (value: unknown) => void;
-    const pending = new Promise(resolve => { resolvePolicy = resolve; });
-    const {navigate, document} = await boot({policy: () => pending});
-    const control = document.querySelector<HTMLElement>(".js-item-buy-open")!;
-    const theme = vi.fn(); control.addEventListener("click", theme);
-    control.click(); control.click();
-    expect(navigate).not.toHaveBeenCalled(); expect(theme).not.toHaveBeenCalled();
-    resolvePolicy({enabled: true, fields: [{label: "Molienda"}]});
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
-});
-
-it("routes to the PDP when the personalization policy cannot be loaded", async () => {
-    const {navigate, document} = await boot({policy: async () => { throw new Error("offline"); }});
-    const control = document.querySelector<HTMLElement>(".js-addtocart")!;
-    const theme = vi.fn(); control.addEventListener("click", theme); control.click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
-    expect(theme).not.toHaveBeenCalled();
-});
-
-it.each([123, 959276, 5656805])("redirects configured products for store %s without an allowlist", async store => {
-    const {navigate, document} = await boot({store});
-    const theme = vi.fn();
-    document.querySelector(".js-item-buy-open")!.addEventListener("click", theme);
-    (document.querySelector(".js-item-buy-open") as HTMLElement).click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
-    expect(theme).not.toHaveBeenCalled();
-});
-
-it("warms only a card of interest instead of fetching every product on page load", async () => {
-    const {fetch, document} = await boot();
-    expect(fetch.mock.calls.filter(([url]) => url.includes("/personalization?"))).toHaveLength(0);
-    const control = document.querySelector<HTMLElement>(".js-item-buy-open")!;
-    control.dispatchEvent(new dom.window.Event("pointerover", {bubbles: true}));
-    control.dispatchEvent(new dom.window.Event("focusin", {bubbles: true}));
-    await vi.waitFor(() => expect(fetch.mock.calls.filter(([url]) => url.includes("/personalization?"))).toHaveLength(1));
-    expect(fetch.mock.calls.some(([url]) => url.includes("productId=128433426"))).toBe(false);
-});
-
-it("supports component-marked cards and modal quick buy buttons in other themes", async () => {
-    const {navigate, document} = await boot({store: 456});
-    const product = document.querySelector<HTMLElement>(".js-item-product")!;
-    product.className = "custom-theme-card";
-    product.dataset.component = "product-list-item";
-    const control = product.querySelector<HTMLElement>(".js-item-buy-open")!;
-    control.className = "js-quickshop-modal-open";
-    product.querySelector(".item-link")!.className = "js-item-image-link";
-    control.click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("https://shop.labcafe.com.ar/productos/cafe-44960054/"));
+it("validates select choices and keeps answers isolated between products",async()=>{
+ const {document}=await boot({policy:async()=>({enabled:true,fields:[{label:"Molienda",fieldType:"SELECT",required:true,options:["Grano","Molido"]}]})});
+ document.querySelectorAll<HTMLElement>(".js-item-buy-open").forEach(b=>b.click());
+ await vi.waitFor(()=>expect(document.querySelectorAll(".ncf-field select")).toHaveLength(2));
+ const forms=document.querySelectorAll("form");const selected=forms[0].querySelector("select")!;selected.value="Grano";
+ const theme=vi.fn(e=>e.preventDefault());forms[0].addEventListener("click",theme);forms[0].querySelector<HTMLElement>("input[type=submit]")!.click();
+ expect(theme).toHaveBeenCalledTimes(1);expect(forms[1].querySelector("select")!.value).toBe("");
+ const forged=document.createElement("option");forged.value="Invalid";selected.append(forged);selected.value="Invalid";
+ forms[0].querySelector<HTMLElement>("input[type=submit]")!.click();expect(theme).toHaveBeenCalledTimes(1);
 });

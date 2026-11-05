@@ -60,12 +60,13 @@
         syncCartPropertyColors();
         forceForegroundMediumWhite();
     });
-    installQuickBuyRedirect();
+    installQuickBuyFields();
     ready(initialize);
 
-    function installQuickBuyRedirect() {
+    function installQuickBuyFields() {
         const policies = new Map();
         const replaying = new WeakSet();
+        const prepared = new WeakSet();
         const cardSelector = ".js-item-product[data-product-id], [data-component='product-list-item'][data-product-id]";
 
         function policy(productId) {
@@ -82,11 +83,11 @@
                     if (typeof config?.enabled !== "boolean" || (config.enabled && !Array.isArray(config.fields))) {
                         throw new Error("quick_buy_policy_invalid");
                     }
-                    return config.enabled && config.fields.length > 0;
+                    return config;
                 }).catch(() => {
                     // Sem política, a página do produto é o caminho para conferir os campos.
                     policies.delete(productId);
-                    return true;
+                    return null;
                 }).finally(() => window.clearTimeout(timer));
                 policies.set(productId, pending);
             }
@@ -110,6 +111,8 @@
                 : target && target.closest(".js-item-buy-open, .js-quickshop-modal-open, .js-quickshop-open, .js-addtocart, [type='submit'], [data-component='product-list-item.show-add-to-cart'], [data-component='product-list-item.add-to-cart']");
             const card = control && control.closest(cardSelector);
             if (!card || replaying.has(control)) return;
+            const form = control.closest("form") || card.querySelector("form.js-product-form, form[action*='/comprar'], form");
+            if (form && prepared.has(form) && form.querySelector(".ncf-personalization")) return;
             const url = productUrl(card);
             if (!url || !/^\d+$/.test(card.dataset.productId || "")) return;
             event.preventDefault();
@@ -117,12 +120,32 @@
             if (control.dataset.ncfQuickBuyPending === "true") return;
             control.dataset.ncfQuickBuyPending = "true";
             const submitter = event.submitter;
-            void policy(card.dataset.productId).then(needsFields => {
+            void policy(card.dataset.productId).then(config => {
+                if (!card.isConnected) return;
                 delete control.dataset.ncfQuickBuyPending;
-                if (needsFields) {
+                if (!config || (config.enabled && config.fields.length > 0 && !form)) {
+                    // Themes without a local quick-buy form retain the safe product-page fallback.
                     track("quick_buy_redirect", { storeId: storeId, productId: card.dataset.productId });
                     window.location.assign(url);
                     return;
+                }
+                if (config.enabled && config.fields.length > 0) {
+                    if (!form.querySelector(".ncf-personalization")) {
+                        rememberFieldLabels(config.fields);
+                        renderFields(form, config.fields, config.style || styleConfig);
+                        bindCartSnapshot(form, config.fields);
+                    }
+                    prepared.add(form);
+                    track("quick_buy_fields", { storeId: storeId, productId: card.dataset.productId });
+                    // Opening the theme panel is safe; an add/submit must wait for buyer input.
+                    const opener = card.querySelector(".js-item-buy-open, .js-quickshop-modal-open, .js-quickshop-open");
+                    const opening = event.type === "click" && control === opener;
+                    if (!opening) {
+                        if (opener) { replaying.add(opener); try { opener.click(); } finally { replaying.delete(opener); } }
+                        const input = form.querySelector(".ncf-personalization input:not([type=hidden]), .ncf-personalization select, .ncf-personalization textarea");
+                        if (input) input.focus();
+                        return;
+                    }
                 }
                 replaying.add(control);
                 try {
@@ -374,6 +397,8 @@
     }
 
     function findProductId(targetForm) {
+        const card = targetForm && targetForm.closest(".js-item-product[data-product-id], [data-component='product-list-item'][data-product-id]");
+        if (card) return card.dataset.productId;
         const globalProductId = findGlobalProductId();
         if (globalProductId) {
             return globalProductId;
@@ -536,7 +561,7 @@
         snapshots.push({
             productId: findProductId(targetForm),
             variantId: findVariantId(targetForm),
-            productName: findProductName(),
+            productName: (targetForm.closest(".js-item-product, [data-component='product-list-item']")?.querySelector(".js-item-name, .item-name, .item-link")?.textContent || findProductName() || "").trim(),
             productPath: window.location.pathname,
             fields: values,
             createdAt: Date.now()

@@ -1,5 +1,19 @@
 # Compra rápida com personalização
 
+## Atualização de 05/11/2026: campos na compra rápida
+
+A pedido do usuário, o legado passa a preencher o formulário local da compra rápida com os mesmos campos e validações da página de produto. Isso substitui o redirecionamento descrito abaixo para cards que possuem formulário. A abertura nativa é retomada depois da injeção; uma primeira tentativa de adicionar/submeter apenas abre o preenchimento, sem adicionar o item. Depois, a compra usa o formulário nativo com `properties[...]`. Reabrir preserva as respostas sem duplicar campos. Recomendações usam a identidade do card, independentemente do produto da página.
+
+Produtos sem campos mantêm a ação nativa. Falha na consulta ou ausência de formulário local mantém o encaminhamento seguro à página do produto. A alteração cobre o legado usado pelo tema Idea da LAB Cafe; o comportamento SDK continua como descrito no histórico abaixo.
+
+Arquivo para publicação: `src/main/resources/static/assets/nuvemshop-personalizer.js`, nos dois registros legados coexistentes (`Legado-js` e `LegadoV2`). Não exige atualização do backend. Em 05/11 a página pública da LAB Cafe entregava `legado-js/10.js` e `legadov2/3.js`; o primeiro tinha SHA-256 idêntico ao código local anterior a esta alteração.
+
+Validação local: 160 testes frontend aprovados, incluindo abertura, campos obrigatórios, serialização nativa, isolamento entre produtos, selects inválidos, recomendações, clique repetido e fallback. Sintaxe e TypeScript verificados. JSDOM não comprova o envio pelo AJAX do tema, a aparência em desktop/celular nem a persistência real no checkout/pedido.
+
+Publicação e aceite real pendentes: não há navegador conectado nesta sessão. Publicar o mesmo conteúdo nos dois legados e verificar, em sessão nova, a abertura na sacola, o bloqueio vazio, a compra preenchida, as respostas no carrinho/checkout e um produto sem campos. Não foi criado pedido/pagamento. O bloqueio de pedidos criados manualmente permanece pendente e não é resolvido por esta mudança na compra rápida.
+
+O restante deste documento registra o comportamento e a publicação anteriores.
+
 Implementação de 03/11/2026 para todas as lojas, em qualquer plano que disponibilize campos na vitrine. Não existe restrição por Store ID. A LAB Cafe motivou a melhoria; a evidência específica está em [LAB Cafe](lab-cafe-compra-rapida.md).
 
 ## Comportamento
