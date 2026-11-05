@@ -17,18 +17,34 @@ public class StoreAdminEmailService {
     private final SesProperties properties;
     private final JavaMailSender sender;
     private final ActivationEmailTemplates templates;
+    private final BrandedEmailTemplate design;
 
     public StoreAdminEmailService(StoreRepository stores, SesProperties properties, JavaMailSender sender, ActivationEmailTemplates templates) {
+        this(stores, properties, sender, templates, new BrandedEmailTemplate());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public StoreAdminEmailService(StoreRepository stores, SesProperties properties, JavaMailSender sender,
+            ActivationEmailTemplates templates, BrandedEmailTemplate design) {
         this.stores = stores;
         this.properties = properties;
         this.sender = sender;
         this.templates = templates;
+        this.design = design;
     }
 
     public void send(Long storeId, String subject, String body) {
-        var mail = prepare(storeId, subject, body);
-        try { sender.send(mail); }
+        var plain = prepare(storeId, subject, body);
+        try {
+            var mail = sender.createMimeMessage();
+            var helper = new org.springframework.mail.javamail.MimeMessageHelper(mail, true, "UTF-8");
+            helper.setFrom(plain.getFrom()); helper.setTo(plain.getTo()); helper.setSubject(plain.getSubject());
+            var rendered = design.render(subject, body, null, null, null);
+            helper.setText(rendered.text(), rendered.html());
+            sender.send(mail);
+        }
         catch (RuntimeException ex) { throw deliveryFailure(storeId, ex); }
+        catch (jakarta.mail.MessagingException ex) { throw deliveryFailure(storeId, ex); }
         LOGGER.info("store.admin_email.sent store_id={}", storeId);
     }
 
@@ -42,9 +58,11 @@ public class StoreAdminEmailService {
             throw new IllegalArgumentException("Configuração da sequência inválida.");
         try {
             var message = sender.createMimeMessage();
-            var helper = new org.springframework.mail.javamail.MimeMessageHelper(message, false, "UTF-8");
+            var helper = new org.springframework.mail.javamail.MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(plain.getFrom()); helper.setTo(recipient); helper.setSubject(plain.getSubject());
-            helper.setText(body + "\n\n" + templates.unsubscribe(stores.findByStoreId(storeId).map(s -> s.getStoreCountryCode()).orElse(null), unsubscribeUrl));
+            String unsubscribe = templates.unsubscribe(stores.findByStoreId(storeId).map(s -> s.getStoreCountryCode()).orElse(null), unsubscribeUrl);
+            var rendered = design.render(subject, body, null, null, unsubscribe);
+            helper.setText(rendered.text(), rendered.html());
             message.setHeader("X-SES-CONFIGURATION-SET", configurationSet);
             message.setHeader("X-SES-MESSAGE-TAGS", "nc39_event=" + eventId + ", nc39_store=" + storeId);
             message.setHeader("List-Unsubscribe", "<" + unsubscribeUrl + ">");
@@ -65,12 +83,8 @@ public class StoreAdminEmailService {
             var mail = sender.createMimeMessage();
             var helper = new org.springframework.mail.javamail.MimeMessageHelper(mail, true, "UTF-8");
             helper.setFrom(plain.getFrom()); helper.setTo(plain.getTo()); helper.setSubject(plain.getSubject());
-            String html = "<html><body><div style=\"font-family:Arial,sans-serif;line-height:1.6;max-width:620px;margin:auto\">"
-                + "<div style=\"white-space:pre-wrap\">" + org.springframework.web.util.HtmlUtils.htmlEscape(body) + "</div>"
-                + "<p><a style=\"display:inline-block;padding:12px 20px;background:#175cd3;color:white;text-decoration:none;border-radius:6px\" href=\""
-                + org.springframework.web.util.HtmlUtils.htmlEscape(actionUrl) + "\">"
-                + org.springframework.web.util.HtmlUtils.htmlEscape(actionLabel) + "</a></p></div></body></html>";
-            helper.setText(body + "\n\n" + actionLabel + ": " + actionUrl, html);
+            var rendered = design.render(subject, body, actionLabel, actionUrl, null);
+            helper.setText(rendered.text(), rendered.html());
             sender.send(mail);
         } catch (jakarta.mail.MessagingException | RuntimeException ex) { throw deliveryFailure(storeId, ex); }
         LOGGER.info("store.admin_email.sent store_id={}", storeId);

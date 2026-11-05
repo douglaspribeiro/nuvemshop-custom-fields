@@ -30,13 +30,23 @@ public class WinbackCampaignService {
     private final String baseUrl;
     private final WinbackDiscountService discounts;
     private final WinbackCouponRepository coupons;
+    private final BrandedEmailTemplate design;
     public WinbackCampaignService(StoreRepository stores, WinbackOutboxRepository outbox,
             WinbackCampaignRepository campaigns, WinbackEmailRepository emails, JavaMailSender sender,
             SesProperties smtp, SesEventsProperties ses, @Value("${nuvemshop.app-base-url}") String baseUrl,
             WinbackDiscountService discounts, WinbackCouponRepository coupons) {
+        this(stores, outbox, campaigns, emails, sender, smtp, ses, baseUrl, discounts, coupons, new BrandedEmailTemplate());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public WinbackCampaignService(StoreRepository stores, WinbackOutboxRepository outbox,
+            WinbackCampaignRepository campaigns, WinbackEmailRepository emails, JavaMailSender sender,
+            SesProperties smtp, SesEventsProperties ses, @Value("${nuvemshop.app-base-url}") String baseUrl,
+            WinbackDiscountService discounts, WinbackCouponRepository coupons, BrandedEmailTemplate design) {
         this.stores = stores; this.outbox = outbox; this.campaigns = campaigns; this.emails = emails;
         this.sender = sender; this.smtp = smtp; this.ses = ses; this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.discounts = discounts; this.coupons = coupons;
+        this.design = design;
     }
 
     /** Commit the sending claim BEFORE SMTP, so a crash cannot trigger an automatic duplicate. */
@@ -151,12 +161,8 @@ public class WinbackCampaignService {
         var message = sender.createMimeMessage();
         var helper = new MimeMessageHelper(message, true, "UTF-8");
         helper.setFrom(smtp.from()); helper.setTo(store.getStoreEmail()); helper.setSubject(question);
-        helper.setText(text + "\n\n" + link + "\n\n" + footer,
-                "<!doctype html><html><body style=\"font-family:Arial,sans-serif;margin:0;padding:24px;background:#f6f7f9\">"
-                + "<main style=\"max-width:560px;margin:auto;padding:24px;background:white\"><p>Campos Personalizados</p>"
-                + "<h1>" + question + "</h1><p>" + text + "</p><p><a href=\"" + link
-                + "\" style=\"display:inline-block;padding:14px;background:#2563eb;color:white;border-radius:6px\">"
-                + cta + "</a></p><p>" + footer + "</p></main></body></html>");
+        var rendered = design.render(question, text, cta, link, footer);
+        helper.setText(rendered.text(), rendered.html());
         message.setHeader("X-SES-CONFIGURATION-SET", ses.configurationSet());
         message.setHeader("X-SES-MESSAGE-TAGS", "winback_campaign=" + campaign.getId() + ",winback_email=" + mail.getId());
         sender.send(message);
