@@ -4,7 +4,6 @@ import { PersonalizationSummary } from "../shared/PersonalizationSummary";
 import { createConfigurationLoader, imageProperties } from "../shared/selected-images";
 import { appOrigin, safeState, storeId } from "../shared/config";
 import { collectItemProperties, normalizedColor, normalizeProperties, type ItemProperties } from "../shared/properties";
-import { installPersonalizationGuard } from "./personalization-guard";
 
 const SLOT = "after_line_items";
 
@@ -12,12 +11,19 @@ let textColor: string | undefined;
 let locale: string | null = null;
 
 export function App(nube: NubeSDK) {
-    const validatePersonalization = installPersonalizationGuard(nube);
-    const configFor = createConfigurationLoader(validatePersonalization.configFor);
+    // Checkout summaries must never prevent a purchase. Clear any validation left
+    // by the previous version of this app; storefront form validation remains separate.
+    nube.send("config:set", () => ({config: {has_cart_validation: false}}));
+    const releaseCheckout = () => {
+        nube.send("cart:validate", () => ({cart: {validation: {status: "success"}}}));
+        nube.clearSlot("before_line_items");
+    };
+    releaseCheckout();
+    const configFor = createConfigurationLoader();
     let latestState = safeState(nube);
     let generation = 0;
     const refresh = async (state: NubeSDKState | null) => {
-        void validatePersonalization(state);
+        releaseCheckout();
         latestState = state;
         const current = ++generation;
         render(nube, state);
