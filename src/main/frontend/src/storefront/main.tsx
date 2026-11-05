@@ -9,8 +9,9 @@ import {
 	storeId,
 } from "../shared/config";
 import { normalizedColor, normalizeProperties } from "../shared/properties";
+import { messages } from "../shared/i18n";
 import { createCartImageRenderer } from "./cart-images";
-import { PersonalizationFields } from "./PersonalizationFields";
+import { PersonalizationFields, SDK_MARKER_ID } from "./PersonalizationFields";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
 import { installQuickBuyRedirect } from "./quick-buy";
 
@@ -161,6 +162,7 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 	} finally {
 		inFlightProduct = null;
 	}
+    if (config.paused) { render(nube); outcome = "config_paused"; return; }
 	if (!config.enabled || config.fields.length === 0) {
 		outcome = config.enabled ? "config_without_fields" : "config_disabled";
 		clear(nube);
@@ -172,6 +174,7 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 }
 
 function render(nube: NubeSDK) {
+    if (config.paused) { nube.render(SLOT, <Column id={SDK_MARKER_ID} style={{paddingTop:"12px",paddingBottom:"12px"}}><Text>{messages(config.locale).personalizationPaused}</Text></Column>); return; }
     if (!config.enabled) { nube.clearSlot(SLOT); return; }
     const renderProduct = productId;
     const renderGeneration = draftGeneration;

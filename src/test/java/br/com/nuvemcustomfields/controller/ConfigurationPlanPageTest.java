@@ -22,6 +22,7 @@ class ConfigurationPlanPageTest {
     @Autowired PersonalizationRuleRepository rules;
     @Autowired PersonalizationFieldRepository fields;
     @Autowired MockMvc mvc;
+    @Autowired PaymentSubscriptionRepository subscriptions;
     @Autowired jakarta.persistence.EntityManager em;
 
     @Test void displaysActualPauseBeforeReconcilerAndClearsWarningAfterPaidRecovery() throws Exception {
@@ -40,5 +41,44 @@ class ConfigurationPlanPageTest {
         String recovered=mvc.perform(get("/admin/products/20/fields").session(session)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(recovered).doesNotContain("Personalização pausada pelo plano");
+    }
+
+    private Store paymentStore(PaymentSubscriptionStatus status, boolean renewal) {
+        var store=new Store(); store.setStoreId(9900402L); store.setStoreCountryCode("BR"); store.setPlan(PlanType.PREMIUM);
+        stores.saveAndFlush(store);
+        var sub=new PaymentSubscription(); sub.setStoreId(store.getStoreId()); sub.setProvider(PaymentProviderType.EFI);
+        sub.setExternalReference("home-alert-fixture"); sub.setPlan(PlanType.PREMIUM); sub.setCurrency("BRL");
+        sub.setAmountValue(new java.math.BigDecimal("19.99")); sub.setStatus(status);
+        if (renewal) sub.startRenewalFailure(java.time.Instant.now(), "failed-renewal");
+        subscriptions.saveAndFlush(sub); return store;
+    }
+    private String home(Store store) throws Exception {
+        var session=new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,store.getStoreId());
+        return mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    }
+    @Test void homeWarnsAboutFailedRenewalWhilePaidGraceIsStillValid() throws Exception {
+        var store=paymentStore(PaymentSubscriptionStatus.PAST_DUE,true);
+        assertThat(home(store)).contains("A renovação da sua assinatura falhou", "Prazo para regularizar", "durante a carência", "Regularizar assinatura")
+                .doesNotContain("Sua assinatura tem uma pendência de pagamento");
+    }
+    @Test void homeDistinguishesCheckoutFailureFromOverdueRenewal() throws Exception {
+        var store=paymentStore(PaymentSubscriptionStatus.ERROR,false);
+        assertThat(home(store)).contains("Não foi possível concluir o pagamento")
+                .doesNotContain("Sua assinatura tem uma pendência de pagamento", "durante a carência");
+        var sub=subscriptions.findByStoreId(store.getStoreId()).orElseThrow();
+        sub.startRenewalFailure(java.time.Instant.now().minusSeconds(172800), "failed-renewal");
+        subscriptions.saveAndFlush(sub); store.setPlan(PlanType.FREE); stores.saveAndFlush(store);
+        assertThat(home(store)).contains("Sua assinatura tem uma pendência de pagamento")
+                .doesNotContain("Prazo para regularizar", "durante a carência");
+    }
+    @Test void homeShowsPausedCountAndContactInstructionsWithoutInventingBillingDebt() throws Exception {
+        var store=new Store(); store.setStoreId(9900403L); store.setStoreCountryCode("BR"); stores.saveAndFlush(store);
+        var rule=new PersonalizationRule(); rule.setStoreId(store.getStoreId()); rule.setProductId(10L); rules.saveAndFlush(rule);
+        for(int i=0;i<2;i++) {
+            var field=new PersonalizationField(); field.setRule(rule); field.setLabel("Nome "+i); fields.saveAndFlush(field);
+        }
+        em.clear();
+        assertThat(home(store)).contains("1 configuração", "diretamente à loja após a compra", "Ver configurações")
+                .doesNotContain("Sua assinatura tem uma pendência de pagamento");
     }
 }

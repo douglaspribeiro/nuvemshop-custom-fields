@@ -133,4 +133,14 @@ class ConfigurationPlanIntegrationTest {
         assertThat(visible(s,20)).isTrue(); assertThat(limits.imageProductVisible(s,20L)).isTrue();
         assertThat(limits.imageProductVisible(s,10L)).isFalse();
     }
+
+    @Test void pausedProductHasPublicStatusEvenWhenNoConfigurationCanStayActive() {
+        var s=store(); s.setStoreCountryCode("MX"); stores.saveAndFlush(s); var paused=rule(s,10,2);
+        var reply=storefront.getFields(s.getStoreId(),10L,"/test",new MockHttpServletRequest());
+        assertThat(reply.enabled()).isFalse(); assertThat(reply.paused()).isTrue();
+        assertThat(reply.fields()).isEmpty(); assertThat(reply.locale()).startsWith("es");
+        assertThat(storefront.getFields(s.getStoreId(),999L,"/test",new MockHttpServletRequest()).paused()).isFalse();
+        paused.setEnabled(false); rules.saveAndFlush(paused);
+        assertThat(storefront.getFields(s.getStoreId(),10L,"/test",new MockHttpServletRequest()).paused()).isFalse();
+    }
 }

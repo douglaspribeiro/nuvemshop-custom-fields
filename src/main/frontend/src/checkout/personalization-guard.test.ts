@@ -48,3 +48,10 @@ it("fails when the cart or store identity is unavailable",async()=>{
  const guard=installPersonalizationGuard(nube);
  await guard(null);expect(validations().slice(-1)[0]).toEqual({status:"fail",reason:expect.any(String)});
 });
+it("allows paused product purchases and preserves personalization already in the cart",async()=>{
+ const line=item({Nome:"Ana"}); const snapshot=JSON.stringify(line);
+ const guard=installPersonalizationGuard(nube,vi.fn().mockResolvedValue({...DISABLED,paused:true}));
+ await guard(state([line,item([])]));
+ expect(validations().slice(-1)[0]).toEqual({status:"success"});
+ expect(JSON.stringify(line)).toEqual(snapshot);
+});

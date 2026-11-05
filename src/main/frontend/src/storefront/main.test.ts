@@ -39,6 +39,16 @@ describe("SDK storefront without a legacy script", () => {
 		expect(send.mock.calls[0][1]()).toEqual({ config: { handle_cart_before_update: true } });
 		send.mockClear();
 	}
+    it("shows the paused notice without adding fields or blocking native purchase", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok:true,json:async()=>({...DISABLED,paused:true,locale:"pt-BR"})}));
+        await boot();
+        const tree=render.mock.calls[render.mock.calls.length-1][1];
+        expect(JSON.stringify(tree)).toContain("diretamente à loja");
+        expect(JSON.stringify(tree)).not.toContain('"type":"field"');
+        listeners.get("cart:before_update")?.({...state,cart:{...state.cart,items:[]}} as NubeSDKState);
+        expect(send.mock.calls.some(([event])=>event==="cart:add")).toBe(false);
+    });
+
 	function field(node: Node): Node | undefined {
 		if (node.type === "field" || node.type === "select" || node.type === "check") return node;
 		for (const child of node.children ?? []) {

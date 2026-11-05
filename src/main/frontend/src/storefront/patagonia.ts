@@ -1,6 +1,7 @@
 import { imageChoices } from "./image-options";
 import type { NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { fetchConfig, type PersonalizationConfig } from "../shared/config";
+import { messages } from "../shared/i18n";
 import { langOf } from "../shared/i18n";
 import { normalizedColor } from "../shared/properties";
 import { type ValueMap, keyOf, toCartProperties, validate } from "./values";
@@ -98,8 +99,12 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		return matches.length === 1 ? matches[0].id : null;
 	}
 	function render() {
-		if (!config?.enabled || !config.fields.length || container?.isConnected) return;
+		if (!config || (!config.paused && (!config.enabled || !config.fields.length))) return;
 		const slot = document.querySelector(SLOT);
+        if (config.paused && slot?.textContent?.includes(messages(config.locale).personalizationPaused)) {
+            container?.remove(); container = null; return;
+        }
+        if (container?.isConnected) return;
 		const buy = document.querySelector('[data-component="product.add-to-cart"]');
 		const root = slot?.parentElement ?? buy?.closest("section");
 		if (!root?.querySelector(BUY)) return;
@@ -115,6 +120,13 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		container.id = "ncf-patagonia-fields";
 		container.className = "ncf-personalization";
 		container.style.cssText = "display:flex;flex-direction:column;gap:12px;margin:12px 0";
+        if (config.paused) {
+            container.classList.add("ncf-paused-notice");
+            container.setAttribute("role", "status");
+            container.textContent = messages(config.locale).personalizationPaused;
+            root.insertBefore(container, anchor);
+            return;
+        }
 		// Comprar agora adiciona outro item sem properties. O fluxo personalizado passa pelo carrinho.
 		const style = document.createElement("style");
 		style.textContent = '[data-ncf-patagonia] [data-component="wallet.buy-now"]{display:none!important}';

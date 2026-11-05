@@ -28,6 +28,7 @@ export type PersonalizationStyle = {
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationResponse. */
 export type PersonalizationConfig = {
 	enabled: boolean;
+    paused?: boolean;
 	fields: PersonalizationField[];
 	style: PersonalizationStyle;
 	locale: string;
@@ -80,7 +81,9 @@ export async function fetchConfigRequired(store: number, productId: number, time
     const body = await response.json() as PersonalizationConfig;
     if (typeof body?.enabled !== "boolean" || (body.enabled && !Array.isArray(body.fields)))
         throw new Error("personalization_policy_invalid");
-    return body.enabled ? normalize(body) : DISABLED;
+    return body.enabled ? normalize(body) : body.paused === true
+        ? {...DISABLED, paused: true, locale: body.locale || DISABLED.locale, style: body.style || DISABLED.style}
+        : DISABLED;
 }
 
 function normalize(config: PersonalizationConfig): PersonalizationConfig {

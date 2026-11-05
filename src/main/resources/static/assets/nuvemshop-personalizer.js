@@ -174,6 +174,23 @@
 
         track("load_config", { storeId: storeId, productId: productId });
         loadConfig(productId, function (config) {
+            if (config && config.paused === true) {
+                whenSdkFieldsAbsent([], productId, function () {
+                    if (form.dataset.ncfInjected === "true" || form.querySelector(".ncf-paused-notice")) return;
+                    const notice = document.createElement("div");
+                    notice.className = "ncf-personalization ncf-paused-notice";
+                    notice.setAttribute("role", "status");
+                    notice.textContent = String(config.locale || "pt-BR").toLowerCase().startsWith("pt")
+                        ? "A personalização deste produto está temporariamente indisponível. Após a compra, envie as informações de personalização diretamente à loja, informando o número do pedido."
+                        : "La personalización de este producto está temporalmente no disponible. Después de la compra, envía la información de personalización directamente a la tienda, indicando el número de pedido.";
+                    const submit = form.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
+                    const anchor = findActionContainer(form, submit) || submit;
+                    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(notice, anchor);
+                    else form.appendChild(notice);
+                    form.dataset.ncfInjected = "true";
+                });
+                return;
+            }
             if (!config || !config.enabled || !Array.isArray(config.fields) || config.fields.length === 0) {
                 track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
                 return;
@@ -730,6 +747,9 @@
         }
         let pending = false;
         const refreshCart = () => {
+            if (document.getElementById(sdkMarkerId)) {
+                document.querySelectorAll(".ncf-paused-notice").forEach(function (notice) { notice.remove(); });
+            }
             renderStoredCartProperties();
             syncCartPropertyColors();
             forceForegroundMediumWhite();

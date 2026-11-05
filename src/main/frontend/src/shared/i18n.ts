@@ -6,6 +6,7 @@
 export type Lang = "pt" | "es";
 
 type Dictionary = {
+    personalizationPaused: string;
 	required: string;
 	maxLength: (max: number) => string;
 	number: string;
@@ -15,6 +16,7 @@ type Dictionary = {
 };
 
 const PT: Dictionary = {
+    personalizationPaused: "A personalização deste produto está temporariamente indisponível. Após a compra, envie as informações de personalização diretamente à loja, informando o número do pedido.",
 	required: "Campo obrigatorio.",
 	maxLength: (max) => `Use no maximo ${max} caracteres.`,
 	number: "Informe um numero valido.",
@@ -24,6 +26,7 @@ const PT: Dictionary = {
 };
 
 const ES: Dictionary = {
+    personalizationPaused: "La personalización de este producto está temporalmente no disponible. Después de la compra, envía la información de personalización directamente a la tienda, indicando el número de pedido.",
 	required: "Campo obligatorio.",
 	maxLength: (max) => `Usá como máximo ${max} caracteres.`,
 	number: "Ingresá un número válido.",

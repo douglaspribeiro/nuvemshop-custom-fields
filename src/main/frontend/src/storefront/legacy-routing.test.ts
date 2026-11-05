@@ -185,3 +185,19 @@ it.each([true,false])('serializes all selected legacy options and requires at le
     boxes[0].click();expect(properties()).toEqual(['Cartão, impresso']);expect(submit().defaultPrevented).toBe(false);
     boxes[1].click();expect(properties()).toEqual([]);expect(submit().defaultPrevented).toBe(required);
 });
+
+it.each(["pt-BR","es-MX"])("shows paused contact notice once in legacy (%s) without blocking purchase", async (locale) => {
+    dom=new JSDOM(`<html><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head><body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
+        {url:"https://store.test/produtos/exemplo",runScripts:"outside-only"});
+    Object.assign(dom.window,{LS:{theme:{code:"idea"}},fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:false,paused:true,fields:[],locale})})});
+    Object.defineProperty(dom.window.document,"readyState",{value:"complete",configurable:true});
+    dom.window.eval(source);dom.window.eval(source);
+    await vi.waitFor(()=>expect(dom.window.document.querySelectorAll(".ncf-paused-notice")).toHaveLength(1));
+    const form=dom.window.document.querySelector("form")!;
+    expect(form.textContent).toContain(locale.startsWith("pt") ? "diretamente à loja" : "directamente a la tienda");
+    expect(form.querySelector("input[name^='properties']")).toBeNull();
+    expect(form.querySelector<HTMLButtonElement>("button")!.disabled).toBe(false);
+    const sdkNotice=dom.window.document.createElement("div"); sdkNotice.id="ncf-sdk-fields";
+    sdkNotice.textContent="SDK notice"; dom.window.document.body.append(sdkNotice);
+    await vi.waitFor(()=>expect(dom.window.document.querySelector(".ncf-paused-notice")).toBeNull());
+});

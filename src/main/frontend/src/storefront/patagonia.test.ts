@@ -31,6 +31,15 @@ describe("Patagonia transition", () => {
 	const button = () => document.querySelector<HTMLButtonElement>('[data-component="product.add-to-cart"]')!;
 	const click = () => button().querySelector("span")!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 	const ready = async () => { await vi.waitFor(() => expect(field()).not.toBeNull()); };
+    it("shows a Spanish paused notice and preserves both native purchase buttons", async () => {
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...DISABLED,paused:true,locale:"es-AR"}));
+        await vi.waitFor(()=>expect(document.querySelector(".ncf-paused-notice")?.textContent).toContain("directamente a la tienda"));
+        expect(document.querySelector("input[name^='properties']")).toBeNull();
+        expect(button().disabled).toBe(false);
+        expect(document.querySelector("[data-component='wallet.buy-now']")).not.toBeNull();
+        click(); expect(runtime.send).not.toHaveBeenCalled();
+    });
+
 	beforeEach(() => {
 		markup();
 		state = productState();
