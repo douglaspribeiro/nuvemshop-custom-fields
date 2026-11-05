@@ -3,6 +3,20 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.53.0] - 2026-11-05
+
+### Features
+
+- add SES suppression and hourly queue observability (`0e08cd6`)
+- add guarded D3 D7 D11 activation email flow (`0dc0d94`)
+- show paused personalization notices and merchant billing alerts (`ca538a6`)
+- pause excess Free configurations and notify merchants (`c0a80a0`)
+- identify merchant stores in GA4 admin activity (`fd9ffba`)
+
+### Correções
+
+- run configuration plan reconciliation every 12 hours (`7d91f86`)
+
 ## [1.52.0] - 2026-11-03
 
 ### Features
