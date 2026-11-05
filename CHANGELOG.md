@@ -3,6 +3,19 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.56.0] - 2026-11-05
+
+### Features
+
+- add SDK quick-buy personalization and document Patagonia limitations (`693d74d`)
+
+### Correções
+
+- removendo essa merda de sentry que nao funcionou (`a3311fe`)
+- alinhamento legado store-sdk (`b2128db`)
+- associate cart personalization with line items and show quantities (`b25a41e`)
+- retirar bloqueio de personalização no checkout (`53913c7`)
+
 ## [1.55.0] - 2026-11-05
 
 ### Features
