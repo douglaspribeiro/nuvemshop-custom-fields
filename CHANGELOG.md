@@ -3,6 +3,20 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.55.0] - 2026-11-05
+
+### Features
+
+- adicionar histórico de e-mails por loja no backoffice (`62a80a6`)
+
+### Correções
+
+- exibir campos personalizados na compra rápida legada (`7831b07`)
+
+### Outros
+
+- deixando o email mais bonitinho (`faf1164`)
+
 ## [1.54.1] - 2026-11-05
 
 ### Outros
