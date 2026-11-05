@@ -58,6 +58,7 @@ class ActivationEmailFlowIntegrationTest {
         jdbc.update("delete from personalization_field_history where store_id=?",STORE);
         jdbc.update("delete from stores where store_id=?",STORE);
     }
+    void assertNoActivationSent() { verify(mail,never()).sendActivation(any(),any(),any(),any(),any(),any(),any()); }
     Instant day(int n) {return installed.plus(Duration.ofDays(n));}
     List<ActivationEmailOutbox> rows() {return queue.findAll().stream().filter(e->e.getStoreId()==STORE).toList();}
     ActivationEmailOutbox row(String step) {return rows().stream().filter(e->e.getStep().equals(step)).findFirst().orElseThrow();}
@@ -84,21 +85,21 @@ class ActivationEmailFlowIntegrationTest {
     }
     @Test void pausedConfigurationDoesNotGetMistakenForNeverConfigured() {
         configureProduct(true);job.scheduleAt(day(3));assertThat(row("ACTIVATED").getState()).isEqualTo(ActivationEmailOutbox.State.ACTIVATED);
-        verifyNoInteractions(mail);
+        assertNoActivationSent();
     }
     @Test void deletedConfigurationHistoryStopsTheSequence() {
         history.saveAndFlush(new PersonalizationFieldHistory(STORE,10L,"Nome antigo"));
-        job.scheduleAt(day(3));assertThat(row("ACTIVATED").getState()).isEqualTo(ActivationEmailOutbox.State.ACTIVATED);verifyNoInteractions(mail);
+        job.scheduleAt(day(3));assertThat(row("ACTIVATED").getState()).isEqualTo(ActivationEmailOutbox.State.ACTIVATED);assertNoActivationSent();
     }
     @Test void configurationBeforeDeliverySuppressesAlreadyPendingMessages() {
         ReflectionTestUtils.setField(job,"suppressionReady",false);job.scheduleAt(day(3));pending("D7",7);
         configureProduct(false);job.scheduleAt(day(7));
         assertThat(row("D3").getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);
-        assertThat(row("D7").getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);verifyNoInteractions(mail);
+        assertThat(row("D7").getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);assertNoActivationSent();
     }
     @Test void queuedD15IsSuppressedAndNeverConvertedIntoALateD11Email() {
         var e=pending("D15",15);job.dispatch(e.getId(),day(15));
-        assertThat(queue.findById(e.getId()).orElseThrow().getSuppressionReason()).isEqualTo("d15_temporarily_disabled");verifyNoInteractions(mail);
+        assertThat(queue.findById(e.getId()).orElseThrow().getSuppressionReason()).isEqualTo("d15_temporarily_disabled");assertNoActivationSent();
     }
     @Test void mismatchedInstallationAndUninstallSuppressPendingMessages() {
         var e=queue.saveAndFlush(new ActivationEmailOutbox(STORE,installed.minusSeconds(1),"D3",day(3),"nc39-v1"));
@@ -106,7 +107,7 @@ class ActivationEmailFlowIntegrationTest {
         job.dispatch(e.getId(),day(3));assertThat(queue.findById(e.getId()).orElseThrow().getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);
         var e7=new ActivationEmailOutbox(STORE,s.getInstalledAt(),"D7",day(7),"nc39-v1");e7=queue.saveAndFlush(e7);
         s.setUninstalledAt(day(4));stores.saveAndFlush(s);job.dispatch(e7.getId(),day(7));
-        assertThat(queue.findById(e7.getId()).orElseThrow().getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);verifyNoInteractions(mail);
+        assertThat(queue.findById(e7.getId()).orElseThrow().getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);assertNoActivationSent();
     }
     @Test void smtpTimeoutLeavesReviewAndNeverRetriesAutomatically() {
         doThrow(new IllegalStateException("SMTP uncertain")).when(mail).sendActivation(any(),any(),any(),any(),any(),any(),any());
@@ -144,7 +145,7 @@ class ActivationEmailFlowIntegrationTest {
         pending("D3",3);
         var s=stores.findByStoreId(STORE).orElseThrow();s.setDepartureCounted(true);stores.saveAndFlush(s);
         erasure.erase(STORE);assertThat(rows()).isEmpty();
-        assertThat(stores.findByStoreId(STORE)).isEmpty();verifyNoInteractions(mail);
+        assertThat(stores.findByStoreId(STORE)).isEmpty();assertNoActivationSent();
     }
     @Test void reinstallWithOriginalInstallDateDoesNotRestartAlreadySentSteps() {
         job.scheduleAt(day(3));
@@ -183,11 +184,11 @@ class ActivationEmailFlowIntegrationTest {
     void privacyAndOtherSuppressionReasonsRemainTerminal(String reason) {
         installationAge(30);var event=pending("D11",11);event.suppress(reason);queue.saveAndFlush(event);
         job.scheduleAt(day(30));assertThat(row("D11").getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);
-        assertThat(row("D11").getSuppressionReason()).isEqualTo(reason);verifyNoInteractions(mail);
+        assertThat(row("D11").getSuppressionReason()).isEqualTo(reason);assertNoActivationSent();
     }
     @Test void currentlyConfiguredPausedProductStillBlocksOldStoreD11() {
         installationAge(30);configureProduct(true);job.scheduleAt(day(30));
-        assertThat(rows()).noneMatch(e->e.getStep().equals("D11"));verifyNoInteractions(mail);
+        assertThat(rows()).noneMatch(e->e.getStep().equals("D11"));assertNoActivationSent();
     }
     @Test void deletedPastConfigurationDoesNotPreventD11WhenNoProductIsCurrentlyConfigured() {
         installationAge(30);history.saveAndFlush(new PersonalizationFieldHistory(STORE,10L,"Nome antigo"));
@@ -199,7 +200,7 @@ class ActivationEmailFlowIntegrationTest {
         installationAge(30);var older=new ActivationEmailOutbox(STORE,installed.minusSeconds(86400),"D11",day(11),"nc39-v1");
         ReflectionTestUtils.setField(older,"state",ActivationEmailOutbox.State.valueOf(state));queue.saveAndFlush(older);
         job.scheduleAt(day(30));assertThat(queue.findByStoreIdAndInstalledAtAndStep(STORE,installed,"D11").orElseThrow().getSuppressionReason()).isEqualTo("already_contacted");
-        verifyNoInteractions(mail);
+        assertNoActivationSent();
     }
 
     @Test void audienceMetricsAreReadOnlyEvenWhenCampaignIsDisabled() {

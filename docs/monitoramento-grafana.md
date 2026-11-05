@@ -381,3 +381,18 @@ um ignorado; catálogo Grafana válido e cópias do dashboard iguais. As onze co
 novas foram executadas com sucesso no datasource real, ainda sem séries desta versão.
 A consulta remota foi somente leitura e confirmou checkout limpo no servidor.
 Nenhuma publicação de dashboard, alteração do servidor, push ou deploy nesta etapa.
+
+## Pendências registradas em 05/11/2026
+
+- **Nove falhas de validação D11:** a verificação de produção de 05/11/2026 encontrou
+  nove mensagens FAILED após três tentativas pré-SMTP por loja. Revisar e corrigir
+  os cadastros antes de reabrir tentativas de forma controlada. Não retentar SENT,
+  CLAIMED ou REVIEW nem remover bloqueios de contato. Nesta data ainda não há ação
+  no backoffice para reabrir FAILED; o botão de consumo SQS não reenvia esses e-mails.
+- **Comparação diária de envios e consumo:** substituir as visualizações temporais
+  dessas duas operações por **últimos 15 dias de calendário**, no fuso
+  `America/Sao_Paulo`, com um ponto por dia e totais diários comparáveis. Não usar
+  uma janela móvel das últimas 24 horas. Se incluir o dia atual, identificá-lo como
+  parcial e distingui-lo dos dias completos. Sem dados não significa zero e não
+  reconstruir histórico ausente. Esta mudança de visualização está registrada como
+  pendência; o gráfico atual de envios ainda usa uma hora móvel e o de consumo, taxa.
