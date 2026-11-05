@@ -257,5 +257,5 @@ activation:
     start-at: ${ACTIVATION_EMAIL_START_AT:}
     allowlist: ${ACTIVATION_EMAIL_ALLOWLIST:}
     suppression-ready: ${ACTIVATION_EMAIL_SUPPRESSION_READY:false}
-    schedule-delay-ms: ${ACTIVATION_EMAIL_SCHEDULE_DELAY_MS:60000}
+    schedule-delay-ms: ${ACTIVATION_EMAIL_SCHEDULE_DELAY_MS:3600000}
     metrics-delay-ms: ${ACTIVATION_EMAIL_METRICS_DELAY_MS:3600000}

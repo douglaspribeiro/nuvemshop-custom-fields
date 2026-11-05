@@ -15,6 +15,7 @@ public class ActivationEmailMetricsSnapshotService {
     public static final List<String> REASONS = List.of("outside_cohort", "first_activation", "stage_expired", "not_allowlisted",
             "unsubscribe", "ses_bounce", "ses_complaint", "ses_unsubscribe", "previous_email_opt_out",
             "store_inactive_or_reinstalled", "invalid_start_at", "invalid_recipient", "already_contacted", "other");
+    public static final List<String> DELIVERY_OUTCOMES = List.of("delivered", "bounced", "complaint", "awaiting");
     public static final List<String> OUTBOX_STEPS = List.of("D3", "D7", "D11", "D15", "OTHER");
     private final StoreRepository stores;
     private final ActivationEmailOutboxRepository outbox;
@@ -23,7 +24,7 @@ public class ActivationEmailMetricsSnapshotService {
         this.stores = stores; this.outbox = outbox; this.job = job;
     }
     public record Snapshot(Instant at, Map<String, Long> stores, Map<String, Long> eligible,
-            Map<String, Long> ready, Map<String, Long> blocked, Map<String, Long> outbox, Map<String, Boolean> controls) { }
+            Map<String, Long> ready, Map<String, Long> blocked, Map<String, Long> outbox, Map<String, Long> delivery, Map<String, Boolean> controls) { }
     @Transactional(readOnly = true)
     public Snapshot collect(Instant now) {
         Map<String, Long> totals = zeros(STORE_STATES), eligible = zeros(STEPS), ready = zeros(STEPS), blocked = zeros(REASONS);
@@ -36,6 +37,11 @@ public class ActivationEmailMetricsSnapshotService {
             // ACTIVATED is a lifecycle marker, not an email queued for delivery.
             if ("ACTIVATED".equals(Objects.toString(row[0]))) continue;
             persisted.merge(step + ":" + row[1], ((Number) row[2]).longValue(), Long::sum);
+        }
+        Map<String, Long> delivery = zeros(DELIVERY_OUTCOMES);
+        for (var row : outbox.countsByDeliveryOutcome()) {
+            String outcome = Objects.toString(row[0]);
+            if (DELIVERY_OUTCOMES.contains(outcome)) delivery.put(outcome, ((Number) row[1]).longValue());
         }
         var controls = job.controls();
         for (var store : stores.findAllActive()) {
@@ -63,7 +69,7 @@ public class ActivationEmailMetricsSnapshotService {
         if (Boolean.TRUE.equals(controls.get("live_enabled"))) for (String step : STEPS)
             ready.put(step, eligible.get(step));
         return new Snapshot(now, Map.copyOf(totals), Map.copyOf(eligible), Map.copyOf(ready),
-                Map.copyOf(blocked), Map.copyOf(persisted), Map.copyOf(controls));
+                Map.copyOf(blocked), Map.copyOf(persisted), Map.copyOf(delivery), Map.copyOf(controls));
     }
     private boolean has(Map<String, ActivationEmailJob.Audience> audience, ActivationEmailJob.AudienceState state) {
         return audience.values().stream().anyMatch(v -> v.state() == state);

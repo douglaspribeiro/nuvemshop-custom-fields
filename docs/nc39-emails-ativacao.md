@@ -39,7 +39,7 @@ Estados: PENDING, CLAIMED, SENT, SIMULATED, SUPPRESSED, FAILED, REVIEW e ACTIVAT
 | `activation.email.start-at` | vazio | Data de corte ISO-8601 para D3/D7; ausente/inválida impede essas etapas, sem impedir D11 |
 | `activation.email.allowlist` | vazio | IDs permitidos para D3/D7, separados por vírgula; D11 não usa a lista |
 | `activation.email.suppression-ready` | `false` | Liberação operacional explícita; a configuração real de feedback também é verificada pelo código |
-| `activation.email.schedule-delay-ms` | `60000` | Intervalo do agendamento NC-39; separado da rotina NC-04 de 12 horas |
+| `activation.email.schedule-delay-ms` | `3600000` | Intervalo NC-39 de uma hora, também usado como espera inicial; separado da rotina NC-04 de 12 horas |
 
 Eventos INFO/WARN permitem acompanhar a fila com `nc39.email.queued`, `nc39.activation.detected`, `nc39.email.suppressed`, `nc39.email.simulated`, `nc39.email.claimed`, `nc39.email.sent`, `nc39.email.validation_failed`, `nc39.email.review`, `nc39.schedule.failed` e `nc39.dispatch.failed`. DEBUG inclui início do ciclo, rotina desativada e espera pela trava de liberação. Data de corte inválida gera WARN.
 
@@ -146,3 +146,10 @@ recuperação apenas das antigas supressões de público, preservação de bloqu
 contato e resultados incertos, ausência atual de configuração, métricas somente
 leitura, contador de envios confirmados e assuntos/corpos/rodapés PT/ES nos bundles
 e no transporte MIME. A campanha não foi habilitada e nenhum e-mail real foi enviado.
+
+
+Por decisão de 05/11/2026, o agendamento dos envios NC-39 também é **horário**:
+`ACTIVATION_EMAIL_SCHEDULE_DELAY_MS=3600000`, com primeira execução uma hora após
+iniciar a aplicação. Cada ciclo mantém o lote máximo de 50 mensagens e revalida as
+condições antes de enviar; o restante aguarda o próximo ciclo. Alterar o padrão
+no código exige novo deploy; um valor explícito no Infisical sobrescreve o padrão.

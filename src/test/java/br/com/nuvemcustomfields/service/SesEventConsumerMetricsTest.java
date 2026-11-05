@@ -20,7 +20,7 @@ class SesEventConsumerMetricsTest {
     @SuppressWarnings("unchecked")
     SesEventConsumer consumer(SesEventsProperties p) {
         ObjectProvider<SqsClient> provider = mock(ObjectProvider.class); when(provider.getObject()).thenReturn(sqs);
-        return new SesEventConsumer(p,provider,winback,activation,metrics);
+        return new SesEventConsumer(p,provider,winback,activation,metrics,event -> {});
     }
     void queueMessages(String... bodies) {
         when(sqs.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(ReceiveMessageResponse.builder().messages(

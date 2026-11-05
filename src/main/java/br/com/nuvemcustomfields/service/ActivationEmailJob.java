@@ -37,6 +37,7 @@ public class ActivationEmailJob {
     private final SesEventsProperties sesEvents;
     private final ActivationEmailTemplates templates;
     private final ActivationEmailDeliveryMetrics deliveryMetrics;
+    private final org.springframework.context.ApplicationEventPublisher events;
     @Value("${activation.email.enabled:false}") private boolean enabled;
     @Value("${activation.email.dry-run:true}") private boolean dryRun;
     @Value("${activation.email.allowlist:}") private String allowlistText;
@@ -46,14 +47,15 @@ public class ActivationEmailJob {
     public ActivationEmailJob(StoreRepository stores, PersonalizationRuleRepository rules,
             ActivationEmailOutboxRepository outbox, StoreAdminEmailService mail, PlatformTransactionManager manager,
             PersonalizationFieldHistoryRepository history, ActivationEmailProtectionService protection,
-            SesEventsProperties sesEvents, ActivationEmailTemplates templates, ActivationEmailDeliveryMetrics deliveryMetrics) {
+            SesEventsProperties sesEvents, ActivationEmailTemplates templates, ActivationEmailDeliveryMetrics deliveryMetrics, org.springframework.context.ApplicationEventPublisher events) {
         this.stores = stores; this.rules = rules; this.outbox = outbox; this.mail = mail;
         this.tx = new TransactionTemplate(manager);
-        this.history = history; this.protection = protection; this.sesEvents = sesEvents; this.templates = templates; this.deliveryMetrics = deliveryMetrics;
+        this.history = history; this.protection = protection; this.sesEvents = sesEvents; this.templates = templates; this.deliveryMetrics = deliveryMetrics; this.events = events;
         this.tx.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
-    @Scheduled(fixedDelayString = "${activation.email.schedule-delay-ms:60000}")
+    @Scheduled(fixedDelayString = "${activation.email.schedule-delay-ms:3600000}",
+            initialDelayString = "${activation.email.schedule-delay-ms:3600000}")
     public void schedule() {
         scheduleAt(Instant.now());
     }
@@ -128,6 +130,7 @@ public class ActivationEmailJob {
             try { dispatch(candidate.getId(), now); }
             catch (RuntimeException ex) { log.warn("nc39.dispatch.failed event_id={} type={}", candidate.getId(), ex.getClass().getSimpleName()); }
         }
+        events.publishEvent(new br.com.nuvemcustomfields.event.ActivationEmailActivityUpdated());
     }
 
     public void dispatch(Long id, Instant now) {

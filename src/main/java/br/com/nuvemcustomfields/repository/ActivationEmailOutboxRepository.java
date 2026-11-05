@@ -17,6 +17,20 @@ public interface ActivationEmailOutboxRepository extends JpaRepository<Activatio
     boolean existsByStoreIdAndStepAndStateIn(Long storeId, String step, java.util.Collection<ActivationEmailOutbox.State> states);
     @Query("select e.step, e.state, count(e) from ActivationEmailOutbox e group by e.step, e.state")
     List<Object[]> countsByStepAndState();
+    @Query(value = """
+            select outcome, count(*) from (
+                select o.id, case
+                    when max(case when f.event_type='Complaint' then 1 else 0 end)=1 then 'complaint'
+                    when max(case when f.event_type='Bounce' then 1 else 0 end)=1 then 'bounced'
+                    when max(case when f.event_type='Delivery' then 1 else 0 end)=1 then 'delivered'
+                    else 'awaiting' end as outcome
+                from nc39_activation_email_outbox o
+                left join nc39_activation_email_feedback f on f.event_id=o.id
+                where o.state='SENT' and o.step in ('D3','D7','D11')
+                group by o.id
+            ) delivery_status group by outcome
+            """, nativeQuery = true)
+    List<Object[]> countsByDeliveryOutcome();
     boolean existsByStoreIdAndInstalledAtAndStep(Long storeId, Instant installedAt, String step);
     boolean existsByStoreIdAndStep(Long storeId, String step);
     List<ActivationEmailOutbox> findByStoreIdAndInstalledAtAndState(Long storeId, Instant installedAt, ActivationEmailOutbox.State state);

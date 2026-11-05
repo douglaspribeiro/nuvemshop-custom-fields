@@ -26,6 +26,9 @@ public class ActivationEmailMetrics {
             Gauge.builder("ncf.activation.email.eligible", this, m -> m.value("eligible", step)).tag("step", step).register(registry);
             Gauge.builder("ncf.activation.email.ready", this, m -> m.value("ready", step)).tag("step", step).register(registry);
         }
+        for (String outcome : ActivationEmailMetricsSnapshotService.DELIVERY_OUTCOMES)
+            Gauge.builder("ncf.activation.email.delivery", this, m -> m.value("delivery", outcome))
+                    .tag("outcome", outcome).register(registry);
         for (String reason : ActivationEmailMetricsSnapshotService.REASONS)
             Gauge.builder("ncf.activation.email.blocked", this, m -> m.value("blocked", reason)).tag("reason", reason).register(registry);
         for (String step : ActivationEmailMetricsSnapshotService.OUTBOX_STEPS) for (var state : ActivationEmailOutbox.State.values()) {
@@ -41,7 +44,7 @@ public class ActivationEmailMetrics {
         Gauge.builder("ncf.activation.email.snapshot.timestamp.seconds", this,
                 m -> m.snapshot == null ? Double.NaN : m.snapshot.at().getEpochSecond()).register(registry);
     }
-    @EventListener(ApplicationReadyEvent.class)
+    @EventListener({ApplicationReadyEvent.class, br.com.nuvemcustomfields.event.ActivationEmailActivityUpdated.class})
     @Scheduled(fixedDelayString = "${activation.email.metrics-delay-ms:3600000}",
             initialDelayString = "${activation.email.metrics-delay-ms:3600000}")
     public synchronized void refresh() {
@@ -55,7 +58,7 @@ public class ActivationEmailMetrics {
         var s = snapshot;if (s == null) return Double.NaN;
         Map<String, Long> values = switch (family) {
             case "stores" -> s.stores();case "eligible" -> s.eligible();case "ready" -> s.ready();
-            case "blocked" -> s.blocked();case "outbox" -> s.outbox();
+            case "blocked" -> s.blocked();case "outbox" -> s.outbox();case "delivery" -> s.delivery();
             default -> throw new IllegalArgumentException();
         };
         return values.getOrDefault(key, 0L);

@@ -18,7 +18,7 @@ class SesEventManualConsumptionTest {
     @SuppressWarnings("unchecked")
     SesEventConsumer consumer(boolean enabled,String url) {
         ObjectProvider<SqsClient> provider=mock(ObjectProvider.class);when(provider.getObject()).thenReturn(sqs);
-        return new SesEventConsumer(new SesEventsProperties(enabled,url,"us-east-2","config"),provider,winback,activation,metrics);
+        return new SesEventConsumer(new SesEventsProperties(enabled,url,"us-east-2","config"),provider,winback,activation,metrics,event -> {});
     }
     SesEventConsumer consumer() {return consumer(true,"https://sqs.us-east-2.amazonaws.com/123/email-tracking-events");}
     void emptyQueue() {

@@ -16,7 +16,7 @@ class ActivationEmailMetricsTest {
             assertThat(registry.scrape()).contains("ncf_activation_email_eligible{step=\"D11\"} NaN");
             var at=Instant.parse("2026-11-05T12:00:00Z");
             when(source.collect(any())).thenReturn(new ActivationEmailMetricsSnapshotService.Snapshot(at,
-                    Map.of("eligible",2L),Map.of("D11",2L),Map.of("D11",0L),Map.of(),Map.of(),Map.of("enabled",false)));
+                    Map.of("eligible",2L),Map.of("D11",2L),Map.of("D11",0L),Map.of(),Map.of(),Map.of(),Map.of("enabled",false)));
             metrics.refresh();String text=registry.scrape();
             assertThat(text).contains("ncf_activation_email_eligible{step=\"D11\"} 2.0",
                     "ncf_activation_email_ready{step=\"D11\"} 0.0", "ncf_activation_email_snapshot_timestamp_seconds")

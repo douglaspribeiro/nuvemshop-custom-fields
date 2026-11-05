@@ -22,6 +22,7 @@ public class SesEventConsumer {
     private final WinbackSesEventService winback;
     private final ActivationEmailSesEventService activation;
     private final SesEventConsumerMetrics metrics;
+    private final org.springframework.context.ApplicationEventPublisher events;
     private final AtomicBoolean consuming = new AtomicBoolean();
     private volatile RunStatus lastRun = new RunStatus(false, "", null, null, 0, 0, 0, 0, false, null, null);
     public enum ManualStart { STARTED, RUNNING, DISABLED, MISCONFIGURED, UNAVAILABLE }
@@ -66,8 +67,8 @@ public class SesEventConsumer {
         return true;
     }
     public SesEventConsumer(SesEventsProperties properties,
-            @Qualifier("sesEventsSqsClient") ObjectProvider<SqsClient> client, WinbackSesEventService winback, ActivationEmailSesEventService activation, SesEventConsumerMetrics metrics) {
-        this.properties = properties; this.client = client; this.winback = winback; this.activation = activation; this.metrics = metrics;
+            @Qualifier("sesEventsSqsClient") ObjectProvider<SqsClient> client, WinbackSesEventService winback, ActivationEmailSesEventService activation, SesEventConsumerMetrics metrics, org.springframework.context.ApplicationEventPublisher events) {
+        this.properties = properties; this.client = client; this.winback = winback; this.activation = activation; this.metrics = metrics; this.events = events;
     }
     @Scheduled(fixedDelayString = "${notifications.ses-events.poll-delay-ms:3600000}",
             initialDelayString = "${notifications.ses-events.poll-delay-ms:3600000}")
@@ -123,6 +124,7 @@ public class SesEventConsumer {
                 consuming.set(false);
                 LOGGER.info("ses.events.cycle_finished source={} received={} processed={} acknowledged={} failures={} limited={}",
                         source, received, processed, acknowledged, failures, limited);
+                events.publishEvent(new br.com.nuvemcustomfields.event.ActivationEmailActivityUpdated());
             }
         }
     }

@@ -28,7 +28,7 @@ class ActivationEmailJobTest {
     final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
     final ActivationEmailProtectionService protection=mock(ActivationEmailProtectionService.class);
     final br.com.nuvemcustomfields.properties.SesEventsProperties ses=new br.com.nuvemcustomfields.properties.SesEventsProperties(true,"queue","us-east-1","config");
-    final ActivationEmailJob job=new ActivationEmailJob(stores,rules,outbox,mail,manager,history,protection,ses,templates(),new ActivationEmailDeliveryMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
+    final ActivationEmailJob job=new ActivationEmailJob(stores,rules,outbox,mail,manager,history,protection,ses,templates(),new ActivationEmailDeliveryMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),event -> {});
     Store store;
     @BeforeEach void configure() {
         when(protection.ready()).thenReturn(true);
