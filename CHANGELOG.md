@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.54.1] - 2026-11-05
+
+### Outros
+
+- entrega de emails (`435d4df`)
+
 ## [1.54.0] - 2026-11-05
 
 ### Features
