@@ -43,6 +43,7 @@ public class StoreDataErasureService {
                 "delete from support_messages where ticket_id in (select id from support_tickets where store_id = ?)",
                 storeId
         );
+        jdbcTemplate.update("delete from store_email_history where store_id = ?", storeId);
         jdbcTemplate.update("delete from support_tickets where store_id = ?", storeId);
         jdbcTemplate.update("delete from feature_requests where store_id = ?", storeId);
         jdbcTemplate.update(

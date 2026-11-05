@@ -106,7 +106,7 @@ class ActivationEmailProtectionIntegrationTest {
         assertThat(message.getHeader("X-SES-MESSAGE-TAGS",null)).isEqualTo("nc39_event="+row.getId()+", nc39_store="+STORE);
         assertThat(message.getHeader("List-Unsubscribe-Post",null)).isEqualTo("List-Unsubscribe=One-Click");
         String token=token(); assertThat(token).matches("[A-Za-z0-9_-]{43}");
-        assertThat(message.getContent().toString()).contains("Parar de receber", "https://app.example.com/activation-emails/unsubscribe?token="+token);
+        assertThat(MailTestSupport.body(message, "text/plain")).contains("Parar de receber", "https://app.example.com/activation-emails/unsubscribe?token="+token);
         assertThat(jdbc.queryForObject("select unsubscribe_token_hash from nc39_activation_email_outbox where id=?",String.class,row.getId()))
                 .isEqualTo(ActivationEmailProtectionService.hash(token)).isNotEqualTo(token);
         assertThat(logs).doesNotContain(ADDRESS,token);

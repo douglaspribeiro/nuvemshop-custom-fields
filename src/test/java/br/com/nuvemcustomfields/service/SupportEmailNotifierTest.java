@@ -7,7 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,14 +23,16 @@ class SupportEmailNotifierTest {
     private final SupportReplyEvent reply = new SupportReplyEvent(10L, "store@example.com", "Dúvida", "Resposta ágil");
 
     @Test
-    void sendsReplyAndAuthenticatedTicketLink() {
+    void sendsReplyAndAuthenticatedTicketLink() throws Exception {
+        var message = MailTestSupport.message();
+        when(sender.createMimeMessage()).thenReturn(message);
         new SupportEmailNotifier(configured, "https://app.example.com/", sender).onReply(reply);
-        var captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        var captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(sender).send(captor.capture());
-        assertThat(captor.getValue().getTo()).containsExactly("store@example.com");
-        assertThat(captor.getValue().getFrom()).isEqualTo("support@example.com");
+        assertThat(captor.getValue().getAllRecipients()).extracting(Object::toString).containsExactly("store@example.com");
+        assertThat(captor.getValue().getFrom()).extracting(Object::toString).containsExactly("support@example.com");
         assertThat(captor.getValue().getSubject()).contains("#10", "Dúvida");
-        assertThat(captor.getValue().getText()).contains("Resposta ágil", "https://app.example.com/support/tickets/10");
+        assertThat(MailTestSupport.body(message, "text/plain")).contains("Resposta ágil", "https://app.example.com/support/tickets/10");
     }
 
     @Test
@@ -51,9 +53,12 @@ class SupportEmailNotifierTest {
 
     @Test
     void providerFailureIsContainedAndDoesNotLogSensitiveDetails(CapturedOutput output) {
-        doThrow(new MailSendException("secret store@example.com")).when(sender).send(any(SimpleMailMessage.class));
+        var message = MailTestSupport.message();
+        when(sender.createMimeMessage()).thenReturn(message);
+        doThrow(new MailSendException("secret store@example.com")).when(sender).send(any(MimeMessage.class));
         assertThatCode(() -> new SupportEmailNotifier(configured, "https://app.example.com", sender).onReply(reply))
                 .doesNotThrowAnyException();
+        verify(sender).send(message);
         assertThat(output).contains("support.email_failed").doesNotContain("secret", "store@example.com");
     }
 }

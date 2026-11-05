@@ -41,6 +41,7 @@ public class StoreAdminEmailService {
             helper.setFrom(plain.getFrom()); helper.setTo(plain.getTo()); helper.setSubject(plain.getSubject());
             var rendered = design.render(subject, body, null, null, null);
             helper.setText(rendered.text(), rendered.html());
+            StoreEmailHistoryService.identify(mail,storeId,"MANUAL",null);
             sender.send(mail);
         }
         catch (RuntimeException ex) { throw deliveryFailure(storeId, ex); }
@@ -67,6 +68,7 @@ public class StoreAdminEmailService {
             message.setHeader("X-SES-MESSAGE-TAGS", "nc39_event=" + eventId + ", nc39_store=" + storeId);
             message.setHeader("List-Unsubscribe", "<" + unsubscribeUrl + ">");
             message.setHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            StoreEmailHistoryService.identify(message,storeId,"ACTIVATION","activation:"+eventId);
             sender.send(message);
         } catch (jakarta.mail.MessagingException | RuntimeException ex) { throw deliveryFailure(storeId, ex); }
         LOGGER.info("nc39.transport.accepted store_id={} event_id={}", storeId, eventId);
@@ -85,6 +87,7 @@ public class StoreAdminEmailService {
             helper.setFrom(plain.getFrom()); helper.setTo(plain.getTo()); helper.setSubject(plain.getSubject());
             var rendered = design.render(subject, body, actionLabel, actionUrl, null);
             helper.setText(rendered.text(), rendered.html());
+            StoreEmailHistoryService.identify(mail,storeId,"ACTION",null);
             sender.send(mail);
         } catch (jakarta.mail.MessagingException | RuntimeException ex) { throw deliveryFailure(storeId, ex); }
         LOGGER.info("store.admin_email.sent store_id={}", storeId);

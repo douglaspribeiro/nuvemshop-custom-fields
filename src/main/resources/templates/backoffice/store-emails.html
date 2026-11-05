@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backoffice - Histórico de e-mails</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
+<body><main class="shell">
+    <section class="page-header">
+        <div><p class="eyebrow">Histórico de e-mails</p>
+            <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
+            <p class="muted" th:text="'Store ID ' + ${store.storeId}"></p>
+        </div>
+        <nav class="row-actions"><a class="button" th:href="@{/backoffice/stores/{storeId}(storeId=${store.storeId})}">Voltar à loja</a></nav>
+    </section>
+    <section class="panel">
+        <p class="muted">Envio registrado significa aceitação pelo transporte de e-mail. A entrega ao destinatário só é confirmada quando recebemos esse evento do provedor.</p>
+        <p class="notice">Os registros antigos de ativação, reconquista, falha de renovação e pausa de configuração aparecem quando havia confirmação de envio salva. Assunto, conteúdo e destinatário antigos não foram reconstruídos. Mensagens manuais e notificações de suporte passam a ser registradas com esta atualização.</p>
+        <p th:if="${#lists.isEmpty(emails)}">Nenhum e-mail registrado para esta loja.</p>
+        <article th:each="email : ${emails}" style="border-top:1px solid #ddd;padding:20px 0;overflow-wrap:anywhere">
+            <p><strong th:text="${email.categoryLabel()}"></strong> ·
+                <span th:attr="data-local-time=${email.attemptedAt}" data-time-format="datetime" th:text="${#temporals.format(email.attemptedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+            <h2 th:text="${email.subject ?: 'Assunto não registrado'}"></h2>
+            <p>Destinatário: <span th:text="${email.recipient ?: 'Não registrado na época do envio'}"></span></p>
+            <p><strong th:text="${email.stateLabel()}"></strong> · <span th:text="${email.providerLabel()}"></span></p>
+            <details th:if="${email.body != null}"><summary>Ver mensagem</summary>
+                <div style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:16px" th:text="${email.body}"></div>
+            </details>
+            <p class="muted" th:if="${email.body == null}">Conteúdo não registrado.</p>
+        </article>
+        <nav class="row-actions" aria-label="Paginação do histórico">
+            <a class="button" th:if="${page > 0}" th:href="@{/backoffice/stores/{storeId}/emails(storeId=${store.storeId},page=${page - 1})}">Anterior</a>
+            <span th:text="'Página ' + ${page + 1}"></span>
+            <a class="button" th:if="${hasNext}" th:href="@{/backoffice/stores/{storeId}/emails(storeId=${store.storeId},page=${page + 1})}">Próxima</a>
+        </nav>
+    </section>
+</main></body></html>

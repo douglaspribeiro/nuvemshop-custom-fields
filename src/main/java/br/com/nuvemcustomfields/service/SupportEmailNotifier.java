@@ -56,6 +56,8 @@ public class SupportEmailNotifier {
             var helper = new MimeMessageHelper(mail, true, "UTF-8");
             helper.setFrom(properties.from()); helper.setTo(event.recipient()); helper.setSubject(subject);
             helper.setText(rendered.text(), rendered.html());
+            mail.setHeader("X-NCF-Ticket-ID",event.ticketId().toString());
+            mail.setHeader("X-NCF-Email-Category","SUPPORT");
             sender.send(mail);
             LOGGER.info("support.email_sent ticket_id={}", event.ticketId());
         } catch (jakarta.mail.MessagingException | RuntimeException ex) {

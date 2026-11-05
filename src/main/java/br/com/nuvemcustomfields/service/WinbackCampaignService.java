@@ -165,6 +165,7 @@ public class WinbackCampaignService {
         helper.setText(rendered.text(), rendered.html());
         message.setHeader("X-SES-CONFIGURATION-SET", ses.configurationSet());
         message.setHeader("X-SES-MESSAGE-TAGS", "winback_campaign=" + campaign.getId() + ",winback_email=" + mail.getId());
+        StoreEmailHistoryService.identify(message,store.getStoreId(),"WINBACK_"+mail.getStep(),"winback:"+mail.getId());
         sender.send(message);
         mail.sent();
     }

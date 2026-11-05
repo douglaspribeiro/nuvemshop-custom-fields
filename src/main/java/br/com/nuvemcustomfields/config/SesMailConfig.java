@@ -4,14 +4,15 @@ import br.com.nuvemcustomfields.properties.SesProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
+import br.com.nuvemcustomfields.service.StoreEmailHistoryService;
+import br.com.nuvemcustomfields.service.TrackedMailSender;
 
 /** Transporte e remetente SES compartilhados pelo suporte e pela reconquista. */
 @Configuration
 public class SesMailConfig {
     @Bean
-    public JavaMailSender sesMailSender(SesProperties properties) {
-        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+    public JavaMailSender sesMailSender(SesProperties properties, StoreEmailHistoryService history) {
+        TrackedMailSender sender = new TrackedMailSender(history);
         sender.setHost(properties.host());
         sender.setPort(properties.port());
         sender.setUsername(properties.username());
