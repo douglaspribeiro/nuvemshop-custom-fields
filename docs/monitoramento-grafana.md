@@ -223,3 +223,72 @@ anteriores. No período padrão encerrado em agora, corresponde ao dia atual.
 A consulta integra taxas de quatro minutos em passos de um minuto. Trata-se de
 uma estimativa; lacunas parciais podem distorcer a comparação. Sem base positiva
 ou dados em algum dos sete dias, o cartão não apresenta um percentual.
+
+## Consumo horário dos eventos de e-mail SES
+
+O dashboard canônico `ncf-storefront-traffic` inclui a seção **E-mails · consumo
+horário da email-tracking-events**. Os indicadores usam métricas da aplicação,
+coletadas pelo Alloy já existente. `ncf_*` passa pelo allowlist atual; não é
+necessário habilitar outro consumidor SQS para observar a fila.
+
+`SesEventConsumer` atende winback e NC-39. Por padrão, consulta mensagens **uma
+vez por hora**, e a primeira execução ocorre uma hora após iniciar a aplicação.
+Cada execução lê lotes de até dez mensagens até a primeira resposta vazia, com
+limite de cem lotes (até mil retornos) e orçamento de 45 segundos verificado entre
+lotes. O restante aguarda o próximo ciclo. A configuração é
+`AWS_SES_EVENTS_POLL_DELAY_MS=3600000`. Não há preenchimento retroativo de métricas.
+
+A quantidade disponível, em processamento e com atraso é consultada separadamente
+via GetQueueAttributes, também a cada hora (`AWS_SES_EVENTS_ATTRIBUTES_DELAY_MS=3600000`).
+A role da aplicação precisa de `sqs:GetQueueAttributes` na mesma fila para esse
+indicador. Falta dessa permissão não impede ReceiveMessage/DeleteMessage.
+As quantidades são [aproximadas pelo SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_GetQueueAttributes.html).
+
+| Métrica Prometheus | Significado |
+| --- | --- |
+| `ncf_ses_events_consumer_enabled` | Flag de habilitação; não comprova conectividade |
+| `ncf_ses_events_messages_total{result="received"}` | Retornos de mensagens pelo SQS, incluindo reentregas |
+| `ncf_ses_events_messages_total{result="processed"}` | Ambos os processadores terminaram sem exceção, inclusive eventos ignorados |
+| `ncf_ses_events_messages_total{result="acknowledged"}` | DeleteMessage retornou sucesso após o processamento |
+| `ncf_ses_events_polls_total` | Chamadas ReceiveMessage bem-sucedidas, inclusive respostas vazias |
+| `ncf_ses_events_failures_total{stage="receive\|process\|acknowledge\|attributes"}` | Falhas separadas por etapa; os quatro valores são fixos |
+| `ncf_ses_events_last_poll_timestamp_seconds` | Última consulta de mensagens bem-sucedida neste processo |
+| `ncf_ses_events_last_ack_timestamp_seconds` | Última remoção confirmada neste processo |
+| `ncf_ses_events_queue_depth{state="visible\|in_flight\|delayed"}` | Quantidade aproximada por estado |
+| `ncf_ses_events_last_attributes_timestamp_seconds` | Última amostra completa dos atributos da fila |
+
+Consumir/remover uma mensagem SQS não comprova envio, entrega ou abertura de e-mail.
+Os gráficos de volume mostram picos horários. Fila vazia ainda atualiza a última
+leitura; nenhuma leitura neste processo tem timestamp zero e aparece com indicação
+própria. Sem séries significa versão instrumentada ainda não publicada ou falha de
+coleta, não ausência de eventos.
+
+Antes da primeira amostra, ou quando GetQueueAttributes falha, o backlog é NaN
+(desconhecido), nunca zero. O gráfico oculta amostras com mais de 65 minutos e usa
+máximo entre réplicas para não somar o mesmo backlog. Avaliar timestamps junto à
+saúde da coleta do app. As métricas não têm rótulos de loja, destinatário, token,
+ID de mensagem ou URL da fila. Os contadores/timestamps reiniciam com o processo.
+
+Logs compartilhados: `ses.events.poll_failed`, `ses.events.event_failed` e
+`ses.events.attributes_failed`; somente classe da exceção, sem corpo do evento.
+As falhas de processamento e de remoção mantêm a mensagem para nova tentativa.
+O intervalo horário significa que um bounce/complaint pode levar até o próximo
+ciclo para ser aplicado; o link próprio de descadastro segue imediato.
+
+Para aparecerem dados, publicar também a versão instrumentada da aplicação e
+carregar as variáveis SES no novo container. A atualização isolada do dashboard
+não altera o processo nem habilita a campanha de e-mails NC-39.
+
+Validação em 04/11/2026: 940 testes Java, zero falhas/erros e um ignorado;
+11 testes específicos das métricas, incluindo ACK falho, leitura vazia, falha de
+atributos, múltiplos lotes, limite de lotes e exportação Prometheus. O build limpo
+removeu a classe antiga `WinbackSesEventConsumer`; o bean atual é `SesEventConsumer`.
+Catálogo Grafana validado, cópias app/infra iguais e diff sem erros de whitespace.
+
+O painel foi publicado no Grafana Cloud, UID `ncf-storefront-traffic`, versão 35,
+com backup `1793847309-a7b5fcb1.json` pelo reconciliador. O plano posterior mostrou
+`noop`/sem drift para todo o catálogo. As nove consultas novas executaram com
+sucesso no datasource real, ainda sem séries porque esta versão instrumentada do
+app não foi implantada. Sem verificação visual no navegador. A atualização do JSON
+canônico está pendente de commit nos checkouts local e do servidor; versionar e
+publicar o catálogo para preservar a mudança nas próximas sincronizações da infra.

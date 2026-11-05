@@ -30,6 +30,28 @@ public class StoreAdminEmailService {
         LOGGER.info("store.admin_email.sent store_id={}", storeId);
     }
 
+    public void sendActivation(Long storeId, Long eventId, String recipient, String subject, String body,
+            String unsubscribeUrl, String configurationSet) {
+        // Reuse all existing pre-SMTP validation, but never substitute a changed store address.
+        var plain = prepare(storeId, subject, body);
+        if (recipient == null || !recipient.equals(plain.getTo()[0])) throw new IllegalArgumentException("Destinatário alterado antes do envio.");
+        if (eventId == null || configurationSet == null || !configurationSet.matches("[A-Za-z0-9_-]{1,64}")
+                || unsubscribeUrl == null || !unsubscribeUrl.startsWith("https://") || unsubscribeUrl.contains("\r") || unsubscribeUrl.contains("\n"))
+            throw new IllegalArgumentException("Configuração da sequência inválida.");
+        try {
+            var message = sender.createMimeMessage();
+            var helper = new org.springframework.mail.javamail.MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(plain.getFrom()); helper.setTo(recipient); helper.setSubject(plain.getSubject());
+            helper.setText(body + "\n\nParar de receber estes e-mails / Dejar de recibir estos correos: " + unsubscribeUrl);
+            message.setHeader("X-SES-CONFIGURATION-SET", configurationSet);
+            message.setHeader("X-SES-MESSAGE-TAGS", "nc39_event=" + eventId + ", nc39_store=" + storeId);
+            message.setHeader("List-Unsubscribe", "<" + unsubscribeUrl + ">");
+            message.setHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            sender.send(message);
+        } catch (jakarta.mail.MessagingException | RuntimeException ex) { throw deliveryFailure(storeId, ex); }
+        LOGGER.info("nc39.transport.accepted store_id={} event_id={}", storeId, eventId);
+    }
+
     public void sendAction(Long storeId, String subject, String body, String actionLabel, String actionUrl) {
         var plain = prepare(storeId, subject, body);
         java.net.URI uri;

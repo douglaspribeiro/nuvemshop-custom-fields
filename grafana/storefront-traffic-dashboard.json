@@ -122,7 +122,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "((100 * (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) - sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d))) / (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d)) > 0)) and on() ((hour() == 3) and (minute() == 0)))[$__range:1h]",
+          "expr": "((100 * (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h])) - sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d))) / (sum(increase(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[24h] offset 1d)) > 0)) and on() ((hour() == 3) and (minute() == 0)) and on() (sum(present_over_time(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[5m] offset 47h55m)) > 0) and on() (sum(present_over_time(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[5m] offset 24h)) > 0) and on() (sum(present_over_time(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[5m] offset 23h55m)) > 0) and on() (sum(present_over_time(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[5m])) > 0))[$__range:1h]",
           "interval": "1h",
           "instant": true,
           "range": false,
@@ -130,7 +130,7 @@
           "format": "time_series"
         }
       ],
-      "description": "Compara cada dia fechado de São Paulo com o dia anterior. Cada ponto à meia-noite refere-se ao dia ANTERIOR. Sem percentual quando o dia anterior tem zero chamadas ou não há dados suficientes. Ausência de coleta não equivale a zero. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece. A consulta instantânea retorna uma subconsulta com passo fixo de 1h, alinhado em UTC, preservando os pontos de 03:00 UTC independentemente do passo automático do Grafana."
+      "description": "Compara cada dia fechado de São Paulo com o dia anterior. Cada ponto à meia-noite refere-se ao dia ANTERIOR. Só mostra percentual se o dia anterior tem chamadas e existe coleta nos primeiros e nos últimos 5 minutos de ambos os dias; isso exclui a primeira comparação apoiada em um dia anterior de coleta parcial. Sem base válida, o ponto é omitido, não convertido em zero. Lacunas internas ainda podem subcontar o increase; presença nas fronteiras não garante coleta contínua. Janela padrão de 30 dias; seleção absoluta do dashboard prevalece. A consulta instantânea retorna uma subconsulta com passo fixo de 1h, alinhado em UTC, preservando os pontos de 03:00 UTC independentemente do passo automático do Grafana."
     },
     {
       "id": 16,
@@ -1157,6 +1157,523 @@
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 22,
+      "title": "E-mails · consumo horário da email-tracking-events",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 23,
+      "title": "SES · consumidor habilitado",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 77,
+        "w": 4,
+        "h": 5
+      },
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Ativado indica configuração, não comprova conectividade AWS. Consulte última leitura e falhas.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ncf_ses_events_consumer_enabled{job=\"app-custom-fields\"})",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem métricas",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Desativado",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Ativado · 1h",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 24,
+      "title": "SES · última leitura SQS",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 4,
+        "y": 77,
+        "w": 5,
+        "h": 5
+      },
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Instante da última chamada ReceiveMessage bem-sucedida, inclusive fila retornando vazia; zero significa nenhuma consulta bem-sucedida neste processo. Avaliar em conjunto com up/saúde da coleta.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ncf_ses_events_last_poll_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "decimals": 0,
+          "noValue": "Sem métricas",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Ainda não consultou",
+                  "color": "orange"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 25,
+      "title": "SES · mensagens consumidas no período",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 9,
+        "y": 77,
+        "w": 5,
+        "h": 5
+      },
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Conta DeleteMessage confirmado depois de ambos os processadores terminarem. Não significa e-mail entregue ou aberto. Inclui eventos ignorados por não pertencerem às campanhas e reentregas. increase é estimativa e requer amostras; não há retroativo.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ncf_ses_events_messages_total{job=\"app-custom-fields\",result=\"acknowledged\"}[$__range]))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem métricas",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 26,
+      "title": "SES · falhas no período",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 14,
+        "y": 77,
+        "w": 5,
+        "h": 5
+      },
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Soma falhas ao receber, processar, confirmar remoção e consultar atributos. Falha de atributos não interrompe o consumo. Veja a divisão por etapa abaixo.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ncf_ses_events_failures_total{job=\"app-custom-fields\"}[$__range]))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem métricas",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 27,
+      "title": "SES · última remoção confirmada",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 19,
+        "y": 77,
+        "w": 5,
+        "h": 5
+      },
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Último DeleteMessage bem-sucedido neste processo. Fila sem mensagens pode ter consultas saudáveis e nenhuma remoção. Confirma remoção da fila, não entrega de e-mail.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ncf_ses_events_last_ack_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "decimals": 0,
+          "noValue": "Sem métricas",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Nenhuma neste processo",
+                  "color": "orange"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0,
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 82,
+        "w": 12,
+        "h": 8
+      },
+      "id": 28,
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (state) (ncf_ses_events_queue_depth{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_ses_events_last_attributes_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
+          "legendFormat": "{{state}}",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ],
+      "title": "SES · mensagens na fila (aproximadas)",
+      "type": "timeseries",
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Consulta GetQueueAttributes uma vez por hora. visible: disponíveis; in_flight: recebidas ainda não removidas; delayed: com atraso de disponibilização. Valores SQS são aproximados. Usa máximo entre réplicas para não somar o mesmo backlog. Falhas deixam valores desconhecidos (NaN), não zero. Amostras com mais de 65 minutos são ocultadas. Exige sqs:GetQueueAttributes."
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0,
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 82,
+        "w": 12,
+        "h": 8
+      },
+      "id": 29,
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(ncf_ses_events_messages_total{job=\"app-custom-fields\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{result}}",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ],
+      "title": "SES · recebidas, tratadas e consumidas / minuto",
+      "type": "timeseries",
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. O volume aparece em picos horários. received: retornadas pelo SQS; processed: ambos os processadores terminaram sem exceção; acknowledged: DeleteMessage confirmado. São execuções, não eventos de negócio únicos nem e-mails enviados. Erro de ACK pode causar reentrega mesmo com processamento concluído."
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0,
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 90,
+        "w": 12,
+        "h": 8
+      },
+      "id": 30,
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (stage) (rate(ncf_ses_events_failures_total{job=\"app-custom-fields\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{stage}}",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ],
+      "title": "SES · falhas por etapa / minuto",
+      "type": "timeseries",
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. receive: obter cliente/ReceiveMessage; process: interpretar ou persistir evento; acknowledge: DeleteMessage; attributes: GetQueueAttributes. Mensagens com falha de processamento ou remoção permanecem para nova tentativa; replays são idempotentes nas campanhas."
+    },
+    {
+      "id": 31,
+      "title": "SES · última consulta da quantidade na fila",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 90,
+        "w": 12,
+        "h": 4
+      },
+      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Última amostra completa de GetQueueAttributes. Separada da leitura das mensagens, também horária. Se falhar, não mostra backlog antigo como se fosse atual; consulte falhas attributes e permissões AWS.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ncf_ses_events_last_attributes_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "decimals": 0,
+          "noValue": "Sem métricas",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Ainda sem amostra",
+                  "color": "orange"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
       }
     }
   ],

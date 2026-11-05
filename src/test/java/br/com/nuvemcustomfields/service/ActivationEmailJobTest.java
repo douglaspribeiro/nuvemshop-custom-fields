@@ -21,9 +21,13 @@ class ActivationEmailJobTest {
     final ActivationEmailOutboxRepository outbox=mock(ActivationEmailOutboxRepository.class);
     final StoreAdminEmailService mail=mock(StoreAdminEmailService.class);
     final PlatformTransactionManager manager=mock(PlatformTransactionManager.class);
-    final ActivationEmailJob job=new ActivationEmailJob(stores,rules,outbox,mail,manager,history);
+    final ActivationEmailProtectionService protection=mock(ActivationEmailProtectionService.class);
+    final br.com.nuvemcustomfields.properties.SesEventsProperties ses=new br.com.nuvemcustomfields.properties.SesEventsProperties(true,"queue","us-east-1","config");
+    final ActivationEmailJob job=new ActivationEmailJob(stores,rules,outbox,mail,manager,history,protection,ses);
     Store store;
     @BeforeEach void configure() {
+        when(protection.ready()).thenReturn(true);
+        when(protection.prepare(any(),any())).thenReturn("https://app.test/activation-emails/unsubscribe?token=test");
         when(manager.getTransaction(any())).thenAnswer(call->new SimpleTransactionStatus());
         ReflectionTestUtils.setField(job,"enabled",true);
         ReflectionTestUtils.setField(job,"dryRun",false);
@@ -35,7 +39,7 @@ class ActivationEmailJobTest {
         when(outbox.storeIdFor(1L)).thenReturn(Optional.of(12L));
     }
     Store store(Instant installed) {
-        var s=new Store();s.setStoreId(12L);s.setStoreCountryCode("BR");
+        var s=new Store();s.setStoreId(12L);s.setStoreCountryCode("BR");s.setStoreEmail("owner@example.com");
         ReflectionTestUtils.setField(s,"installedAt",installed);return s;
     }
     ActivationEmailOutbox event(String step) {
@@ -72,20 +76,20 @@ class ActivationEmailJobTest {
         assertThat(e.getState()).isEqualTo(ActivationEmailOutbox.State.SENT);assertThat(e.getAttempts()).isEqualTo(1);
         var order=inOrder(outbox,manager,mail);
         order.verify(outbox).saveAndFlush(e);order.verify(manager).commit(any());
-        order.verify(mail).send(eq(12L),anyString(),anyString());
-        verify(mail,times(1)).send(any(),any(),any());
+        order.verify(mail).sendActivation(eq(12L),any(),anyString(),anyString(),anyString(),anyString(),anyString());
+        verify(mail,times(1)).sendActivation(any(),any(),any(),any(),any(),any(),any());
     }
     @Test void smtpTimeoutRequiresReviewWithoutAutomaticRetry() {
-        var e=event("D3");doThrow(new IllegalStateException("SMTP uncertain")).when(mail).send(any(),any(),any());
+        var e=event("D3");doThrow(new IllegalStateException("SMTP uncertain")).when(mail).sendActivation(any(),any(),any(),any(),any(),any(),any());
         job.dispatch(1L,NOW);job.dispatch(1L,NOW.plusSeconds(300));
         assertThat(e.getState()).isEqualTo(ActivationEmailOutbox.State.REVIEW);
-        assertThat(e.getAttempts()).isEqualTo(1);verify(mail,times(1)).send(any(),any(),any());
+        assertThat(e.getAttempts()).isEqualTo(1);verify(mail,times(1)).sendActivation(any(),any(),any(),any(),any(),any(),any());
     }
     @Test void retriesPreSmtpValidationOnlyThreeTimes() {
-        var e=event("D3");doThrow(new IllegalArgumentException("configuration missing")).when(mail).send(any(),any(),any());
+        var e=event("D3");doThrow(new IllegalArgumentException("configuration missing")).when(mail).sendActivation(any(),any(),any(),any(),any(),any(),any());
         for(int i=0;i<4;i++)job.dispatch(1L,NOW.plusSeconds(i*600));
         assertThat(e.getState()).isEqualTo(ActivationEmailOutbox.State.FAILED);
-        assertThat(e.getAttempts()).isEqualTo(3);verify(mail,times(3)).send(any(),any(),any());
+        assertThat(e.getAttempts()).isEqualTo(3);verify(mail,times(3)).sendActivation(any(),any(),any(),any(),any(),any(),any());
     }
     @Test void futureRetryDoesNotSendEarly() {
         var e=event("D3");e.claim();e.failed(NOW);
@@ -144,9 +148,22 @@ class ActivationEmailJobTest {
     @Test void unknownStageCannotUseAnOldD15Template() {
         var e=event("UNKNOWN");job.dispatch(1L,NOW);assertThat(e.getSuppressionReason()).isEqualTo("unsupported_stage");verifyNoInteractions(mail);
     }
+    @Test void persistedOptOutSuppressesAnAlreadyQueuedStage() {
+        when(protection.reason(12L)).thenReturn("unsubscribe");var e=event("D3");job.dispatch(1L,NOW);
+        assertThat(e.getSuppressionReason()).isEqualTo("unsubscribe");verifyNoInteractions(mail);
+    }
+    @Test void feedbackArrivingAfterClaimStillStopsBeforeSmtp() {
+        when(protection.reason(12L)).thenReturn(null,"ses_complaint");var e=event("D3");job.dispatch(1L,NOW);
+        assertThat(e.getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);
+        assertThat(e.getSuppressionReason()).isEqualTo("ses_complaint");verifyNoInteractions(mail);
+    }
+    @Test void feedbackConfigurationCannotBeBypassedByTheManualGate() {
+        when(protection.ready()).thenReturn(false);var e=event("D3");job.dispatch(1L,NOW);
+        assertThat(e.getState()).isEqualTo(ActivationEmailOutbox.State.PENDING);verifyNoInteractions(mail);
+    }
     @Test void d11IsHelpCopyWithoutDiscountOrTrialExpiryPromise() {
         store=store(NOW.minus(Duration.ofDays(11)));store.setStoreCountryCode("AR");event("D11");job.dispatch(1L,NOW);
-        var body=org.mockito.ArgumentCaptor.forClass(String.class);verify(mail).send(eq(12L),contains("primer producto"),body.capture());
+        var body=org.mockito.ArgumentCaptor.forClass(String.class);verify(mail).sendActivation(eq(12L),any(),anyString(),contains("primer producto"),body.capture(),anyString(),anyString());
         assertThat(body.getValue()).contains("último correo", "soporte").doesNotContain("30%","15 días","venció","cobro");
     }
 }

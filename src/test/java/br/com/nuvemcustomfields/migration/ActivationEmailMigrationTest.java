@@ -19,6 +19,16 @@ class ActivationEmailMigrationTest {
         db.update("update nc39_activation_email_outbox set state='REVIEW' where step='D7'");
         db.update("update nc39_activation_email_outbox set state='SUPPRESSED',suppression_reason='d15_temporarily_disabled' where step='D15'");
         assertThat(db.queryForObject("select count(*) from nc39_activation_email_outbox",Integer.class)).isEqualTo(4);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V68__nc39_email_protections.sql")).execute(ds);
+        db.update("update nc39_activation_email_outbox set unsubscribe_token_hash='hash',recipient_hash='recipient',ses_message_id='provider' where step='D3'");
+        assertThatThrownBy(() -> db.update("update nc39_activation_email_outbox set unsubscribe_token_hash='hash' where step='D7'"))
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
+        db.update("insert into nc39_activation_email_suppressions(store_id,reason,suppressed_at) values(12,'ses_bounce',CURRENT_TIMESTAMP)");
+        assertThatThrownBy(() -> db.update("insert into nc39_activation_email_suppressions(store_id,reason,suppressed_at) values(12,'unsubscribe',CURRENT_TIMESTAMP)"))
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
+        db.update("insert into nc39_activation_email_feedback(id,store_id,event_id,event_type,occurred_at) values('receipt',12,1,'Bounce',CURRENT_TIMESTAMP)");
+        assertThatThrownBy(() -> db.update("insert into nc39_activation_email_feedback(id,store_id,event_id,event_type,occurred_at) values('receipt',12,1,'Bounce',CURRENT_TIMESTAMP)"))
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
         assertThat(db.queryForObject("select state from nc39_activation_email_outbox where step='D11'",String.class)).isEqualTo("PENDING");
     }
 }

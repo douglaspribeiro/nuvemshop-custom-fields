@@ -31,8 +31,13 @@ class ActivationEmailFlowIntegrationTest {
     @Autowired StoreDataErasureService erasure;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean StoreAdminEmailService mail;
+    @MockitoBean ActivationEmailProtectionService protection;
+    @MockitoBean br.com.nuvemcustomfields.properties.SesEventsProperties ses;
     Instant installed;
     @BeforeEach void setup() {
+        when(ses.configurationSet()).thenReturn("config");
+        when(protection.ready()).thenReturn(true);
+        when(protection.prepare(any(),any())).thenReturn("https://app.test/activation-emails/unsubscribe?token=test");
         installed=Instant.now().minus(Duration.ofDays(7)).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         var s=new Store();s.setStoreId(STORE);s.setStoreCountryCode("BR");s.setStoreName("private-owner-name");
         s.setStoreEmail("owner-sensitive@example.com");ReflectionTestUtils.setField(s,"installedAt",installed);stores.saveAndFlush(s);
@@ -61,7 +66,7 @@ class ActivationEmailFlowIntegrationTest {
         for(int d:new int[]{3,3,7,7,11,11,15})job.scheduleAt(day(d));
         assertThat(rows()).extracting(ActivationEmailOutbox::getStep).containsExactlyInAnyOrder("D3","D7","D11");
         assertThat(rows()).allMatch(e->e.getState()==ActivationEmailOutbox.State.SENT && e.getAttempts()==1);
-        verify(mail,times(3)).send(eq(STORE),anyString(),anyString());
+        verify(mail,times(3)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
         assertThat(output).contains("nc39.email.queued","step=D11","nc39.email.claimed","nc39.email.sent")
                 .doesNotContain("owner-sensitive@example.com","private-owner-name");
     }
@@ -69,7 +74,7 @@ class ActivationEmailFlowIntegrationTest {
         job.scheduleAt(day(3));configureProduct(false);job.scheduleAt(day(7));
         assertThat(row("ACTIVATED").getState()).isEqualTo(ActivationEmailOutbox.State.ACTIVATED);
         var r=rules.findByStoreIdAndProductId(STORE,10L).orElseThrow();r.setEnabled(false);rules.saveAndFlush(r);
-        job.scheduleAt(day(11));verify(mail,times(1)).send(eq(STORE),anyString(),anyString());
+        job.scheduleAt(day(11));verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
         assertThat(rows()).extracting(ActivationEmailOutbox::getStep).containsExactlyInAnyOrder("D3","ACTIVATED");
     }
     @Test void pausedConfigurationDoesNotGetMistakenForNeverConfigured() {
@@ -99,10 +104,10 @@ class ActivationEmailFlowIntegrationTest {
         assertThat(queue.findById(e7.getId()).orElseThrow().getState()).isEqualTo(ActivationEmailOutbox.State.SUPPRESSED);verifyNoInteractions(mail);
     }
     @Test void smtpTimeoutLeavesReviewAndNeverRetriesAutomatically() {
-        doThrow(new IllegalStateException("SMTP uncertain")).when(mail).send(any(),any(),any());
+        doThrow(new IllegalStateException("SMTP uncertain")).when(mail).sendActivation(any(),any(),any(),any(),any(),any(),any());
         job.scheduleAt(day(3));job.dispatchDue(day(3).plusSeconds(120));
         assertThat(row("D3").getState()).isEqualTo(ActivationEmailOutbox.State.REVIEW);assertThat(row("D3").getAttempts()).isEqualTo(1);
-        verify(mail,times(1)).send(eq(STORE),anyString(),anyString());
+        verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
     }
     @Test void concurrentWorkersSeeCommittedClaimAndDoNotHoldTransactionDuringSmtp() throws Exception {
         var e=pending("D3",3);var entered=new CountDownLatch(1);var release=new CountDownLatch(1);
@@ -110,7 +115,7 @@ class ActivationEmailFlowIntegrationTest {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             assertThat(queue.findById(e.getId()).orElseThrow().getState()).isEqualTo(ActivationEmailOutbox.State.CLAIMED);
             entered.countDown();assertThat(release.await(5,TimeUnit.SECONDS)).isTrue();return null;
-        }).when(mail).send(eq(STORE),anyString(),anyString());
+        }).when(mail).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
         try(var workers=Executors.newFixedThreadPool(2)) {
             var first=workers.submit(()->job.dispatch(e.getId(),day(3)));
             try {
@@ -120,7 +125,7 @@ class ActivationEmailFlowIntegrationTest {
             first.get(5,TimeUnit.SECONDS);
         }
         assertThat(queue.findById(e.getId()).orElseThrow().getState()).isEqualTo(ActivationEmailOutbox.State.SENT);
-        verify(mail,times(1)).send(eq(STORE),anyString(),anyString());
+        verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
     }
     @Test void concurrentSchedulersCreateOnlyOneInstallationStep() throws Exception {
         try(var workers=Executors.newFixedThreadPool(2)) {
@@ -128,7 +133,7 @@ class ActivationEmailFlowIntegrationTest {
             a.get(10,TimeUnit.SECONDS);b.get(10,TimeUnit.SECONDS);
         }
         assertThat(rows()).hasSize(1);assertThat(row("D3").getState()).isEqualTo(ActivationEmailOutbox.State.SENT);
-        verify(mail,times(1)).send(eq(STORE),anyString(),anyString());
+        verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
     }
     @Test void lgpdErasureDeletesTheActivationQueue() {
         pending("D3",3);
@@ -141,6 +146,6 @@ class ActivationEmailFlowIntegrationTest {
         var s=stores.findByStoreId(STORE).orElseThrow();s.setUninstalledAt(day(4));stores.saveAndFlush(s);
         s.setUninstalledAt(null);stores.saveAndFlush(s);job.scheduleAt(day(3));
         assertThat(stores.findByStoreId(STORE).orElseThrow().getInstalledAt()).isEqualTo(installed);
-        assertThat(rows()).hasSize(1);verify(mail,times(1)).send(eq(STORE),anyString(),anyString());
+        assertThat(rows()).hasSize(1);verify(mail,times(1)).sendActivation(eq(STORE),any(),anyString(),anyString(),anyString(),anyString(),anyString());
     }
 }

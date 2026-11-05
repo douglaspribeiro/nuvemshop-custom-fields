@@ -31,7 +31,7 @@ Configuration Set do SES com destino para a fila SQS de eventos:
 
 ```text
 AWS_SES_EVENTS_ENABLED=false
-AWS_SES_EVENTS_QUEUE_URL=<URL da fila SQS de eventos SES>
+AWS_SES_EVENTS_QUEUE_URL=<URL completa da fila email-tracking-events>
 AWS_SES_EVENTS_REGION=<região da fila de eventos>
 AWS_SES_CONFIGURATION_SET=<nome do Configuration Set>
 ```
@@ -73,3 +73,15 @@ Também registra `reason` e `smtpCode`, extraídos das exceções SMTP internas.
 Rejeições conhecidas mostram uma orientação específica no backoffice, sem
 publicar o texto bruto do provedor. Esse diagnóstico vale para novas tentativas;
 não recupera detalhes omitidos por versões anteriores nem dispara reenvios.
+
+## Consumidor compartilhado e intervalo
+
+`SesEventConsumer` processa eventos do winback e da sequência de ativação NC-39.
+A leitura é horária por padrão (`AWS_SES_EVENTS_POLL_DELAY_MS=3600000`), com a
+primeira execução após uma hora do início da aplicação. Cada execução consome
+lotes até a primeira resposta vazia, com teto de cem lotes/45 segundos verificados
+entre lotes. O orçamento evita um ciclo ilimitado e o restante fica para a próxima hora.
+A consulta de quantidade na fila também é horária
+(`AWS_SES_EVENTS_ATTRIBUTES_DELAY_MS=3600000`) e exige `sqs:GetQueueAttributes`.
+A seção de e-mails do Grafana mostra volume, falhas, estado e última leitura.
+Os logs agora usam `ses.events.*`, pois o consumidor não é exclusivo do winback.

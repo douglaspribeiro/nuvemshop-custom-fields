@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.ActivationEmailOutbox;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.properties.SesEventsProperties;
 import br.com.nuvemcustomfields.repository.ActivationEmailOutboxRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationFieldHistoryRepository;
@@ -32,6 +33,8 @@ public class ActivationEmailJob {
     private final StoreAdminEmailService mail;
     private final TransactionTemplate tx;
     private final PersonalizationFieldHistoryRepository history;
+    private final ActivationEmailProtectionService protection;
+    private final SesEventsProperties sesEvents;
     @Value("${activation.email.enabled:false}") private boolean enabled;
     @Value("${activation.email.dry-run:true}") private boolean dryRun;
     @Value("${activation.email.allowlist:}") private String allowlistText;
@@ -40,10 +43,11 @@ public class ActivationEmailJob {
 
     public ActivationEmailJob(StoreRepository stores, PersonalizationRuleRepository rules,
             ActivationEmailOutboxRepository outbox, StoreAdminEmailService mail, PlatformTransactionManager manager,
-            PersonalizationFieldHistoryRepository history) {
+            PersonalizationFieldHistoryRepository history, ActivationEmailProtectionService protection,
+            SesEventsProperties sesEvents) {
         this.stores = stores; this.rules = rules; this.outbox = outbox; this.mail = mail;
         this.tx = new TransactionTemplate(manager);
-        this.history = history;
+        this.history = history; this.protection = protection; this.sesEvents = sesEvents;
         this.tx.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
@@ -72,6 +76,8 @@ public class ActivationEmailJob {
         if (store == null) return;
         Instant installed = store.getInstalledAt();
         if (installed == null || installed.isBefore(startAt) || store.isErasurePending()) return;
+        String blocked = protection.reason(store.getStoreId());
+        if (blocked != null) { suppressPending(store, blocked); return; }
         if (configured(store.getStoreId())) {
             if (!outbox.existsByStoreIdAndStep(store.getStoreId(), "ACTIVATED")) {
                 var activated = new ActivationEmailOutbox(store.getStoreId(), installed, "ACTIVATED", now, VERSION);
@@ -126,7 +132,11 @@ public class ActivationEmailJob {
         log.info("nc39.email.claimed store_id={} event_id={} step={} attempt={}",
                 delivery.storeId(), id, delivery.step(), delivery.attempt());
         try {
-            mail.send(delivery.storeId(), delivery.copy().subject(), delivery.copy().body());
+            // Feedback committed after the claim still cancels delivery before SMTP begins.
+            String blocked = protection.reason(delivery.storeId());
+            if (blocked != null) { finish(id, event -> suppress(event, blocked)); return; }
+            mail.sendActivation(delivery.storeId(), id, delivery.recipient(), delivery.copy().subject(),
+                    delivery.copy().body(), delivery.unsubscribeUrl(), sesEvents.configurationSet());
             finish(id, event -> event.sent(now));
             log.info("nc39.email.sent store_id={} event_id={}", delivery.storeId(), id);
         } catch (IllegalArgumentException ex) {
@@ -168,14 +178,18 @@ public class ActivationEmailJob {
         if (now.isBefore(store.getInstalledAt().plus(stageAge))) return null;
         Set<Long> allowlist = parseAllowlist();
         if (allowlist.isEmpty() || !allowlist.contains(store.getStoreId())) { suppress(event, "not_allowlisted"); return null; }
+        String blocked = protection.reason(store.getStoreId());
+        if (blocked != null) { suppress(event, blocked); return null; }
+        if (!dryRun && !protection.ready()) { log.debug("nc39.email.deferred event_id={} reason=feedback_not_configured", id); return null; }
         if (!suppressionReady) { log.debug("nc39.email.deferred event_id={} reason=suppression_not_ready", id); return null; }
         if (dryRun) {
             event.simulated(); log.info("nc39.email.simulated store_id={} step={}", store.getStoreId(), event.getStep()); return null;
         }
         MailCopy copy = copy(event.getStep(), store.getStoreCountryCode(), store.getStoreName());
+        String unsubscribeUrl = protection.prepare(event, store.getStoreEmail());
         event.claim();
         outbox.saveAndFlush(event); // Committed by REQUIRES_NEW before any SMTP call.
-        return new Delivery(store.getStoreId(), copy, event.getStep(), event.getAttempts());
+        return new Delivery(store.getStoreId(), copy, event.getStep(), event.getAttempts(), store.getStoreEmail(), unsubscribeUrl);
     }
 
     private void finish(Long id, java.util.function.Consumer<ActivationEmailOutbox> update) {
@@ -217,5 +231,5 @@ public class ActivationEmailJob {
         throw new IllegalArgumentException("Unsupported activation stage");
     }
     private record MailCopy(String subject, String body) { }
-    private record Delivery(Long storeId, MailCopy copy, String step, int attempt) { }
+    private record Delivery(Long storeId, MailCopy copy, String step, int attempt, String recipient, String unsubscribeUrl) { }
 }

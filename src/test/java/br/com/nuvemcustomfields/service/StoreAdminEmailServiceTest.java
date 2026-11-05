@@ -87,4 +87,15 @@ class StoreAdminEmailServiceTest {
         assertThatThrownBy(() -> service.send(12L, "Assunto", "Mensagem"))
                 .isInstanceOf(IllegalStateException.class).hasMessageNotContaining("secret").hasMessageNotContaining("owner@example.com");
     }
+    @Test void changedRecipientOrInjectedHeadersNeverReachSmtp() {
+        recipient("updated@example.com");
+        assertThatThrownBy(()->service.sendActivation(12L,1L,"old@example.com","Ajuda","Mensagem",
+                "https://app.test/unsubscribe?token=token","config")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(()->service.sendActivation(12L,1L,"updated@example.com","Ajuda","Mensagem",
+                "https://app.test/unsubscribe?token=token","config\r\nBcc: victim@example.com")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(()->service.sendActivation(12L,1L,"updated@example.com","Ajuda","Mensagem",
+                "https://app.test/unsubscribe?token=token\r\nBcc: victim@example.com","config")).isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(sender);
+    }
+
 }

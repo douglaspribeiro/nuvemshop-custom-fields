@@ -19,6 +19,15 @@ public class ActivationEmailOutbox {
     @Column(name = "suppression_reason", length = 80) private String suppressionReason;
     @Column(name = "template_version", nullable = false, length = 32) private String templateVersion;
 
+    @Column(name = "unsubscribe_token_hash", length = 64) private String unsubscribeTokenHash;
+    @Column(name = "recipient_hash", length = 64) private String recipientHash;
+    @Column(name = "ses_message_id", length = 200) private String sesMessageId;
+    public String getRecipientHash() { return recipientHash; }
+    public String getSesMessageId() { return sesMessageId; }
+    public void prepareDelivery(String tokenHash, String recipientHash) {
+        this.unsubscribeTokenHash = tokenHash; this.recipientHash = recipientHash;
+    }
+    public void acceptedBySes(String id) { this.sesMessageId = id; }
     protected ActivationEmailOutbox() { }
     public ActivationEmailOutbox(Long storeId, Instant installedAt, String step, Instant due, String templateVersion) {
         this.storeId = storeId; this.installedAt = installedAt; this.step = step;
