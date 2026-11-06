@@ -164,11 +164,19 @@ class StoreTemplatesTest {
     }
     @Test void eligibleUploadDefinitionCopiesOnlyConfiguration() {
         when(buyerStorage.enabled()).thenReturn(true);
-        jdbc.update("insert into buyer_upload_entitlements(store_id,offer_code,quota_bytes,enabled,created_at) values (?,?,?,true,?)",store,BuyerUploadPolicy.OFFER,BuyerUploadPolicy.PRO_BYTES,Timestamp.from(Instant.now()));
         var upload=new TemplateFieldDefinition("Arte",FieldType.FILE_UPLOAD,true,100,"Envie PDF",null,"PDF",null,true,null);
         var template=templates.create(store,"Upload",null,List.of(upload));apply(template,123,StoreTemplateService.Mode.APPEND);
         assertThat(product(123).getFirst().getFieldType()).isEqualTo(FieldType.FILE_UPLOAD);
         assertThat(jdbc.queryForObject("select count(*) from buyer_uploads where store_id=?",Long.class,store)).isZero();
+    }
+    @Test void reviewFailureKeepsProductSelectionVisibleInsteadOfRenderingJson() throws Exception {
+        var model=model("Nome");
+        when(api.getProduct(any(),eq(123L))).thenThrow(new IllegalArgumentException("unavailable"));
+        mvc.perform(get("/admin/templates/review").session(session).param("key",model.key()).param("productId","123"))
+                .andExpect(status().isOk()).andExpect(view().name("admin/template-choose"))
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Não foi possível verificar o produto")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Caderno")));
     }
     @Test void libraryEditorPreviewAndStorefrontRenderWithCopiedDefinitions() throws Exception {
         var model=model("Nome");apply(model,123,StoreTemplateService.Mode.APPEND);

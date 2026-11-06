@@ -37,8 +37,6 @@ import java.util.UUID;
 
 @Service
 public class PaymentSubscriptionService {
-    @org.springframework.beans.factory.annotation.Autowired
-    private BuyerUploadOfferService buyerUploadOffer;
     private static final Logger LOGGER = LoggerFactory.getLogger(PaymentSubscriptionService.class);
     private static final long PENDING_TIMEOUT_MINUTES = 30;
     private static final String EXPIRED_ATTEMPT_MESSAGE =
@@ -261,7 +259,6 @@ public class PaymentSubscriptionService {
         if (local == null) {
             local = new PaymentSubscription();
             local.setStoreId(storeId);
-            if(buyerUploadOffer!=null) buyerUploadOffer.captureNewSubscription(local,store);
         }
         String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
         var quote = winbackDiscounts == null
@@ -547,7 +544,6 @@ public class PaymentSubscriptionService {
         if (subscription == null) {
             subscription = new PaymentSubscription();
             subscription.setStoreId(storeId);
-            if(buyerUploadOffer!=null) buyerUploadOffer.captureNewSubscription(subscription,store);
         }
         String reference = "ncf_" + storeId + "_" + UUID.randomUUID().toString().replace("-", "");
         PaymentAttempt attempt = null;

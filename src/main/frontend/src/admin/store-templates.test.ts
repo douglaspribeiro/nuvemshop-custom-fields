@@ -11,7 +11,7 @@ function boot(markup:string,model:unknown=null) {
     Object.assign(dom.window,{fetch,ncfTemplateEditor:{template:model},ncfInitFieldEditor:vi.fn(),ncfInitOptionImages:vi.fn()});
     dom.window.eval(source);return fetch;
 }
-const row=`<fieldset><legend data-template-heading></legend><input name="label" required><select name="fieldType"><option>TEXT</option><option>CHECKBOX</option></select><input name="required" type="checkbox"><input name="maxLength" value="100"><input name="placeholder"><input name="validationPattern"><textarea name="optionsText"></textarea><input name="imageOptionsJson"><input name="showImageZoom" type="checkbox"><select name="mobileImageColumns"><option value=""></option></select><section class="image-options-editor" data-uploading-count="0"></section><button type="button" data-field-remove>Remover</button><button type="button" data-field-up>Subir</button><button type="button" data-field-down>Descer</button></fieldset>`;
+const row=`<section><h2 data-template-heading></h2><input name="label" required><select name="fieldType"><option>TEXT</option><option>CHECKBOX</option></select><input name="required" type="checkbox"><input name="maxLength" value="100"><input name="placeholder"><input name="validationPattern"><textarea name="optionsText"></textarea><input name="imageOptionsJson"><input name="showImageZoom" type="checkbox"><select name="mobileImageColumns"><option value=""></option></select><section class="image-options-editor" data-uploading-count="0"></section><button type="button" data-field-remove>Remover</button><button type="button" data-field-up>Subir</button><button type="button" data-field-down>Descer</button></section>`;
 const editor=`<form id="template-editor"><input name="templateName" required><textarea name="templateDescription"></textarea><div id="template-fields"></div><button type="button" id="template-add-field">Adicionar</button><button type="submit">Salvar</button></form><template id="template-field-row">${row}</template>`;
 it("reuses field/image editors, preserves order and sends definitions without buyer values",async()=>{
     const fetch=boot(editor,{id:3,name:"Modelo",revision:2,fields:[{label:"Primeiro",fieldType:"TEXT",maxLength:40,required:true},{label:"Segundo",fieldType:"CHECKBOX",maxLength:100,optionsText:"A\nB",buyerValue:"nunca copiar"}]});
@@ -25,7 +25,7 @@ it("reuses field/image editors, preserves order and sends definitions without bu
     expect(JSON.stringify(payload)).not.toContain("buyerValue");
     expect(fetch.mock.calls[0][1].headers["X-NCF-Action"]).toBe("template-write");
     await vi.waitFor(()=>expect(doc.getElementById("template-status")!.textContent).toBe("Falha de rede"));
-    expect(doc.querySelectorAll("#template-fields > fieldset")).toHaveLength(2);
+    expect(doc.querySelectorAll("#template-fields > section")).toHaveLength(2);
 });
 it("blocks save while an image upload is incomplete",()=>{
     const fetch=boot(editor,{id:3,name:"Modelo",revision:2,fields:[{label:"Nome",fieldType:"TEXT",maxLength:40}]});

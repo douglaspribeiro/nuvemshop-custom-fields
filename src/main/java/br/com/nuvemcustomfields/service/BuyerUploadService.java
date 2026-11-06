@@ -144,25 +144,78 @@ public class BuyerUploadService {
     public void cart(long storeId,String token,String id) { authenticate(storeId,token);ledger.attachCart(storeId,id,token); }
     public void validate(long storeId,String token,String id) { authenticate(storeId,token);ledger.validateTemporary(storeId,id,token); }
     public void remove(long storeId,String token,String id) { authenticate(storeId,token);ledger.removeTemporary(storeId,id,token); }
-    public List<Map<String,Object>> orders(long storeId) {
-        return jdbc.queryForList("select id,original_name,size_bytes,state,order_id,order_item_id,expires_at from buyer_uploads "
-                + "where store_id=? and order_id is not null order by order_created_at desc limit 500",storeId);
+    public record FilePage(List<Map<String,Object>> files, int page, int pages, long totalOrders, long pendingBytes) {}
+    public FilePage orders(long storeId,int page,String sort,Instant before) {
+        if (page<1 || !Set.of("oldest","newest","largest").contains(sort)) throw rejected("upload.selection.invalid");
+        String filter="store_id=? and order_id is not null and state in ('ORDERED','DELETING')";
+        List<Object> args=new ArrayList<>();args.add(storeId);
+        if(before!=null){filter+=" and order_created_at<=?";args.add(ts(before));}
+        long count=jdbc.queryForObject("select count(distinct order_id) from buyer_uploads where "+filter,Long.class,args.toArray());
+        int pages=Math.max(1,(int)((count+19)/20));page=Math.min(page,pages);
+        String order=switch(sort){case "largest" -> "sum(size_bytes) desc, order_id";case "newest" -> "min(order_created_at) desc, order_id";default -> "min(order_created_at), order_id";};
+        var queryArgs=new ArrayList<>(args);queryArgs.add((page-1)*20);
+        var orderIds=jdbc.queryForList("select order_id from buyer_uploads where "+filter+" group by order_id order by "+order+" limit 20 offset ?",Long.class,queryArgs.toArray());
+        List<Map<String,Object>> result=List.of();
+        if(!orderIds.isEmpty()) {
+            var fileArgs=new ArrayList<Object>();fileArgs.add(storeId);fileArgs.addAll(orderIds);
+            result=jdbc.queryForList("select id,original_name,size_bytes,state,order_id,order_item_id,order_created_at,expires_at from buyer_uploads "
+                    +"where store_id=? and state in ('ORDERED','DELETING') and order_id in ("+String.join(",",Collections.nCopies(orderIds.size(),"?"))+") order by order_item_id,id",fileArgs.toArray());
+            var positions=new HashMap<Long,Integer>();for(int i=0;i<orderIds.size();i++)positions.put(orderIds.get(i),i);
+            result.sort(Comparator.comparingInt(row -> positions.get(((Number)row.get("order_id")).longValue())));
+        }
+        long pending=jdbc.queryForObject("select coalesce(sum(size_bytes),0) from buyer_uploads where store_id=? and state='DELETING'",Long.class,storeId);
+        return new FilePage(result,page,pages,count,pending);
     }
-    public Download download(long storeId,String id) {
+    public record ArchiveFile(String id,long orderId,long itemId,String name,long size,String bucket,String key) {}
+    public record Archive(long storeId,List<ArchiveFile> files,long bytes) {}
+    public Archive archive(long storeId,List<String> ids) {
         return tx.execute(status -> {
             lock(storeId);
-            // No current plan requirement: existing orders retain their download window.
-            var rows=jdbc.queryForList("select original_name,content_type,bucket,object_key,size_bytes from buyer_uploads where id=? and store_id=? "
-                    + "and state='ORDERED' and expires_at>? for update",id,storeId,ts(Instant.now()));
-            if(rows.isEmpty()) throw rejected("upload.not.found");
-            var row=rows.getFirst();
-            long size=((Number)row.get("size_bytes")).longValue();
-            if(downloadTraffic.get(storeId,key->new java.util.concurrent.atomic.AtomicLong()).addAndGet(size)>1_000_000_000L)
-                throw rejected("upload.rate.limit");
-            var stream=storage.read((String)row.get("bucket"),(String)row.get("object_key"));
-            metrics.counter("ncf.buyer.downloads").increment();
-            return new Download((String)row.get("original_name"),size,stream);
+            var selected=BuyerUploadLedger.selection(ids);
+            List<ArchiveFile> result=new ArrayList<>();long bytes=0;
+            for(String id:selected){
+                var rows=jdbc.queryForList("select * from buyer_uploads where id=? and store_id=? and order_id is not null and state='ORDERED' and expires_at>? for update",id,storeId,ts(Instant.now()));
+                if(rows.isEmpty())throw rejected("upload.not.found");
+                var row=rows.getFirst();long size=((Number)row.get("size_bytes")).longValue();bytes+=size;
+                result.add(new ArchiveFile(id,((Number)row.get("order_id")).longValue(),((Number)row.get("order_item_id")).longValue(),
+                        (String)row.get("original_name"),size,(String)row.get("bucket"),(String)row.get("object_key")));
+            }
+            reserveDownloadTraffic(storeId,bytes);
+            return new Archive(storeId,List.copyOf(result),bytes);
         });
+    }
+    private void reserveDownloadTraffic(long storeId,long bytes) {
+        var traffic=downloadTraffic.get(storeId,key->new java.util.concurrent.atomic.AtomicLong());
+        for(;;){long used=traffic.get();if(bytes>1_000_000_000L-used)throw rejected("upload.rate.limit");if(traffic.compareAndSet(used,used+bytes))return;}
+    }
+    private static final class ArchiveOutput extends java.util.zip.ZipOutputStream {
+        ArchiveOutput(java.io.OutputStream output){super(output,StandardCharsets.UTF_8);}
+        void release(){def.end();}
+    }
+    public void writeArchive(Archive archive,java.io.OutputStream output) throws java.io.IOException {
+        var zip=new ArchiveOutput(output);
+        try {
+        // Finish only a complete ZIP; an interrupted archive must not look like a complete download.
+        for(var file:archive.files()) {
+            String name=(file.name()==null?"arquivo":file.name()).replaceAll("[^a-zA-Z0-9._-]","_");
+            zip.putNextEntry(new java.util.zip.ZipEntry("pedido-"+file.orderId()+"/item-"+file.itemId()+"/"+file.id()+"-"+name));
+            try(var input=storage.read(file.bucket(),file.key())) {
+                if(input.transferTo(zip)!=file.size())throw new java.io.IOException("Incomplete archive file");
+            }
+            zip.closeEntry();
+        }
+        zip.finish();zip.flush();
+        metrics.counter("ncf.buyer.downloads").increment(archive.files().size());
+        } catch (java.io.IOException | RuntimeException error) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).warn("buyer.files.download_failed store_id={} files={} type={}",archive.storeId(),archive.files().size(),error.getClass().getSimpleName());
+            throw error;
+        } finally { zip.release(); }
+    }
+    public Download download(long storeId,String id) {
+        var archive=archive(storeId,List.of(id));var file=archive.files().getFirst();
+        var stream=storage.read(file.bucket(),file.key());
+        metrics.counter("ncf.buyer.downloads").increment();
+        return new Download(file.name(),file.size(),stream);
     }
     @Scheduled(fixedDelayString="${buyer-uploads.cleanup-delay-ms:60000}")
     public void cleanup() {

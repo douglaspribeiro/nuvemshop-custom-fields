@@ -34,6 +34,19 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/backoffice/login");
     }
 
+    @Override
+    public void configureAsyncSupport(org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer configurer) {
+        configurer.registerCallableInterceptors(new org.springframework.web.context.request.async.CallableProcessingInterceptor() {
+            @Override public <T> void beforeConcurrentHandling(org.springframework.web.context.request.NativeWebRequest request,java.util.concurrent.Callable<T> task) {
+                var servlet=request.getNativeRequest(jakarta.servlet.http.HttpServletRequest.class);
+                if(servlet!=null && servlet.getRequestURI().equals(servlet.getContextPath()+"/admin/buyer-uploads/download-zip")) {
+                    var async=org.springframework.web.context.request.async.WebAsyncUtils.getAsyncManager(servlet).getAsyncWebRequest();
+                    if(async!=null)async.setTimeout(java.time.Duration.ofMinutes(10).toMillis());
+                }
+            }
+        });
+    }
+
     /** O nome do bean precisa ser localeResolver: e por ele que o DispatcherServlet procura. */
     @Bean
     public LocaleResolver localeResolver() {

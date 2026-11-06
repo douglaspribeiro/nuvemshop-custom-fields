@@ -35,11 +35,11 @@ class BuyerUploadLedgerTest {
         jdbc.execute("create table personalization_fields (id bigint primary key, rule_id bigint)");
         try (var connection = source.getConnection()) {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V70__buyer_upload_ledger.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V72__buyer_upload_access_by_plan.sql"));
         }
         jdbc.update("insert into stores(store_id,plan) values (1,'PREMIUM_PLUS'),(2,'PREMIUM_ULTRA')");
         jdbc.update("insert into personalization_rules values (10,1,100),(20,2,200)");
         jdbc.update("insert into personalization_fields values (11,10),(22,20)");
-        jdbc.update("insert into buyer_upload_entitlements values (1,?,?,true,?)", OFFER, PRO_BYTES, Timestamp.from(Instant.now()));
         ledger = new BuyerUploadLedger(jdbc);
         tx = new TransactionTemplate(new DataSourceTransactionManager(source));
     }
@@ -50,12 +50,32 @@ class BuyerUploadLedgerTest {
     private void stored(BuyerUploadLedger.Entry file) { run(() -> ledger.stored(1,file.id(),SESSION,file.sizeBytes())); }
     private void cart(BuyerUploadLedger.Entry file) { stored(file); run(() -> ledger.attachCart(1,file.id(),SESSION)); }
 
-    @Test void existingPlansDoNotGrantEntitlementAndSuspensionBlocksNewUploads() {
-        assertFalse(ledger.usage(2).acceptsUploads());
+    @Test void proAndUltraGrantAccessWithoutSubscriptionOrEntitlementAndSuspensionBlocksUploads() {
+        assertTrue(ledger.usage(1).acceptsUploads());
+        assertTrue(ledger.usage(2).acceptsUploads());
+        assertEquals(PRO_BYTES, ledger.usage(1).quotaBytes());
+        assertEquals(ULTRA_BYTES, ledger.usage(2).quotaBytes());
         jdbc.update("update stores set billing_suspended=true where store_id=1");
         assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(1));
         jdbc.update("update stores set billing_suspended=false,plan='PREMIUM' where store_id=1");
         assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(1));
+    }
+    @Test void upgradeAndDowngradeChangeQuotaWithoutResettingExistingUsage() {
+        var file=reserve(100);
+        jdbc.update("update buyer_uploads set size_bytes=? where id=?",PRO_BYTES+1,file.id());
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(1));
+        jdbc.update("update stores set plan='PREMIUM_ULTRA' where store_id=1");
+        assertEquals(ULTRA_BYTES,ledger.usage(1).quotaBytes());
+        assertDoesNotThrow(() -> reserve(1));
+        jdbc.update("update stores set plan='PREMIUM_PLUS' where store_id=1");
+        assertEquals(PRO_BYTES,ledger.usage(1).quotaBytes());
+        assertEquals(PRO_BYTES+2,ledger.usage(1).occupiedBytes());
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(1));
+    }
+    @Test void ultraEnforcesItsOwnQuotaWithoutAnyAdditionalPermission() {
+        var file=tx.execute(status -> ledger.reserve(2,200,22,SESSION,UUID.randomUUID().toString(),MAX_FILE_BYTES));
+        jdbc.update("update buyer_uploads set size_bytes=? where id=?",ULTRA_BYTES,file.id());
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> tx.execute(status -> ledger.reserve(2,200,22,SESSION,UUID.randomUUID().toString(),1)));
     }
     @Test void reservesRealBytesAndRetriesDoNotConsumeSpaceTwice() {
         String request = UUID.randomUUID().toString();

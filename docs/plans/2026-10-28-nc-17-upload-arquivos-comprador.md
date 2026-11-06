@@ -7,9 +7,9 @@ Fonte comercial: `roadmap/produtos/nuvem-custom-fields/features/upload-arquivos-
 ## Implementação
 
 - Tipo `FILE_UPLOAD` no editor, título, instrução, obrigatório e formatos JPEG/PNG/PDF configurados em linhas separadas. Vazio aceita os três. Permanecem os limites existentes de produtos e campos.
-- Identificação explícita `BUYER_UPLOAD_V1` capturada na primeira assinatura local criada após habilitar a nova oferta. O direito depende também de assinatura de produção ativa e plano Pro/Ultra. Assinaturas existentes continuam sem essa identificação. Atualizações de cobrança não migram contratos automaticamente.
-- Liberação desligada por padrão: `BUYER_UPLOAD_NEW_OFFER_ENABLED=false`. A tabela de concessões explícitas também permite identificar migrações futuras deliberadas; nenhum registro é criado automaticamente para contratos antigos.
-- Unidades decimais: máximo de 20.000.000 bytes por arquivo; Pro 5.000.000.000 bytes; Ultra 25.000.000.000 bytes de ocupação simultânea. Alterar entre Pro/Ultra muda a franquia para novos envios, sem apagar objetos existentes.
+- Upload liberado pelo plano Pro/Ultra, inclusive em assinaturas existentes, sem oferta ou concessão separada. Loja suspensa, desinstalada ou em apagamento não aceita novos uploads.
+- O armazenamento privado deve estar configurado; a cota vem diretamente do plano: Pro 2 GB e Ultra 20 GB.
+- Unidades decimais: máximo de 20.000.000 bytes por arquivo; Pro 2.000.000.000 bytes; Ultra 20.000.000.000 bytes de ocupação simultânea. Alterar entre Pro/Ultra muda a franquia para novos envios, sem apagar objetos existentes.
 - Reservas persistentes com bloqueio da loja, sessão aleatória emitida pelo servidor e hash SHA-256 no banco. Repetir a mesma requisição concluída devolve o mesmo identificador e não cobra espaço novamente. Tentativas concorrentes não podem gravar sobre o mesmo objeto.
 - Estados `RESERVED → TEMPORARY → CART → ORDERED`, seguidos de `DELETING → DELETED/EXPIRED`. Reservas, temporários, carrinho, pedidos e exclusões pendentes ocupam cota; liberar espaço exige confirmação da exclusão no provedor.
 - Validação do tamanho efetivo e do conteúdo JPEG/PNG/PDF, independente do nome/MIME do navegador. Imagens precisam decodificar e ter marcador final. PDFBox valida documentos e rejeita senha, scripts, ações, anexos, formulários XFA e anotações. Isso não é antivírus e não garante ausência de todos os conteúdos maliciosos.
@@ -33,7 +33,7 @@ Provedor escolhido: S3 Standard, região configurável (padrão `us-east-2`), bu
 
 Limites técnicos implementados: 60 requisições de upload por IP/minuto/instância antes do processamento multipart; até 1.000 sessões por loja/hora; até 1.000 tentativas de upload por loja em 24h; até 20 arquivos pendentes por sessão; download de até 1 GB por loja a cada cinco minutos por instância. Erros orientam aguardar/repetir; não reduzem a retenção. Em múltiplas réplicas, o limite de IP/download é por réplica; reservas, tentativas e ocupação são compartilhadas pelo banco. A implantação precisa considerar a quantidade de réplicas e a configuração confiável do proxy.
 
-Simulação de custo, não medição de faturamento: assumindo US$ 0,023 por GB/mês de armazenamento, US$ 0,005 por mil PUT/LIST, US$ 0,0004 por mil GET e US$ 0,09 por GB de saída, uma ocupação constante de 5/25 GB com um download completo por mês custa aproximadamente US$ 0,57/2,84 por loja, antes de impostos, câmbio, backend, validação, banco, observabilidade e backups. A conversão decimal/binarizada do provedor deve ser incluída na medição real. Downloads repetidos e versões antigas aumentam o custo; o limite de velocidade não é um teto mensal de despesas. Nenhum reajuste foi feito.
+Simulação de custo, não medição de faturamento: assumindo US$ 0,023 por GB/mês de armazenamento, US$ 0,005 por mil PUT/LIST, US$ 0,0004 por mil GET e US$ 0,09 por GB de saída, na simulação anterior, uma ocupação constante de 5/25 GB com um download completo por mês custa aproximadamente US$ 0,57/2,84 por loja, antes de impostos, câmbio, backend, validação, banco, observabilidade e backups. A conversão decimal/binarizada do provedor deve ser incluída na medição real. Downloads repetidos e versões antigas aumentam o custo; o limite de velocidade não é um teto mensal de despesas. Nenhum reajuste foi feito.
 
 Referências: [preços S3](https://aws.amazon.com/s3/pricing/), [exemplo oficial de composição de custos AWS](https://d1.awsstatic.com/events/Summits/dcsummit2023/COP201_CloudCost_E1_20230530_ZMEdited.pdf). As taxas acima são premissas de simulação; conferir a cotação da região/conta na liberação. A franquia gratuita de saída é compartilhada na conta e não foi atribuída por loja nesta simulação.
 
@@ -44,7 +44,6 @@ Antes de ofertar: provisionar o bucket privado e IAM mínimo; medir armazenament
 - `BUYER_UPLOAD_S3_BUCKET`: bucket privado dedicado, obrigatório para armazenar.
 - `BUYER_UPLOAD_S3_REGION`: padrão `us-east-2`.
 - `BUYER_UPLOAD_S3_PREFIX`: padrão `production/buyer-files`.
-- `BUYER_UPLOAD_NEW_OFFER_ENABLED`: falso por padrão; habilitar somente após homologação. Identifica contratos novos no momento da criação do checkout; acesso só após ativação de pagamento.
 - `BUYER_UPLOAD_CLEANUP_DELAY_MS` / `BUYER_UPLOAD_RECONCILE_DELAY_MS`: 60.000 / 300.000 por padrão.
 
 IAM precisa permitir gravar/ler/apagar objetos e versões, listar versões, ler versionamento e consultar bloqueio público do bucket. Exigir os quatro bloqueios de acesso público. Não usar ACL pública, política pública, hospedagem estática ou caminhos de execução para os objetos. O backend faz o download e não precisa de CORS no bucket.
@@ -63,3 +62,17 @@ Comunicação de desinstalação: a retenção de pedidos segue correndo; não h
 Ainda exigem evidência de homologação: migração/bloqueios no MySQL real, S3/IAM privado real, NubeSDK/legado/Patagonia em loja com checkout real, dois itens iguais com artes diferentes, quantidades/variações, desktop/mobile, sincronização atrasada, custos, backups e reinstalação autenticada. A janela de 24h precisa ser conferida contra o tempo real do checkout. Os testes locais não comprovam essas integrações externas.
 
 Implementação local nesta branch; sem commit, push, deploy ou verificação em produção. O documento preexistente `2026-10-23-dlocal-planos-compartilhados.md` e alterações paralelas em `NicheTemplateService.java` ficam fora desta tarefa.
+
+## Regra simplificada de acesso
+
+V72 remove a tabela de concessões e o marcador de oferta das assinaturas. Arquivos, sessões, pedidos e retenção são preservados. Pro/Ultra não exigem habilitação adicional.
+
+## Gerenciamento de arquivos pelo lojista
+
+A tela Arquivos dos compradores agrupa os arquivos por pedido e item, mostra consumo/espaço livre, permite ordenar por antiguidade ou tamanho e filtrar pela data do pedido. A paginação traz 20 pedidos completos por página, sem dividir os arquivos de um pedido.
+
+A seleção aceita arquivos individuais ou pedidos inteiros e permanece ao trocar de página. Antes de excluir, a confirmação mostra quantidade de arquivos/pedidos e espaço a liberar. A exclusão valida toda a seleção na loja autenticada, é idempotente e mantém a ocupação até a remoção no armazenamento ser confirmada; pedidos e metadados de vínculo são preservados. Há até 200 arquivos por operação.
+
+Downloads individuais continuam disponíveis. O ZIP pode conter um pedido ou uma seleção de arquivos, organizado em pastas por pedido/item, com nomes únicos e conteúdo transmitido sem carregar o lote inteiro na memória. Downloads continuam limitados a 1 GB por loja a cada cinco minutos por instância e recebem até dez minutos para transferência. Downloads e exclusões usam autorizações independentes do plano atual para os arquivos de pedidos ainda disponíveis. O ZIP recusa toda a seleção se houver arquivo de outra loja, temporário, expirado ou em exclusão.
+
+Validação local: testes de autorização, conteúdo ZIP, confirmação/idempotência de exclusão, preservação de consumo até a limpeza, paginação/filtros e navegação em português/espanhol. A revisão visual usa o HTML real com dados fictícios; não comprova transferência ou exclusão no S3 de produção.

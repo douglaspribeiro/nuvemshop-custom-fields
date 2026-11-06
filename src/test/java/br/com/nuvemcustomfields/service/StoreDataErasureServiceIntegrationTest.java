@@ -73,15 +73,12 @@ class StoreDataErasureServiceIntegrationTest {
                 STORE_ID, true, true, now
         );
 
-        jdbcTemplate.update("insert into buyer_upload_entitlements (store_id,offer_code,quota_bytes,enabled,created_at) values (?,?,?,?,?)",
-                STORE_ID, BuyerUploadPolicy.OFFER, BuyerUploadPolicy.PRO_BYTES, true, now);
         jdbcTemplate.update("insert into buyer_uploads (id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,order_id,order_item_id,order_created_at,created_at,expires_at) "
                 + "values ('erasure-file',?,456,1,'session-secret','request',100,'ORDERED',999,1,?,?,?)",STORE_ID,now,now,now);
 
         service.erase(STORE_ID);
         service.erase(STORE_ID);
 
-        assertThat(count("buyer_upload_entitlements", "store_id", STORE_ID)).isZero();
         var upload = jdbcTemplate.queryForMap("select * from buyer_uploads where id='erasure-file'");
         assertThat(upload.get("state")).isEqualTo("DELETING");
         assertThat(upload.get("delete_reason")).isEqualTo("ERASED");

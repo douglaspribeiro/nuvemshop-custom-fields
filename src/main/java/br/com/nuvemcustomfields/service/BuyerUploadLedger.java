@@ -142,13 +142,30 @@ public class BuyerUploadLedger {
         queueDelete(id, "REMOVED");
     }
 
+    public record Removal(int files, long bytes) {}
+    public static List<String> selection(List<String> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > 200 || ids.stream().anyMatch(id -> id == null || id.isBlank() || id.length() > 36))
+            throw new Rejected("upload.selection.invalid");
+        return ids.stream().distinct().sorted().toList();
+    }
     @Transactional
-    public void removeOrdered(long storeId, String id) {
+    public void removeOrdered(long storeId, String id) { removeOrderedBatch(storeId, List.of(id)); }
+
+    @Transactional
+    public Removal removeOrderedBatch(long storeId, List<String> ids) {
+        var selected=selection(ids);
         lockStore(storeId);
-        var file = find(storeId, id);
-        if (file.state() == State.DELETED || file.state() == State.EXPIRED || file.state() == State.DELETING) return;
-        if (file.state() != State.ORDERED) throw new Rejected("upload.not.ordered");
-        queueDelete(id, "REMOVED");
+        // Authorize the complete selection before changing any row. A replay is harmless.
+        var files=selected.stream().map(id -> find(storeId,id)).toList();
+        for (var file : files) {
+            if (file.orderId()==null || (file.state()!=State.ORDERED && file.state()!=State.DELETING
+                    && file.state()!=State.DELETED && file.state()!=State.EXPIRED)) throw new Rejected("upload.not.ordered");
+        }
+        int count=0;long bytes=0;
+        for (var file : files) if (file.state()==State.ORDERED) {
+            queueDelete(file.id(),"REMOVED");count++;bytes+=file.sizeBytes();
+        }
+        return new Removal(count,bytes);
     }
 
     @Transactional(readOnly = true)
@@ -175,14 +192,9 @@ public class BuyerUploadLedger {
 
     private Usage usageLocked(long storeId) {
         var quotas = jdbc.queryForList("select case when s.plan='PREMIUM_PLUS' then ? else ? end from stores s "
-                + "left join buyer_upload_entitlements e on e.store_id=s.store_id "
-                + "left join payment_subscriptions p on p.store_id=s.store_id "
                 + "where s.store_id=? and s.uninstalled_at is null and s.erasure_requested_at is null and s.billing_suspended=false "
-                + "and s.plan in ('PREMIUM_PLUS','PREMIUM_ULTRA') "
-                + "and ((e.offer_code=? and e.enabled=true and e.quota_bytes in (?,?)) "
-                + "or (p.buyer_upload_offer=? and p.access_active=true and p.provider_environment='PRODUCTION'))",
-                Long.class, BuyerUploadPolicy.PRO_BYTES, BuyerUploadPolicy.ULTRA_BYTES, storeId,
-                BuyerUploadPolicy.OFFER, BuyerUploadPolicy.PRO_BYTES, BuyerUploadPolicy.ULTRA_BYTES, BuyerUploadPolicy.OFFER);
+                + "and s.plan in ('PREMIUM_PLUS','PREMIUM_ULTRA')",
+                Long.class, BuyerUploadPolicy.PRO_BYTES, BuyerUploadPolicy.ULTRA_BYTES, storeId);
         long occupied = jdbc.queryForObject("select coalesce(sum(size_bytes),0) from buyer_uploads where store_id=? "
                 + "and state not in ('DELETED','EXPIRED')", Long.class, storeId);
         long quota = quotas.isEmpty() ? 0 : quotas.getFirst();

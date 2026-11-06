@@ -55,9 +55,16 @@ public class StoreTemplateController {
     }
     @GetMapping("/admin/templates/review")
     public String review(@RequestParam String key,@RequestParam long productId,HttpSession session,Model model) {
-        var store=stores.requireCurrentStore(session);var product=product(store,productId);
-        var preview=templates.preview(store.getStoreId(),key,productId);model.addAttribute("store",store);
-        model.addAttribute("preview",preview);model.addAttribute("product",product);model.addAttribute("requestId",UUID.randomUUID().toString());return "admin/template-review";
+        var store=stores.requireCurrentStore(session);
+        try {
+            var product=product(store,productId);
+            var preview=templates.preview(store.getStoreId(),key,productId);model.addAttribute("store",store);
+            model.addAttribute("preview",preview);model.addAttribute("product",product);model.addAttribute("requestId",UUID.randomUUID().toString());return "admin/template-review";
+        } catch (StoreTemplateService.Invalid error) {
+            String view=choose(key,1,null,session,model);
+            model.addAttribute("templateError",messages.get(error.getMessage()));
+            return view;
+        }
     }
     @PostMapping("/admin/templates") @ResponseBody
     public ResponseEntity<?> create(@RequestHeader("X-NCF-Action") String action,@RequestBody Document document,HttpSession session) {

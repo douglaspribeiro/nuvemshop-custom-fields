@@ -13,8 +13,9 @@ public class BuyerUploadController {
     private final BuyerUploadService files;
     private final BuyerUploadLedger ledger;
     private final AdminStoreService stores;
-    public BuyerUploadController(BuyerUploadService files,BuyerUploadLedger ledger,AdminStoreService stores) {
-        this.files=files;this.ledger=ledger;this.stores=stores;
+    private final br.com.nuvemcustomfields.i18n.Messages messages;
+    public BuyerUploadController(BuyerUploadService files,BuyerUploadLedger ledger,AdminStoreService stores,br.com.nuvemcustomfields.i18n.Messages messages) {
+        this.files=files;this.ledger=ledger;this.stores=stores;this.messages=messages;
     }
     @PostMapping("/public/stores/{store}/buyer-uploads/session")
     public ResponseEntity<?> session(@PathVariable long store) { return ok(Map.of("token",files.session(store))); }
@@ -35,9 +36,31 @@ public class BuyerUploadController {
         files.remove(store,token,id);return ok(Map.of("removed",true));
     }
     @GetMapping("/admin/buyer-uploads/data")
-    public ResponseEntity<?> list(HttpSession session) {
+    public ResponseEntity<?> list(HttpSession session,@RequestParam(defaultValue="1") int page,
+            @RequestParam(defaultValue="oldest") String sort,
+            @RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso=org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.Instant before) {
         long store=stores.requireCurrentStore(session).getStoreId();
-        return ok(Map.of("usage",ledger.usage(store),"files",files.orders(store),"enabled",files.enabled()));
+        var result=files.orders(store,page,sort,before);
+        return ok(Map.of("usage",ledger.usage(store),"files",result.files(),"enabled",files.enabled(),
+                "page",result.page(),"pages",result.pages(),"totalOrders",result.totalOrders(),"pendingBytes",result.pendingBytes()));
+    }
+    public record BatchDelete(java.util.List<String> ids,boolean confirmed) {}
+    @PostMapping("/admin/buyer-uploads/delete-selected")
+    public ResponseEntity<?> deleteSelected(@RequestBody BatchDelete body,@RequestHeader("X-NCF-Action") String action,HttpSession session) {
+        if(!body.confirmed() || !"delete".equals(action))throw new BuyerUploadLedger.Rejected("upload.confirm.required");
+        long store=stores.requireCurrentStore(session).getStoreId();
+        var removed=ledger.removeOrderedBatch(store,body.ids());
+        org.slf4j.LoggerFactory.getLogger(getClass()).info("buyer.files.deletion_queued store_id={} files={} bytes={}",store,removed.files(),removed.bytes());
+        return ok(removed);
+    }
+    @PostMapping(value="/admin/buyer-uploads/download-zip",consumes=MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> downloadZip(
+            @RequestParam java.util.List<String> ids,HttpSession session) {
+        var archive=files.archive(stores.requireCurrentStore(session).getStoreId(),ids);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header("X-Content-Type-Options","nosniff")
+                .header("Content-Security-Policy","sandbox")
+                .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename("arquivos-pedidos.zip").build().toString())
+                .contentType(MediaType.parseMediaType("application/zip")).body(output -> files.writeArchive(archive,output));
     }
     @GetMapping("/admin/buyer-uploads/{id}/download")
     public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> download(@PathVariable String id,HttpSession session) {
@@ -59,6 +82,8 @@ public class BuyerUploadController {
     public ResponseEntity<?> rejected(BuyerUploadLedger.Rejected error) {
         String code=error.getMessage();
         String message=switch(code) {
+            case "upload.selection.invalid" -> messages.get("buyer.files.invalidSelection");
+            case "upload.not.found", "upload.not.ordered" -> messages.get("buyer.files.missingFile");
             case "upload.size.invalid", "upload.size.mismatch" -> "Envie um arquivo completo de até 20 MB.";
             case "upload.content.invalid", "upload.formats.invalid" -> "Arquivo inválido. Use JPG, PNG ou PDF sem senha, ações ou anexos.";
             case "upload.quota.exceeded", "upload.unavailable" -> "O envio está indisponível nesta loja. Entre em contato com a loja.";

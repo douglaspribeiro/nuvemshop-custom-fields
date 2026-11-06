@@ -53,6 +53,7 @@ class LocalizedPagesRenderTest {
             "/admin/dashboard",
             "/admin/products",
             "/admin/products/5001/fields",
+            "/admin/buyer-uploads",
             "/admin/onboarding",
             "/admin/help",
             "/admin/settings/style"

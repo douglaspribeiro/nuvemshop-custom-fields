@@ -42,7 +42,6 @@ public class StoreDataErasureService {
         // Never keep customer session/order metadata after a permanent erasure.
         jdbcTemplate.update("update buyer_uploads set state='DELETING',delete_reason='ERASED',session_hash='',request_id=id,"
                 + "original_name=null,content_type=null,product_id=0,field_id=0,order_id=null,order_item_id=null,order_created_at=null,retry_at=null where store_id=?", storeId);
-        jdbcTemplate.update("delete from buyer_upload_entitlements where store_id=?", storeId);
         jdbcTemplate.update("delete from buyer_upload_sessions where store_id=?", storeId);
         // Keep only the durable S3 deletion ledger after owner data is erased.
         jdbcTemplate.update("update personalization_images set state='DELETING',field_id=null,retry_at=?,updated_at=? where store_id=?",

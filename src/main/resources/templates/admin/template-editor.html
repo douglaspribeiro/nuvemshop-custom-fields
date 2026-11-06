@@ -7,7 +7,7 @@
 <label><span th:text="#{template.description}"></span><textarea name="templateDescription" maxlength="500" rows="2"></textarea></label></section>
 <div id="template-fields"></div><div class="row-actions"><button class="button" type="button" id="template-add-field" th:text="#{template.add.field}"></button><button class="button primary" type="submit" th:text="#{template.save}"></button></div>
 <p id="template-status" role="status" aria-live="polite"></p></form></main>
-<template id="template-field-row"><fieldset class="panel field-editor-form image-options-form" style="min-width:0"><legend data-template-heading th:text="#{template.field}"></legend>
+<template id="template-field-row"><section class="panel field-editor-form image-options-form" style="min-width:0"><h2 data-template-heading th:text="#{template.field}"></h2>
 <div class="form"><label><span th:text="#{admin.fields.label}"></span><input name="label" required maxlength="100"></label>
 <label><span th:text="#{template.type}"></span><select name="fieldType"><option th:each="type : ${T(br.com.nuvemcustomfields.entity.FieldType).values()}" th:if="${type.name() != 'FILE_UPLOAD' or editorData.uploadAvailable}" th:value="${type}" th:text="#{'field.type.'+${type}}"></option></select></label>
 <label class="checkbox"><input type="checkbox" name="required"><span th:text="#{template.required}"></span></label>
@@ -21,7 +21,7 @@
 <label><span th:text="#{image.mobile.columns}"></span><select name="mobileImageColumns"><option value="" th:text="#{image.mobile.columns.auto}"></option><option value="2">2</option><option value="3">3</option></select></label>
 <button class="button small image-option-add" type="button" th:text="#{image.option.add}"></button><p class="image-options-status" role="status"></p></section>
 <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
-<div class="row-actions"><button class="button small" type="button" data-field-up th:text="#{image.option.up}"></button><button class="button small" type="button" data-field-down th:text="#{image.option.down}"></button><button class="button small" type="button" data-field-remove th:text="#{template.remove.field}"></button></div></div></fieldset></template>
+<div class="row-actions"><button class="button small" type="button" data-field-up th:text="#{image.option.up}"></button><button class="button small" type="button" data-field-down th:text="#{image.option.down}"></button><button class="button small" type="button" data-field-remove th:text="#{template.remove.field}"></button></div></div></section></template>
 <div id="template-ui" hidden th:attr="data-failed=#{template.failed},data-saved=#{template.saved},data-field=#{template.field},data-image-wait=#{template.image.wait},data-unsupported=#{template.upload.unavailable}"></div>
 <script th:inline="javascript">window.ncfTemplateEditor=/*[[${editorData}]]*/ {};</script>
 <script th:src="@{/assets/product-fields-editor.js(v=${assetVersion})}"></script><script th:src="@{/assets/option-images-admin.js(v=${assetVersion})}"></script><script th:src="@{/assets/store-templates.js(v=${assetVersion})}"></script>

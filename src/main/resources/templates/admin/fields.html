@@ -44,7 +44,8 @@
                 de 1 campo neste produto
             </p>
             <p class="muted" th:if="${imageProductLimit != 0}"
-               th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed}, ${imageOptionLimit})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit}, ${imageOptionLimit})}"></p>
+               th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit})}"></p>
+            <p class="muted" th:if="${imageProductLimit != 0}" th:text="#{image.plan.options.limit(${imageOptionLimit})}"></p>
             <p class="muted" th:if="${imageProductLimit == 0}" th:text="#{billing.images.none}"></p>
         </div>
         <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>

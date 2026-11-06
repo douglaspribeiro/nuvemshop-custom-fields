@@ -1,34 +1,153 @@
-(function(){
+(function () {
     "use strict";
-    async function load(){
-        const status=document.getElementById("buyer-usage");
-        try{
-            const response=await fetch("/admin/buyer-uploads/data",{headers:{Accept:"application/json"}});
-            if(!response.ok)throw new Error();
-            const data=await response.json(),usage=data.usage;
-            status.textContent=`Ocupado: ${(usage.occupiedBytes/1e9).toFixed(3)} GB. Espaço livre: ${Math.max(0,(usage.quotaBytes-usage.occupiedBytes)/1e9).toFixed(3)} GB. Franquia para novos envios: ${(usage.quotaBytes/1e9).toFixed(0)} GB. ${usage.acceptsUploads&&data.enabled?"Envios habilitados.":"Novos envios indisponíveis. Os arquivos dos pedidos permanecem disponíveis até o vencimento."}`;
-            const warning=document.getElementById("buyer-warning");warning.hidden=usage.warningPercent<80;
-            warning.textContent=usage.warningPercent>=100?"Armazenamento cheio. Baixe e exclua arquivos para liberar espaço ou altere o plano.":`Ocupação acima de ${usage.warningPercent}%. Organize os arquivos ou altere o plano.`;
-            const body=document.getElementById("buyer-files");body.replaceChildren();document.getElementById("buyer-empty").hidden=data.files.length>0;
-            for(const file of data.files){
-                const row=document.createElement("tr");
-                for(const text of [`${file.order_id} / ${file.order_item_id}`,file.original_name||"Arquivo removido",`${file.size_bytes} bytes`,new Date(file.expires_at).toLocaleString(),({ORDERED:"Disponível",DELETING:"Em exclusão",DELETED:"Excluído",EXPIRED:"Expirado"}[file.state]||"Indisponível")]){
-                    const cell=document.createElement("td");cell.textContent=text;row.append(cell);
-                }
-                const actions=document.createElement("td");
-                if(file.state==="ORDERED"&&new Date(file.expires_at)>new Date()){
-                    const download=document.createElement("a");download.href=`/admin/buyer-uploads/${encodeURIComponent(file.id)}/download`;download.textContent="Baixar";
-                    const remove=document.createElement("button");remove.type="button";remove.textContent="Excluir";
-                    remove.addEventListener("click",async()=>{
-                        if(!confirm("Excluir este arquivo definitivamente? A arte não poderá ser recuperada. Baixe uma cópia antes de continuar."))return;
-                        remove.disabled=true;
-                        try{const result=await fetch(`/admin/buyer-uploads/${encodeURIComponent(file.id)}/delete`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","X-NCF-Action":"delete"},body:"confirmed=true"});if(!result.ok)throw new Error();await load();}
-                        catch{status.textContent="Não foi possível excluir. Tente novamente.";remove.disabled=false;}
-                    });actions.append(download,document.createTextNode(" "),remove);
-                }
+    const ui = window.ncfBuyerFilesUi || {};
+    const get = id => document.getElementById(`buyer-${id}`);
+    if (!get("orders")) return;
+    const t = (key, ...args) => (ui[key] || key).replace(/\{(\d+)\}/g, (_, index) => String(args[Number(index)] ?? ""));
+    const size = bytes => {
+        let value = Number(bytes), unit = 0;const units = ["B", "KB", "MB", "GB"];
+        while (value >= 1000 && unit < units.length - 1) { value /= 1000;unit++; }
+        return new Intl.NumberFormat(document.documentElement.lang || "pt", {maximumFractionDigits: 2}).format(value) + " " + units[unit];
+    };
+    const date = value => value ? new Date(value).toLocaleDateString(document.documentElement.lang || "pt") : "—";
+    const selected = new Map();
+    let files = [], page = 1, pages = 1, busy = false, loading = false, generation = 0, refreshTimer, review = [];
+    const available = file => file.state === "ORDERED" && new Date(file.expires_at) > new Date();
+    const deletable = file => file.state === "ORDERED";
+    const total = list => list.reduce((sum, file) => sum + Number(file.size_bytes), 0);
+    const show = text => { get("status").textContent = text; };
+    function checkboxState(input, list) {
+        const count = list.filter(file => selected.has(file.id)).length;
+        input.checked = list.length > 0 && count === list.length;
+        input.indeterminate = count > 0 && count < list.length;
+        input.disabled = busy || !list.length;
+    }
+    function updateSelection() {
+        const list = [...selected.values()];
+        get("selected").textContent = list.length ? t("selection", list.length, size(total(list))) : t("noneSelected");
+        get("delete-selected").disabled = busy || loading || !list.length;
+        get("download-selected").disabled = busy || loading || !list.length;
+        checkboxState(get("select-page"), files.filter(deletable));
+        document.querySelectorAll("[data-file-select]").forEach(input => {
+            input.checked = selected.has(input.dataset.fileSelect); input.disabled = busy;
+        });
+        document.querySelectorAll("[data-order-select]").forEach(input => checkboxState(input, files.filter(file => String(file.order_id) === input.dataset.orderSelect && deletable(file))));
+        get("previous").disabled = busy || loading || page <= 1;
+        get("next").disabled = busy || loading || page >= pages;
+    }
+    function select(list, checked) {
+        if (busy) return;
+        const additions = list.filter(file => !selected.has(file.id));
+        if (checked && selected.size + additions.length > 200) { show(t("maxSelection")); updateSelection(); return; }
+        for (const file of list) { if (checked) selected.set(file.id, file); else selected.delete(file.id); }
+        updateSelection();
+    }
+    function node(tag, text, className) {
+        const element = document.createElement(tag);
+        if (text != null) element.textContent = text;
+        if (className) element.className = className;
+        return element;
+    }
+    function groups(list) {
+        const result = new Map();
+        for (const file of list) {
+            const key = String(file.order_id);
+            if (!result.has(key)) result.set(key, []);
+            result.get(key).push(file);
+        }
+        return result;
+    }
+    function errorText(body, fallback) {
+        return ({"upload.selection.invalid": t("invalidSelection"), "upload.not.found": t("missingFile"),
+            "upload.not.ordered": t("missingFile"), "upload.rate.limit": t("downloadLimit")})[body?.code] || body?.error || t(fallback);
+    }
+    function download(list) {
+        if (!list.length || list.length > 200) { show(t("maxSelection")); return; }
+        if (list.some(file => !available(file))) { show(t("expiredSelection")); return; }
+        if (total(list) > 1e9) { show(t("downloadLimit")); return; }
+        // Native download avoids keeping a potentially large ZIP in browser memory.
+        const form = node("form");form.method = "POST";form.action = "/admin/buyer-uploads/download-zip";form.target = "buyer-download-frame";form.hidden = true;
+        for (const file of list) { const input = node("input");input.type = "hidden";input.name = "ids";input.value = file.id;form.append(input); }
+        document.body.append(form);form.submit();form.remove();show(t("downloadStarted"));
+    }
+    get("download-frame").addEventListener("load", () => {
+        try {
+            const text = get("download-frame").contentDocument?.body?.textContent;
+            if (text?.trim().startsWith("{")) show(errorText(JSON.parse(text), "downloadFailed"));
+            else if (text?.trim()) show(t("downloadFailed"));
+        } catch { show(t("downloadFailed")); }
+    });
+    function render() {
+        const container = get("orders");container.replaceChildren();
+        for (const [orderId, list] of groups(files)) {
+            const section = node("section", null, "panel buyer-order");
+            const heading = node("div", null, "buyer-order-heading");
+            const label = node("label", null, "checkbox");
+            const input = node("input");input.type = "checkbox";input.dataset.orderSelect = orderId;input.setAttribute("aria-label", t("selectOrder", orderId));
+            input.addEventListener("change", () => select(list.filter(deletable), input.checked));label.append(input, node("strong", t("order", orderId)));
+            const copy = node("div");copy.append(label, node("p", t("orderSummary", list.length, size(total(list)), date(list[0].order_created_at)), "muted"));
+            const button = node("button", t("downloadOrder"), "button");button.type = "button";button.disabled = !list.some(available);button.addEventListener("click", () => download(list.filter(available)));
+            heading.append(copy, button);section.append(heading);
+            const scroll = node("div", null, "buyer-order-scroll");
+            const table = node("table", null, "table");const head = node("thead"), header = node("tr");
+            for (const key of ["file", "size", "expires", "state", "actions"]) header.append(node("th", t(key)));
+            head.append(header);table.append(head);const body = node("tbody");
+            for (const file of list) {
+                const row = node("tr"), name = node("td"), label = node("label", null, "checkbox");
+                if (deletable(file)) { const check = node("input");check.type = "checkbox";check.dataset.fileSelect = file.id;check.setAttribute("aria-label", t("selectFile", file.original_name));check.addEventListener("change", () => select([file], check.checked));label.append(check); }
+                const title = node("span", file.original_name || t("unavailable"));title.append(node("small", t("item", file.order_item_id), "muted"));label.append(title);name.append(label);row.append(name, node("td", size(file.size_bytes)), node("td", date(file.expires_at)), node("td", t(file.state === "DELETING" ? "deleting" : available(file) ? "ordered" : "expired")));
+                const actions = node("td");
+                if (available(file)) { const link = node("a", t("download"));link.href = `/admin/buyer-uploads/${encodeURIComponent(file.id)}/download`;link.target = "buyer-download-frame";actions.append(link); }
                 row.append(actions);body.append(row);
             }
-        }catch{status.textContent="Não foi possível carregar os arquivos. Atualize a página para tentar novamente.";}
+            table.append(body);scroll.append(table);section.append(scroll);container.append(section);
+        }
+        get("empty").hidden = files.length > 0;updateSelection();
     }
-    void load();
+    async function load(quiet = false) {
+        clearTimeout(refreshTimer);const current = ++generation;loading = true;updateSelection();
+        if (!quiet) show(t("loading"));
+        const query = new URLSearchParams({page: String(page), sort: get("sort").value});
+        if (get("before").value) query.set("before", new Date(`${get("before").value}T23:59:59.999`).toISOString());
+        try {
+            const response = await fetch(`/admin/buyer-uploads/data?${query}`, {headers: {Accept: "application/json"}, credentials: "same-origin"});
+            if (!response.ok) throw new Error();const data = await response.json();if (current !== generation) return;
+            files = data.files;page = data.page;pages = data.pages;
+            for (const file of files) if (selected.has(file.id)) { if (deletable(file)) selected.set(file.id, file);else selected.delete(file.id); }
+            get("occupied").textContent = size(data.usage.occupiedBytes);get("available").textContent = size(Math.max(0, data.usage.quotaBytes - data.usage.occupiedBytes));get("quota").textContent = size(data.usage.quotaBytes);
+            get("disabled").hidden = data.enabled && data.usage.acceptsUploads;
+            const percent = data.usage.warningPercent;get("warning").hidden = percent < 80;get("warning").textContent = percent >= 100 ? t("full") : t("warning", percent);
+            get("pending").hidden = !data.pendingBytes;get("pending").textContent = t("pending", size(data.pendingBytes));
+            get("page").textContent = t("page", page, pages, data.totalOrders);
+            render();if (!quiet) show("");
+            if (data.pendingBytes && !busy) refreshTimer = setTimeout(() => { void load(true); }, 5000);
+        } catch { if (current === generation) show(t("loadFailed")); }
+        finally { if (current === generation) { loading = false;updateSelection(); } }
+    }
+    get("select-page").addEventListener("change", () => select(files.filter(deletable), get("select-page").checked));
+    get("download-selected").addEventListener("click", () => download([...selected.values()]));
+    get("delete-selected").addEventListener("click", () => {
+        review = [...selected.values()];if (!review.length || busy) return;
+        get("delete-summary").textContent = t("confirmSummary", review.length, groups(review).size, size(total(review)));
+        get("delete-orders").replaceChildren(...[...groups(review)].map(([id, list]) => node("li", `${t("order", id)} · ${list.length} · ${size(total(list))}`)));
+        get("delete-error").textContent = "";get("delete-dialog").showModal();
+    });
+    get("cancel-delete").addEventListener("click", () => get("delete-dialog").close());
+    get("confirm-delete").addEventListener("click", async () => {
+        if (busy || !review.length) return;busy = true;clearTimeout(refreshTimer);updateSelection();
+        get("confirm-delete").disabled = true;get("cancel-delete").disabled = true;show(t("deletingNow"));
+        try {
+            const response = await fetch("/admin/buyer-uploads/delete-selected", {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-NCF-Action": "delete", Accept: "application/json"}, body: JSON.stringify({ids: review.map(file => file.id), confirmed: true})});
+            const result = await response.json().catch(() => { throw new Error(t("deleteFailed")); });if (!response.ok) throw Object.assign(new Error(errorText(result, "deleteFailed")), {localized: true});
+            for (const file of review) selected.delete(file.id);review = [];get("delete-dialog").close();
+            busy = false;await load(true);show(t("deleteQueued", result.files, size(result.bytes)));
+        } catch (error) { get("delete-error").textContent = error.localized ? error.message : t("deleteFailed");show(get("delete-error").textContent); }
+        finally { busy = false;get("confirm-delete").disabled = false;get("cancel-delete").disabled = false;updateSelection(); }
+    });
+    get("filters").addEventListener("submit", event => { event.preventDefault();page = 1;void load(); });
+    get("clear-filters").addEventListener("click", () => { get("before").value = "";get("sort").value = "oldest";page = 1;void load(); });
+    get("refresh").addEventListener("click", () => void load());
+    get("previous").addEventListener("click", () => { page--;void load(); });get("next").addEventListener("click", () => { page++;void load(); });
+    window.addEventListener("pagehide", () => clearTimeout(refreshTimer));
+    updateSelection();void load();
 })();

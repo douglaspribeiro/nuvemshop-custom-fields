@@ -1,13 +1,32 @@
 <!doctype html>
-<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Arquivos dos compradores</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
-<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('orders')}"></th:block>
-<main class="shell"><section class="page-header"><h1>Arquivos dos compradores</h1><a class="button" href="/admin/products">Produtos e campos</a></section>
-    <section class="panel"><p id="buyer-usage" role="status">Carregando consumo…</p><p id="buyer-warning" class="notice" hidden></p>
-        <p>Um arquivo por campo/item, até 20 MB. JPG, PNG e PDF. Disponível por 90 dias desde a criação do pedido.</p>
-        <p>O espaço considera arquivos temporários e pedidos. A exclusão libera espaço quando concluída. Baixe os arquivos necessários antes de excluir.</p>
-        <a href="/admin/billing">Ver planos</a></section>
-    <section class="panel"><h2>Arquivos por pedido e item</h2><p id="buyer-empty" hidden>Nenhum arquivo vinculado a pedido.</p>
-        <div style="overflow:auto"><table><thead><tr><th>Pedido / item</th><th>Arquivo</th><th>Tamanho</th><th>Disponível até</th><th>Estado</th><th>Ações</th></tr></thead><tbody id="buyer-files"></tbody></table></div></section>
-</main><script src="/assets/buyer-uploads-admin.js" defer></script></body></html>
+    <title th:text="#{buyer.files.title}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('buyer-uploads')}"></th:block>
+<main class="shell buyer-file-manager">
+    <section class="page-header"><div><h1 th:text="#{buyer.files.title}"></h1><p th:text="#{buyer.files.intro}"></p></div><a class="button" href="/admin/billing" th:text="#{buyer.files.plans}"></a></section>
+    <section class="panel">
+        <dl class="buyer-storage"><div><dt th:text="#{buyer.files.occupied}"></dt><dd id="buyer-occupied">—</dd></div><div><dt th:text="#{buyer.files.available}"></dt><dd id="buyer-available">—</dd></div><div><dt th:text="#{buyer.files.quota}"></dt><dd id="buyer-quota">—</dd></div></dl>
+        <p id="buyer-warning" class="notice warning" hidden></p><p id="buyer-pending" class="notice" hidden></p><p id="buyer-disabled" th:text="#{buyer.files.disabled}" hidden></p>
+        <p class="muted" th:text="#{buyer.files.retention}"></p><p class="muted" th:text="#{buyer.files.quotaNote}"></p>
+    </section>
+    <form id="buyer-filters" class="form inline-form panel buyer-filter-bar">
+        <label><span th:text="#{buyer.files.sort}"></span><select id="buyer-sort"><option value="oldest" th:text="#{buyer.files.oldest}"></option><option value="newest" th:text="#{buyer.files.newest}"></option><option value="largest" th:text="#{buyer.files.largest}"></option></select></label>
+        <label><span th:text="#{buyer.files.before}"></span><input type="date" id="buyer-before"></label>
+        <button type="submit" class="button" th:text="#{buyer.files.filter}"></button><button id="buyer-clear-filters" type="button" class="button" th:text="#{buyer.files.clear}"></button>
+    </form>
+    <section class="buyer-file-selection panel">
+        <h2 th:text="#{buyer.files.listTitle}"></h2><p class="muted" th:text="#{buyer.files.selectionHint}"></p>
+        <div class="buyer-selection-actions"><label class="checkbox"><input type="checkbox" id="buyer-select-page"><span th:text="#{buyer.files.selectPage}"></span></label><strong id="buyer-selected" role="status"></strong></div>
+        <div class="buyer-selection-actions"><button type="button" id="buyer-download-selected" class="button" disabled th:text="#{buyer.files.downloadSelected}"></button><button type="button" id="buyer-delete-selected" class="button danger" disabled th:text="#{buyer.files.deleteSelected}"></button><button type="button" id="buyer-refresh" class="button" th:text="#{buyer.files.refresh}"></button></div>
+    </section>
+    <p id="buyer-status" role="status" aria-live="polite"></p><p id="buyer-empty" class="panel" hidden th:text="#{buyer.files.empty}"></p>
+    <div id="buyer-orders"></div>
+    <nav class="pager"><button type="button" id="buyer-previous" class="button" disabled th:text="#{buyer.files.previous}"></button><span id="buyer-page"></span><button type="button" id="buyer-next" class="button" disabled th:text="#{buyer.files.next}"></button></nav>
+    <dialog id="buyer-delete-dialog" aria-labelledby="buyer-delete-title"><h2 id="buyer-delete-title" th:text="#{buyer.files.confirmTitle}"></h2><p id="buyer-delete-summary"></p><p th:text="#{buyer.files.confirmWarning}"></p><ul id="buyer-delete-orders"></ul><p id="buyer-delete-error" role="alert"></p><div class="buyer-selection-actions"><button type="button" id="buyer-cancel-delete" class="button" th:text="#{buyer.files.cancel}"></button><button type="button" id="buyer-confirm-delete" class="button danger" th:text="#{buyer.files.confirmDelete}"></button></div></dialog>
+    <iframe id="buyer-download-frame" name="buyer-download-frame" th:title="#{buyer.files.download}" hidden></iframe>
+</main>
+<script th:inline="javascript">window.ncfBuyerFilesUi=/*[[${fileUi}]]*/ {};</script>
+<script th:src="@{/assets/buyer-uploads-admin.js(v=${assetVersion})}" defer></script>
+<th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
+</body></html>

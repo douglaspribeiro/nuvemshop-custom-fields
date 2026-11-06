@@ -726,6 +726,10 @@ public class AdminController {
 
     private String imageConfigurationError(IllegalArgumentException error) {
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
+        if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()))) {
+            LOGGER.warn("admin.field.rejected code={}", error.getMessage());
+            return messages.get(error.getMessage());
+        }
         return messages.get("image.options.invalid");
     }
 

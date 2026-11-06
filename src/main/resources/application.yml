@@ -249,9 +249,8 @@ pricing:
   fx-estimates:
     enabled: ${FX_ESTIMATES_ENABLED:true}
 
-# Private artwork storage must be provisioned and validated before enabling the offer.
+# Private artwork storage for Pro/Ultra buyer uploads.
 buyer-uploads:
-  new-offer-enabled: ${BUYER_UPLOAD_NEW_OFFER_ENABLED:false}
   s3:
     bucket: ${BUYER_UPLOAD_S3_BUCKET:}
     region: ${BUYER_UPLOAD_S3_REGION:us-east-2}

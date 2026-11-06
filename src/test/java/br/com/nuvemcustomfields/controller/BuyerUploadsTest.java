@@ -48,7 +48,6 @@ class BuyerUploadsTest {
     private final Map<String,byte[]> objects=new HashMap<>();
     @BeforeEach void setup() {
         store=IDS.incrementAndGet();var s=new Store();s.setStoreId(store);s.setAccessToken("test");s.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(s);
-        jdbc.update("insert into buyer_upload_entitlements(store_id,offer_code,quota_bytes,enabled,created_at) values (?,?,?,true,?)",store,BuyerUploadPolicy.OFFER,BuyerUploadPolicy.PRO_BYTES,Timestamp.from(Instant.now()));
         admin.ensureRule(store,123L,"Caderno");var f=new FieldForm();f.setLabel("Arte");f.setFieldType(FieldType.FILE_UPLOAD);f.setRequired(true);admin.addField(store,123L,f);
         field=fields.findWithRuleByStoreId(store).getFirst().getId();
         session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,store);
@@ -68,6 +67,26 @@ class BuyerUploadsTest {
         String platformTime=java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ").withZone(java.time.ZoneOffset.UTC).format(Instant.now());
         when(api.getOrder(any(),eq(300L))).thenReturn(json.readTree("{\"id\":300,\"created_at\":\""+platformTime+"\",\"products\":[{\"id\":"+item+",\"product_id\":123,\"properties\":{\"_ncf_file_"+field+"\":\""+file.reference()+"\"}}]}"));
         orders.order(store,300);
+    }
+    @Test void unavailableBuyerUploadShowsItsActualReasonInsteadOfImageOptionsError() throws Exception {
+        jdbc.update("update stores set plan='PREMIUM' where store_id=?",store);
+        mvc.perform(post("/admin/products/123/fields").session(session).param("label","Arquivo")
+                .param("fieldType","FILE_UPLOAD").param("maxLength","100").param("sortOrder","1"))
+                .andExpect(status().isOk()).andExpect(model().attribute("error",
+                        "O envio de arquivos está disponível nos planos Pro e Ultra, com armazenamento habilitado."));
+        assertThat(fields.findWithRuleByStoreId(store)).hasSize(1);
+    }
+    @Test void invalidBuyerUploadFormatsShowFormatHelpInsteadOfImageOptionsError() throws Exception {
+        mvc.perform(post("/admin/products/123/fields").session(session).param("label","Arquivo")
+                .param("fieldType","FILE_UPLOAD").param("optionsText","EXE").param("maxLength","100").param("sortOrder","1"))
+                .andExpect(status().isOk()).andExpect(model().attribute("error","Informe JPEG, PNG ou PDF, um por linha."));
+        assertThat(fields.findWithRuleByStoreId(store)).hasSize(1);
+    }
+    @Test void allowedBuyerUploadFieldIsSavedWithoutImageOptions() throws Exception {
+        mvc.perform(post("/admin/products/123/fields").session(session).param("label","Arquivo")
+                .param("fieldType","FILE_UPLOAD").param("optionsText","PNG\nPDF").param("maxLength","100").param("sortOrder","1"))
+                .andExpect(redirectedUrl("/admin/products/123/fields"));
+        assertThat(fields.findWithRuleByStoreId(store)).hasSize(2);
     }
     @Test void productToOrderToAuthenticatedDownloadAndDeletion() throws Exception {
         mvc.perform(get("/public/stores/"+store+"/personalization").param("productId","123"))
@@ -111,8 +130,8 @@ class BuyerUploadsTest {
         when(api.listOrdersForSales(any(),anyInt(),anyInt(),any(),any(),any(),any())).thenThrow(new IllegalStateException("unavailable"));
         uploads.cleanup();assertThat(jdbc.queryForObject("select state from buyer_uploads where id=?",String.class,file.id())).isEqualTo("CART");
     }
-    @Test void legacyPlanCannotUploadEvenUsingDirectRequests() throws Exception {
-        jdbc.update("delete from buyer_upload_entitlements where store_id=?",store);
+    @Test void essentialPlanCannotUploadEvenUsingDirectRequests() throws Exception {
+        jdbc.update("update stores set plan='PREMIUM' where store_id=?",store);
         mvc.perform(multipart("/public/stores/"+store+"/buyer-uploads").file(png()).param("productId","123").param("fieldId",String.valueOf(field))
                 .header("X-Upload-Session",token).header("X-Upload-Request",UUID.randomUUID().toString())).andExpect(status().isBadRequest()).andExpect(jsonPath("code").value("upload.unavailable"));
         assertThat(objects).isEmpty();
@@ -131,4 +150,111 @@ class BuyerUploadsTest {
         var response=mvc.perform(get("/admin/buyer-uploads/"+file.id()+"/download").session(session)).andReturn();
         mvc.perform(asyncDispatch(response)).andExpect(status().isOk()).andExpect(content().bytes(png().getBytes()));
     }
+    @Test void batchDeletionIsConfirmedIdempotentAndReleasesSpaceOnlyAfterStorageCleanup() throws Exception {
+        var first=upload();confirm(first,301);var second=upload();confirm(second,302);
+        long occupied=ledger.usage(store).occupiedBytes();
+        String body=json.writeValueAsString(Map.of("ids",List.of(first.id(),second.id()),"confirmed",true));
+        mvc.perform(post("/admin/buyer-uploads/delete-selected").session(session).header("X-NCF-Action","delete")
+                .contentType("application/json").content(body.replace("true","false"))).andExpect(status().isBadRequest());
+        mvc.perform(post("/admin/buyer-uploads/delete-selected").session(session).header("X-NCF-Action","delete")
+                .contentType("application/json").content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.files").value(2)).andExpect(jsonPath("$.bytes").value(occupied));
+        assertThat(ledger.usage(store).occupiedBytes()).isEqualTo(occupied);
+        mvc.perform(get("/admin/buyer-uploads/data").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendingBytes").value(occupied));
+        mvc.perform(post("/admin/buyer-uploads/delete-selected").session(session).header("X-NCF-Action","delete")
+                .contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.files").value(0));
+        uploads.cleanup();assertThat(ledger.usage(store).occupiedBytes()).isZero();assertThat(objects).isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and order_id=300 and state='DELETED'",Long.class,store)).isEqualTo(2);
+    }
+    @Test void crossStoreSelectionCannotDeleteOrDownloadAnyFile() throws Exception {
+        var own=upload();confirm(own,301);var foreign=upload();confirm(foreign,302);
+        jdbc.update("update buyer_uploads set store_id=? where id=?",store+100000,foreign.id());
+        var ids=List.of(own.id(),foreign.id());
+        mvc.perform(post("/admin/buyer-uploads/delete-selected").session(session).header("X-NCF-Action","delete")
+                .contentType("application/json").content(json.writeValueAsString(Map.of("ids",ids,"confirmed",true))))
+                .andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForList("select state from buyer_uploads where id in (?,?)",String.class,own.id(),foreign.id())).containsOnly("ORDERED");
+        mvc.perform(post("/admin/buyer-uploads/download-zip").session(session).contentType("application/x-www-form-urlencoded")
+                .param("ids",own.id(),foreign.id())).andExpect(status().isBadRequest());
+        verify(storage,never()).read(anyString(),anyString());
+        mvc.perform(post("/admin/buyer-uploads/download-zip").contentType("application/x-www-form-urlencoded").param("ids",own.id()))
+                .andExpect(status().is3xxRedirection());
+    }
+    @Test void temporaryFileInSelectionPreventsPartialDeletion() throws Exception {
+        var own=upload();confirm(own,301);var temporary=upload();
+        mvc.perform(post("/admin/buyer-uploads/delete-selected").session(session).header("X-NCF-Action","delete")
+                .contentType("application/json").content(json.writeValueAsString(Map.of("ids",List.of(own.id(),temporary.id()),"confirmed",true))))
+                .andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select state from buyer_uploads where id=?",String.class,own.id())).isEqualTo("ORDERED");
+    }
+    @Test void zipPreservesContentsAndSeparatesDuplicateFilenamesByOrderAndItemAfterDowngrade() throws Exception {
+        var first=upload();confirm(first,301);var second=upload();confirm(second,302);
+        jdbc.update("update stores set plan='FREE' where store_id=?",store);
+        var response=mvc.perform(post("/admin/buyer-uploads/download-zip").session(session).contentType("application/x-www-form-urlencoded")
+                .param("ids",first.id(),second.id(),first.id())).andExpect(request().asyncStarted()).andReturn();
+        assertThat(response.getRequest().getAsyncContext().getTimeout()).isEqualTo(600000L);
+        byte[] bytes=mvc.perform(asyncDispatch(response)).andExpect(status().isOk()).andExpect(content().contentType("application/zip"))
+                .andExpect(header().string("X-Content-Type-Options","nosniff")).andReturn().getResponse().getContentAsByteArray();
+        var names=new ArrayList<String>();
+        try(var zip=new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(bytes))){
+            java.util.zip.ZipEntry entry;
+            while((entry=zip.getNextEntry())!=null){names.add(entry.getName());assertThat(zip.readAllBytes()).isEqualTo(png().getBytes());}
+        }
+        assertThat(names).hasSize(2).doesNotHaveDuplicates();
+        assertThat(names).anyMatch(name->name.startsWith("pedido-300/item-301/"));
+        assertThat(names).anyMatch(name->name.startsWith("pedido-300/item-302/"));
+    }
+    @Test void expiredSelectionFailsBeforeReadingStorageAndDownloadBudgetIsNotPoisonedByRejectedBatch() throws Exception {
+        var first=upload();confirm(first,301);var second=upload();confirm(second,302);
+        jdbc.update("update buyer_uploads set expires_at=? where id=?",Timestamp.from(Instant.now().minusSeconds(1)),second.id());
+        assertThatThrownBy(()->uploads.archive(store,List.of(first.id(),second.id()))).hasMessage("upload.not.found");
+        verify(storage,never()).read(anyString(),anyString());
+        jdbc.update("update buyer_uploads set expires_at=?,size_bytes=600000000 where id in (?,?)",Timestamp.from(Instant.now().plusSeconds(100)),first.id(),second.id());
+        assertThatThrownBy(()->uploads.archive(store,List.of(first.id(),second.id()))).hasMessage("upload.rate.limit");
+        jdbc.update("update buyer_uploads set size_bytes=? where id in (?,?)",first.size(),first.id(),second.id());
+        assertThat(uploads.archive(store,List.of(first.id(),second.id())).files()).hasSize(2);
+    }
+    @Test void listingPaginatesOrdersWithoutSplittingThemAndSupportsDateAndSizeFilters() throws Exception {
+        Instant now=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        for(int n=1;n<=22;n++){
+            jdbc.update("insert into buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,order_id,order_item_id,order_created_at,created_at,expires_at) values (?,?,123,?,'test',?,?,'ORDERED',?,1,?,?,?)",
+                    "listed-"+n,store,field,"listed-"+n,n,1000+n,Timestamp.from(now.minusSeconds(n*86400L)),Timestamp.from(now),Timestamp.from(now.plusSeconds(86400)));
+        }
+        jdbc.update("insert into buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,order_id,order_item_id,order_created_at,created_at,expires_at) select 'listed-extra',store_id,product_id,field_id,session_hash,'listed-extra',size_bytes,state,order_id,2,order_created_at,created_at,expires_at from buyer_uploads where id='listed-22' and store_id=?",store);
+        mvc.perform(get("/admin/buyer-uploads/data").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalOrders").value(22)).andExpect(jsonPath("$.pages").value(2))
+                .andExpect(jsonPath("$.files.length()").value(21)).andExpect(jsonPath("$.files[0].order_id").value(1022));
+        mvc.perform(get("/admin/buyer-uploads/data").session(session).param("page","2")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.files.length()").value(2));
+        mvc.perform(get("/admin/buyer-uploads/data").session(session).param("sort","newest")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.files[0].order_id").value(1001));
+        mvc.perform(get("/admin/buyer-uploads/data").session(session).param("sort","largest").param("before",now.minusSeconds(20*86400L).toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalOrders").value(3)).andExpect(jsonPath("$.files[0].order_id").value(1022));
+    }
+
+    @Test void bulkActionsRejectEmptyOrOversizedSelectionsWithoutChangingFiles() throws Exception {
+        var file=upload();confirm(file,301);
+        for(var ids:List.of(List.<String>of(),java.util.Collections.nCopies(201,file.id()))) {
+            mvc.perform(post("/admin/buyer-uploads/delete-selected").session(session).header("X-NCF-Action","delete")
+                    .contentType("application/json").content(json.writeValueAsString(Map.of("ids",ids,"confirmed",true))))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("upload.selection.invalid"));
+        }
+        assertThat(jdbc.queryForObject("select state from buyer_uploads where id=?",String.class,file.id())).isEqualTo("ORDERED");
+    }
+
+    @Test void fileManagerRendersTranslatedActionsAndExportsIsolatedPreview() throws Exception {
+        String html=mvc.perform(get("/admin/buyer-uploads").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Baixar selecionados em ZIP")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("??buyer.files."))))
+                .andReturn().getResponse().getContentAsString();
+        if(Boolean.getBoolean("ncf.files.export")) {
+            for(String stylesheet:List.of("app.css","merchant.css")) {
+                String css=new String(getClass().getResourceAsStream("/static/styles/"+stylesheet).readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+                html=html.replaceAll("<link[^>]+href=\"/styles/"+stylesheet.replace(".","\\.")+"[^\"]*\"[^>]*>",java.util.regex.Matcher.quoteReplacement("<style>"+css+"</style>"));
+            }
+            java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/ncf-file-manager-preview.html"),html);
+        }
+    }
+
 }
