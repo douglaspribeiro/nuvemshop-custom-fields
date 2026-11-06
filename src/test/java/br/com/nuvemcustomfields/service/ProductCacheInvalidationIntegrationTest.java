@@ -36,7 +36,8 @@ class ProductCacheInvalidationIntegrationTest {
 
     @BeforeEach void createStore() {
         var store = new Store(); store.setStoreId(STORE); store.setStoreName("Cache invalidation test");
-        store.setPlan(PlanType.FREE_GRATIS);
+        // Exercise cache mutations with capacity for both fields, independently of NC-04's Free cutoff.
+        store.setPlan(PlanType.PREMIUM);
         stores.saveAndFlush(store);
     }
 

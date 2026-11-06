@@ -1,94 +1,34 @@
 # Diagnóstico do tema Patagonia e scripts da Tiendanube
 
-Atualizado em 30/09/2026 após o retorno do suporte no chamado #8216779.
+Atualizado em 30/10/2026 com a investigação da Disegno.mx, loja 5656805.
 
-A loja Store by Pauli (`7278258`) usa o tema Patagonia. Em 29/09/2026,
-a Nuvemshop confirmou por e-mail que a plataforma escolhe um dos scripts:
-SDK no Patagonia e legado nos outros layouts. A associação dos dois scripts
-não significa execução simultânea. A orientação é manter ambos cadastrados
-e incorporar o comportamento de personalização ao SDK.
+## Comportamento da plataforma
 
-## Diagnóstico corrigido
+Em 29/09/2026, o suporte da Nuvemshop confirmou no chamado #8216779 que a plataforma escolhe SDK no Patagonia e legado nos outros layouts. A ausência do legado nesse tema é esperada. Manter ambos associados não significa execução simultânea.
 
-A ausência do `Legado-js` (`9344`) no Patagonia é esperada, conforme o suporte.
-O diagnóstico anterior de falha de propagação estava incorreto.
+O NubeSDK roda em Worker, sem `window`/`document` ou injeção de scripts externos. O adaptador DOM `nuvemshop-patagonia.js` é histórico; não pode ser importado como solução do Worker.
 
-Nosso Worker tinha uma regra específica que, ao encontrar Patagonia, limpava
-o slot e registrava `patagonia_requires_transition_script` sem buscar os campos.
-Como o legado não era executado, a loja ficava sem personalização.
-Essa regra foi removida: o SDK renderiza no slot
-`before_product_detail_add_to_cart`, valida os campos obrigatórios e reenvia
-`cart:add` com as propriedades, a variante e a quantidade do evento nativo.
+## Falha reproduzida em 30/10
 
-Não foi importado o adaptador DOM para o Worker. O NubeSDK não disponibiliza
-`window`, `document` ou injeção de scripts externos dentro do Worker.
-O asset `nuvemshop-patagonia.js` permanece como código histórico de transição;
-a solução SDK não o carrega nem depende dele.
+A correção anterior havia removido uma regra que limpava o slot no Patagonia, permitindo renderizar os campos pelo SDK. A validação e o envio ainda dependiam exclusivamente de `cart:before_update` e tinham sido testados com eventos simulados.
 
-## Publicação e validação pendentes
+Na Disegno.mx, o botão nativo adicionou o produto sem os campos obrigatórios e sem entregar `cart:before_update`, apesar de o app habilitar `handle_cart_before_update`. O pedido #147 chegou pago sem propriedades. A existência dos campos na vitrine não comprovava o envio.
 
-### Alterações realizadas no código
+O envio explícito via `cart:add` com `properties` foi confirmado no checkout real. O estado do SDK na vitrine chegou a retornar propriedades vazias mesmo com os dados persistidos; conferir checkout/API, não apenas esse estado transitório.
 
-- Removemos a dependência do `9344` quando o tema é Patagonia; a ausência do
-  legado nesse tema é comportamento esperado da plataforma.
-- O SDK renderiza os campos no slot `before_product_detail_add_to_cart`.
-- O SDK valida campos obrigatórios e reenvia `cart:add` com propriedades, variante
-  e quantidade do evento nativo.
-- O fluxo usa eventos do NubeSDK e não acessa `window`, `document` nem injeta DOM
-  no Worker. O asset histórico `nuvemshop-patagonia.js` não é carregado.
+## Correção preparada
 
-### O que fazer no Partner Portal
+- Ação própria do SDK no Patagonia para validar e adicionar com propriedades, variante e quantidade.
+- Barreira no checkout com `has_cart_validation`: exige os campos obrigatórios de cada item e bloqueia o pagamento se faltarem valores ou se a política não puder ser consultada.
+- O botão nativo permanece; a barreira do checkout impede que esse caminho produza pagamento sem os dados.
 
-1. Gerar o bundle de produção do frontend e conferir o arquivo antes do upload.
-2. Criar uma nova versão do script **Storefront SDK `9319`**, preservando o
-   identificador e as permissões/configuração atuais.
-3. Publicar a nova versão e associá-la a uma loja de teste Patagonia.
-4. Reinstalar/atualizar o script na loja de teste para receber a versão publicada.
+Os bundles foram testados substituindo as requisições apenas na sessão local do navegador. O preenchimento chegou ao checkout e foi aceito; um item vazio inserido pelo botão nativo foi recusado e o botão de pagamento ficou desabilitado. Ainda falta publicação no Partner Portal e repetição da validação com a versão publicada, incluindo celular e pedido final em ambiente autorizado.
 
-Não é necessário publicar uma nova versão do legado `9344` para o Patagonia: a
-plataforma não executa os dois scripts simultaneamente. Mantenha o `9344` para os
-demais temas. O checkout `7145` permanece inalterado.
+Na loja investigada, os IDs observados são storefront **11470** (`store-front-v5`) e checkout **7145** (`checkout-v1`). A referência histórica ao storefront 9319 não deve ser usada sem verificar o portal.
 
-Reinstalar associações sem publicar uma nova versão não atualiza o bundle entregue.
-O checkout `7145` e o legado `9344` continuam cadastrados conforme o suporte.
-
-Antes de liberar o bundle na loja:
-
-1. Testar o SDK isolado na loja de teste com o tema Patagonia.
-2. Confirmar a exibição dos campos pelo slot do SDK, sem script legado.
-3. Clicar em adicionar ao carrinho com o campo obrigatório vazio e confirmar bloqueio.
-4. Confirmar o evento `cart:before_update` depois da interação com o botão nativo.
-   O app registra uma vez `storefront.sdk.cart_before_update_received`.
-   Sua ausência em um beacon anterior à interação não comprova incompatibilidade do tema.
-5. Testar variante, quantidade e envio de `properties` no carrinho.
-6. Confirmar as propriedades no pedido; incluir produto já presente no carrinho,
-   pois há uma limitação previamente observada no bridge ao aumentar a quantidade.
-
-A remoção da regra resolve a dependência indevida do legado. A execução real do gate
-no Patagonia ainda precisa ser comprovada; os testes locais simulam o evento.
-Se o tema não entregar o evento, a plataforma precisa indicar o mecanismo SDK
-suportado antes de considerarmos a personalização validada em produção.
+Evidências, recuperação e instruções de publicação: [incidente Disegno.mx](incidentes/2026-10-30-disegno-pedido-sem-personalizacao.md).
 
 Referências oficiais:
 
 - [Arquitetura do NubeSDK](https://github.com/TiendaNube/nube-sdk).
-- [Eventos do carrinho](https://nuvemshop.dev/apps/nube-sdk/events/cart).
-
-## Resposta preparada ao suporte (não enviada)
-
-Olá, Karol. Obrigado pelo esclarecimento sobre a seleção entre SDK e Legacy.
-Ajustamos o aplicativo para que a renderização e o envio da personalização fiquem
-no script SDK, sem depender da execução simultânea do legado.
-
-Para validar a compra com campos obrigatórios, precisamos interceptar o botão
-nativo usando `config:set` com `handle_cart_before_update: true` e receber
-`cart:before_update`, conforme a documentação. Depois da validação, respondemos
-com `proceed: false` e reenviamos `cart:add` com `properties`, variante e quantidade.
-
-Podem confirmar se esse fluxo é suportado no Patagonia da loja `7278258`?
-Se o evento não estiver disponível nesse tema, qual é o mecanismo oficial do SDK
-para validar campos obrigatórios e anexar as propriedades ao botão nativo?
-Precisamos também confirmar que esses dados chegam ao pedido quando o produto
-já existe no carrinho. O SDK roda em Worker e não permite usar nosso adaptador DOM.
-
-Obrigado!
+- [Eventos do carrinho e validação no checkout](https://nuvemshop.dev/apps/nube-sdk/events/cart).

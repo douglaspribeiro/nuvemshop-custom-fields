@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${es ? 'es' : 'pt-BR'}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="${es ? 'Preferencias de correo' : 'Preferências de e-mail'}">Preferências de e-mail</title></head>
+<body><main>
+<h1 th:text="${done ? (es ? 'Correos desactivados' : 'E-mails desativados') : (es ? 'Dejar de recibir estos correos' : 'Parar de receber estes e-mails')}"></h1>
+<p th:if="${done}" th:text="${es ? 'No recibirás más correos de esta secuencia de activación. Esto no cambia tu plan ni los avisos de pago o soporte.' : 'Você não receberá mais e-mails desta sequência de ativação. Isso não altera seu plano nem os avisos de pagamento ou suporte.'}"></p>
+<form th:unless="${done}" method="post" th:action="@{/activation-emails/unsubscribe}">
+<input type="hidden" name="token" th:value="${token}">
+<p th:text="${es ? 'Confirmá para desactivar los correos de ayuda para configurar tu primer producto.' : 'Confirme para desativar os e-mails de ajuda para configurar seu primeiro produto.'}"></p>
+<button type="submit" th:text="${es ? 'Desactivar estos correos' : 'Desativar estes e-mails'}"></button>
+</form></main></body></html>

@@ -30,6 +30,7 @@ public class Ga4BillingService {
         if(first) sub.setAnalyticsFirstPaymentId(invoice.paymentId());
         boolean initial=invoice.paymentId().equals(sub.getAnalyticsFirstPaymentId());
         var params=parameters(initial ? "subscription" : "renewal",sub.getPlan(),null,sub.getProvider(),sub.getCurrency());
+        identifyStore(params,sub.getStoreId());
         BigDecimal amount=invoice.amountPaid()!=null ? invoice.amountPaid() : initial && sub.getWinbackInitialAmount()!=null ? sub.getWinbackInitialAmount():sub.getAmountValue();
         commerce(params,sub.getPlan(),sub.getProvider()+"-"+invoice.paymentId(),amount,initial?sub.getWinbackCouponCode():null);
         enqueue(sub.getProvider()+"-payment-"+invoice.paymentId(),initial?"purchase":"subscription_renewal",
@@ -40,6 +41,7 @@ public class Ga4BillingService {
     public void upgrade(UpgradeAdjustment adjustment){
         if(adjustment.getState()!=UpgradeAdjustment.State.COMPLETED) return;
         var params=parameters("upgrade",adjustment.getTargetPlan(),adjustment.getSourcePlan(),PaymentProviderType.EFI,"BRL");
+        identifyStore(params,adjustment.getStoreId());
         params.put("recurring_amount",adjustment.getRegularAmount());
         commerce(params,adjustment.getTargetPlan(),adjustment.reference(),adjustment.getDueAmount(),adjustment.getCouponCode());
         enqueue(adjustment.reference(),"purchase",adjustment.getEnvironment(),adjustment.getAnalyticsClientId(),adjustment.getAnalyticsSessionId(),params);
@@ -50,6 +52,7 @@ public class Ga4BillingService {
     @Transactional
     public void planChanged(PaymentSubscription sub, PlanType source){
         var params=parameters("upgrade",sub.getPlan(),source,sub.getProvider(),sub.getCurrency());
+        identifyStore(params,sub.getStoreId());
         params.put("recurring_amount",sub.getAmountValue());
         enqueue(sub.getProvider()+"-plan-"+sub.getProviderSubscriptionId()+"-"+sub.getPlan(),"upgrade_completed",
                 sub.getProviderEnvironment(),sub.getAnalyticsClientId(),sub.getAnalyticsSessionId(),params);
@@ -60,6 +63,7 @@ public class Ga4BillingService {
         if(invoice==null || invoice.paymentId()==null || !Set.of("unpaid","failed","rejected").contains(
                 String.valueOf(invoice.paymentStatus()).toLowerCase(Locale.ROOT))) return;
         var params=parameters("subscription",sub.getPlan(),null,sub.getProvider(),sub.getCurrency());
+        identifyStore(params,sub.getStoreId());
         params.put("failure_stage","provider");
         enqueue(sub.getProvider()+"-failed-"+invoice.paymentId(),"payment_failed",sub.getProviderEnvironment(),
                 sub.getAnalyticsClientId(),sub.getAnalyticsSessionId(),params);
@@ -69,9 +73,14 @@ public class Ga4BillingService {
     public void upgradeFailure(UpgradeAdjustment adjustment){
         if(adjustment.getState()!=UpgradeAdjustment.State.FAILED) return;
         var params=parameters("upgrade",adjustment.getTargetPlan(),adjustment.getSourcePlan(),PaymentProviderType.EFI,"BRL");
+        identifyStore(params,adjustment.getStoreId());
         params.put("failure_stage","provider");
         enqueue(adjustment.reference()+"-failed","payment_failed",adjustment.getEnvironment(),
                 adjustment.getAnalyticsClientId(),adjustment.getAnalyticsSessionId(),params);
+    }
+
+    private void identifyStore(Map<String,Object> params, Long storeId) {
+        if (storeId != null && storeId > 0) params.put("store_id",storeId.toString());
     }
 
     private Map<String,Object> parameters(String flow,PlanType plan,PlanType source,PaymentProviderType provider,String currency){

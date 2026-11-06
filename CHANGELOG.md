@@ -3,6 +3,107 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.56.0] - 2026-11-05
+
+### Features
+
+- add SDK quick-buy personalization and document Patagonia limitations (`693d74d`)
+
+### Correções
+
+- removendo essa merda de sentry que nao funcionou (`a3311fe`)
+- alinhamento legado store-sdk (`b2128db`)
+- associate cart personalization with line items and show quantities (`b25a41e`)
+- retirar bloqueio de personalização no checkout (`53913c7`)
+
+## [1.55.0] - 2026-11-05
+
+### Features
+
+- adicionar histórico de e-mails por loja no backoffice (`62a80a6`)
+
+### Correções
+
+- exibir campos personalizados na compra rápida legada (`7831b07`)
+
+### Outros
+
+- deixando o email mais bonitinho (`faf1164`)
+
+## [1.54.1] - 2026-11-05
+
+### Outros
+
+- entrega de emails (`435d4df`)
+
+## [1.54.0] - 2026-11-05
+
+### Features
+
+- add D11 catch-up, localized email templates and activation metrics (`f925750`)
+- add manual SES queue consumption in backoffice (`977f5bd`)
+
+## [1.53.0] - 2026-11-05
+
+### Features
+
+- add SES suppression and hourly queue observability (`0e08cd6`)
+- add guarded D3 D7 D11 activation email flow (`0dc0d94`)
+- show paused personalization notices and merchant billing alerts (`ca538a6`)
+- pause excess Free configurations and notify merchants (`c0a80a0`)
+- identify merchant stores in GA4 admin activity (`fd9ffba`)
+
+### Correções
+
+- run configuration plan reconciliation every 12 hours (`7d91f86`)
+
+## [1.52.0] - 2026-11-03
+
+### Features
+
+- recover failed renewals with grace period and email notices (`cd6dfc9`)
+
+### Correções
+
+- prevent duplicate personalization from concurrent legacy scripts (`b9f18ec`)
+
+## [1.51.1] - 2026-11-03
+
+### Outros
+
+- one click buy (`df7bd44`)
+
+## [1.51.0] - 2026-11-02
+
+### Features
+
+- clarify renewal cancellation and collect optional feedback (`154ac0e`)
+
+## [1.50.2] - 2026-10-31
+
+### Correções
+
+- control Patagonia variants in personalization action (`745bfb7`)
+
+## [1.50.1] - 2026-10-30
+
+### Correções
+
+- junit teste (`2605f9e`)
+- preserve personalization drafts and guard Patagonia checkout (`88292b3`)
+
+## [1.50.0] - 2026-10-29
+
+### Features
+
+- show product thumbnails in merchant product list (`c720357`)
+
+## [1.49.0] - 2026-10-28
+
+### Features
+
+- backoffice: add user journey audit screen (`bd300dc`)
+
 ## [1.48.1] - 2026-10-28
 
 ### Correções

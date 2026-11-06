@@ -17,6 +17,18 @@
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel notice warning" role="status" th:if="${billingAlert != null or (planPausedProductIds != null and !#sets.isEmpty(planPausedProductIds))}">
+        <h2 th:text="#{merchant.status.title}">Atenção à sua assinatura e personalizações</h2>
+        <p th:if="${billingAlert != null}" th:text="#{'merchant.status.' + ${billingAlert.kind}}">Verifique sua assinatura.</p>
+        <p th:if="${billingAlert != null and billingAlert.graceUntil != null}">
+            <span th:text="#{merchant.status.graceUntil}">Prazo para regularizar:</span>
+            <strong th:attr="data-local-time=${billingAlert.graceUntil},data-time-fallback=${#temporals.format(billingAlert.graceUntil, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}" data-time-format="datetime" th:text="${#temporals.format(billingAlert.graceUntil, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></strong>
+        </p>
+        <p th:if="${planPausedProductIds != null and !#sets.isEmpty(planPausedProductIds)}" th:text="#{merchant.status.paused(${#sets.size(planPausedProductIds)})}">Há configurações pausadas.</p>
+        <p th:text="#{merchant.status.preserved}">Seus campos e pedidos continuam salvos.</p>
+        <a class="button primary" th:href="${billingAlert != null ? billingAlert.actionPath : '/admin/billing'}" th:text="#{merchant.status.action}">Regularizar assinatura</a>
+        <a class="button" th:if="${planPausedProductIds != null and !#sets.isEmpty(planPausedProductIds)}" th:href="@{/admin/products}" th:text="#{merchant.status.products}">Ver configurações</a>
+    </section>
     <section class="notice" th:if="${store.premiumBonusActive}" th:with="bonusPlanName=#{'plan.' + ${store.premiumBonusPlan.name()}}">
         <strong th:text="#{admin.index.bonus.active(${bonusPlanName}, ${store.premiumBonusDurationDays})}">Plano Essencial por 30 dias.</strong>
         <span th:if="${store.premiumBonusDaysRemaining == 1}" th:text="#{admin.index.bonus.remaining.one}">Resta 1 dia.</span>

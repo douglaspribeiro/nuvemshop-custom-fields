@@ -144,6 +144,38 @@ public class PaymentSubscriptionService {
     public boolean efiEnabled() { return efi.configured(); }
     public String efiPayeeCode() { return efi.payeeCode(); }
     public boolean efiSandbox() { return efi.sandbox(); }
+    private RenewalFailurePolicy renewalFailures;
+    @Autowired
+    void setRenewalFailures(RenewalFailurePolicy policy) { this.renewalFailures = policy; }
+
+    /** The plan comes from the failed contract, never from a recovery URL. */
+    public Optional<PlanType> reactivationPlan(Long storeId) {
+        Store store = stores.findActiveByStoreId(storeId).orElse(null);
+        PaymentSubscription sub = subscriptions.findByStoreId(storeId).orElse(null);
+        boolean grace = sub != null && sub.getRenewalFailureDetectedAt() != null && sub.getGraceUntil() != null
+                && Instant.now().isBefore(sub.getGraceUntil()) && sub.getStatus() == PaymentSubscriptionStatus.PAST_DUE;
+        if (store == null || sub == null || (!grace && store.getEffectivePlan().isBillable()) || store.isCourtesyPremium()
+                || sub.getProvider() != PaymentProviderType.EFI || sub.getProviderEnvironment() != efi.environment()
+                || (!grace && (sub.getStatus() != PaymentSubscriptionStatus.ERROR || sub.isAccessActive()))
+                || sub.isUpgradePaymentPending() || sub.getUpgradePlan() != null || sub.isCancellationPending()
+                || !hasText(sub.getProviderSubscriptionId()) || sub.getPlan() == null || !sub.getPlan().isBillable())
+            return Optional.empty();
+        return Optional.of(sub.getPlan());
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void reactivateWithEfi(Long storeId, PlanType displayedPlan, EfiGateway.EfiPayer payer, String paymentToken, String couponCode) {
+        stores.findActiveByStoreIdForUpdate(storeId).orElseThrow(() -> new IllegalArgumentException("Loja ativa não encontrada."));
+        PlanType previous = reactivationPlan(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("A assinatura mudou. Confira seu plano antes de tentar reativar."));
+        if (displayedPlan != previous) throw new IllegalArgumentException("O plano anterior mudou. Reabra a página de reativação.");
+        if (payer == null || !validPayer(payer) || paymentToken == null || !paymentToken.matches("[a-zA-Z0-9]{20,120}"))
+            throw new IllegalArgumentException("Confira os dados do pagador e do cartão.");
+        var sub = subscriptions.findByStoreId(storeId).orElseThrow();
+        // Preserve the grace deadline through replacement; a successful payment clears it.
+        sub.setAccessActive(false); sub.setStatus(PaymentSubscriptionStatus.ERROR);
+        payWithEfi(storeId, previous, payer, paymentToken, couponCode);
+    }
 
     public String customerFacingError(String technicalDetail) {
         if (technicalDetail != null && technicalDetail.contains("transaction_checkout_not_enabled")) {
@@ -831,8 +863,34 @@ public class PaymentSubscriptionService {
         return synchronize(local, remote, invoice, "PAYMENT_WEBHOOK");
     }
 
+    @Transactional(readOnly = true)
+    public boolean shouldShowRefundNotice(Long storeId) {
+        return shouldShowRefundNotice(storeId, Instant.now());
+    }
+
+    boolean shouldShowRefundNotice(Long storeId, Instant now) {
+        // Use the earliest paid-plan activation across subscriptions, never a renewal,
+        // checkout creation, free trial or courtesy. Missing history is not a recent start.
+        return planEvents.findFirstByStoreIdAndToPlanInAndSourceInOrderByCreatedAtAscIdAsc(storeId,
+                        java.util.List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA),
+                        java.util.List.of("BILLING", "EFI_CHECKOUT", "PAYMENT_WEBHOOK", "PAYMENT_RECONCILE",
+                                "STRIPE_CHECKOUT", "CREEM_CHECKOUT", "DLOCAL_GO_CHECKOUT",
+                                "PENDING_TIMEOUT_RECONCILE", "PENDING_TIMEOUT", "PAYMENT_UPGRADE"))
+                .map(PlanEvent::getCreatedAt)
+                .filter(start -> !start.isAfter(now)
+                        && now.isBefore(start.plus(java.time.Duration.ofDays(7))))
+                .isPresent();
+    }
+
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void cancel(Long storeId) {
+        cancel(storeId, null);
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void cancel(Long storeId, String reason) {
+        if (reason != null && reason.strip().length() > 2000)
+            throw new IllegalArgumentException("Motivo do cancelamento inválido.");
         stores.findByStoreIdForUpdate(storeId);
         PaymentSubscription local = subscriptions.findByStoreId(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Assinatura nao encontrada."));
@@ -848,6 +906,7 @@ public class PaymentSubscriptionService {
                 throw new IllegalStateException("Não foi possível confirmar o fim do período pago. Contate o suporte antes de cancelar.");
             }
         }
+        if (reason != null && !reason.isBlank()) local.setCancellationReason(reason.strip());
         local.setCancellationPending(true);
         local.setCancellationRequestedAt(Instant.now());
         subscriptions.saveAndFlush(local);
@@ -951,7 +1010,9 @@ public class PaymentSubscriptionService {
         }
         paymentNotifications.paymentFailed(local, invoice);
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
-        if (local.getProvider() == PaymentProviderType.DLOCAL_GO && "active".equals(status)
+        if (renewalFailures != null && renewalFailures.apply(local, store, remote, invoice, upgraded)) {
+            if (!Instant.now().isBefore(local.getGraceUntil())) deactivate(local, store, source);
+        } else if (local.getProvider() == PaymentProviderType.DLOCAL_GO && "active".equals(status)
                 && invoice != null && invoice.approved()
                 && (remote.currentPeriodEnd() == null || !Instant.now().isBefore(remote.currentPeriodEnd()))) {
             local.setStatus(PaymentSubscriptionStatus.PAUSED); deactivate(local, store, source);
@@ -1334,6 +1395,28 @@ public class PaymentSubscriptionService {
     public WinbackDiscountService.Quote efiQuote(Store store, PlanType plan) {
         return winbackDiscounts == null ? new WinbackDiscountService.Quote(null, efi.amount(plan), efi.amount(plan))
                 : winbackDiscounts.quote(store, plan);
+    }
+
+    @Transactional
+    public void expireRenewalGrace() {
+        for (Long id : subscriptions.findExpiredRenewalGraceStoreIds(Instant.now(),
+                java.util.List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA))) {
+            try {
+                Store store = stores.findActiveByStoreIdForUpdate(id).orElse(null);
+                if (store == null) continue;
+                var sub = subscriptions.findByStoreId(id).orElse(null);
+                if (sub == null || sub.getRenewalFailureDetectedAt() == null || sub.getGraceUntil() == null
+                        || Instant.now().isBefore(sub.getGraceUntil())) continue;
+                if (hasText(sub.getProviderSubscriptionId())) sub = reconcile(id);
+                if (sub.getRenewalFailureDetectedAt() != null && sub.getGraceUntil() != null
+                        && !Instant.now().isBefore(sub.getGraceUntil())) {
+                    sub.setStatus(sub.getProvider() == PaymentProviderType.EFI ? PaymentSubscriptionStatus.ERROR : PaymentSubscriptionStatus.PAST_DUE);
+                    deactivate(sub, store, "RENEWAL_GRACE_EXPIRED"); subscriptions.save(sub);
+                }
+            } catch (RuntimeException ex) {
+                LOGGER.warn("payments.renewal_grace.check_failed store_id={} type={}", id, ex.getClass().getSimpleName());
+            }
+        }
     }
 
     private void activate(PaymentSubscription local, Store store, String source) {

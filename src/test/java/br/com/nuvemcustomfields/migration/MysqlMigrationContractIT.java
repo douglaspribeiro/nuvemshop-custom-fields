@@ -13,6 +13,7 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.orm.hibernate5.SpringBeanContainer;
 
 import java.net.URI;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,8 +68,10 @@ class MysqlMigrationContractIT {
             assertThat(latest.migrate().migrationsExecuted).isEqualTo(pending);
             assertThat(latest.validateWithResult().validationSuccessful).isTrue();
             var upgraded = snapshot(jdbc);
-            // Later migrations may add catalog rows and tables, but must preserve the seeded business data.
-            original.forEach((table, rows) -> assertThat(upgraded.get(table)).containsAll(rows));
+            // Later migrations may add rows, tables and columns. Every original column value must survive.
+            original.forEach((table, rows) -> rows.forEach(row ->
+                    assertThat(upgraded.get(table)).as("Preserved V53 data in %s: %s", table, row)
+                            .anySatisfy(actual -> assertThat(actual).containsAllEntriesOf(row))));
             assertThat(latest.migrate().migrationsExecuted).isZero();
             assertThat(snapshot(jdbc)).isEqualTo(upgraded);
 
@@ -151,18 +154,18 @@ class MysqlMigrationContractIT {
         }
     }
 
-    /** Compare all business rows, including option JSON and image ownership, excluding only the two new columns. */
-    private Map<String, List<String>> snapshot(JdbcTemplate jdbc) {
-        Map<String, List<String>> result = new LinkedHashMap<>();
+    /** Keep column values available for subset checks after additive schema migrations. */
+    private Map<String, List<Map<String, Object>>> snapshot(JdbcTemplate jdbc) {
+        Map<String, List<Map<String, Object>>> result = new LinkedHashMap<>();
         for (String table : jdbc.queryForList("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name<>'flyway_schema_history' ORDER BY table_name", String.class)) {
             result.put(table, jdbc.queryForList("SELECT * FROM `" + table.replace("`", "``") + "`").stream().map(row -> {
-                var values = new LinkedHashMap<>(row);
+                Map<String, Object> values = new LinkedHashMap<>(row);
                 if (table.equals("personalization_fields")) {
                     values.remove("show_image_zoom");
                     values.remove("mobile_image_columns");
                 }
-                return values.toString();
-            }).sorted().toList());
+                return values;
+            }).sorted(Comparator.comparing(Map::toString)).toList());
         }
         return result;
     }

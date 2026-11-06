@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta th:if="${run.running}" http-equiv="refresh" content="5">
+<title>Eventos de e-mail · Backoffice</title>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+<link rel="stylesheet" th:href="@{/styles/backoffice.css(v=${assetVersion})}">
+<th:block th:replace="~{fragments/local-time :: script}"></th:block></head>
+<body class="backoffice-page"><main class="backoffice-shell">
+<header class="backoffice-header"><div><p class="eyebrow">Backoffice</p><h1>Eventos de e-mail</h1>
+<p>Consumo da fila de eventos SES para reconquista e ativação das lojas.</p></div>
+<nav class="backoffice-nav"><a th:href="@{/backoffice}">Visão geral</a><a th:href="@{/backoffice/winback}">Reconquistas</a></nav></header>
+<p class="notice" role="status" th:if="${message}" th:text="${message}"></p>
+<p class="notice" role="alert" th:if="${error}" th:text="${error}"></p>
+<section class="panel"><h2>Executar agora</h2>
+<p>A rotina automática continua a cada hora. Este botão inicia uma execução imediata e atualiza a quantidade de mensagens na fila.</p>
+<p>Os eventos são processados antes da confirmação de remoção. Esta ação não dispara uma campanha de e-mails.</p>
+<p class="notice" role="alert" th:if="${configurationProblem}" th:text="${configurationProblem}"></p>
+<form method="post" th:action="@{/backoffice/email-events/consume}">
+<input type="hidden" name="actionToken" th:value="${actionToken}">
+<button class="button primary" type="submit" th:disabled="${run.running or configurationProblem != null}">Executar consumo da fila</button>
+</form></section>
+<section class="panel" aria-live="polite"><h2 th:text="${run.running ? 'Consumo em andamento' : 'Última execução'}"></h2>
+<p th:if="${run.startedAt == null}">Nenhuma execução registrada desde a inicialização da aplicação.</p>
+<th:block th:if="${run.startedAt != null}">
+<p>Origem: <strong th:text="${run.source}"></strong> · Início: <span th:attr="data-local-time=${run.startedAt}" data-time-format="datetime" th:text="${#temporals.format(run.startedAt, 'dd/MM/yyyy HH:mm:ss', 'America/Sao_Paulo')}"></span></p>
+<p th:if="${run.finishedAt != null}">Conclusão: <span th:attr="data-local-time=${run.finishedAt}" data-time-format="datetime" th:text="${#temporals.format(run.finishedAt, 'dd/MM/yyyy HH:mm:ss', 'America/Sao_Paulo')}"></span></p>
+<section class="backoffice-primary-metrics"><article><span>Recebidas</span><strong th:text="${run.received}">0</strong></article><article><span>Tratadas</span><strong th:text="${run.processed}">0</strong></article><article><span>Remoções confirmadas</span><strong th:text="${run.acknowledged}">0</strong></article><article><span>Falhas de consumo</span><strong th:text="${run.failures}">0</strong></article></section>
+<p class="notice" role="alert" th:if="${run.error}" th:text="${run.error}"></p>
+<p class="muted" th:if="${!run.running and run.error == null and run.received == 0}">A consulta não retornou mensagens disponíveis.</p>
+<p class="notice" th:if="${run.limited}">O limite desta execução foi atingido. Mensagens restantes podem ser consumidas em outra execução ou no próximo ciclo automático.</p>
+<p class="notice" role="alert" th:if="${run.attributesOk != null and !run.attributesOk}">Não foi possível atualizar a quantidade na fila. Confira a permissão sqs:GetQueueAttributes.</p>
+<p class="muted" th:if="${run.attributesOk != null and run.attributesOk}">Quantidade na fila atualizada para a coleta do Grafana.</p>
+</th:block>
+<p class="muted" th:if="${run.running}">A página atualiza a cada cinco segundos durante a execução.</p>
+<p class="muted">O resultado fica disponível nesta instância até a próxima execução ou reinicialização. Mensagens tratadas incluem eventos ignorados pelas campanhas; os totais não representam e-mails enviados ou entregues.</p>
+</section></main></body></html>

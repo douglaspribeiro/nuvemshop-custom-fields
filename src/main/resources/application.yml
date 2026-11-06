@@ -194,7 +194,8 @@ notifications:
     queue-url: ${AWS_SES_EVENTS_QUEUE_URL:}
     region: ${AWS_SES_EVENTS_REGION:us-east-1}
     configuration-set: ${AWS_SES_CONFIGURATION_SET:}
-    poll-delay-ms: 10000
+    poll-delay-ms: ${AWS_SES_EVENTS_POLL_DELAY_MS:3600000}
+    attributes-delay-ms: ${AWS_SES_EVENTS_ATTRIBUTES_DELAY_MS:3600000}
   ses:
     # AWS SES SMTP com STARTTLS. Configuração incompleta desativa o envio.
     host: ${AWS_SES_SMTP_HOST:}
@@ -257,3 +258,13 @@ buyer-uploads:
     prefix: ${BUYER_UPLOAD_S3_PREFIX:production/buyer-files}
   cleanup-delay-ms: ${BUYER_UPLOAD_CLEANUP_DELAY_MS:60000}
   reconcile-delay-ms: ${BUYER_UPLOAD_RECONCILE_DELAY_MS:300000}
+# NC-39: deployment never enables a campaign implicitly.
+activation:
+  email:
+    enabled: ${ACTIVATION_EMAIL_ENABLED:false}
+    dry-run: ${ACTIVATION_EMAIL_DRY_RUN:true}
+    start-at: ${ACTIVATION_EMAIL_START_AT:}
+    allowlist: ${ACTIVATION_EMAIL_ALLOWLIST:}
+    suppression-ready: ${ACTIVATION_EMAIL_SUPPRESSION_READY:false}
+    schedule-delay-ms: ${ACTIVATION_EMAIL_SCHEDULE_DELAY_MS:3600000}
+    metrics-delay-ms: ${ACTIVATION_EMAIL_METRICS_DELAY_MS:3600000}

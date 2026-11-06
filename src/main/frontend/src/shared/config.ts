@@ -29,6 +29,7 @@ export type PersonalizationStyle = {
 /** Espelha br.com.nuvemcustomfields.dto.PersonalizationResponse. */
 export type PersonalizationConfig = {
 	enabled: boolean;
+    paused?: boolean;
 	fields: PersonalizationField[];
 	style: PersonalizationStyle;
 	locale: string;
@@ -66,17 +67,24 @@ export async function fetchConfig(
 	store: number,
 	productId: number,
 ): Promise<PersonalizationConfig> {
-	const url = `${appOrigin()}/public/stores/${store}/personalization?productId=${productId}`;
 	try {
-		const response = await fetch(url, { headers: { Accept: "application/json" } });
-		if (!response.ok) {
-			return DISABLED;
-		}
-		const body = (await response.json()) as PersonalizationConfig;
-		return body?.enabled ? normalize(body) : DISABLED;
+		return await fetchConfigRequired(store, productId);
 	} catch {
 		return DISABLED;
 	}
+}
+
+/** Checkout must distinguish an unconfigured product from a failed policy lookup. */
+export async function fetchConfigRequired(store: number, productId: number, timeoutMs = 8000): Promise<PersonalizationConfig> {
+    const response = await fetch(`${appOrigin()}/public/stores/${store}/personalization?productId=${productId}`,
+        { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(timeoutMs) });
+    if (!response.ok) throw new Error("personalization_policy_unavailable");
+    const body = await response.json() as PersonalizationConfig;
+    if (typeof body?.enabled !== "boolean" || (body.enabled && !Array.isArray(body.fields)))
+        throw new Error("personalization_policy_invalid");
+    return body.enabled ? normalize(body) : body.paused === true
+        ? {...DISABLED, paused: true, locale: body.locale || DISABLED.locale, style: body.style || DISABLED.style}
+        : DISABLED;
 }
 
 function normalize(config: PersonalizationConfig): PersonalizationConfig {

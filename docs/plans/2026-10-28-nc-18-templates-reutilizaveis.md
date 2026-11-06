@@ -27,7 +27,7 @@ O endpoint antigo de onboarding agora encaminha à revisão. O identificador `pe
 
 ## Persistência e limites técnicos
 
-Migration adicional `V65__reusable_store_templates.sql`:
+Migration adicional `V71__reusable_store_templates.sql`:
 
 - `store_templates`: identidade, loja, origem, nome/descrição, definições ordenadas em JSON, revisão e datas.
 - `template_applications`: operação idempotente por loja/requisição, produto, origem, modo e revisão apresentada.

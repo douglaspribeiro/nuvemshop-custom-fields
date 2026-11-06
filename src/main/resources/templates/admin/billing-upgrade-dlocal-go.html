@@ -1,6 +1,7 @@
 <!doctype html>
 <html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="#{admin.billing.upgrade.title}">Upgrade</title>
+<th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
 <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
 <body class="merchant-page"><main class="shell"><section class="panel">
 <h1 th:text="#{admin.billing.upgrade.heading(${operation.targetPlan.displayName})}">Upgrade</h1>

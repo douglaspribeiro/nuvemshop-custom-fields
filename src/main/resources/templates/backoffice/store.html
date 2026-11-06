@@ -22,6 +22,7 @@
             <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
                 <button class="button primary" type="submit">Entrar no modo loja</button>
             </form>
+            <a class="button" th:href="@{/backoffice/stores/{storeId}/emails(storeId=${store.storeId})}">Histórico de e-mails</a>
             <a class="button" th:href="@{/backoffice/audit(storeId=${store.storeId})}">Auditoria da jornada</a>
             <a class="button" th:href="@{/backoffice/stores/{storeId}/configuration(storeId=${store.storeId})}">Ver configuração</a>
             <a class="button" th:href="@{/backoffice/stores/{storeId}/scripts(storeId=${store.storeId})}">Scripts</a>
@@ -148,9 +149,33 @@
             <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
             <p>Última cobrança: <span th:text="${paymentSubscription.lastPaymentId ?: '-'}">-</span>
                 / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
+            <div th:if="${!#strings.isEmpty(paymentSubscription.cancellationReason)}">
+                <strong>Motivo do cancelamento</strong>
+                <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${paymentSubscription.cancellationReason}"></p>
+            </div>
             <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
             <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
             <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.technicalError ?: paymentSubscription.lastError)}" th:text="${paymentSubscription.technicalError ?: paymentSubscription.lastError}">Erro técnico</p>
+            <div id="renewal-failure-email" th:if="${renewalEmail.eligible}">
+                <h3>Avisar loja sobre falha na renovação</h3>
+                <p th:if="${renewalAutomaticState != null}">Estado do aviso automático: <strong th:text="${renewalAutomaticState}"></strong></p>
+                <p>Destinatário: <strong th:text="${renewalEmail.recipient}"></strong></p>
+                <details>
+                    <summary>Ver o e-mail que será enviado</summary>
+                    <p><strong th:text="${renewalEmail.subject}"></strong></p>
+                    <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${renewalEmail.body}"></p>
+                    <p>Botão no e-mail: <strong th:text="${renewalEmail.actionLabel}"></strong></p>
+                </details>
+                <form th:action="@{/backoffice/stores/{storeId}/payment/renewal-failure-email(storeId=${store.storeId})}" method="post"
+                      onsubmit="this.querySelector('button[type=submit]').disabled = true;">
+                    <input type="hidden" name="actionToken" th:value="${renewalEmailToken}">
+                    <input type="hidden" name="fingerprint" th:value="${renewalEmail.fingerprint}">
+                    <button class="button primary" type="submit">Enviar aviso de renovação falhou</button>
+                </form>
+                <small class="muted">O envio confere novamente o pagamento e o plano atual. Esta ação envia apenas o aviso.</small>
+            </div>
+            <p class="notice" th:if="${!renewalEmail.eligible and (paymentSubscription.status.name() == 'ERROR' or paymentSubscription.status.name() == 'PAST_DUE')}"
+               th:text="${renewalEmail.unavailableReason}"></p>
             <form th:if="${paymentSubscription.providerSubscriptionId != null}"
                   th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
                 <button class="button" type="submit">Reconciliar agora</button>

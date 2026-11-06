@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="#{admin.billing.cancel.title} + ' - ' + #{common.app.title}">Cancelar assinatura</title>
+    <title th:text="#{admin.billing.cancel.title} + ' - ' + #{common.app.title}">Desativar renovação automática</title>
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
@@ -15,23 +15,35 @@
     <a class="merchant-cancel-back" th:href="@{/admin/billing}" th:text="#{admin.billing.cancel.back}">Voltar aos planos</a>
     <section class="panel">
         <p class="eyebrow" th:text="#{admin.billing.manage}">Gerenciar assinatura</p>
-        <h1 th:text="#{admin.billing.cancel.title}">Tem certeza de que deseja cancelar a assinatura?</h1>
-        <p th:text="#{admin.billing.cancel.no.renewal}">Você não receberá uma nova cobrança após o cancelamento.</p>
+        <h1 th:text="#{admin.billing.cancel.title}">Desativar a renovação automática?</h1>
+        <p th:text="#{admin.billing.cancel.no.renewal}">Após a confirmação do provedor, seu plano não será renovado automaticamente.</p>
         <p th:if="${paymentSubscription.nextPaymentAt != null}"
            th:with="endDate=${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"
            th:attr="data-local-time=${paymentSubscription.nextPaymentAt},data-time-fallback=${endDate}" data-time-format="date" th:text="#{admin.billing.cancel.period(${endDate})}">Seu plano continua disponível até 24/10/2026.</p>
         <p th:unless="${paymentSubscription.nextPaymentAt != null}"
-           th:text="#{admin.billing.cancel.period.unavailable}">Vamos confirmar o fim do período pago antes de cancelar.</p>
+           th:text="#{admin.billing.cancel.period.unavailable}">Vamos confirmar o fim do período pago antes de desativar a renovação.</p>
+        <p class="notice error" role="alert" th:if="${error}" th:text="${error}"></p>
         <form th:action="@{/admin/billing/cancel}" method="post">
+            <div class="merchant-suggestion-field">
+                <label for="cancellation-reason" th:text="#{admin.billing.cancel.reason.label}">O que podemos melhorar para você?</label>
+                <p class="muted" id="cancellation-reason-help" th:text="#{admin.billing.cancel.reason.help}">Seu relato nos ajuda a escolher as próximas melhorias. Se puder, conte o que faltou ou não funcionou. É opcional.</p>
+                <textarea id="cancellation-reason" name="reason" rows="4" maxlength="2000"
+                          th:placeholder="#{admin.billing.cancel.reason.placeholder}"
+                          aria-describedby="cancellation-reason-help" th:text="${cancellationReason}"></textarea>
+            </div>
             <label class="merchant-cancel-confirm">
                 <input type="checkbox" name="confirm" value="true" required>
-                <span th:text="#{admin.billing.cancel.confirm}">Sim, tenho certeza de que quero cancelar a assinatura.</span>
+                <span th:text="#{admin.billing.cancel.confirm}">Sim, quero desativar a renovação automática e manter o acesso até o fim do período pago.</span>
             </label>
             <div class="merchant-cancel-actions">
-                <a class="button primary" th:href="@{/admin/billing}" th:text="#{admin.billing.cancel.keep}">Manter minha assinatura</a>
-                <button class="button" type="submit" th:text="#{admin.billing.cancel.confirm.action}">Confirmar cancelamento</button>
+                <a class="button primary" th:href="@{/admin/billing}" th:text="#{admin.billing.cancel.keep}">Manter renovação automática</a>
+                <button class="button" type="submit" th:text="#{admin.billing.cancel.confirm.action}">Confirmar desativação da renovação</button>
             </div>
         </form>
+        <details class="merchant-billing-manage" th:if="${showRefundNotice}">
+            <summary th:text="#{admin.billing.cancel.refund.summary}">Dúvidas sobre o pagamento?</summary>
+            <p th:text="#{admin.billing.cancel.refund.notice}">Para solicitar cancelamento com estorno, abra um ticket de suporte. A solicitação será analisada pela nossa equipe.</p>
+        </details>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

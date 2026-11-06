@@ -14,7 +14,8 @@
     const sdkWaitMs = 2500;
     const sdkPollMs = 150;
     let suppressedBySdk = false;
-    const cartSnapshotTtlMs = 24 * 60 * 60 * 1000;
+    let cartItemsFromEvent = null;
+    let cartEventsBound = false;
     let attempts = 0;
     let lastRetryReason = "not_started";
     let cartColorObserverStarted = false;
@@ -38,6 +39,12 @@
     const storeId = scriptUrl.searchParams.get("store") || getStoreId();
     const apiOrigin = isAppOrigin(scriptUrl.origin) ? scriptUrl.origin : appOrigin;
 
+    // Versões/IDs coexistentes compartilham o mesmo runtime por loja e página.
+    // A reserva precisa acontecer antes de qualquer fetch ou callback assíncrono.
+    const runtimeKey = "__ncfLegacyRuntime:" + storeId;
+    if (storeId && window[runtimeKey]) return;
+    if (storeId) window[runtimeKey] = true;
+
     injectStyles();
     watchCartPropertyColors();
     ready(forceForegroundMediumWhite);
@@ -50,11 +57,115 @@
 
     loadStoreStyle(function (style) {
         styleConfig = style || {};
-        renderStoredCartProperties();
+        renderCartProperties();
         syncCartPropertyColors();
         forceForegroundMediumWhite();
     });
+    installQuickBuyFields();
     ready(initialize);
+
+    function installQuickBuyFields() {
+        const policies = new Map();
+        const replaying = new WeakSet();
+        const prepared = new WeakSet();
+        const cardSelector = ".js-item-product[data-product-id], [data-component='product-list-item'][data-product-id]";
+
+        function policy(productId) {
+            if (!policies.has(productId)) {
+                const controller = new AbortController();
+                const timer = window.setTimeout(() => controller.abort(), 5000);
+                const pending = fetch(apiOrigin + "/public/stores/" + encodeURIComponent(storeId)
+                    + "/personalization?productId=" + encodeURIComponent(productId), {
+                    credentials: "omit", headers: { Accept: "application/json" }, signal: controller.signal
+                }).then(response => {
+                    if (!response.ok) throw new Error("quick_buy_policy_unavailable");
+                    return response.json();
+                }).then(config => {
+                    if (typeof config?.enabled !== "boolean" || (config.enabled && !Array.isArray(config.fields))) {
+                        throw new Error("quick_buy_policy_invalid");
+                    }
+                    return config;
+                }).catch(() => {
+                    // Sem política, a página do produto é o caminho para conferir os campos.
+                    policies.delete(productId);
+                    return null;
+                }).finally(() => window.clearTimeout(timer));
+                policies.set(productId, pending);
+            }
+            return policies.get(productId);
+        }
+
+        function productUrl(card) {
+            const link = card.querySelector("a.item-link[href], a.js-product-item-image-link-private[href], a.js-item-image-link[href]")
+                || Array.from(card.querySelectorAll("a[href]")).find(link => /\/(productos|produtos|products)\//.test(link.getAttribute("href")));
+            if (!link) return null;
+            try {
+                const url = new URL(link.getAttribute("href"), window.location.href);
+                return url.origin === window.location.origin && url.pathname !== window.location.pathname
+                    ? url.href : null;
+            } catch (ignored) { return null; }
+        }
+
+        function intercept(event) {
+            const target = event.target instanceof Element ? event.target : null;
+            const control = event.type === "submit" ? target
+                : target && target.closest(".js-item-buy-open, .js-quickshop-modal-open, .js-quickshop-open, .js-addtocart, [type='submit'], [data-component='product-list-item.show-add-to-cart'], [data-component='product-list-item.add-to-cart']");
+            const card = control && control.closest(cardSelector);
+            if (!card || replaying.has(control)) return;
+            const form = control.closest("form") || card.querySelector("form.js-product-form, form[action*='/comprar'], form");
+            if (form && prepared.has(form) && form.querySelector(".ncf-personalization")) return;
+            const url = productUrl(card);
+            if (!url || !/^\d+$/.test(card.dataset.productId || "")) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (control.dataset.ncfQuickBuyPending === "true") return;
+            control.dataset.ncfQuickBuyPending = "true";
+            const submitter = event.submitter;
+            void policy(card.dataset.productId).then(config => {
+                if (!card.isConnected) return;
+                delete control.dataset.ncfQuickBuyPending;
+                if (!config || (config.enabled && config.fields.length > 0 && !form)) {
+                    // Themes without a local quick-buy form retain the safe product-page fallback.
+                    track("quick_buy_redirect", { storeId: storeId, productId: card.dataset.productId });
+                    window.location.assign(url);
+                    return;
+                }
+                if (config.enabled && config.fields.length > 0) {
+                    if (!form.querySelector(".ncf-personalization")) {
+                        rememberFieldLabels(config.fields);
+                        renderFields(form, config.fields, config.style || styleConfig);
+                        bindProductValidation(form, config.fields);
+                    }
+                    prepared.add(form);
+                    track("quick_buy_fields", { storeId: storeId, productId: card.dataset.productId });
+                    // Opening the theme panel is safe; an add/submit must wait for buyer input.
+                    const opener = card.querySelector(".js-item-buy-open, .js-quickshop-modal-open, .js-quickshop-open");
+                    const opening = event.type === "click" && control === opener;
+                    if (!opening) {
+                        if (opener) { replaying.add(opener); try { opener.click(); } finally { replaying.delete(opener); } }
+                        const input = form.querySelector(".ncf-personalization input:not([type=hidden]), .ncf-personalization select, .ncf-personalization textarea");
+                        if (input) input.focus();
+                        return;
+                    }
+                }
+                replaying.add(control);
+                try {
+                    if (event.type === "submit") control.requestSubmit(submitter || undefined);
+                    else control.click();
+                } finally { replaying.delete(control); }
+            });
+        }
+
+        document.addEventListener("click", intercept, true);
+        document.addEventListener("submit", intercept, true);
+        // Antecipar só os cards de interesse evita consultar o catálogo inteiro em cada visita.
+        function warm(event) {
+            const card = event.target instanceof Element && event.target.closest(cardSelector);
+            if (card && /^\d+$/.test(card.dataset.productId || "")) void policy(card.dataset.productId);
+        }
+        document.addEventListener("pointerover", warm, true);
+        document.addEventListener("focusin", warm, true);
+    }
 
     function initialize() {
         // Patagonia usa React sem form de compra e não fornece cart:before_update.
@@ -87,6 +198,23 @@
 
         track("load_config", { storeId: storeId, productId: productId });
         loadConfig(productId, function (config) {
+            if (config && config.paused === true) {
+                whenSdkFieldsAbsent([], productId, function () {
+                    if (form.dataset.ncfInjected === "true" || form.querySelector(".ncf-paused-notice")) return;
+                    const notice = document.createElement("div");
+                    notice.className = "ncf-personalization ncf-paused-notice";
+                    notice.setAttribute("role", "status");
+                    notice.textContent = String(config.locale || "pt-BR").toLowerCase().startsWith("pt")
+                        ? "A personalização deste produto está temporariamente indisponível. Após a compra, envie as informações de personalização diretamente à loja, informando o número do pedido."
+                        : "La personalización de este producto está temporalmente no disponible. Después de la compra, envía la información de personalización directamente a la tienda, indicando el número de pedido.";
+                    const submit = form.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
+                    const anchor = findActionContainer(form, submit) || submit;
+                    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(notice, anchor);
+                    else form.appendChild(notice);
+                    form.dataset.ncfInjected = "true";
+                });
+                return;
+            }
             if (!config || !config.enabled || !Array.isArray(config.fields) || config.fields.length === 0) {
                 track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
                 return;
@@ -94,11 +222,13 @@
             styleConfig = config.style || styleConfig || {};
             rememberFieldLabels(config.fields);
             whenSdkFieldsAbsent(config.fields, productId, function () {
-                renderFields(form, config.fields, styleConfig);
-                bindCartSnapshot(form, config.fields);
-                renderStoredCartProperties();
-                syncCartPropertyColors();
+                // Outra inicialização pode ter concluído durante a consulta/espera pelo SDK.
+                if (form.dataset.ncfInjected === "true" || form.querySelector(".ncf-personalization")) return;
                 form.dataset.ncfInjected = "true";
+                renderFields(form, config.fields, styleConfig);
+                bindProductValidation(form, config.fields);
+                renderCartProperties();
+                syncCartPropertyColors();
                 track("injected", { storeId: storeId, productId: productId });
             });
         });
@@ -256,17 +386,26 @@
     }
 
     function findProductForm() {
-        return document.querySelector("#product_form")
-            || document.querySelector("form[action*='/cart/add']")
-            || document.querySelector("form[action*='/comprar']")
-            || document.querySelector("form[action*='/carrinho']")
-            || document.querySelector("form.js-product-form")
-            || document.querySelector("form[data-product-id]")
-            || document.querySelector("[data-product-id] form")
-            || document.querySelector("form");
+        // Cart, search and newsletter forms can share /comprar/ or live on a PDP.
+        // Only a form that actually adds a product may receive editable fields.
+        const selectors = ["#product_form", "form[action*='/cart/add']", "form[action*='/comprar']",
+            "form.js-product-form", "form[data-product-id]", "[data-product-id] form"];
+        for (const selector of selectors) {
+            const form = Array.from(document.querySelectorAll(selector)).find(candidate => {
+                if (candidate.closest(".js-item-product, [data-component='product-list-item']")) return false;
+                if (candidate.matches(".js-ajax-cart-panel, #cart-form")
+                    || candidate.querySelector("[name='go_to_checkout'], [name='checkout']")) return false;
+                return candidate.id === "product_form" || candidate.matches(".js-product-form, [data-product-id], form[action*='/cart/add']")
+                    || !!candidate.querySelector("input[name='add_to_cart'], input[name='product_id'], input[name='product'], input[name='product[id]']");
+            });
+            if (form) return form;
+        }
+        return null;
     }
 
     function findProductId(targetForm) {
+        const card = targetForm && targetForm.closest(".js-item-product[data-product-id], [data-component='product-list-item'][data-product-id]");
+        if (card) return card.dataset.productId;
         const globalProductId = findGlobalProductId();
         if (globalProductId) {
             return globalProductId;
@@ -285,9 +424,7 @@
         if (productIdInput && productIdInput.value) {
             return productIdInput.value;
         }
-        const productNode = targetForm.querySelector("[data-product-id]")
-            || document.querySelector("[data-product-id]")
-            || targetForm;
+        const productNode = targetForm.querySelector("[data-product-id]") || targetForm;
         return productNode.dataset.productId || null;
     }
 
@@ -384,13 +521,13 @@
         });
     }
 
-    function bindCartSnapshot(targetForm, fields) {
-        if (!targetForm || targetForm.dataset.ncfSnapshotBound === "true") {
+    function bindProductValidation(targetForm, fields) {
+        if (!targetForm || targetForm.dataset.ncfValidationBound === "true") {
             return;
         }
-        targetForm.dataset.ncfSnapshotBound = "true";
+        targetForm.dataset.ncfValidationBound = "true";
         let checkingUploads=false,uploadsApproved=false;
-        const validateAndRemember = (event) => {
+        const validateFields = (event) => {
             for (const field of fields) {
                 const name = "properties[" + (field.propertyName || field.label) + "]";
                 const input = Array.from(targetForm.elements).find(element => element.name === name);
@@ -434,7 +571,6 @@
                     if(notice)notice.textContent=error.message || "Reenvie o arquivo para continuar.";
                 }).finally(()=>{checkingUploads=false;});return;
             }
-            rememberCartSnapshot(targetForm, fields);
             if(event.type === "submit") queueMicrotask(()=>{
                 for(const field of fields.filter(field=>field.fieldType === "FILE_UPLOAD")){
                     const input=Array.from(targetForm.elements).find(element=>element.name==="properties["+(field.propertyName||field.label)+"]");
@@ -442,119 +578,49 @@
                 }
             });
         };
-        targetForm.addEventListener("submit", validateAndRemember, true);
+        targetForm.addEventListener("submit", validateFields, true);
         targetForm.addEventListener("click", event => {
             if (event.target.closest("button[type='submit'], input[type='submit'], .js-addtocart, .js-buy-now")) {
-                validateAndRemember(event);
+                validateFields(event);
             }
         }, true);
     }
 
-    function rememberCartSnapshot(targetForm, fields) {
-        const values = cartFieldValues(targetForm, fields);
-        if (values.length === 0) {
-            return;
+    function renderCartProperties() {
+        const ls = window.LS;
+        if (!cartEventsBound && ls && typeof ls.on === "function" && ls.events?.productAddedToCart) {
+            cartEventsBound = true;
+            ls.on(ls.events.productAddedToCart, (event) => {
+                const cart = event?.detail?.cart;
+                cartItemsFromEvent = cart?.items || cart?.products || null;
+                renderCartProperties();
+            });
         }
-        const snapshots = cartSnapshots();
-        snapshots.push({
-            productId: findProductId(targetForm),
-            variantId: findVariantId(targetForm),
-            productName: findProductName(),
-            productPath: window.location.pathname,
-            fields: values,
-            createdAt: Date.now()
-        });
-        writeCartSnapshots(snapshots.slice(-30));
-    }
-
-    function cartFieldValues(targetForm, fields) {
-        return (fields || [])
-            .map((field) => {
-                const key = field.propertyName || field.label;
-                const input = Array.from(targetForm.elements || [])
-                    .find((element) => element.name === "properties[" + key + "]");
-                let value = input && (input.type !== "checkbox" || input.checked) && input.value ? String(input.value).trim() : "";
-                if(field.fieldType === "FILE_UPLOAD") value=value.replace(/\s*—\s*NCF-FILE:.*$/, "");
-                return value ? { label: field.label || key, value: value } : null;
-            })
-            .filter(Boolean);
-    }
-
-    function findVariantId(targetForm) {
-        const input = Array.from(targetForm.elements || [])
-            .find((element) => [
-                "variant_id",
-                "variation_id",
-                "variant",
-                "variation",
-                "id"
-            ].includes(element.name) && element.value);
-        return input ? String(input.value) : null;
-    }
-
-    function findProductName() {
-        const title = document.querySelector([
-            "h1",
-            ".js-product-name",
-            ".product-name",
-            ".product-title",
-            "[class*='product-name' i]",
-            "[class*='product-title' i]"
-        ].join(","));
-        return title && title.textContent ? title.textContent.trim() : null;
-    }
-
-    function cartSnapshots() {
-        try {
-            const storage = window.localStorage;
-            if (!storage) {
-                return [];
-            }
-            const raw = storage.getItem(cartSnapshotKey());
-            const snapshots = JSON.parse(raw || "[]");
-            const fresh = Array.isArray(snapshots)
-                ? snapshots.filter((snapshot) => snapshot && Date.now() - Number(snapshot.createdAt || 0) < cartSnapshotTtlMs)
-                : [];
-            if (fresh.length !== snapshots.length) {
-                writeCartSnapshots(fresh);
-            }
-            return fresh;
-        } catch (ignored) {
-            return [];
-        }
-    }
-
-    function writeCartSnapshots(snapshots) {
-        try {
-            const storage = window.localStorage;
-            if (storage) {
-                storage.setItem(cartSnapshotKey(), JSON.stringify(snapshots));
-            }
-        } catch (ignored) {
-        }
-    }
-
-    function cartSnapshotKey() {
-        return "ncf:cart-properties:" + (storeId || "unknown");
-    }
-
-    function renderStoredCartProperties() {
-        const snapshots = cartSnapshots();
-        if (snapshots.length === 0) {
-            return;
-        }
-        const used = new Set();
+        const items = cartItemsFromEvent || ls?.cart?.items || ls?.cart?.products || [];
         cartLineTargets().forEach((target) => {
-            if (!target || target.querySelector(".ncf-cart-property-list")) {
+            const row = target.closest("[data-item-id]") || target.parentElement?.closest(".js-cart-item,.cart-item,tr,[class*='cart-item' i]") || target;
+            const identity = row.getAttribute("data-item-id") || row.querySelector("[data-item-id]")?.getAttribute("data-item-id")
+                || row.querySelector("input[name^='quantity[']")?.name.match(/^quantity\[(.+)\]$/)?.[1];
+            const item = identity && items.find(item => String(item.id) === identity);
+            const properties = item?.properties;
+            const fields = (Array.isArray(properties) ? properties.map(p => ({label: p.name || p.label || p.key, value: p.value || p.text}))
+                : Object.entries(properties || {}).map(([label, value]) => ({label, value})))
+                .filter(p => p.label && !String(p.label).startsWith("_") && p.value != null && String(p.value).trim())
+                .map(p => ({label: String(p.label), value: String(p.value)}));
+            const existing = target.querySelector(".ncf-cart-property-list");
+            const nativeTarget = target.cloneNode(true);
+            nativeTarget.querySelectorAll(".ncf-cart-property-list").forEach(n => n.remove());
+            if (!fields.length || visibleCartProperties(nativeTarget, fields)) {
+                if (existing) existing.remove();
                 return;
             }
-            const snapshot = matchingCartSnapshot(target, snapshots, used);
-            if (!snapshot || visibleCartProperties(target, snapshot.fields)) {
-                return;
-            }
+            const signature = JSON.stringify(fields);
+            if (existing?.dataset.ncfProperties === signature) return;
+            if (existing) existing.remove();
             const list = document.createElement("div");
             list.className = "ncf-cart-property ncf-cart-property-list";
-            snapshot.fields.forEach((field) => {
+            list.dataset.ncfProperties = signature;
+            fields.forEach((field) => {
                 const line = document.createElement("div");
                 line.className = "ncf-cart-property-line";
                 const label = document.createElement("b");
@@ -571,6 +637,7 @@
         const selectors = [
             "[data-testid='product-name-qty']",
             ".js-cart-item-name",
+            ".ajax-cart-item-link",
             ".cart-item-name",
             ".cart-item__name",
             ".line-item-name",
@@ -581,64 +648,9 @@
         return Array.from(new Set(document.querySelectorAll(selectors.join(","))));
     }
 
-    function matchingCartSnapshot(target, snapshots, used) {
-        const targetText = normalizedText(cartLineMatchText(target));
-        let fallback = null;
-        for (let index = snapshots.length - 1; index >= 0; index -= 1) {
-            if (used.has(index)) {
-                continue;
-            }
-            const snapshot = snapshots[index];
-            if (!fallback) {
-                fallback = { snapshot: snapshot, index: index };
-            }
-            if (snapshotMatches(targetText, snapshot)) {
-                used.add(index);
-                return snapshot;
-            }
-        }
-        if (snapshots.length === 1 && fallback) {
-            used.add(fallback.index);
-            return fallback.snapshot;
-        }
-        return null;
-    }
-
-    function snapshotMatches(targetText, snapshot) {
-        const candidates = [
-            snapshot.productName,
-            snapshot.productPath,
-            snapshot.productId,
-            snapshot.variantId
-        ].map(normalizedText).filter(Boolean);
-        return candidates.some((candidate) => targetText.indexOf(candidate) !== -1 || candidate.indexOf(targetText) !== -1);
-    }
-
-    function cartLineMatchText(target) {
-        const row = target.closest("tr,.js-cart-item,.cart-item,[class*='cart-item' i],[class*='line-item' i]") || target;
-        const pieces = [row.textContent || ""];
-        row.querySelectorAll("img[alt],img[title],a[href],[data-product-id],[data-variant-id]").forEach((node) => {
-            pieces.push(node.getAttribute("alt") || "");
-            pieces.push(node.getAttribute("title") || "");
-            pieces.push(node.getAttribute("href") || "");
-            pieces.push(node.getAttribute("data-product-id") || "");
-            pieces.push(node.getAttribute("data-variant-id") || "");
-        });
-        return pieces.join(" ");
-    }
-
     function visibleCartProperties(target, fields) {
         const text = target.textContent || "";
         return fields.some((field) => text.indexOf(field.label + ":") !== -1);
-    }
-
-    function normalizedText(value) {
-        return String(value || "")
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
     }
 
     function rememberFieldLabels(fields) {
@@ -671,7 +683,10 @@
         }
         let pending = false;
         const refreshCart = () => {
-            renderStoredCartProperties();
+            if (document.getElementById(sdkMarkerId)) {
+                document.querySelectorAll(".ncf-paused-notice").forEach(function (notice) { notice.remove(); });
+            }
+            renderCartProperties();
             syncCartPropertyColors();
             forceForegroundMediumWhite();
         };
@@ -811,6 +826,7 @@
         const title = item.querySelector([
             "[data-testid='product-name-qty']",
             ".js-cart-item-name",
+            ".ajax-cart-item-link",
             ".cart-item-name",
             ".cart-item__name",
             ".line-item-name",

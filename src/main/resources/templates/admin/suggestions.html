@@ -1,5 +1,6 @@
 <!doctype html><html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{suggestions.title}">Sugerir uma melhoria</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+    <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
 </head>
 <body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('suggestions')}"></th:block><main class="shell">
 <section class="page-header"><div><h1 th:text="#{suggestions.title}"></h1><p th:text="#{suggestions.intro}"></p></div><a class="button" th:href="@{/admin}" th:text="#{merchant.nav.overview}">Visão geral</a></section>

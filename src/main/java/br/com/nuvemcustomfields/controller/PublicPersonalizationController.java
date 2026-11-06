@@ -69,7 +69,7 @@ public class PublicPersonalizationController {
     ) {
         StoreState state = storeState(storeId);
         if (state.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
-        if (!state.hasFields()) return state.disabled();
+        if (!state.hasFields() && !state.hasConfiguredFields()) return state.disabled();
         CachedPersonalization cached = cache.get("personalization", storeId, productId,
                 () -> loadPersonalization(storeId, productId, path));
         if (cached.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
@@ -78,17 +78,17 @@ public class PublicPersonalizationController {
         return cached.response();
     }
 
-    private record StoreState(boolean active, boolean hasFields, PersonalizationResponse disabled) {
-        StoreState(boolean active, boolean hasFields) { this(active, hasFields, PersonalizationResponse.disabled()); }
+    private record StoreState(boolean active, boolean hasFields, boolean hasConfiguredFields, PersonalizationResponse disabled) {
+        StoreState(boolean active, boolean hasFields) { this(active, hasFields, false, PersonalizationResponse.disabled()); }
     }
 
     private StoreState storeState(Long storeId) {
         return cache.get("store-state", storeId, null, () -> {
             Store store = storeRepository.findActiveByStoreId(storeId).orElse(null);
             if (store == null) return new StoreState(false, false);
-            boolean visible = ruleRepository.findByStoreIdAndEnabledTrue(storeId).stream()
-                    .anyMatch(rule -> !planLimitService.storefrontFields(store, rule.getFields()).isEmpty());
-            return new StoreState(true, visible);
+            var rules = ruleRepository.findByStoreIdAndEnabledTrue(storeId);
+            boolean visible = planLimitService.hasStorefrontFields(store, rules);
+            return new StoreState(true, visible, rules.stream().anyMatch(rule -> !rule.getFields().isEmpty()), PersonalizationResponse.disabled());
         });
     }
 
@@ -128,7 +128,9 @@ public class PublicPersonalizationController {
                 store.getStoreCountryCode(),
                 StoreLocale.tagFor(store.getStoreCountryCode())
         );
-        if (fields.isEmpty()) return new CachedPersonalization(true, PersonalizationResponse.disabled());
+        if (fields.isEmpty()) return new CachedPersonalization(true, rule.getFields().isEmpty()
+                ? PersonalizationResponse.disabled()
+                : PersonalizationResponse.paused(StoreLocale.tagFor(store.getStoreCountryCode()), PersonalizationStyleResponse.from(store)));
         return new CachedPersonalization(true, new PersonalizationResponse(
                 true,
                 fields,

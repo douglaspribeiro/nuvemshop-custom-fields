@@ -52,6 +52,7 @@ public class StoreDataErasureService {
                 "delete from support_messages where ticket_id in (select id from support_tickets where store_id = ?)",
                 storeId
         );
+        jdbcTemplate.update("delete from store_email_history where store_id = ?", storeId);
         jdbcTemplate.update("delete from support_tickets where store_id = ?", storeId);
         jdbcTemplate.update("delete from feature_requests where store_id = ?", storeId);
         jdbcTemplate.update(
@@ -66,6 +67,10 @@ public class StoreDataErasureService {
         jdbcTemplate.update("delete from plan_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_webhook_events where store_id = ?", storeId);
         jdbcTemplate.update("delete from payment_notification_outbox where store_id = ?", storeId);
+        jdbcTemplate.update("delete from configuration_pause_emails where store_id = ?", storeId);
+        jdbcTemplate.update("delete from nc39_activation_email_feedback where store_id = ?", storeId);
+        jdbcTemplate.update("delete from nc39_activation_email_suppressions where store_id = ?", storeId);
+        jdbcTemplate.update("delete from nc39_activation_email_outbox where store_id = ?", storeId);
         jdbcTemplate.update("delete from winback_email_events where email_id in "
                 + "(select id from winback_emails where campaign_id in "
                 + "(select id from winback_campaigns where store_id = ?))", storeId);

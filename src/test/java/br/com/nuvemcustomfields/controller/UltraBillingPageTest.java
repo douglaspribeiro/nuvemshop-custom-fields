@@ -222,6 +222,20 @@ class UltraBillingPageTest {
         assertThat(upgradePayment).contains("billing-analytics.js", "8.97", "flow: \"upgrade\"");
     }
 
+    @Test void reactivationOpensThePreviousPlanWithoutAPlanSelectionAndBindsTheStore() throws Exception {
+        when(payments.reactivationPlan(991120L)).thenReturn(Optional.of(PlanType.PREMIUM_ULTRA));
+        when(payments.provider(any())).thenReturn(Optional.of(PaymentProviderType.EFI));
+        when(payments.efiQuote(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(new br.com.nuvemcustomfields.service.WinbackDiscountService.Quote(
+            null, new BigDecimal("59.90"), new BigDecimal("59.90")));
+        String page = mvc.perform(get("/admin/billing/reactivate").session(session).param("storeId", "991120")
+            .param("plan", "PREMIUM")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("Reativar meu plano Ultra", "Atualizar cartão e reativar", "value=\"PREMIUM_ULTRA\"", "action=\"/admin/billing/reactivate\"")
+            .doesNotContain("<select name=\"plan\"");
+        mvc.perform(get("/admin/billing/reactivate").session(session).param("storeId", "999999"))
+            .andExpect(redirectedUrl("/admin/billing"));
+        verify(payments, never()).reactivateWithEfi(anyLong(), any(), any(), any(), any());
+    }
+
     @Test void otherProviderUpgradeConfirmationRendersAnalytics() throws Exception {
         subscription.setProvider(PaymentProviderType.MERCADO_PAGO);
         String page = mvc.perform(get("/admin/billing/upgrade").param("plan","PREMIUM_ULTRA").session(session))

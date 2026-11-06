@@ -2,7 +2,7 @@ import type { CartItem } from "@tiendanube/nube-sdk-types";
 
 export type NamedProperty = { name: string; value: string; thumbnailUrl?: string };
 
-export type ItemProperties = { productName: string; fields: NamedProperty[] };
+export type ItemProperties = { productName: string; quantity?: number; fields: NamedProperty[] };
 
 /**
  * `CartItem.properties` chega como objeto ou array dependendo do tema/versao da
@@ -30,6 +30,7 @@ export function collectItemProperties(items: CartItem[] | undefined): ItemProper
 	return items
 		.map((item) => ({
 			productName: item?.name || "Produto",
+			quantity: item?.quantity,
 			fields: normalizeProperties(item?.properties),
 		}))
 		.filter((group) => group.fields.length > 0);

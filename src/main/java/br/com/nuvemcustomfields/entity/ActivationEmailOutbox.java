@@ -1,0 +1,66 @@
+package br.com.nuvemcustomfields.entity;
+
+import jakarta.persistence.*;
+import java.time.Instant;
+
+@Entity
+@Table(name = "nc39_activation_email_outbox", uniqueConstraints = @UniqueConstraint(
+        name = "uk_nc39_store_install_step", columnNames = {"store_id", "installed_at", "step"}))
+public class ActivationEmailOutbox {
+    public enum State { PENDING, CLAIMED, SENT, SIMULATED, SUPPRESSED, FAILED, REVIEW, ACTIVATED }
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Column(name = "store_id", nullable = false) private Long storeId;
+    @Column(name = "installed_at", nullable = false) private Instant installedAt;
+    @Column(nullable = false, length = 12) private String step;
+    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 16) private State state = State.PENDING;
+    @Column(nullable = false) private int attempts;
+    @Column(name = "next_attempt_at", nullable = false) private Instant nextAttemptAt;
+    @Column(name = "sent_at") private Instant sentAt;
+    @Column(name = "suppression_reason", length = 80) private String suppressionReason;
+    @Column(name = "template_version", nullable = false, length = 32) private String templateVersion;
+
+    @Column(name = "unsubscribe_token_hash", length = 64) private String unsubscribeTokenHash;
+    @Column(name = "recipient_hash", length = 64) private String recipientHash;
+    @Column(name = "ses_message_id", length = 200) private String sesMessageId;
+    public String getRecipientHash() { return recipientHash; }
+    public String getSesMessageId() { return sesMessageId; }
+    public void prepareDelivery(String tokenHash, String recipientHash) {
+        this.unsubscribeTokenHash = tokenHash; this.recipientHash = recipientHash;
+    }
+    public void acceptedBySes(String id) { this.sesMessageId = id; }
+    protected ActivationEmailOutbox() { }
+    public ActivationEmailOutbox(Long storeId, Instant installedAt, String step, Instant due, String templateVersion) {
+        this.storeId = storeId; this.installedAt = installedAt; this.step = step;
+        this.nextAttemptAt = due; this.templateVersion = templateVersion;
+    }
+    public Long getId() { return id; }
+    public Long getStoreId() { return storeId; }
+    public Instant getInstalledAt() { return installedAt; }
+    public String getStep() { return step; }
+    public State getState() { return state; }
+    public int getAttempts() { return attempts; }
+    public Instant getNextAttemptAt() { return nextAttemptAt; }
+    public String getTemplateVersion() { return templateVersion; }
+    public void templateVersion(String version) { this.templateVersion = version; }
+    public String getSuppressionReason() { return suppressionReason; }
+    /** Only superseded D11 audience rules may be reversed; privacy/delivery suppressions remain terminal. */
+    public boolean canResumeD11() {
+        return "D11".equals(step) && state == State.SUPPRESSED && suppressionReason != null
+                && java.util.Set.of("stage_expired", "outside_cohort", "not_allowlisted", "first_activation").contains(suppressionReason);
+    }
+    public boolean resumeD11() {
+        if (!canResumeD11()) return false;
+        state = State.PENDING; suppressionReason = null; return true;
+    }
+    public void claim() { state = State.CLAIMED; attempts++; }
+    public void review() { state = State.REVIEW; suppressionReason = "smtp_result_unknown"; }
+    public void sent(Instant at) { state = State.SENT; sentAt = at; }
+    public void simulated() { state = State.SIMULATED; }
+    public void activated() { state = State.ACTIVATED; }
+    public void suppress(String reason) { state = State.SUPPRESSED; suppressionReason = reason; }
+    public void failed(Instant now) {
+        if (attempts >= 3) { state = State.FAILED; return; }
+        state = State.PENDING;
+        nextAttemptAt = now.plusSeconds(60L * (1L << (attempts - 1)));
+    }
+}

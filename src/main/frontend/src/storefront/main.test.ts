@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 import { DISABLED } from "../shared/config";
 
-type Node = { type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void; options?: {label: string; value: string}[]; value?: string };
+type Node = { disabled?: boolean; type?: string; name?: string; children?: Node[]; onClick?: () => void; ariaLabel?: string; onChange?: (event: { value: string }) => void; options?: {label: string; value: string}[]; value?: string };
 
 describe("SDK storefront without a legacy script", () => {
 	let state: NubeSDKState;
@@ -39,6 +39,16 @@ describe("SDK storefront without a legacy script", () => {
 		expect(send.mock.calls[0][1]()).toEqual({ config: { handle_cart_before_update: true } });
 		send.mockClear();
 	}
+    it("shows the paused notice without adding fields or blocking native purchase", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok:true,json:async()=>({...DISABLED,paused:true,locale:"pt-BR"})}));
+        await boot();
+        const tree=render.mock.calls[render.mock.calls.length-1][1];
+        expect(JSON.stringify(tree)).toContain("diretamente à loja");
+        expect(JSON.stringify(tree)).not.toContain('"type":"field"');
+        listeners.get("cart:before_update")?.({...state,cart:{...state.cart,items:[]}} as NubeSDKState);
+        expect(send.mock.calls.some(([event])=>event==="cart:add")).toBe(false);
+    });
+
 	function field(node: Node): Node | undefined {
 		if (node.type === "field" || node.type === "select" || node.type === "check") return node;
 		for (const child of node.children ?? []) {
@@ -53,6 +63,112 @@ describe("SDK storefront without a legacy script", () => {
 		} as unknown as NubeSDKState);
 	}
 
+    function action(node: Node): Node | undefined {
+        if(node.type === "button" && String(node.children).includes("Adicionar com personalização")) return node;
+        for(const child of node.children ?? []) {const found=action(child);if(found)return found;}
+    }
+    function quantity(node: Node): Node | undefined {
+        if(node.type === "numberfield")return node;
+        for(const child of node.children ?? []) {const found=quantity(child);if(found)return found;}
+    }
+    function variantSelect(node: Node | Node[]): Node | undefined {
+        if (Array.isArray(node)) {
+            for (const child of node) { const found = variantSelect(child); if (found) return found; }
+            return undefined;
+        }
+        if (node.type === "select" && node.name?.startsWith("ncf-variant-")) return node;
+        for (const child of node.children ?? []) { const found = variantSelect(child as Node | Node[]); if (found) return found; }
+    }
+    it("validates and sends through its own Patagonia button without a native gate event",async()=>{
+        await boot();
+        let tree=render.mock.calls[render.mock.calls.length-1][1] as Node;
+        action(tree)!.onClick!();
+        expect(send.mock.calls.some(c=>c[0]==="cart:add")).toBe(false);
+        tree=render.mock.calls[render.mock.calls.length-1][1];
+        field(tree)!.onChange!({value:"Ana"});
+        quantity(tree)!.onChange!({value:"3"});
+        action(tree)!.onClick!();
+        const calls=send.mock.calls.filter(c=>c[0]==="cart:add");
+        expect(calls).toHaveLength(1);
+        expect(calls[0][1]().cart.items).toEqual([{product_id:341531127,variant_id:101,quantity:3,properties:{Nome:"Ana"}}]);
+        expect(send.mock.calls.some(c=>c[0]==="cart:before_update:result")).toBe(false);
+        action(tree)!.onClick!();
+        expect(send.mock.calls.filter(c=>c[0]==="cart:add")).toHaveLength(1);
+    });
+    it("rejects an unresolved variant or invalid quantity on its direct button",async()=>{
+        await boot();
+        let tree=render.mock.calls[render.mock.calls.length-1][1] as Node;
+        field(tree)!.onChange!({value:"Ana"});quantity(tree)!.onChange!({value:"1.5"});action(tree)!.onClick!();
+        expect(send.mock.calls.some(c=>c[0]==="cart:add")).toBe(false);
+        expect(JSON.stringify(render.mock.calls[render.mock.calls.length-1][1])).toContain("quantidade inteira");
+    });
+    it("does not expose the Patagonia direct action on other themes",async()=>{
+        state.store.theme="other";await boot();
+        expect(action(render.mock.calls[render.mock.calls.length-1][1])).toBeUndefined();
+    });
+    it("controls the Patagonia variant itself when the theme omits its selected-variant event", async () => {
+        const page = state.location.page;
+        if (page?.type === "product") page.data.product.variants = [
+            {id: 101, position: 2, values: [{es: "Una"}, {es: "Flores"}]},
+            {id: 102, position: 3, values: [{es: "Dos"}, {es: "Flores"}]},
+        ] as typeof page.data.product.variants;
+        if (page?.type === "product") page.data.product.attributes = [{es: "Mascotas"}, {es: "Diseño"}] as typeof page.data.product.attributes;
+        await boot();
+        let tree = currentTree();
+        field(tree)!.onChange!({value: "Ana"});
+        expect(JSON.stringify(tree)).toContain("ncf-variant-0");
+        variantSelect(tree)!.onChange!({value: "Dos"});
+        tree = currentTree();
+        action(tree)!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0]).toMatchObject({variant_id: 102, properties: {Nome: "Ana"}});
+    });
+
+    it("sends different personalization without modifying an existing cart line", async () => {
+        await boot();
+        state.cart.items = [{product_id:341531127,variant_id:101,properties:{Nome:"Ana"}}] as unknown as typeof state.cart.items;
+        field(currentTree())!.onChange!({value:"Bia"});
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0]).toMatchObject({variant_id:101,properties:{Nome:"Bia"}});
+        expect(state.cart.items[0].properties).toEqual({Nome:"Ana"});
+    });
+    function success(properties: unknown, variant = 101) {
+        listeners.get("cart:add:success")!({...state, eventPayload: {
+            product_id: 341531127, variant_id: variant, properties,
+        }} as unknown as NubeSDKState);
+    }
+    function currentTree(): Node { return render.mock.calls[render.mock.calls.length - 1][1]; }
+    it("preserves filled values after an unrelated native addition", async () => {
+        await boot();
+        field(currentTree())!.onChange!({value: "Ana"});
+        success([]);
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0].properties).toEqual({Nome: "Ana"});
+    });
+    it("preserves the draft when the SDK acknowledgement omits properties", async () => {
+        await boot();
+        field(currentTree())!.onChange!({value: "Ana"});
+        action(currentTree())!.onClick!();
+        success([]);
+        send.mockClear();
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0].properties).toEqual({Nome: "Ana"});
+    });
+    it("preserves edits made during submission and clears only the confirmed draft", async () => {
+        await boot();
+        field(currentTree())!.onChange!({value: "Ana"});
+        action(currentTree())!.onClick!();
+        field(currentTree())!.onChange!({value: "Bia"});
+        success({Nome: "Ana"});
+        send.mockClear();
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.find(c => c[0] === "cart:add")![1]().cart.items[0].properties).toEqual({Nome: "Bia"});
+        success([{name: "Nome", value: "Bia"}]);
+        send.mockClear();
+        action(currentTree())!.onClick!();
+        expect(send.mock.calls.some(c => c[0] === "cart:add")).toBe(false);
+    });
+
+
 	it("renders Patagonia fields inside the Worker without DOM or a transition asset", async () => {
 		expect(typeof document).toBe("undefined");
 		expect(typeof window).toBe("undefined");
@@ -61,7 +177,7 @@ describe("SDK storefront without a legacy script", () => {
 		expect(field(render.mock.calls[0][1])?.name).toBe("Nome");
 		expect(vi.mocked(fetch)).toHaveBeenCalledWith(
 			"https://app.test/public/stores/7278258/personalization?productId=341531127",
-			{ headers: { Accept: "application/json" } });
+			expect.objectContaining({ headers: { Accept: "application/json" } }));
 	});
 
     it.each([true,false])("revalidates uploaded artwork on the server before cart add, ready=%s",async ready=>{
@@ -120,7 +236,8 @@ describe("SDK storefront without a legacy script", () => {
         send.mockClear(); add();
         expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
         (checkbox().onChange as unknown as (e:{value:boolean})=>void)({value:true});
-        listeners.get('cart:add:success')!(state);
+        send.mockClear(); add();
+        success({Confirmo: locale === 'pt-BR' ? 'Sim' : 'Sí'});
         expect((checkbox() as unknown as {checked:boolean}).checked).toBe(false);
     });
 
@@ -142,7 +259,7 @@ describe("SDK storefront without a legacy script", () => {
         listeners.get('cart:add:fail')!(state);checks()[0].onChange!({value:false});
         send.mockClear();add();
         expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Adicionais:'Embalagem'});
-        listeners.get('cart:add:success')!(state);
+        success({Adicionais: 'Embalagem'});
         expect(checks().map(box=>box.checked)).toEqual([false,false,false]);
     });
 
@@ -205,6 +322,40 @@ describe("SDK storefront without a legacy script", () => {
         expect(send).not.toHaveBeenCalled();
         listeners.get("cart:update")!({...state,cart:{items:[]}} as unknown as NubeSDKState);
         expect(nube.clearSlot).toHaveBeenCalledWith("before_line_item");
+    });
+
+    it("sends 1 En Grano and 1 Molido from quick buy, then 5 Molido from the PDP", async()=>{
+        await boot();
+        const product={id:341531127,canonical_url:'/produtos/cafe/',variants:[{id:101}]};
+        state={...state,location:{url:'https://store.test/',page:{type:'home',data:{sections:[]}}}} as unknown as NubeSDKState;
+        listeners.get('location:updated')!(state);
+        const quickTree=()=>render.mock.calls.filter(([slot])=>slot==='before_quick_buy_add_to_cart').slice(-1)[0]?.[1];
+        listeners.get('quickbuy:open')!({...state,eventPayload:product} as unknown as NubeSDKState);
+        await vi.waitFor(()=>expect(quickTree()).toBeDefined());
+        const first={id:11,product_id:341531127,variant_id:101,quantity:1,name:'Café',properties:{Nome:'En Grano'}};
+        field(quickTree())!.onChange!({value:'En Grano'});action(quickTree())!.onClick!();
+        // The SDK can omit the variant on the echo outside the product page.
+        listeners.get('cart:before_update')!({...state,eventPayload:{request_id:'echo-grano',action:'ADD',item:{product_id:341531127,variant_id:null,previous_quantity:0,new_quantity:1}}} as unknown as NubeSDKState);
+        state={...state,cart:{items:[first]}} as unknown as NubeSDKState;
+        listeners.get('cart:add:success')!({...state,eventPayload:first} as unknown as NubeSDKState);
+        const second={...first,id:22,properties:{Nome:'Molido'}};
+        field(quickTree())!.onChange!({value:'Molido'});action(quickTree())!.onClick!();
+        listeners.get('cart:before_update')!({...state,eventPayload:{request_id:'echo-molido',action:'ADD',item:{product_id:341531127,variant_id:null,previous_quantity:1,new_quantity:2}}} as unknown as NubeSDKState);
+        state={...state,cart:{items:[first,second]}} as unknown as NubeSDKState;
+        listeners.get('cart:add:success')!({...state,eventPayload:second} as unknown as NubeSDKState);
+        const count=render.mock.calls.filter(([slot])=>slot==='before_product_detail_add_to_cart').length;
+        state={...state,location:{url:'https://store.test/produtos/cafe/',page:{type:'product',data:{product}}}} as unknown as NubeSDKState;
+        listeners.get('location:updated')!(state);
+        await vi.waitFor(()=>expect(render.mock.calls.filter(([slot])=>slot==='before_product_detail_add_to_cart').length).toBeGreaterThan(count));
+        const pdpTree=()=>render.mock.calls.filter(([slot])=>slot==='before_product_detail_add_to_cart').slice(-1)[0][1];
+        field(pdpTree())!.onChange!({value:'Molido'});quantity(pdpTree())!.onChange!({value:'5'});action(pdpTree())!.onClick!();
+        const items=send.mock.calls.filter(([event])=>event==='cart:add').map(([,fn])=>fn().cart.items[0]);
+        expect(items).toEqual([
+            {product_id:341531127,variant_id:101,quantity:1,properties:{Nome:'En Grano'}},
+            {product_id:341531127,variant_id:101,quantity:1,properties:{Nome:'Molido'}},
+            {product_id:341531127,variant_id:101,quantity:5,properties:{Nome:'Molido'}},
+        ]);
+        expect(state.cart.items[0]).toEqual(first);
     });
 
 });

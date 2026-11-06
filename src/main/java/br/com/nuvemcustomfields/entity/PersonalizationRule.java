@@ -40,6 +40,32 @@ public class PersonalizationRule {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    // NC-04 owns this flag. Never change the merchant's enabled intent.
+    @Column(name = "plan_paused", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean planPaused;
+    @Column(name = "plan_paused_at")
+    private Instant planPausedAt;
+    @Column(name = "plan_eligibility_evidence", columnDefinition = "TEXT")
+    private String planEligibilityEvidence;
+    @Column(name = "plan_eligibility_evaluated_at")
+    private Instant planEligibilityEvaluatedAt;
+
+    public boolean isPlanPaused() { return planPaused; }
+    public Instant getPlanPausedAt() { return planPausedAt; }
+    public String getPlanEligibilityEvidence() { return planEligibilityEvidence; }
+    public Instant getPlanEligibilityEvaluatedAt() { return planEligibilityEvaluatedAt; }
+    public void recordPlanEligibility(String evidence) {
+        if (!java.util.Objects.equals(evidence, planEligibilityEvidence)) {
+            planEligibilityEvidence = evidence;
+            planEligibilityEvaluatedAt = Instant.now();
+        }
+    }
+    public void setPlanPaused(boolean paused) {
+        if (paused != planPaused) planPausedAt = paused ? Instant.now() : null;
+        planPaused = paused;
+    }
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

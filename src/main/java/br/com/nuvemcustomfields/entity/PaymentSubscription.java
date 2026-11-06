@@ -104,8 +104,21 @@ public class PaymentSubscription {
     private String lastPaymentStatus;
     @Column(name = "grace_until")
     private Instant graceUntil;
+    @Column(name = "renewal_failure_detected_at") private Instant renewalFailureDetectedAt;
+    @Column(name = "renewal_failure_payment_id", length = 120) private String renewalFailurePaymentId;
+    public Instant getRenewalFailureDetectedAt() { return renewalFailureDetectedAt; }
+    public String getRenewalFailurePaymentId() { return renewalFailurePaymentId; }
+    public void startRenewalFailure(Instant now, String paymentId) {
+        if (renewalFailureDetectedAt == null) {
+            renewalFailureDetectedAt = now; renewalFailurePaymentId = paymentId;
+            graceUntil = now.plus(java.time.Duration.ofDays(1)); touch();
+        }
+    }
+    public void clearRenewalFailure() { renewalFailureDetectedAt = null; renewalFailurePaymentId = null; graceUntil = null; touch(); }
     @Column(name = "cancellation_pending", nullable = false)
     private boolean cancellationPending;
+    @Column(name = "cancellation_reason", length = 2000)
+    private String cancellationReason;
     @Column(name = "cancellation_requested_at")
     private Instant cancellationRequestedAt;
     @Column(name = "cancellation_effective_at")
@@ -193,6 +206,8 @@ public class PaymentSubscription {
     public void setGraceUntil(Instant value) { graceUntil = value; touch(); }
     public boolean isCancellationPending() { return cancellationPending; }
     public void setCancellationPending(boolean value) { cancellationPending = value; touch(); }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String value) { cancellationReason = value; touch(); }
     public Instant getCancellationRequestedAt() { return cancellationRequestedAt; }
     public void setCancellationRequestedAt(Instant value) { cancellationRequestedAt = value; touch(); }
     public Instant getCancellationEffectiveAt() { return cancellationEffectiveAt; }

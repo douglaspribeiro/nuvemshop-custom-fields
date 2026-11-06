@@ -36,6 +36,12 @@
 
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel" th:if="${reactivationPlan != null}">
+        <h2 th:text="'Reative seu plano ' + ${reactivationPlan.displayName}"></h2>
+        <p>Seu plano anterior já está selecionado. Confira o valor e informe os dados de pagamento para reativar.</p>
+        <a class="button primary" th:href="@{/admin/billing/reactivate(storeId=${store.storeId})}"
+           th:text="'Reativar meu plano ' + ${reactivationPlan.displayName}"></a>
+    </section>
     <p class="notice" th:if="${paymentSubscription != null and paymentSubscription.upgradePlan != null}"
        th:text="#{admin.billing.upgrade.pending}">Confirmando alteração de plano.</p>
     <section class="panel plan-strip billing-current">
@@ -62,7 +68,7 @@
                th:text="#{admin.billing.retry.ready}">A tentativa anterior foi encerrada. Você já pode tentar novamente.</p>
             <p class="notice" th:if="${paymentSubscription != null}">
                 <span th:text="#{admin.billing.subscription.status}">Status da assinatura:</span>
-                <strong th:with="statusName=#{'payment.status.' + ${paymentSubscription.status.name()}}" th:text="${statusName}">Pendente</strong>
+                <strong th:with="statusName=#{'payment.status.' + ${paymentSubscription.status.name()}}" th:text="${paymentSubscription.status.name() == 'CANCELED' and paymentSubscription.accessActive} ? #{admin.billing.renewal.disabled} : ${statusName}">Pendente</strong>
             </p>
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.provider.name() == 'EFI' and paymentSubscription.status.name() == 'PENDING'}"
                th:text="#{merchant.billing.efi.pending}">Estamos aguardando a confirmação da primeira cobrança pela Efí.</p>
@@ -74,9 +80,9 @@
                 <span th:attr="data-local-time=${paymentSubscription.nextPaymentAt}" data-time-format="date" th:text="${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">24/10/2026</span>
             </p>
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.status.name() == 'CANCELED' and paymentSubscription.accessActive}"
-               th:text="#{admin.billing.cancel.access.notice}">A assinatura foi cancelada. Você mantém o acesso até o fim do período pago.</p>
+               th:text="#{admin.billing.cancel.access.notice}">A renovação automática está desativada. Você mantém o acesso até o fim do período pago.</p>
             <p class="muted" th:if="${paymentSubscription != null and paymentSubscription.cancellationPending}"
-               th:text="#{admin.billing.cancel.awaiting}">Estamos aguardando a confirmação do cancelamento pelo provedor.</p>
+               th:text="#{admin.billing.cancel.awaiting}">Estamos aguardando o provedor confirmar a desativação da renovação automática.</p>
         </div>
         <a class="button billing-current-link" th:href="@{/admin/products}" th:text="#{billing.current.manage}">Gerenciar meus produtos</a>
     </section>
@@ -219,7 +225,7 @@
     <section class="billing-assurance" th:aria-label="#{billing.assurance.heading}">
         <div><span class="billing-assurance-icon" aria-hidden="true">✓</span><h3 th:text="#{billing.assurance.fields.heading}">Sua configuração continua com você</h3><p th:text="#{billing.assurance.fields.description}">Ao trocar de plano, você mantém os campos e produtos já configurados.</p></div>
         <div><span class="billing-assurance-icon" aria-hidden="true">↗</span><h3 th:text="#{billing.assurance.grow.heading}">Mais espaço quando precisar</h3><p th:text="#{billing.assurance.grow.description}">Escolha pela capacidade de hoje. Quando sua loja crescer, você pode solicitar um upgrade.</p></div>
-        <div><span class="billing-assurance-icon" aria-hidden="true">◎</span><h3 th:text="#{billing.assurance.control.heading}">Você acompanha sua assinatura</h3><p th:text="#{billing.assurance.control.description}">Consulte o status, a próxima cobrança e as opções de cancelamento nesta tela.</p></div>
+        <div><span class="billing-assurance-icon" aria-hidden="true">◎</span><h3 th:text="#{billing.assurance.control.heading}">Você acompanha sua assinatura</h3><p th:text="#{billing.assurance.control.description}">Consulte o status, a próxima cobrança e as opções de renovação nesta tela.</p></div>
     </section>
 
     <section class="billing-faq">
@@ -242,7 +248,7 @@
 
     <details class="merchant-billing-manage" th:if="${paymentSubscription != null and paymentSubscription.accessActive and paymentSubscription.status.name() != 'CANCELED' and !paymentSubscription.cancellationPending and !paymentSubscription.upgradePaymentPending}">
         <summary th:text="#{admin.billing.manage}">Gerenciar assinatura</summary>
-        <a th:href="@{/admin/billing/cancel}" th:text="#{admin.billing.cancel}">Cancelar assinatura</a>
+        <a th:href="@{/admin/billing/cancel}" th:text="#{admin.billing.cancel}">Desativar renovação automática</a>
     </details>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

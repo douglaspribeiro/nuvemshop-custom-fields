@@ -11,10 +11,19 @@ let textColor: string | undefined;
 let locale: string | null = null;
 
 export function App(nube: NubeSDK) {
+    // Checkout summaries must never prevent a purchase. Clear any validation left
+    // by the previous version of this app; storefront form validation remains separate.
+    nube.send("config:set", () => ({config: {has_cart_validation: false}}));
+    const releaseCheckout = () => {
+        nube.send("cart:validate", () => ({cart: {validation: {status: "success"}}}));
+        nube.clearSlot("before_line_items");
+    };
+    releaseCheckout();
     const configFor = createConfigurationLoader();
     let latestState = safeState(nube);
     let generation = 0;
     const refresh = async (state: NubeSDKState | null) => {
+        releaseCheckout();
         latestState = state;
         const current = ++generation;
         render(nube, state);
@@ -23,6 +32,7 @@ export function App(nube: NubeSDK) {
         if (!store || !items.length) return;
         const groups = await Promise.all(items.map(async item => ({
             productName: item.name || "Produto",
+            quantity: item.quantity,
             fields: item.product_id > 0 ? imageProperties(item, await configFor(store, item.product_id)) : normalizeProperties(item.properties),
         })));
         if (current !== generation) return;

@@ -12,8 +12,17 @@ public record PersonalizationResponse(
         boolean enabled,
         List<FieldResponse> fields,
         PersonalizationStyleResponse style,
-        String locale
+        String locale,
+        boolean paused
 ) {
+
+    public PersonalizationResponse(boolean enabled, List<FieldResponse> fields, PersonalizationStyleResponse style, String locale) {
+        this(enabled, fields, style, locale, false);
+    }
+
+    public static PersonalizationResponse paused(String locale, PersonalizationStyleResponse style) {
+        return new PersonalizationResponse(false, List.of(), style, locale, true);
+    }
 
     public static PersonalizationResponse disabled() {
         return new PersonalizationResponse(false, List.of(), PersonalizationStyleResponse.empty(), StoreLocale.PT_BR.toLanguageTag());

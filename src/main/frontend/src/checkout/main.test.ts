@@ -15,7 +15,11 @@ const config = {...DISABLED, enabled:true, fields:[{
 function cartItem(id:number, value:string) {
     return {id,product_id:100,name:"Caderno",properties:{Capa:value,Nome:"Ana",_interna:"oculta"}};
 }
-const currentTree = () => JSON.stringify(vi.mocked(nube.render).mock.calls.slice(-1)[0]?.[1]);
+const currentTree = () => JSON.stringify(vi.mocked(nube.render).mock.calls.filter(([slot])=>slot==="after_line_items").slice(-1)[0]?.[1]);
+const validation = () => {
+    const update=vi.mocked(nube.send).mock.calls.filter(([event])=>event==="cart:validate").slice(-1)[0]?.[1];
+    return update?.({} as NubeSDKState)?.cart?.validation;
+};
 const response = (body:unknown) => ({ok:true,json:async()=>body}) as Response;
 async function boot() { const {App}=await import("./main");App(nube); }
 
@@ -38,7 +42,7 @@ it("shows text and each item's selected thumbnail in the checkout summary",async
     expect(currentTree()).toContain("Nome: Ana");expect(currentTree()).not.toContain("oculta");
     expect(currentTree()).toContain("#123456");
     expect(vi.mocked(fetch).mock.calls.filter(([url])=>String(url).includes("personalization"))).toHaveLength(1);
-    expect(nube.send).not.toHaveBeenCalled();
+    await vi.waitFor(()=>expect(validation()).toEqual({status:"success"}));
 });
 
 it("refreshes selections and clears the summary when the cart becomes empty",async()=>{
@@ -48,6 +52,7 @@ it("refreshes selections and clears the summary when the cart becomes empty",asy
     await vi.waitFor(()=>{expect(currentTree()).toContain("https://app.test/public/azul");expect(currentTree()).not.toContain("https://app.test/public/floral");});
     state={...state,cart:{items:[]}} as unknown as NubeSDKState;listeners.get("cart:update")!(state);
     expect(nube.clearSlot).toHaveBeenCalledWith("after_line_items");
+    await vi.waitFor(()=>expect(validation()).toEqual({status:"success"}));
 });
 
 it("keeps custom field names visible during configuration failures",async()=>{
@@ -57,7 +62,7 @@ it("keeps custom field names visible during configuration failures",async()=>{
     });
     await boot();await vi.waitFor(()=>expect(currentTree()).toContain("Nome: Ana"));
     expect(currentTree()).toContain("Capa: Floral");expect(currentTree()).not.toContain("/public/floral");
-    expect(nube.send).not.toHaveBeenCalled();
+    await vi.waitFor(()=>expect(validation()).toEqual({status:"success"}));
 });
 
 it("ignores slow image and style responses after an item is removed",async()=>{
@@ -70,4 +75,36 @@ it("ignores slow image and style responses after an item is removed",async()=>{
     await new Promise(resolve=>setTimeout(resolve,0));
     expect(vi.mocked(nube.render).mock.calls).toHaveLength(calls);
     expect(nube.clearSlot).toHaveBeenCalledWith("after_line_items");
+});
+
+
+it.each(["manual", "normal"])("never blocks a %s checkout with missing required properties",async flow=>{
+    state={...state,location:{url:"https://store.test/checkout/v3/start/123/token",queries:flow==="manual"?{from_store:"1"}:{}},
+        cart:{id:"123",validation:{status:"fail",reason:"stale validation"},items:[{...cartItem(1,""),properties:[]}]}} as unknown as NubeSDKState;
+    await boot();
+    expect(validation()).toEqual({status:"success"});
+    expect(nube.clearSlot).toHaveBeenCalledWith("before_line_items");
+    expect(vi.mocked(nube.send).mock.calls.filter(([event])=>event==="config:set").map(([,update])=>update?.(state)))
+        .toContainEqual({config:{has_cart_validation:false}});
+    for(const event of ["checkout:ready","cart:update"])listeners.get(event)!(state);
+    expect(vi.mocked(nube.send).mock.calls.filter(([event])=>event==="cart:validate").map(([,update])=>update?.(state)?.cart?.validation))
+        .toEqual(expect.arrayContaining([{status:"success"}]));
+    expect(vi.mocked(nube.send).mock.calls.filter(([event])=>event==="cart:validate")
+        .every(([,update])=>update?.(state)?.cart?.validation?.status==="success")).toBe(true);
+    expect(vi.mocked(fetch).mock.calls.filter(([url])=>String(url).includes("personalization"))).toHaveLength(0);
+});
+it("never blocks when initial cart state is unavailable or requests fail",async()=>{
+    state=null as unknown as NubeSDKState;vi.mocked(fetch).mockRejectedValue(new Error("offline"));
+    await boot();expect(validation()).toEqual({status:"success"});
+});
+
+it("shows and updates separate quantities for personalized lines of the same product",async()=>{
+ state={...state,cart:{items:[{...cartItem(1,"Floral"),quantity:1},{...cartItem(2,"Azul"),quantity:6}]}} as unknown as NubeSDKState;
+ await boot();
+ expect(currentTree()).toContain("1 × Caderno");expect(currentTree()).toContain("6 × Caderno");
+ await vi.waitFor(()=>expect(currentTree()).toContain("https://app.test/public/azul"));
+ expect(currentTree()).toContain("1 × Caderno");expect(currentTree()).toContain("6 × Caderno");
+ state={...state,cart:{items:[{...cartItem(2,"Azul"),quantity:3}]}} as unknown as NubeSDKState;
+ listeners.get("cart:update")!(state);
+ await vi.waitFor(()=>{expect(currentTree()).toContain("3 × Caderno");expect(currentTree()).not.toContain("6 × Caderno");});
 });

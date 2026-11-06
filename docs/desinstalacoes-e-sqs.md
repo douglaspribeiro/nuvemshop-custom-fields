@@ -184,7 +184,7 @@ da fila de eventos SES ainda precisam ser informados e validados. Configure:
 
 ```text
 AWS_SES_EVENTS_ENABLED=false
-AWS_SES_EVENTS_QUEUE_URL=<URL da fila SES já existente>
+AWS_SES_EVENTS_QUEUE_URL=<URL completa da fila email-tracking-events>
 AWS_SES_EVENTS_REGION=<região dessa fila>
 AWS_SES_CONFIGURATION_SET=<nome do Configuration Set>
 WINBACK_MAIL_ENABLED=false

@@ -91,12 +91,15 @@ class NuvemshopApiClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         NuvemshopApiClient client = new NuvemshopApiClient(properties(), builder);
 
-        server.expect(requestTo("https://api.example.com/v1/123/products?page=2&per_page=50&sort_by=name-ascending&fields=id,name"))
+        server.expect(requestTo("https://api.example.com/v1/123/products?page=2&per_page=50&sort_by=name-ascending&fields=id,name,images"))
                 .andExpect(method(GET))
                 .andExpect(header("Authentication", "bearer store-token"))
                 .andRespond(withSuccess("""
                         [
-                          { "id": 10, "name": { "pt": "Caneca" } },
+                          { "id": 10, "name": { "pt": "Caneca" }, "images": [
+                            { "src": "https://cdn.example.com/second.jpg", "position": 2 },
+                            { "src": "http://cdn.example.com/main.jpg", "position": 1 }
+                          ] },
                           { "id": 11, "name": "Camiseta" }
                         ]
                         """, MediaType.APPLICATION_JSON)
@@ -104,6 +107,8 @@ class NuvemshopApiClientTest {
 
         var page = client.listProducts(store(), 2, 50, null);
 
+        assertThat(page.items().get(0).imageUrl()).isEqualTo("https://cdn.example.com/main.jpg");
+        assertThat(page.items().get(1).imageUrl()).isNull();
         assertThat(page.page()).isEqualTo(2);
         assertThat(page.perPage()).isEqualTo(50);
         assertThat(page.totalCount()).isEqualTo(137L);
@@ -120,7 +125,7 @@ class NuvemshopApiClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         NuvemshopApiClient client = new NuvemshopApiClient(properties(), builder);
 
-        server.expect(requestTo("https://api.example.com/v1/123/products?page=1&per_page=50&sort_by=name-ascending&fields=id,name&q=caneca%20azul"))
+        server.expect(requestTo("https://api.example.com/v1/123/products?page=1&per_page=50&sort_by=name-ascending&fields=id,name,images&q=caneca%20azul"))
                 .andExpect(method(GET))
                 .andRespond(withSuccess("[{ \"id\": 10, \"name\": \"Caneca azul\" }]", MediaType.APPLICATION_JSON)
                         .headers(headers("Link", "<https://api.example.com/v1/123/products?page=1>; rel=\"first\"")));

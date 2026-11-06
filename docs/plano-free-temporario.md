@@ -38,6 +38,21 @@ Proposta para implementação, com os detalhes de expiração a validar antes da
 - Definir antes da implementação o comportamento na vitrine, carrinho e checkout durante a expiração, inclusive para personalizações já adicionadas. Preservar os dados de pedidos existentes.
 - Exibir prazo e estado no painel do lojista e no backoffice; prever avisos antes do término e orientação de contratação.
 
+## Comunicação no fim do teste — referência aprovada em 04/11/2026
+
+Reutilizar a solução de aviso ao comprador e alerta na home aprovada na [NC-04](nc-04-pausa-configuracoes.md#comunicação). Esta decisão fica registrada para a implementação futura das ofertas gratuitas temporárias; não significa que o free trial configurável já esteja implementado ou publicado.
+
+Em 04/11/2026, ficou decidido que o antigo contato D15 da [sequência de ativação NC-39](nc39-emails-ativacao.md) passa para **D11**, como último e-mail de apoio à configuração. Registros D15 antigos permanecem bloqueados. A comunicação do dia 15, previsto como último dia do free trial, ainda será definida; o D11 não deve anunciar expiração, desconto ou cobrança do teste futuro.
+
+- **Comprador:** quando a personalização estiver pausada pelo fim do teste, exibir: “A personalização deste produto está temporariamente indisponível. Após a compra, envie as informações de personalização diretamente à loja, informando o número do pedido.” Disponibilizar também a versão em espanhol, com o mesmo sentido. Não expor ao comprador informações de cobrança, expiração do teste ou situação financeira da loja.
+- **Compra e pedidos:** manter a compra disponível com essa orientação. Preservar as informações já enviadas em carrinhos e pedidos. O aviso corresponde a uma configuração efetivamente indisponível; não deve aparecer em produtos sem configuração nem por uma falha de rede.
+- **Home do lojista:** mostrar um alerta destacado de que o período gratuito terminou, a quantidade de configurações pausadas, a preservação dos campos e pedidos e o acesso à contratação de um plano. Texto de referência: “Seu período gratuito terminou. Suas configurações e os dados dos pedidos continuam salvos. Ative um plano pago para retomar as personalizações dentro dos limites do plano contratado.”
+- **Terminologia:** término de teste não é inadimplência, falha de renovação nem dívida. Não usar esses termos para uma loja apenas porque o período gratuito expirou. Datas e contagens regressivas precisam corresponder ao vínculo real do teste; não inventar prazos.
+- **E-mail ao lojista:** reaproveitar o padrão de aviso após a pausa, adaptando assunto e conteúdo para o fim do período gratuito, preservação dos dados e contratação. Enfileirar de forma idempotente, evitar avisos duplicados e descartar o aviso pendente se o acesso já tiver sido recuperado. O calendário dos avisos anteriores ao término continua pendente.
+- **Retomada:** ao confirmar um plano pago, restaurar somente as configurações pausadas por essa regra, respeitando seus limites e preservando desativações manuais. Uma assinatura paga válida prevalece sobre o vencimento do teste antigo.
+
+Reaproveitar a comunicação e o estado de pausa da NC-04 não altera a decisão comercial deste plano: o fim do teste não concede automaticamente o FREE legado nem sua exceção de uma configuração ativa. A expiração deve seguir o término persistido do vínculo, sem depender de novo login; o intervalo do reconciliador da NC-04 não define a duração do teste nem uma carência adicional.
+
 ## Adequação técnica
 
 Hoje o catálogo usa `PlanType` com identidades fixas e a tela cria versões dessas identidades. Apenas adicionar `FREE_30` e `FREE_14` ao enum não atende ao requisito de criação pelo backoffice.
@@ -77,6 +92,6 @@ Revisar seleção de plano na instalação e reinstalação, concessão de acess
 ## Definições pendentes para implementação
 
 - Limites de produtos, campos e imagens de cada oferta e quais recursos poderão ser experimentados.
-- Tratamento exato da vitrine e de carrinhos em andamento no vencimento.
+- Detalhes técnicos de aplicação do estado expirado na vitrine e nos carrinhos, seguindo a comunicação e a preservação aprovadas acima.
 - Calendário e canais de avisos, aproveitando as preferências e canais disponíveis.
 - Política futura de migração da base antiga, fora do escopo inicial.

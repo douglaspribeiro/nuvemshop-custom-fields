@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface PersonalizationFieldHistoryRepository extends JpaRepository<PersonalizationFieldHistory, Long> {
     List<PersonalizationFieldHistory> findByStoreId(Long storeId);
+    boolean existsByStoreId(Long storeId);
     boolean existsByStoreIdAndProductIdAndPropertyName(Long storeId, Long productId, String propertyName);
 }

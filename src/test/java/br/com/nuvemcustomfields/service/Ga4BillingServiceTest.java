@@ -26,7 +26,7 @@ class Ga4BillingServiceTest {
     }
     @AfterEach void cleanup(){RequestContextHolder.resetRequestAttributes();}
     PaymentSubscription subscription(){
-        var sub=new PaymentSubscription();sub.setProvider(PaymentProviderType.EFI);sub.setPlan(PlanType.PREMIUM_PLUS);
+        var sub=new PaymentSubscription();sub.setStoreId(959276L);sub.setProvider(PaymentProviderType.EFI);sub.setPlan(PlanType.PREMIUM_PLUS);
         sub.setCurrency("BRL");sub.setAmountValue(new BigDecimal("29.99"));sub.captureAnalytics();return sub;
     }
     UpgradeAdjustment adjustment(){
@@ -42,9 +42,11 @@ class Ga4BillingServiceTest {
         var saved=ArgumentCaptor.forClass(Ga4Outbox.class);verify(outbox,times(2)).save(saved.capture());
         var purchase=mapper.readTree(saved.getAllValues().getFirst().getPayload());
         assertThat(purchase.path("client_id").asText()).isEqualTo("123.456");
+        assertThat(purchase.at("/events/0/params/store_id").asText()).isEqualTo("959276");
         assertThat(purchase.at("/events/0/name").asText()).isEqualTo("purchase");
         assertThat(purchase.at("/events/0/params/session_id").asText()).isEqualTo("123456789");
         var renewal=mapper.readTree(saved.getAllValues().getLast().getPayload());
+        assertThat(renewal.at("/events/0/params/store_id").asText()).isEqualTo("959276");
         assertThat(renewal.at("/events/0/name").asText()).isEqualTo("subscription_renewal");
         assertThat(renewal.at("/events/0/params/session_id").isMissingNode()).isTrue();
     }

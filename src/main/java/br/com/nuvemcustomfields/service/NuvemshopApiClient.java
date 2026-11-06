@@ -77,7 +77,7 @@ public class NuvemshopApiClient {
                 .queryParam("page", safePage)
                 .queryParam("per_page", safePerPage)
                 .queryParam("sort_by", "name-ascending")
-                .queryParam("fields", "id,name")
+                .queryParam("fields", "id,name,images")
                 .queryParamIfPresent("q", Optional.ofNullable(safeQuery))
                 .encode()
                 .buildAndExpand(store.getStoreId())
@@ -108,7 +108,7 @@ public class NuvemshopApiClient {
 
         List<ProductSummary> products = new ArrayList<>();
         for (JsonNode product : body) {
-            products.add(new ProductSummary(product.path("id").asLong(), localizedName(product.path("name"), "Produto sem nome")));
+            products.add(new ProductSummary(product.path("id").asLong(), localizedName(product.path("name"), "Produto sem nome"), productImageUrl(product)));
         }
 
         long totalCount = totalCount(response.getHeaders());
@@ -123,6 +123,21 @@ public class NuvemshopApiClient {
                 hasNext
         );
         return new ProductPage(products, safePage, safePerPage, totalCount, hasNext, safeQuery);
+    }
+
+    private String productImageUrl(JsonNode product) {
+        String selected = null;
+        int selectedPosition = Integer.MAX_VALUE;
+        for (JsonNode image : product.path("images")) {
+            String src = image.path("src").asText("").trim();
+            if (!src.startsWith("https://") && !src.startsWith("http://")) continue;
+            int position = image.path("position").asInt(Integer.MAX_VALUE);
+            if (selected == null || position < selectedPosition) {
+                selected = src.startsWith("http://") ? "https://" + src.substring(7) : src;
+                selectedPosition = position;
+            }
+        }
+        return selected;
     }
 
     public String getStoreName(Store store) {

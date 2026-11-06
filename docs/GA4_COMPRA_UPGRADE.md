@@ -13,6 +13,26 @@ A aplicação mede o comportamento no navegador e confirma operações no backen
 
 Deixar `GA4_MEASUREMENT_ID` vazio desativa a tag. Sem `GA4_API_SECRET`, o navegador continua medindo as etapas, mas as confirmações não são enviadas. Pagamentos continuam funcionando quando o GA está bloqueado ou indisponível.
 
+## Identificar lojas no Tempo real do admin
+
+As páginas autenticadas do admin enviam a propriedade de usuário **`store_id`**, com o ID da loja obtido da sessão, e o evento **`admin_page_view`** com `store_id`, `app_area=merchant_admin` e `admin_screen`. O contexto também acompanha os eventos posteriores do navegador, como início de checkout e escolha de plano. Não usa nome/e-mail do lojista nem transforma o ID da loja em User-ID de uma pessoa. Uma troca de loja na sessão atualiza o contexto; páginas sem contexto do admin limpam a propriedade da loja. O backoffice em modo loja não carrega a tag de navegação do lojista.
+
+Depois do deploy, na propriedade GA4 que recebe `GA4_MEASUREMENT_ID`:
+
+1. Acesse **Administrador → Exibição de dados → Definições personalizadas → Criar dimensão personalizada**.
+2. Crie **Loja do admin (ID)**, escopo **Usuário**, propriedade de usuário **`store_id`**.
+3. Opcionalmente, crie dimensões de escopo **Evento** para `store_id`, `admin_screen` e `app_area`, para relatórios e explorações das etapas.
+4. Em **Relatórios → Tempo real**, use o cartão **Usuários por propriedade de usuário** e selecione a dimensão da loja. Na visão do usuário, confira a propriedade `store_id` e os eventos `admin_page_view`.
+5. Para conferir uma navegação, abra o app como lojista e use, por exemplo, produtos, campos e planos. Os valores de `admin_screen` incluem `products`, `product_fields`, `plans`, `upgrade`, `subscription_payment` e `reactivation`.
+
+O ID identifica a conta da loja (por exemplo, `959276` = LAB Cafe), não cada pessoa que acessa essa conta. A tela do GA mostra atividade recente, sem provar que a aba continua aberta. Bloqueadores e indisponibilidade da tag podem impedir a coleta. Para acompanhar visitas ao admin, use `admin_page_view`; eventos financeiros do backend não comprovam navegação do lojista.
+
+Os eventos financeiros novos do Measurement Protocol também recebem o parâmetro de evento `store_id`. Eles não atualizam a propriedade de usuário do navegador durante renovações em segundo plano. Não há atualização retroativa de eventos já enviados.
+
+A aplicação prepara a instrumentação; as dimensões precisam ser cadastradas no GA4. A entrega e o processamento devem ser conferidos no Tempo real/DebugView após a publicação; testes locais não confirmam ingestão no GA4.
+
+Referências: [propriedades dos usuários no GA4](https://support.google.com/analytics/answer/12370404), [relatório de Tempo real](https://support.google.com/analytics/answer/9271392).
+
 ## Eventos e significado
 
 | Evento | Momento | Origem |
