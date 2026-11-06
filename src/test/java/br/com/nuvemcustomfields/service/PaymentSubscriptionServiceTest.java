@@ -40,6 +40,47 @@ class PaymentSubscriptionServiceTest {
             new BigDecimal("19.99"), new BigDecimal("29.99")), efi, paymentNotifications
     );
 
+    @Test
+    void repeatedCanceledContractReconciliationPreservesThePaidManualOverride() {
+        PaymentSubscription local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        Store store = store();
+        store.setPlan(PlanType.PREMIUM_PLUS);
+        store.setManualPlanOverride(true);
+        when(router.require(PaymentProviderType.EFI)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(new GatewaySubscription(
+                "sub-1", "plan-1", "ncf_123_ref", "canceled", "BRL", new BigDecimal("19.99"), null));
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+        service.synchronizeFromSubscription(PaymentProviderType.EFI, "sub-1");
+        service.synchronizeFromSubscription(PaymentProviderType.EFI, "sub-1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.isAccessActive()).isFalse();
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(store.isCourtesyPremium()).isFalse();
+        verify(events, never()).save(any());
+    }
+
+    @Test
+    void approvedOldContractCannotReplaceTheManuallyChosenPlan() {
+        PaymentSubscription local = local();
+        Store store = store();
+        store.setPlan(PlanType.PREMIUM_PLUS);
+        store.setManualPlanOverride(true);
+        when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote());
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(
+                new GatewayInvoice("invoice-1", "sub-1", "payment-1", "approved")));
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+        service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO, "sub-1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        verify(events, never()).save(any());
+    }
+
     @Test void reactivationUsesThePreviousUltraContractAndRejectsAChangedPlanBeforeCharging() {
         Store store = store(); store.setPlan(PlanType.FREE);
         PaymentSubscription sub = local(); sub.setProvider(PaymentProviderType.EFI);

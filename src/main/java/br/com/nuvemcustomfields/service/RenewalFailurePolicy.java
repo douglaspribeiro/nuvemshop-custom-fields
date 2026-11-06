@@ -27,7 +27,7 @@ public class RenewalFailurePolicy {
                 || (invoice.subscriptionId() != null && !invoice.subscriptionId().equals(remote.id()))
                 || !failedCharge(sub.getProvider(), remote.status(), invoice.paymentStatus())
                 || sub.getProviderEnvironment() != PaymentEnvironment.PRODUCTION || sub.getProvider() == PaymentProviderType.DODO_TEST
-                || remote.id() == null || remote.id().isBlank() || !store.isActive() || store.isCourtesyPremium()
+                || remote.id() == null || remote.id().isBlank() || !store.isActive() || store.isCourtesyPremium() || store.isManualPlanOverride()
                 || upgrading || sub.getUpgradePlan() != null || sub.isUpgradePaymentPending()
                 || sub.isCancellationPending() || remote.cancellationEffectiveAt() != null
                 || Set.of("cancelled", "canceled", "expired", "failed", "incomplete", "incomplete_expired").contains(status)

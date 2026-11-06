@@ -50,6 +50,13 @@ public class Store {
     @Column(nullable = false)
     private PlanType plan = PlanType.FREE;
 
+    @Column(name = "manual_plan_override", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean manualPlanOverride;
+
+    public boolean isManualPlanOverride() { return manualPlanOverride; }
+    public void setManualPlanOverride(boolean value) { manualPlanOverride = value; }
+
     @Column(name = "subscription_id")
     private String subscriptionId;
 

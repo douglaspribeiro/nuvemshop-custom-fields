@@ -45,13 +45,15 @@ public class BackofficeService {
 
     @Transactional
     public void overridePlan(Long storeId, PlanType toPlan) {
-        Store store = storeRepository.findByStoreId(storeId)
+        Store store = storeRepository.findByStoreIdForUpdate(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Loja nao encontrada."));
         PlanType fromPlan = store.getEffectivePlan();
         if (store.isPremiumBonusActive()) {
             store.setPremiumBonusExpiresAt(java.time.Instant.now());
         }
         store.setPlan(toPlan);
+        store.setManualPlanOverride(toPlan.isBillable());
+        store.setBillingSuspended(false);
         storeRepository.save(store);
 
         PlanEvent event = new PlanEvent();

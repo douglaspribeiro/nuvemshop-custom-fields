@@ -152,7 +152,7 @@ public class PaymentSubscriptionService {
         PaymentSubscription sub = subscriptions.findByStoreId(storeId).orElse(null);
         boolean grace = sub != null && sub.getRenewalFailureDetectedAt() != null && sub.getGraceUntil() != null
                 && Instant.now().isBefore(sub.getGraceUntil()) && sub.getStatus() == PaymentSubscriptionStatus.PAST_DUE;
-        if (store == null || sub == null || (!grace && store.getEffectivePlan().isBillable()) || store.isCourtesyPremium()
+        if (store == null || sub == null || (!grace && store.getEffectivePlan().isBillable()) || store.isCourtesyPremium() || store.isManualPlanOverride()
                 || sub.getProvider() != PaymentProviderType.EFI || sub.getProviderEnvironment() != efi.environment()
                 || (!grace && (sub.getStatus() != PaymentSubscriptionStatus.ERROR || sub.isAccessActive()))
                 || sub.isUpgradePaymentPending() || sub.getUpgradePlan() != null || sub.isCancellationPending()
@@ -998,6 +998,7 @@ public class PaymentSubscriptionService {
                 restoreWinbackAmount(local);
             }
         }
+        stores.findByStoreIdForUpdate(local.getStoreId());
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
         if (upgraded) {
@@ -1416,8 +1417,9 @@ public class PaymentSubscriptionService {
     }
 
     private void activate(PaymentSubscription local, Store store, String source) {
-        PlanType previous = store.getPlan();
         local.setAccessActive(true);
+        if (store.isManualPlanOverride()) return;
+        PlanType previous = store.getPlan();
         store.setBillingSuspended(false);
         // A confirmed paid subscription replaces any active courtesy immediately.
         // Pending or failed checkouts leave the courtesy untouched.
@@ -1433,7 +1435,8 @@ public class PaymentSubscriptionService {
 
     private void deactivate(PaymentSubscription local, Store store, String source) {
         local.setAccessActive(false);
-        if (store != null && store.getPlan().isBillable() && !store.isCourtesyPremium()) {
+        if (store != null && store.getPlan().isBillable() && !store.isCourtesyPremium()
+                && !store.isManualPlanOverride()) {
             PlanType previous = store.getPlan();
             store.setPlan(PlanType.FREE);
             store.setBillingSuspended(false);

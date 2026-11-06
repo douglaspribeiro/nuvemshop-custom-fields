@@ -31,6 +31,18 @@ class BackofficeServiceTest {
     );
 
     @Test
+    void paidOverrideProtectsManualAccessWithoutMarkingItAsCourtesy() {
+        Store store = new Store();
+        store.setStoreId(123L);
+        store.setBillingSuspended(true);
+        when(storeRepository.findByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        service.overridePlan(123L, PlanType.PREMIUM_PLUS);
+        assertThat(store.isManualPlanOverride()).isTrue();
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        assertThat(store.isCourtesyPremium()).isFalse();
+    }
+
+    @Test
     void grantsThirtyDaysAndExpiresWithoutChangingTheFreeBasePlan() {
         Store store = new Store();
         store.setStoreId(123L);
@@ -95,8 +107,10 @@ class BackofficeServiceTest {
         Store store = new Store();
         store.setStoreId(123L);
         store.setPremiumBonusExpiresAt(Instant.now().plusSeconds(3600));
-        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(storeRepository.findByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        store.setManualPlanOverride(true);
         service.overridePlan(123L, PlanType.FREE);
+        assertThat(store.isManualPlanOverride()).isFalse();
         assertThat(store.isPremiumBonusActive()).isFalse();
         assertThat(store.getEffectivePlan()).isEqualTo(PlanType.FREE);
     }
