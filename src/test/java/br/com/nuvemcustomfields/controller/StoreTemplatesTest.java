@@ -50,6 +50,7 @@ class StoreTemplatesTest {
     private long store;
     private MockHttpSession session;
     @BeforeEach void setup() {
+        when(buyerStorage.forStore(anyLong())).thenReturn(buyerStorage);
         store=newStore(PlanType.PREMIUM_PLUS);
         session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,store);
         when(storage.enabled()).thenReturn(true);when(storage.bucket()).thenReturn("template-test");when(storage.prefix()).thenReturn("test/options");
@@ -163,6 +164,7 @@ class StoreTemplatesTest {
         mvc.perform(get("/admin/templates/new").session(session)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"FILE_UPLOAD\""))));
     }
     @Test void eligibleUploadDefinitionCopiesOnlyConfiguration() {
+        when(buyerStorage.forStore(anyLong())).thenReturn(buyerStorage);
         when(buyerStorage.enabled()).thenReturn(true);
         var upload=new TemplateFieldDefinition("Arte",FieldType.FILE_UPLOAD,true,100,"Envie PDF",null,"PDF",null,true,null);
         var template=templates.create(store,"Upload",null,List.of(upload));apply(template,123,StoreTemplateService.Mode.APPEND);

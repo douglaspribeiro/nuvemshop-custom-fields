@@ -21,6 +21,13 @@ import java.time.LocalDate;
 @Table(name = "stores")
 public class Store {
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "buyer_upload_storage_provider", length = 30)
+    private BuyerStorageProvider buyerUploadStorageProvider;
+
+    public BuyerStorageProvider getBuyerUploadStorageProvider() { return buyerUploadStorageProvider; }
+    public void setBuyerUploadStorageProvider(BuyerStorageProvider provider) { buyerUploadStorageProvider = provider; }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -142,7 +142,7 @@ public class StoreTemplateService {
                 store,requestId,key,product,mode.name(),reviewToken,definitions.size(),Timestamp.from(Instant.now()));
         cache.invalidateStoreAfterCommit(store);return definitions.size();
     }
-    public boolean uploadsAvailable(Store store) {return uploads.enabled() && uploadRights.usage(store.getStoreId()).acceptsUploads();}
+    public boolean uploadsAvailable(Store store) {return uploads.enabled(store.getStoreId()) && uploadRights.usage(store.getStoreId()).acceptsUploads();}
     private List<TemplateFieldDefinition> validate(List<TemplateFieldDefinition> definitions) {
         if(definitions==null || definitions.isEmpty() || definitions.size()>100)throw error("template.fields.invalid");
         List<TemplateFieldDefinition> result=new ArrayList<>();

@@ -14,6 +14,7 @@ public class S3BuyerFileStorage implements BuyerFileStorage {
     private final String bucket;
     private final String prefix;
     private final S3Client s3;
+    @org.springframework.beans.factory.annotation.Autowired
     public S3BuyerFileStorage(@Value("${buyer-uploads.s3.bucket:}") String bucket,
             @Value("${buyer-uploads.s3.region:us-east-2}") String region,
             @Value("${buyer-uploads.s3.prefix:production/buyer-files}") String prefix) {
@@ -21,6 +22,9 @@ public class S3BuyerFileStorage implements BuyerFileStorage {
         if (this.prefix.isBlank()) throw new IllegalArgumentException("buyer upload prefix must not be empty");
         s3=enabled() ? S3Client.builder().region(Region.of(region)).overrideConfiguration(c -> c
                 .apiCallTimeout(Duration.ofSeconds(60)).apiCallAttemptTimeout(Duration.ofSeconds(25))).build() : null;
+    }
+    S3BuyerFileStorage(String bucket, String prefix, S3Client client) {
+        this.bucket = bucket; this.prefix = prefix; this.s3 = client;
     }
     public boolean enabled() { return !bucket.isBlank(); }
     public String bucket() { return bucket; }

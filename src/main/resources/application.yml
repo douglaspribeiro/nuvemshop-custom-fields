@@ -242,6 +242,15 @@ pricing:
 
 # Private artwork storage for Pro/Ultra buyer uploads.
 buyer-uploads:
+  provider: ${BUYER_UPLOAD_PROVIDER:AWS_S3}
+  oci:
+    bucket: ${BUYER_UPLOAD_OCI_BUCKET:}
+    namespace: ${BUYER_UPLOAD_OCI_NAMESPACE:}
+    region: ${BUYER_UPLOAD_OCI_REGION:sa-saopaulo-1}
+    prefix: ${BUYER_UPLOAD_OCI_PREFIX:production/buyer-files}
+    auth: ${BUYER_UPLOAD_OCI_AUTH:CONFIG_FILE}
+    config-file: ${BUYER_UPLOAD_OCI_CONFIG_FILE:~/.oci/config}
+    profile: ${BUYER_UPLOAD_OCI_PROFILE:DEFAULT}
   s3:
     bucket: ${BUYER_UPLOAD_S3_BUCKET:}
     region: ${BUYER_UPLOAD_S3_REGION:us-east-2}

@@ -1,6 +1,7 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.FieldType;
+import br.com.nuvemcustomfields.entity.BuyerStorageProvider;
 import br.com.nuvemcustomfields.repository.PersonalizationFieldRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -63,10 +64,11 @@ public class BuyerUploadService {
         return result;
     }
     public boolean enabled() { return storage.enabled(); }
+    public boolean enabled(long storeId) { return storage.forStore(storeId).enabled(); }
     public String session(long storeId) {
         return tx.execute(status -> {
             lock(storeId);
-            if(!storage.enabled() || !ledger.usage(storeId).acceptsUploads()) throw rejected("upload.unavailable");
+            if(!enabled(storeId) || !ledger.usage(storeId).acceptsUploads()) throw rejected("upload.unavailable");
             Instant now=Instant.now();
             Long count=jdbc.queryForObject("select count(*) from buyer_upload_sessions where store_id=? and created_at>?",
                     Long.class,storeId,ts(now.minusSeconds(3600)));
@@ -93,7 +95,8 @@ public class BuyerUploadService {
     }
     private Uploaded doUpload(long storeId,long productId,long fieldId,String token,String requestId,MultipartFile file) {
         authenticate(storeId,token);
-        if(!storage.enabled()) throw rejected("upload.unavailable");
+        var destination = storage.forStore(storeId);
+        if(!destination.enabled()) throw rejected("upload.unavailable");
         Set<String> allowed=tx.execute(status -> {
         var store=stores.findActiveByStoreId(storeId).orElseThrow(() -> rejected("upload.unavailable"));
         var field=fields.findById(fieldId).orElseThrow(() -> rejected("upload.field.invalid"));
@@ -115,12 +118,13 @@ public class BuyerUploadService {
             try(var input=file.getInputStream()) { bytes=input.readNBytes((int)BuyerUploadPolicy.MAX_FILE_BYTES+1); }
             if(bytes.length!=entry.sizeBytes()) throw rejected("upload.size.mismatch");
             var checked=validator.validate(bytes,file.getOriginalFilename(),allowed);
-            String bucket=storage.bucket(),key=storage.key(storeId,entry.id());
+            String bucket=destination.bucket(),key=destination.key(storeId,entry.id());
+            var provider=destination.provider();
             // Durable location precedes the object write, including timeout/partial failures.
             tx.executeWithoutResult(status -> {
                 lock(storeId);
-                int updated=jdbc.update("update buyer_uploads set bucket=?,object_key=?,original_name=?,content_type=? where id=? and state='RESERVED' and bucket is null",
-                        bucket,key,checked.name(),checked.type(),entry.id());
+                int updated=jdbc.update("update buyer_uploads set storage_provider=?,bucket=?,object_key=?,original_name=?,content_type=? where id=? and state='RESERVED' and bucket is null",
+                        provider.name(),bucket,key,checked.name(),checked.type(),entry.id());
                 if(updated!=1) throw rejected("upload.not.ready");
                 claimed[0]=true;
             });
@@ -128,7 +132,7 @@ public class BuyerUploadService {
                 lock(storeId);
                 var state=jdbc.queryForObject("select state from buyer_uploads where id=? for update",String.class,entry.id());
                 if(!"RESERVED".equals(state)) throw rejected("upload.not.ready");
-                storage.put(bucket,key,bytes,checked.type());
+                destination.put(bucket,key,bytes,checked.type());
                 ledger.stored(storeId,entry.id(),token,bytes.length);
             });
             metrics.counter("ncf.buyer.uploads","outcome","success").increment();
@@ -166,7 +170,7 @@ public class BuyerUploadService {
         long pending=jdbc.queryForObject("select coalesce(sum(size_bytes),0) from buyer_uploads where store_id=? and state='DELETING'",Long.class,storeId);
         return new FilePage(result,page,pages,count,pending);
     }
-    public record ArchiveFile(String id,long orderId,long itemId,String name,long size,String bucket,String key) {}
+    public record ArchiveFile(String id,long orderId,long itemId,String name,long size,String bucket,String key,BuyerStorageProvider provider) {}
     public record Archive(long storeId,List<ArchiveFile> files,long bytes) {}
     public Archive archive(long storeId,List<String> ids) {
         return tx.execute(status -> {
@@ -178,7 +182,7 @@ public class BuyerUploadService {
                 if(rows.isEmpty())throw rejected("upload.not.found");
                 var row=rows.getFirst();long size=((Number)row.get("size_bytes")).longValue();bytes+=size;
                 result.add(new ArchiveFile(id,((Number)row.get("order_id")).longValue(),((Number)row.get("order_item_id")).longValue(),
-                        (String)row.get("original_name"),size,(String)row.get("bucket"),(String)row.get("object_key")));
+                        (String)row.get("original_name"),size,(String)row.get("bucket"),(String)row.get("object_key"),BuyerStorageProvider.valueOf((String)row.get("storage_provider"))));
             }
             reserveDownloadTraffic(storeId,bytes);
             return new Archive(storeId,List.copyOf(result),bytes);
@@ -190,13 +194,12 @@ public class BuyerUploadService {
     }
     public Download download(long storeId,String id) {
         var archive=archive(storeId,List.of(id));var file=archive.files().getFirst();
-        var stream=storage.read(file.bucket(),file.key());
+        var stream=storage.forProvider(file.provider()).read(file.bucket(),file.key());
         metrics.counter("ncf.buyer.downloads").increment();
         return new Download(file.name(),file.size(),stream);
     }
     @Scheduled(fixedDelayString="${buyer-uploads.cleanup-delay-ms:60000}")
     public void cleanup() {
-        if(!storage.enabled()) return;
         var due=jdbc.queryForList("select store_id,id,state from buyer_uploads where (retry_at is null or retry_at<=?) and (state='DELETING' "
                 + "or (state in ('RESERVED','TEMPORARY','CART','ORDERED') and expires_at<=?)) order by expires_at limit 100",ts(Instant.now()),ts(Instant.now()));
         for(var item:due) {
@@ -211,10 +214,10 @@ public class BuyerUploadService {
                 boolean[] deleted={false};
                 tx.executeWithoutResult(status -> {
                     jdbc.queryForList("select store_id from stores where store_id=? for update",storeId);
-                    var rows=jdbc.queryForList("select bucket,object_key,delete_reason from buyer_uploads where id=? and state='DELETING' for update",id);
+                    var rows=jdbc.queryForList("select bucket,object_key,storage_provider,delete_reason from buyer_uploads where id=? and state='DELETING' for update",id);
                     if(rows.isEmpty()) return;
                     var row=rows.getFirst();
-                    if(row.get("bucket")!=null) storage.delete((String)row.get("bucket"),(String)row.get("object_key"));
+                    if(row.get("bucket")!=null) storage.forProvider(BuyerStorageProvider.valueOf((String)row.get("storage_provider"))).delete((String)row.get("bucket"),(String)row.get("object_key"));
                     ledger.acknowledgeDeletion(storeId,id);
                     if("ERASED".equals(row.get("delete_reason"))) jdbc.update("delete from buyer_uploads where id=?",id);
                     else jdbc.update("update buyer_uploads set bucket=null,object_key=null,original_name=null,session_hash='',request_id=id where id=?",id);

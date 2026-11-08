@@ -13,7 +13,7 @@ class MerchantNewsServiceTest {
     Store store(PlanType plan) {var s=new Store();s.setStoreId(42L);s.setPlan(plan);return s;}
     @ParameterizedTest @EnumSource(PlanType.class)
     void everyPlanSeesTheSameAvailableFeaturesAndDirectLinks(PlanType plan) {
-        when(uploads.enabled()).thenReturn(true);
+        when(uploads.enabled(anyLong())).thenReturn(true);
         var items=new MerchantNewsService(new HomologProperties("42"),uploads).forStore(store(plan));
         assertThat(items).extracting(MerchantNewsService.Item::href).containsExactly("/admin/templates","/admin/products");
     }

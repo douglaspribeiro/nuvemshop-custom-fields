@@ -51,6 +51,7 @@ class BuyerUploadsTest {
         admin.ensureRule(store,123L,"Caderno");var f=new FieldForm();f.setLabel("Arte");f.setFieldType(FieldType.FILE_UPLOAD);f.setRequired(true);admin.addField(store,123L,f);
         field=fields.findWithRuleByStoreId(store).getFirst().getId();
         session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,store);
+        when(storage.forStore(anyLong())).thenReturn(storage);when(storage.forProvider(any())).thenReturn(storage);when(storage.provider()).thenReturn(BuyerStorageProvider.AWS_S3);
         when(storage.enabled()).thenReturn(true);when(storage.bucket()).thenReturn("private-test");when(storage.key(anyLong(),anyString())).thenAnswer(a -> "test/"+a.getArgument(0)+"/"+a.getArgument(1));
         doAnswer(a->{objects.put(a.getArgument(1),a.getArgument(2));return null;}).when(storage).put(anyString(),anyString(),any(),anyString());
         when(storage.read(anyString(),anyString())).thenAnswer(a->new java.io.ByteArrayInputStream(objects.get(a.getArgument(1))));
@@ -67,6 +68,43 @@ class BuyerUploadsTest {
         String platformTime=java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ").withZone(java.time.ZoneOffset.UTC).format(Instant.now());
         when(api.getOrder(any(),eq(300L))).thenReturn(json.readTree("{\"id\":300,\"created_at\":\""+platformTime+"\",\"products\":[{\"id\":"+item+",\"product_id\":123,\"properties\":{\"_ncf_file_"+field+"\":\""+file.reference()+"\"}}]}"));
         orders.order(store,300);
+    }
+    @Test void changingDestinationPreservesDownloadsAndCleanupOfExistingFiles() throws Exception {
+        var awsFile=upload();confirm(awsFile,301);
+        var oci=mock(BuyerFileStorage.class);
+        when(oci.provider()).thenReturn(BuyerStorageProvider.OCI_OBJECT_STORAGE);
+        when(oci.enabled()).thenReturn(true);when(oci.bucket()).thenReturn("oci-bucket");
+        when(oci.key(anyLong(),anyString())).thenAnswer(a -> "oci/"+a.getArgument(1));
+        when(storage.forStore(store)).thenReturn(oci);
+        when(storage.forProvider(BuyerStorageProvider.OCI_OBJECT_STORAGE)).thenReturn(oci);
+        when(oci.read(anyString(),anyString())).thenReturn(new java.io.ByteArrayInputStream(png().getBytes()));
+        var ociFile=upload();confirm(ociFile,302);
+        assertThat(jdbc.queryForObject("select storage_provider from buyer_uploads where id=?",String.class,awsFile.id())).isEqualTo("AWS_S3");
+        assertThat(jdbc.queryForObject("select storage_provider from buyer_uploads where id=?",String.class,ociFile.id())).isEqualTo("OCI_OBJECT_STORAGE");
+        // Changing the current destination (even disabling it) must not disable old reads or cleanup.
+        when(storage.forStore(store)).thenReturn(storage);
+        when(storage.enabled()).thenReturn(false);when(oci.enabled()).thenReturn(false);
+        try(var stream=uploads.download(store,awsFile.id()).stream()){assertThat(stream.readAllBytes()).isEqualTo(png().getBytes());}
+        try(var stream=uploads.download(store,ociFile.id()).stream()){assertThat(stream.readAllBytes()).isEqualTo(png().getBytes());}
+        ledger.removeOrderedBatch(store,List.of(awsFile.id(),ociFile.id()));uploads.cleanup();
+        verify(storage).delete("private-test","test/"+store+"/"+awsFile.id());
+        verify(oci).delete(eq("oci-bucket"),anyString());
+        assertThat(ledger.usage(store).occupiedBytes()).isZero();
+    }
+    @Test void failedOciWriteKeepsItsProviderForCleanup() throws Exception {
+        var oci=mock(BuyerFileStorage.class);
+        when(oci.provider()).thenReturn(BuyerStorageProvider.OCI_OBJECT_STORAGE);
+        when(oci.enabled()).thenReturn(true);when(oci.bucket()).thenReturn("oci-bucket");
+        when(oci.key(anyLong(),anyString())).thenAnswer(a -> "oci/"+a.getArgument(1));
+        when(storage.forStore(store)).thenReturn(oci);
+        when(storage.forProvider(BuyerStorageProvider.OCI_OBJECT_STORAGE)).thenReturn(oci);
+        doThrow(new IllegalStateException("timeout")).when(oci).put(anyString(),anyString(),any(),anyString());
+        assertThatThrownBy(this::upload).isInstanceOf(BuyerUploadLedger.Rejected.class);
+        assertThat(jdbc.queryForObject("select storage_provider from buyer_uploads where store_id=?",String.class,store)).isEqualTo("OCI_OBJECT_STORAGE");
+        when(storage.forStore(store)).thenReturn(storage);uploads.cleanup();
+        verify(oci).delete(eq("oci-bucket"),anyString());
+        verify(storage,never()).delete(eq("oci-bucket"),anyString());
+        assertThat(ledger.usage(store).occupiedBytes()).isZero();
     }
     @Test void unavailableBuyerUploadShowsItsActualReasonInsteadOfImageOptionsError() throws Exception {
         jdbc.update("update stores set plan='PREMIUM' where store_id=?",store);

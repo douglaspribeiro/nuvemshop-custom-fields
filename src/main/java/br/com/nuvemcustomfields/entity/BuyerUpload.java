@@ -25,6 +25,10 @@ public class BuyerUpload {
     @Column(name = "original_name", length = 180) private String originalName;
     @Column(name = "content_type", length = 40) private String contentType;
     @Column(length = 120) private String bucket;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "storage_provider", nullable = false, length = 30)
+    @org.hibernate.annotations.ColumnDefault("'AWS_S3'")
+    private BuyerStorageProvider storageProvider = BuyerStorageProvider.AWS_S3;
     @Column(name = "object_key", length = 255) private String objectKey;
     @Column(name = "retry_at") private Instant retryAt;
     @Column(name = "delete_attempts",nullable=false) @org.hibernate.annotations.ColumnDefault("0") private int deleteAttempts;
