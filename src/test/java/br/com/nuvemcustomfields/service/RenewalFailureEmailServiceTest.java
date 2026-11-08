@@ -73,6 +73,15 @@ class RenewalFailureEmailServiceTest {
         assertThat(service.preview(12L).eligible()).isFalse();
     }
 
+    @Test void manualOverrideSuppressesAnAlreadyQueuedRenewalFailureNotice() {
+        var notice = service.preview(12L);
+        store.setPlan(PlanType.PREMIUM_PLUS);
+        store.setManualPlanOverride(true);
+        assertThat(service.preview(12L).eligible()).isFalse();
+        assertThatThrownBy(() -> service.send(12L, notice.fingerprint())).isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(emails);
+    }
+
     @Test void rejectsAChangedChargeOrRecipientInsteadOfSendingAnOutdatedNotice() {
         var notice = service.preview(12L);
         sub.setLastPaymentId("new-charge");

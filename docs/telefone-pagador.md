@@ -1,6 +1,6 @@
 # Telefone do pagador
 
-A migração `V73__payment_payer_phone.sql` acrescenta `payment_subscriptions.payer_phone`, opcional.
+A migração `V74__payment_payer_phone.sql` acrescenta `payment_subscriptions.payer_phone`, opcional.
 
 ## Captura
 

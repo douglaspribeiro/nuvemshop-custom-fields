@@ -11,7 +11,7 @@ Valores do enum: `AWS_S3` e `OCI_OBJECT_STORAGE`. No backoffice, abrir os detalh
 
 Cada arquivo em `buyer_uploads` registra `storage_provider`, `bucket` e `object_key`. Essa localização é gravada antes do envio remoto, de modo que uma falha/timeout também tenha o destino correto para limpeza. Leituras, downloads e exclusões sempre usam o provedor do arquivo, não a preferência atual da loja ou o padrão global. Não há fallback silencioso se o destino escolhido estiver indisponível.
 
-A migration **V74** atribui `AWS_S3` aos registros existentes e deixa a preferência das lojas nula (seguir padrão). Não move nem copia objetos. A opção nula acompanha futuras mudanças do padrão; uma opção explícita fica fixa até ser alterada no backoffice.
+A migration **V75** atribui `AWS_S3` aos registros existentes e deixa a preferência das lojas nula (seguir padrão). Não move nem copia objetos. A opção nula acompanha futuras mudanças do padrão; uma opção explícita fica fixa até ser alterada no backoffice.
 
 ## AWS S3
 
@@ -54,7 +54,7 @@ A limpeza OCI enumera todas as páginas e remove versões/delete markers somente
 ## Trocar o padrão sem interromper arquivos existentes
 
 1. Configurar os dois adaptadores e suas permissões no servidor.
-2. Aplicar a migration V74 antes de usar a nova versão.
+2. Aplicar a migration V75 antes de usar a nova versão.
 3. Alterar `BUYER_UPLOAD_PROVIDER` e reiniciar/reimplantar para carregar a propriedade.
 4. Manter credenciais e configurações do provedor anterior enquanto houver arquivos ativos ou exclusões pendentes nele. A mudança de padrão não desativa esse adaptador.
 5. No backoffice, revisar exceções por loja; elas têm prioridade sobre o novo padrão.

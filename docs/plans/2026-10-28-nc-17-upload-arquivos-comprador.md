@@ -81,7 +81,7 @@ Implementação local nesta branch; sem commit, push, deploy ou verificação em
 
 ## Regra simplificada de acesso
 
-V72 remove a tabela de concessões e o marcador de oferta das assinaturas. Arquivos, sessões, pedidos e retenção são preservados. Pro/Ultra não exigem habilitação adicional.
+V73 remove a tabela de concessões e o marcador de oferta das assinaturas. Arquivos, sessões, pedidos e retenção são preservados. Pro/Ultra não exigem habilitação adicional.
 
 ## Gerenciamento de arquivos pelo lojista
 

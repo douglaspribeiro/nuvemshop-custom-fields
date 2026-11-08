@@ -87,6 +87,7 @@ public class WebhookLifecycleService {
             store.setScope(null);
             store.setSubscriptionId(null);
             store.setPlan(PlanType.FREE);
+            store.setManualPlanOverride(false);
             store.setBillingPlanExternalId(null);
             store.setBillingAmountCurrency(null);
             store.setBillingAmountValue(null);

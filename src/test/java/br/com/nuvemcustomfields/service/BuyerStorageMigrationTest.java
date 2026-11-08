@@ -15,7 +15,7 @@ class BuyerStorageMigrationTest {
         jdbc.execute("create table stores(store_id bigint primary key)");
         jdbc.update("insert into buyer_uploads values ('old','old-bucket','old-key')");
         jdbc.update("insert into stores values (1)");
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V74__buyer_upload_storage_provider.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V75__buyer_upload_storage_provider.sql")).execute(ds);
         assertThat(jdbc.queryForMap("select * from buyer_uploads where id='old'"))
                 .containsEntry("STORAGE_PROVIDER","AWS_S3").containsEntry("BUCKET","old-bucket").containsEntry("OBJECT_KEY","old-key");
         assertThat(jdbc.queryForObject("select buyer_upload_storage_provider from stores",String.class)).isNull();

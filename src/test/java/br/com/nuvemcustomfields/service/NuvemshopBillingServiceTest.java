@@ -222,12 +222,28 @@ class NuvemshopBillingServiceTest {
     }
 
     @Test
+    void automaticBillingCannotSuspendOrResynchronizeAManualPlan() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        Store store = store(false);
+        store.setPlan(PlanType.PREMIUM_PLUS);
+        store.setManualPlanOverride(true);
+        when(storeRepository.findByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        var service = service(builder);
+        service.markSuspended(123L);
+        service.syncSubscription(store);
+        assertThat(store.getEffectivePlan()).isEqualTo(PlanType.PREMIUM_PLUS);
+        verify(storeRepository, never()).save(any());
+        server.verify();
+    }
+
+    @Test
     void syncSkipsInternalFreePlanWhenRemotePlanIsMissing() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         Store store = store(false);
         store.setPlan(PlanType.FREE_GRATIS);
-        when(storeRepository.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(storeRepository.findByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         server.expect(requestTo("https://api.example.com/2025-03/123/concepts/APP/services/client-123/subscriptions"))

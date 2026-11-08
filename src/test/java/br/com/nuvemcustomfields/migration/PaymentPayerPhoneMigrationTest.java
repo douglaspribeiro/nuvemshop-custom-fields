@@ -14,7 +14,7 @@ class PaymentPayerPhoneMigrationTest {
         var jdbc = new JdbcTemplate(source);
         jdbc.execute("create table payment_subscriptions (id bigint primary key, payer_email varchar(254))");
         jdbc.update("insert into payment_subscriptions(id,payer_email) values (1,'payer@example.com')");
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V73__payment_payer_phone.sql")).execute(source);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V74__payment_payer_phone.sql")).execute(source);
         assertThat(jdbc.queryForObject("select payer_email from payment_subscriptions where id=1",String.class))
                 .isEqualTo("payer@example.com");
         assertThat(jdbc.queryForObject("select payer_phone from payment_subscriptions where id=1",String.class)).isNull();

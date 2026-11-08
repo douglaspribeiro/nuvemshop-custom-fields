@@ -48,7 +48,7 @@ public class RenewalFailureEmailService {
         if (sub == null || !store.isActive() || sub.getProviderEnvironment() != PaymentEnvironment.PRODUCTION
                 || sub.getProvider() == PaymentProviderType.DODO_TEST || !text(sub.getProviderSubscriptionId())
                 || !text(sub.getLastPaymentId()) || sub.getPlan() == null || !sub.getPlan().isBillable()
-                || (!grace && sub.isAccessActive()) || store.isCourtesyPremium()
+                || (!grace && sub.isAccessActive()) || store.isCourtesyPremium() || store.isManualPlanOverride()
                 || (sub.getProvider() == PaymentProviderType.EFI && !grace && sub.getStatus() != PaymentSubscriptionStatus.ERROR)
                 || (!grace && store.getEffectivePlan().isBillable()) || !Set.of(PaymentSubscriptionStatus.ERROR,
                     PaymentSubscriptionStatus.PAST_DUE, PaymentSubscriptionStatus.PAUSED).contains(sub.getStatus())

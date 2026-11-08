@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.56.1] - 2026-11-06
+
+### Correções
+
+- Corrigido em MysqlMigrationContractIT.java (`7a61097`)
+
+### Outros
+
+- Protege overrides manuais contra eventos de pagamento (`5dd4dc2`)
+
 ## [1.56.0] - 2026-11-05
 
 ### Features

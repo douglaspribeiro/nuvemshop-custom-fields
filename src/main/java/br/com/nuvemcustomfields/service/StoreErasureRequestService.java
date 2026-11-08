@@ -33,6 +33,7 @@ public class StoreErasureRequestService {
             store.setAccessToken(null);
             store.setScope(null);
             store.setPlan(PlanType.FREE);
+            store.setManualPlanOverride(false);
             store.setBillingSuspended(true);
             payments.revokeAccessAfterUninstall(storeId);
             stores.saveAndFlush(store);

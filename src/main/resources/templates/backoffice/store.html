@@ -76,7 +76,9 @@
                     </select>
                 </label>
                 <button class="button primary" type="submit">Salvar override</button>
+                <small>Um override para plano pago mantém o acesso sob controle manual, sem alteração por eventos de pagamento. Salvar Free remove essa proteção e devolve o controle ao pagamento automático.</small>
             </form>
+            <p class="notice" th:if="${store.manualPlanOverride}">Plano protegido por override manual. Falhas, cancelamentos e confirmações de pagamento não alteram este plano.</p>
             <div class="settings-panel">
                 <h3>Cortesia temporária</h3>
                 <p>Permite conceder o plano Essencial ou Pro por 7 ou 30 dias. Sem cobranca ou renovacao automatica.

@@ -135,9 +135,11 @@ public class NuvemshopBillingService {
         }
     }
 
+    @Transactional
     public void syncSubscription(Store store) {
-        Store managedStore = storeRepository.findByStoreId(store.getStoreId())
+        Store managedStore = storeRepository.findByStoreIdForUpdate(store.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja nao encontrada."));
+        if (managedStore.isManualPlanOverride()) return;
         if (!billingProperties.enabled() || billingProperties.conceptCode() == null || billingProperties.conceptCode().isBlank()) {
             LOGGER.info("nuvemshop.billing.sync.skip store_id={} reason=disabled_or_missing_concept", managedStore.getStoreId());
             return;
@@ -168,7 +170,8 @@ public class NuvemshopBillingService {
 
     @Transactional
     public void markSuspended(Long storeId) {
-        storeRepository.findByStoreId(storeId).ifPresent(store -> {
+        storeRepository.findByStoreIdForUpdate(storeId).ifPresent(store -> {
+            if (store.isManualPlanOverride()) return;
             store.setBillingSuspended(true);
             store.setBillingLastError(null);
             store.setBillingLastSyncedAt(Instant.now());

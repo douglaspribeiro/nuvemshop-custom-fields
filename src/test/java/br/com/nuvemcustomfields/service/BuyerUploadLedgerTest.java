@@ -34,8 +34,8 @@ class BuyerUploadLedgerTest {
         jdbc.execute("create table personalization_rules (id bigint primary key, store_id bigint, product_id bigint)");
         jdbc.execute("create table personalization_fields (id bigint primary key, rule_id bigint)");
         try (var connection = source.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V70__buyer_upload_ledger.sql"));
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V72__buyer_upload_access_by_plan.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V71__buyer_upload_ledger.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V73__buyer_upload_access_by_plan.sql"));
         }
         jdbc.update("insert into stores(store_id,plan) values (1,'PREMIUM_PLUS'),(2,'PREMIUM_ULTRA')");
         jdbc.update("insert into personalization_rules values (10,1,100),(20,2,200)");
