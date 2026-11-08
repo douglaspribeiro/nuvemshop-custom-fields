@@ -755,7 +755,7 @@ public class AdminController {
         );
         model.addAttribute("store", store);
         model.addAttribute("rule", rule);
-        model.addAttribute("fieldTypes", FieldType.values());
+        model.addAttribute("fieldTypes", java.util.Arrays.stream(FieldType.values()).filter(t -> t != FieldType.FILE_UPLOAD).toList());
         model.addAttribute("imagesEnabled", personalizationAdminService.imagesEnabled());
         model.addAttribute("canUseImages", planLimitService.canConfigureImageProduct(store, productId));
         model.addAttribute("imageProductLimit", planLimitService.imageProductLimit(store.getEffectivePlan()));

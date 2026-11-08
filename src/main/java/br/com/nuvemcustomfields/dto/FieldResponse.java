@@ -21,6 +21,12 @@ public record FieldResponse(
 
     public static FieldResponse from(PersonalizationField field) { return from(field, 25); }
     public static FieldResponse from(PersonalizationField field, int imageOptionLimit) {
+        // Old bundles fall back to editable text for unknown field types. Never accept text as artwork.
+        // Keep required upload products blocked until the upload-capable release is restored.
+        if (field.getFieldType() == FieldType.FILE_UPLOAD)
+            return new FieldResponse(field.getLabel(), FieldType.TEXT, field.isRequired(), 100,
+                    "Upload temporariamente indisponível", "(?!)", propertyName(field.getLabel()),
+                    List.of(), List.of(), false, null);
         var images = field.getFieldType() == FieldType.IMAGE_SELECT ? field.imageOptions().stream().limit(imageOptionLimit).toList() : List.<ImageOption>of();
         return new FieldResponse(
                 field.getLabel(),

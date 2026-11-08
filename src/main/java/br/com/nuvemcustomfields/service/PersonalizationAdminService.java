@@ -168,6 +168,8 @@ public class PersonalizationAdminService {
     }
 
     private void applyForm(PersonalizationField field, FieldForm form) {
+        if (field.getFieldType() == FieldType.FILE_UPLOAD || form.getFieldType() == FieldType.FILE_UPLOAD)
+            throw new IllegalArgumentException("rollback.upload.unavailable");
         if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");

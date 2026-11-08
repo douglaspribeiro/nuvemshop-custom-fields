@@ -1,5 +1,7 @@
 # Nuvemshop Custom Fields
 
+Esta é a branch de recuperação. Consulte [rollback compatível com banco V75](docs/rollback-upload-v75.md) antes de construir ou publicar a imagem.
+
 Página pública de status em `/status/`: [configuração e funcionamento](docs/service-status.md).
 
 Aplicacao Spring Boot para lojistas Nuvemshop/Tiendanube criarem campos personalizados por produto e coletarem esses dados diretamente no carrinho/pedido. O caso principal e atender lojas de produtos personalizados, como camisetas com nome e numero, canecas com mensagem, convites com data, brindes corporativos e itens gravados.

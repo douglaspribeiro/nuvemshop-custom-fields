@@ -6,5 +6,7 @@ public enum FieldType {
     SELECT,
     IMAGE_SELECT,
     CHECKBOX,
-    TEXTAREA
+    TEXTAREA,
+    // Read compatibility only: this rollback build does not create buyer uploads.
+    FILE_UPLOAD
 }
