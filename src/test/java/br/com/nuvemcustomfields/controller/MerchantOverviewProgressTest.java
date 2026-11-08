@@ -26,7 +26,7 @@ class MerchantOverviewProgressTest {
         var s=new Store();s.setStoreId(990088772L);s.setStoreCountryCode("BR");stores.saveAndFlush(s);
         var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,s.getStoreId());
         String initial=mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(initial).contains("Comece pelo primeiro produto");
+        assertThat(initial).contains("Comece pelo primeiro produto", "Novidades do app", "Templates reutilizáveis", "data-merchant-news");
         var r=new PersonalizationRule();r.setStoreId(s.getStoreId());r.setProductId(101L);r.setProductName("Produto pronto");rules.saveAndFlush(r);
         var f=new PersonalizationField();f.setRule(r);f.setLabel("Seu nome");fields.saveAndFlush(f);
         String html=mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

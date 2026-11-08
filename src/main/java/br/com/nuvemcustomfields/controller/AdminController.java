@@ -22,6 +22,7 @@ import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
+import br.com.nuvemcustomfields.service.MerchantNewsService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
 import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.service.ReportService;
@@ -75,6 +76,7 @@ public class AdminController {
     private final NuvemshopProperties nuvemshopProperties;
     private final PaymentSubscriptionService paymentSubscriptionService;
     private final Messages messages;
+    private final MerchantNewsService merchantNews;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -86,7 +88,8 @@ public class AdminController {
             ReportService reportService,
             NuvemshopProperties nuvemshopProperties,
             PaymentSubscriptionService paymentSubscriptionService,
-            Messages messages
+            Messages messages,
+            MerchantNewsService merchantNews
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -98,6 +101,7 @@ public class AdminController {
         this.nuvemshopProperties = nuvemshopProperties;
         this.paymentSubscriptionService = paymentSubscriptionService;
         this.messages = messages;
+        this.merchantNews = merchantNews;
     }
 
     @ModelAttribute("nuvemshopClientId")
@@ -127,6 +131,7 @@ public class AdminController {
         var rules = personalizationAdminService.listRules(store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("rules", rules);
+        model.addAttribute("merchantNews", merchantNews.forStore(store));
         model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
         model.addAttribute("setupRule", rules.isEmpty() ? null : rules.get(0));
         model.addAttribute("usage", planLimitService.usage(store, 0));
