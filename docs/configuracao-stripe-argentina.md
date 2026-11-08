@@ -13,15 +13,15 @@ STRIPE_ENABLED=false
 STRIPE_SANDBOX=true
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-STRIPE_ALLOWED_STORE_IDS=
+HOMOLOG_ALLOWED_STORE_IDS=
 STRIPE_GRACE_DAYS=0
 STRIPE_TIMEOUT_SECONDS=20
 ```
 
 Em teste, usar chave secreta `sk_test_...` ou restrita `rk_test_...`, segredo
 `whsec_...` do endpoint de teste e
-IDs explícitos de lojas argentinas em `STRIPE_ALLOWED_STORE_IDS`, separados por
-vírgula. Vazio e `0` não autorizam lojas. Em produção, usar `STRIPE_SANDBOX=false`
+IDs explícitos de lojas argentinas em `HOMOLOG_ALLOWED_STORE_IDS`, separados por
+vírgula. `*` autoriza todas; vazio e `0` não autorizam lojas. Em produção, usar `STRIPE_SANDBOX=false`
 com chave `sk_live_...` ou `rk_live_...` e o segredo do endpoint de produção. Não colocar chaves
 no navegador, no banco de catálogo ou no Git. Recarregar a aplicação depois de
 alterar as variáveis.
@@ -74,9 +74,9 @@ Criar ou vincular mantém o preço local desabilitado e preserva as rotas e
 assinaturas existentes. Nome e descrição são dados públicos do produto: não
 incluir credenciais ou informações de clientes nesses campos.
 
-O Dodo de teste tem prioridade para lojas explicitamente autorizadas em sua
-configuração. Para testar Stripe nessas lojas, desativar DODO_TEST nessa
-instância de teste ou retirar a loja da autorização Dodo antes do teste.
+O Dodo de teste tem prioridade para lojas autorizadas em `HOMOLOG_ALLOWED_STORE_IDS`.
+Como a lista é universal, para testar Stripe nessas lojas desative `DODO_TEST_ENABLED`
+nessa instância; retirar um ID da lista também bloquearia o teste na Stripe.
 
 ## Webhook
 

@@ -26,7 +26,7 @@ class DodoTestGatewayTest {
     final String secret = "whsec_" + Base64.getEncoder().encodeToString("a-test-signing-key-with-enough-length".getBytes(StandardCharsets.UTF_8));
     DodoTestGateway gateway;
     @BeforeEach void setup() {
-        gateway = new DodoTestGateway(new DodoTestProperties(true, "dodo_test_credential", secret, "42", 20), catalog, builder.build(), new ObjectMapper());
+        gateway = new DodoTestGateway(new DodoTestProperties(true, "dodo_test_credential", secret, 20), catalog, builder.build(), new ObjectMapper(), new br.com.nuvemcustomfields.properties.HomologProperties("42"));
     }
     @AfterEach void close() { gateway.close(); }
     Store store(long id, String country) { var store = new Store(); store.setStoreId(id); store.setStoreCountryCode(country); return store; }
@@ -43,12 +43,12 @@ class DodoTestGatewayTest {
         assertThat(gateway.supports(store(42,"CO"))).isTrue();
         assertThat(gateway.supports(store(43,"CO"))).isFalse(); assertThat(gateway.supports(store(42,"BR"))).isFalse();
         assertThat(gateway.planAvailable(store(42,"CO"),PlanType.PREMIUM_PLUS)).isFalse();
-        assertThat(new DodoTestProperties(true,"opaque-test-api-key",secret,"42",20).configured()).isTrue();
-        assertThat(new DodoTestProperties(true,"dodo_test_credential",secret,"0",20).allows(42L)).isTrue();
+        assertThat(new DodoTestProperties(true,"opaque-test-api-key",secret,20).configured()).isTrue();
+        assertThat(new br.com.nuvemcustomfields.properties.HomologProperties("0").allows(42L)).isFalse();
     }
     @Test void allStoresSettingStillExcludesBrazilAndMissingCatalog() {
         when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX,"CO",PlanType.PREMIUM)).thenReturn(Optional.of(price()));
-        var all = new DodoTestGateway(new DodoTestProperties(true,"dodo_test_credential",secret,"0",20),catalog,builder.build(),new ObjectMapper());
+        var all = new DodoTestGateway(new DodoTestProperties(true,"dodo_test_credential",secret,20),catalog,builder.build(),new ObjectMapper(), new br.com.nuvemcustomfields.properties.HomologProperties("*"));
         try {
             assertThat(all.supports(store(43,"CO"))).isTrue();
             assertThat(all.supports(store(43,"BR"))).isFalse();

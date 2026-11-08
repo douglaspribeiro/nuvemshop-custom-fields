@@ -45,3 +45,7 @@ backoffice:
 pricing:
   fx-estimates:
     enabled: false
+
+# Existing feature tests run with homologation access enabled explicitly.
+homolog:
+  allowed-store-ids: "*"

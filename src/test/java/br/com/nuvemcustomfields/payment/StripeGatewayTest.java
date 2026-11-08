@@ -27,7 +27,7 @@ class StripeGatewayTest {
     final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     final ObjectMapper mapper = new ObjectMapper();
     StripeGateway gateway(boolean enabled) {
-        return new StripeGateway(new StripeProperties(enabled,true,"sk_test_fixture_only","whsec_fixture_only","42",0,20),catalog,builder.build(),mapper);
+        return new StripeGateway(new StripeProperties(enabled,true,"sk_test_fixture_only","whsec_fixture_only",0,20),catalog,builder.build(),mapper, new br.com.nuvemcustomfields.properties.HomologProperties("42"));
     }
     PaymentCatalogPrice price() {
         var price = new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.STRIPE); price.setEnvironment(PaymentEnvironment.SANDBOX);
@@ -46,7 +46,7 @@ class StripeGatewayTest {
                 .andExpect(header("Stripe-Version",StripeGateway.API_VERSION)).andRespond(withSuccess(response,MediaType.APPLICATION_JSON));
     }
     @Test void createsProductAndMonthlyDefaultPriceTogetherWithIdempotencyBeforeSalesAreEnabled() {
-        var gateway = new StripeGateway(new StripeProperties(false,true,"rk_test_fixture_only","","",0,20),catalog,builder.build(),mapper);
+        var gateway = new StripeGateway(new StripeProperties(false,true,"rk_test_fixture_only","",0,20),catalog,builder.build(),mapper, new br.com.nuvemcustomfields.properties.HomologProperties("42"));
         assertThat(gateway.apiConfigured()).isTrue(); assertThat(gateway.operational()).isFalse();
         server.expect(requestTo("https://api.stripe.com/v1/products")).andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization","Bearer rk_test_fixture_only"))
@@ -86,8 +86,8 @@ class StripeGatewayTest {
         assertThat(gateway(true).supports(store)).isFalse();
         assertThatThrownBy(() -> gateway(true).createCheckout(store,PlanType.PREMIUM,"ref","https://app.test")).isInstanceOf(IllegalArgumentException.class);
         store.setStoreId(42L); store.setStoreCountryCode("BR"); assertThat(gateway(true).supports(store)).isFalse();
-        assertThat(new StripeProperties(true,true,"sk_live_fixture","whsec_fixture","42",0,20).configured()).isFalse();
-        assertThat(new StripeProperties(true,true,"sk_test_fixture","whsec_fixture","0",0,20).allows(42L)).isFalse();
+        assertThat(new StripeProperties(true,true,"sk_live_fixture","whsec_fixture",0,20).configured()).isFalse();
+        assertThat(new br.com.nuvemcustomfields.properties.HomologProperties("0").allows(42L)).isFalse();
         verifyNoInteractions(catalog);
     }
     @ParameterizedTest

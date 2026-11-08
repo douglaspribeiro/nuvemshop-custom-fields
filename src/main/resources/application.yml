@@ -136,7 +136,7 @@ payments:
     sandbox: ${STRIPE_SANDBOX:true}
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-    allowed-store-ids: ${STRIPE_ALLOWED_STORE_IDS:}
+
     grace-days: ${STRIPE_GRACE_DAYS:0}
     timeout-seconds: ${STRIPE_TIMEOUT_SECONDS:20}
   upgrade:
@@ -172,7 +172,7 @@ payments:
     enabled: ${DODO_TEST_ENABLED:false}
     api-key: ${DODO_TEST_API_KEY:}
     webhook-key: ${DODO_TEST_WEBHOOK_KEY:}
-    allowed-store-ids: ${DODO_TEST_ALLOWED_STORE_IDS:}
+
     timeout-seconds: ${DODO_TEST_TIMEOUT_SECONDS:20}
   creem:
     enabled: ${CREEM_ENABLED:false}
@@ -208,8 +208,6 @@ winback:
   mail-enabled: ${WINBACK_MAIL_ENABLED:false}
   queue-url: ${WINBACK_SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao}
   region: ${WINBACK_AWS_REGION:us-east-2}
-  # Durante os testes, somente estas lojas entram na reconquista. Use 0 para todas.
-  allowed-store-ids: ${WINBACK_ALLOWED_STORE_IDS:8289259,8126986,7800303,7799255,5538394}
   publish-delay-ms: 30000
 
 logging:
@@ -260,3 +258,6 @@ activation:
     suppression-ready: ${ACTIVATION_EMAIL_SUPPRESSION_READY:false}
     schedule-delay-ms: ${ACTIVATION_EMAIL_SCHEDULE_DELAY_MS:3600000}
     metrics-delay-ms: ${ACTIVATION_EMAIL_METRICS_DELAY_MS:3600000}
+
+homolog:
+  allowed-store-ids: ${HOMOLOG_ALLOWED_STORE_IDS:0}

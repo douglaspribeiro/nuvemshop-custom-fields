@@ -31,18 +31,20 @@ public class WinbackCampaignService {
     private final WinbackDiscountService discounts;
     private final WinbackCouponRepository coupons;
     private final BrandedEmailTemplate design;
+    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     public WinbackCampaignService(StoreRepository stores, WinbackOutboxRepository outbox,
             WinbackCampaignRepository campaigns, WinbackEmailRepository emails, JavaMailSender sender,
             SesProperties smtp, SesEventsProperties ses, @Value("${nuvemshop.app-base-url}") String baseUrl,
             WinbackDiscountService discounts, WinbackCouponRepository coupons) {
-        this(stores, outbox, campaigns, emails, sender, smtp, ses, baseUrl, discounts, coupons, new BrandedEmailTemplate());
+        this(stores, outbox, campaigns, emails, sender, smtp, ses, baseUrl, discounts, coupons, new BrandedEmailTemplate(), new br.com.nuvemcustomfields.properties.HomologProperties("0"));
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public WinbackCampaignService(StoreRepository stores, WinbackOutboxRepository outbox,
             WinbackCampaignRepository campaigns, WinbackEmailRepository emails, JavaMailSender sender,
             SesProperties smtp, SesEventsProperties ses, @Value("${nuvemshop.app-base-url}") String baseUrl,
-            WinbackDiscountService discounts, WinbackCouponRepository coupons, BrandedEmailTemplate design) {
+            WinbackDiscountService discounts, WinbackCouponRepository coupons, BrandedEmailTemplate design, br.com.nuvemcustomfields.properties.HomologProperties homolog) {
+        this.homolog = homolog;
         this.stores = stores; this.outbox = outbox; this.campaigns = campaigns; this.emails = emails;
         this.sender = sender; this.smtp = smtp; this.ses = ses; this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.discounts = discounts; this.coupons = coupons;
@@ -61,6 +63,7 @@ public class WinbackCampaignService {
             throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: a configuração SMTP do SES está incompleta. Confira AWS_SES_SMTP_HOST, AWS_SES_SMTP_PORT, AWS_SES_SMTP_USERNAME, AWS_SES_SMTP_PASSWORD e AWS_SES_FROM_EMAIL.");
         if (!StringUtils.hasText(ses.configurationSet()))
             throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: falta configurar AWS_SES_CONFIGURATION_SET com o nome do Configuration Set existente no SES.");
+        if (!homolog.allows(storeId)) throw new WinbackPreparationException("Loja não autorizada para homologação.");
         var store = stores.findByStoreIdForUpdate(storeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (store.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está ativa.");
         if (store.isErasurePending() && !authorizeErasureContact)
@@ -89,7 +92,7 @@ public class WinbackCampaignService {
         if (!smtp.configured() || !StringUtils.hasText(ses.configurationSet()))
             throw new IllegalStateException("Configure SES e Configuration Set antes de disparar a reconquista.");
         var event = outbox.findById(eventId).orElse(null);
-        if (event == null) return null;
+        if (event == null || !homolog.allows(event.getStoreId())) return null;
         var store = stores.findByStoreIdForUpdate(event.getStoreId()).orElse(null);
         if (store == null || store.isActive() || store.isErasurePending() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
         if (event.getPublishedAt() == null) return null;
@@ -109,7 +112,7 @@ public class WinbackCampaignService {
         String campaignId = emails.campaignIdFor(emailId).orElse(null);
         if (campaignId == null) return;
         var storeId = campaigns.storeIdFor(campaignId).orElse(null);
-        if (storeId == null) return;
+        if (!homolog.allows(storeId)) return;
         // Locks held through SMTP: redact and reinstall cannot race the eligibility check.
         var store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         var campaign = campaigns.findById(campaignId).orElse(null);
@@ -212,6 +215,7 @@ public class WinbackCampaignService {
         if (campaignId == null) return null;
         var storeId = campaigns.storeIdFor(campaignId).orElse(null);
         if (storeId == null) return null;
+        if (!homolog.allows(storeId)) return null;
         var store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         var mail = emails.findById(emailId).orElse(null);
         if (store == null || store.isErasurePending()) {

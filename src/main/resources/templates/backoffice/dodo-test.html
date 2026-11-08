@@ -11,7 +11,7 @@
         <p>Vincule um produto mensal do ambiente selecionado. Chile usa CLP, México usa MXN; Argentina e Colômbia usam USD. O valor deve coincidir com o produto ou seu preço regional fixo no Dodo.</p>
         <p><strong th:text="${configured ? 'Gateway habilitado' : 'Gateway aguardando configuração no servidor'}">Configuração</strong></p>
         <p th:if="${testMode}">Lojas autorizadas: <span th:text="${allTestStoresAllowed ? 'Todas as lojas fora do Brasil, nos países e planos com preço de teste habilitado' : allowedStoreIds}">Lojas autorizadas</span></p>
-        <p th:if="${testMode}">Configure no servidor <code>DODO_TEST_ENABLED</code>, <code>DODO_TEST_API_KEY</code>, <code>DODO_TEST_WEBHOOK_KEY</code> e <code>DODO_TEST_ALLOWED_STORE_IDS</code>. Não cole segredos neste formulário.</p>
+        <p th:if="${testMode}">Configure no servidor <code>DODO_TEST_ENABLED</code>, <code>DODO_TEST_API_KEY</code>, <code>DODO_TEST_WEBHOOK_KEY</code> e <code>HOMOLOG_ALLOWED_STORE_IDS</code>. Não cole segredos neste formulário.</p>
         <p th:unless="${testMode}">Produção usa DODO_ENABLED, DODO_API_KEY e DODO_WEBHOOK_KEY, com produtos e rotas próprios. Vincular um produto não habilita novas vendas.</p>
         <div class="report-table-scroll"><table class="table"><thead><tr><th>País</th><th>Moeda de cobrança</th><th>Essencial · referência</th></tr></thead>
             <tbody><tr th:each="reference : ${references}"><td th:text="${reference.country}">CL</td><td th:text="${reference.currency}">CLP</td><td th:text="${reference.amount}">4199</td></tr></tbody></table></div>
