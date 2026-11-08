@@ -53,15 +53,6 @@ public class BuyerUploadController {
         org.slf4j.LoggerFactory.getLogger(getClass()).info("buyer.files.deletion_queued store_id={} files={} bytes={}",store,removed.files(),removed.bytes());
         return ok(removed);
     }
-    @PostMapping(value="/admin/buyer-uploads/download-zip",consumes=MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> downloadZip(
-            @RequestParam java.util.List<String> ids,HttpSession session) {
-        var archive=files.archive(stores.requireCurrentStore(session).getStoreId(),ids);
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header("X-Content-Type-Options","nosniff")
-                .header("Content-Security-Policy","sandbox")
-                .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename("arquivos-pedidos.zip").build().toString())
-                .contentType(MediaType.parseMediaType("application/zip")).body(output -> files.writeArchive(archive,output));
-    }
     @GetMapping("/admin/buyer-uploads/{id}/download")
     public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> download(@PathVariable String id,HttpSession session) {
         var file=files.download(stores.requireCurrentStore(session).getStoreId(),id);

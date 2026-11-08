@@ -57,16 +57,15 @@ it("groups orders, supports partial selection and requires a reviewed confirmati
     expect(doc.querySelectorAll("[data-file-select]")).toHaveLength(0);
 });
 
-it("downloads an order or the selected files through a native POST without deleting them", async () => {
+it("offers only individual downloads and keeps selection for deletion", async () => {
     const {doc, fetch, submit} = boot();await loaded(doc);
-    (doc.querySelector(".buyer-order-heading button") as HTMLButtonElement).click();
-    expect(submit).toHaveBeenCalledOnce();
-    const form = submit.mock.instances[0] as unknown as HTMLFormElement;
-    expect(form.action).toBe("https://app.test/admin/buyer-uploads/download-zip");expect(form.method).toBe("post");
-    expect([...form.querySelectorAll<HTMLInputElement>("input")].map(input => input.value)).toEqual(["a", "b"]);
-    doc.querySelector<HTMLInputElement>('[data-file-select="b"]')!.click();click(doc, "download-selected");
-    expect(submit).toHaveBeenCalledTimes(2);
-    expect((submit.mock.instances[1] as unknown as HTMLFormElement).querySelector<HTMLInputElement>("input")!.value).toBe("b");
+    expect(doc.getElementById("buyer-download-selected")).toBeNull();
+    expect(doc.querySelector(".buyer-order-heading button")).toBeNull();
+    expect([...doc.querySelectorAll<HTMLAnchorElement>(".buyer-order a")].map(link => link.getAttribute("href")))
+        .toEqual(["/admin/buyer-uploads/a/download", "/admin/buyer-uploads/b/download"]);
+    doc.querySelector<HTMLInputElement>("[data-order-select]")!.click();
+    expect((doc.getElementById("buyer-delete-selected") as HTMLButtonElement).disabled).toBe(false);
+    expect(submit).not.toHaveBeenCalled();
     expect(fetch.mock.calls.some(([url]) => url.includes("delete-selected"))).toBe(false);
 });
 
@@ -99,10 +98,8 @@ it("preserves selection between pages and sends date and ordering filters to the
     expect(fetch.mock.calls[fetch.mock.calls.length - 1][0]).toContain("before=");
 });
 
-it("refuses oversized downloads and never treats a loading error as an empty list", async () => {
-    const {doc, submit, fetch} = boot([file("a"), {...file("b"), size_bytes: 1_000_000_000}]);await loaded(doc);
-    doc.querySelector<HTMLInputElement>("[data-order-select]")!.click();click(doc, "download-selected");
-    expect(submit).not.toHaveBeenCalled();expect(doc.getElementById("buyer-status")!.textContent).toContain("1 GB");
+it("never treats a loading error as an empty list", async () => {
+    const {doc, fetch} = boot();await loaded(doc);
     fetch.mockRejectedValueOnce(new Error("offline"));click(doc, "refresh");
     await vi.waitFor(() => expect(doc.getElementById("buyer-status")!.textContent).toContain("Não foi possível carregar"));
     expect(doc.querySelectorAll(".buyer-order")).toHaveLength(1);

@@ -26,7 +26,6 @@
         const list = [...selected.values()];
         get("selected").textContent = list.length ? t("selection", list.length, size(total(list))) : t("noneSelected");
         get("delete-selected").disabled = busy || loading || !list.length;
-        get("download-selected").disabled = busy || loading || !list.length;
         checkboxState(get("select-page"), files.filter(deletable));
         document.querySelectorAll("[data-file-select]").forEach(input => {
             input.checked = selected.has(input.dataset.fileSelect); input.disabled = busy;
@@ -61,15 +60,6 @@
         return ({"upload.selection.invalid": t("invalidSelection"), "upload.not.found": t("missingFile"),
             "upload.not.ordered": t("missingFile"), "upload.rate.limit": t("downloadLimit")})[body?.code] || body?.error || t(fallback);
     }
-    function download(list) {
-        if (!list.length || list.length > 200) { show(t("maxSelection")); return; }
-        if (list.some(file => !available(file))) { show(t("expiredSelection")); return; }
-        if (total(list) > 1e9) { show(t("downloadLimit")); return; }
-        // Native download avoids keeping a potentially large ZIP in browser memory.
-        const form = node("form");form.method = "POST";form.action = "/admin/buyer-uploads/download-zip";form.target = "buyer-download-frame";form.hidden = true;
-        for (const file of list) { const input = node("input");input.type = "hidden";input.name = "ids";input.value = file.id;form.append(input); }
-        document.body.append(form);form.submit();form.remove();show(t("downloadStarted"));
-    }
     get("download-frame").addEventListener("load", () => {
         try {
             const text = get("download-frame").contentDocument?.body?.textContent;
@@ -86,8 +76,7 @@
             const input = node("input");input.type = "checkbox";input.dataset.orderSelect = orderId;input.setAttribute("aria-label", t("selectOrder", orderId));
             input.addEventListener("change", () => select(list.filter(deletable), input.checked));label.append(input, node("strong", t("order", orderId)));
             const copy = node("div");copy.append(label, node("p", t("orderSummary", list.length, size(total(list)), date(list[0].order_created_at)), "muted"));
-            const button = node("button", t("downloadOrder"), "button");button.type = "button";button.disabled = !list.some(available);button.addEventListener("click", () => download(list.filter(available)));
-            heading.append(copy, button);section.append(heading);
+            heading.append(copy);section.append(heading);
             const scroll = node("div", null, "buyer-order-scroll");
             const table = node("table", null, "table");const head = node("thead"), header = node("tr");
             for (const key of ["file", "size", "expires", "state", "actions"]) header.append(node("th", t(key)));
@@ -125,7 +114,6 @@
         finally { if (current === generation) { loading = false;updateSelection(); } }
     }
     get("select-page").addEventListener("change", () => select(files.filter(deletable), get("select-page").checked));
-    get("download-selected").addEventListener("click", () => download([...selected.values()]));
     get("delete-selected").addEventListener("click", () => {
         review = [...selected.values()];if (!review.length || busy) return;
         get("delete-summary").textContent = t("confirmSummary", review.length, groups(review).size, size(total(review)));

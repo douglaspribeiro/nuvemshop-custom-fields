@@ -18,13 +18,13 @@ public class BuyerUploadPageController {
                 "title","intro","retention","quotaNote","occupied","available",
                 "quota","plans","sort","oldest","newest","largest",
                 "before","filter","clear","refresh","listTitle","selectionHint",
-                "selectPage","downloadSelected","deleteSelected","selection","noneSelected","empty",
+                "selectPage","deleteSelected","selection","noneSelected","empty",
                 "loading","loadFailed","pending","full","warning","disabled",
-                "order","orderSummary","selectOrder","selectFile","downloadOrder","file",
+                "order","orderSummary","selectOrder","selectFile","file",
                 "item","size","expires","state","actions","download",
                 "ordered","deleting","expired","unavailable","page","previous",
                 "next","confirmTitle","confirmSummary","confirmWarning","cancel","confirmDelete",
-                "deletingNow","deleteQueued","deleteFailed","maxSelection","downloadStarted","downloadFailed",
-                "expiredSelection","downloadLimit","invalidSelection","missingFile")) ui.put(key,messages.get("buyer.files."+key));
+                "deletingNow","deleteQueued","deleteFailed","maxSelection","downloadFailed",
+                "downloadLimit","invalidSelection","missingFile")) ui.put(key,messages.get("buyer.files."+key));
         model.addAttribute("fileUi",ui);return "admin/buyer-uploads";}
 }

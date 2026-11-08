@@ -6,7 +6,7 @@ import java.time.Duration;
 public final class BuyerUploadPolicy {
     public static final long MAX_FILE_BYTES = 20_000_000L;
     public static final long PRO_BYTES = 2_000_000_000L;
-    public static final long ULTRA_BYTES = 20_000_000_000L;
+    public static final long ULTRA_BYTES = 10_000_000_000L;
     public static final Duration TEMPORARY_RETENTION = Duration.ofHours(24);
     public static final Duration ORDER_RETENTION = Duration.ofDays(90);
     private BuyerUploadPolicy() {}

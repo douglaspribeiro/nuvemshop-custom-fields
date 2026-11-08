@@ -175,8 +175,8 @@ class BuyerUploadsTest {
                 .contentType("application/json").content(json.writeValueAsString(Map.of("ids",ids,"confirmed",true))))
                 .andExpect(status().isBadRequest());
         assertThat(jdbc.queryForList("select state from buyer_uploads where id in (?,?)",String.class,own.id(),foreign.id())).containsOnly("ORDERED");
-        mvc.perform(post("/admin/buyer-uploads/download-zip").session(session).contentType("application/x-www-form-urlencoded")
-                .param("ids",own.id(),foreign.id())).andExpect(status().isBadRequest());
+        mvc.perform(get("/admin/buyer-uploads/"+foreign.id()+"/download").session(session))
+                .andExpect(status().isBadRequest());
         verify(storage,never()).read(anyString(),anyString());
         mvc.perform(post("/admin/buyer-uploads/download-zip").contentType("application/x-www-form-urlencoded").param("ids",own.id()))
                 .andExpect(status().is3xxRedirection());
@@ -188,22 +188,11 @@ class BuyerUploadsTest {
                 .andExpect(status().isBadRequest());
         assertThat(jdbc.queryForObject("select state from buyer_uploads where id=?",String.class,own.id())).isEqualTo("ORDERED");
     }
-    @Test void zipPreservesContentsAndSeparatesDuplicateFilenamesByOrderAndItemAfterDowngrade() throws Exception {
-        var first=upload();confirm(first,301);var second=upload();confirm(second,302);
-        jdbc.update("update stores set plan='FREE' where store_id=?",store);
-        var response=mvc.perform(post("/admin/buyer-uploads/download-zip").session(session).contentType("application/x-www-form-urlencoded")
-                .param("ids",first.id(),second.id(),first.id())).andExpect(request().asyncStarted()).andReturn();
-        assertThat(response.getRequest().getAsyncContext().getTimeout()).isEqualTo(600000L);
-        byte[] bytes=mvc.perform(asyncDispatch(response)).andExpect(status().isOk()).andExpect(content().contentType("application/zip"))
-                .andExpect(header().string("X-Content-Type-Options","nosniff")).andReturn().getResponse().getContentAsByteArray();
-        var names=new ArrayList<String>();
-        try(var zip=new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(bytes))){
-            java.util.zip.ZipEntry entry;
-            while((entry=zip.getNextEntry())!=null){names.add(entry.getName());assertThat(zip.readAllBytes()).isEqualTo(png().getBytes());}
-        }
-        assertThat(names).hasSize(2).doesNotHaveDuplicates();
-        assertThat(names).anyMatch(name->name.startsWith("pedido-300/item-301/"));
-        assertThat(names).anyMatch(name->name.startsWith("pedido-300/item-302/"));
+    @Test void zipDownloadIsUnavailableAndDoesNotReadStorage() throws Exception {
+        var file=upload();confirm(file,301);
+        mvc.perform(post("/admin/buyer-uploads/download-zip").session(session).contentType("application/x-www-form-urlencoded")
+                .param("ids",file.id())).andExpect(status().isNotFound());
+        verify(storage,never()).read(anyString(),anyString());
     }
     @Test void expiredSelectionFailsBeforeReadingStorageAndDownloadBudgetIsNotPoisonedByRejectedBatch() throws Exception {
         var first=upload();confirm(first,301);var second=upload();confirm(second,302);
@@ -245,7 +234,8 @@ class BuyerUploadsTest {
 
     @Test void fileManagerRendersTranslatedActionsAndExportsIsolatedPreview() throws Exception {
         String html=mvc.perform(get("/admin/buyer-uploads").session(session)).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Baixar selecionados em ZIP")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Os downloads são individuais.")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ZIP"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("??buyer.files."))))
                 .andReturn().getResponse().getContentAsString();
         if(Boolean.getBoolean("ncf.files.export")) {

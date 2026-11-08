@@ -55,7 +55,7 @@ public class UserJourneyAuditInterceptor implements HandlerInterceptor {
             LOGGER.warn("admin.error action={} store_id={} product_id={} field_id={} outcome={} status={} error_type={}",
                     event.action,event.storeId,event.productId,event.fieldId,outcome,response.getStatus(),
                     ex == null ? "none" : ex.getClass().getSimpleName());
-        } else if (outcome.equals("COMPLETED") && !event.route.equals("/admin/buyer-uploads/download-zip") && Set.of("POST","PUT","PATCH","DELETE").contains(event.method)) {
+        } else if (outcome.equals("COMPLETED") && Set.of("POST","PUT","PATCH","DELETE").contains(event.method)) {
             LOGGER.info("admin.change action={} store_id={} product_id={} field_id={} actor={} status={}",
                     event.action,event.storeId,event.productId,event.fieldId,event.actor,response.getStatus());
         }

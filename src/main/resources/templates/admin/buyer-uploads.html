@@ -18,7 +18,7 @@
     <section class="buyer-file-selection panel">
         <h2 th:text="#{buyer.files.listTitle}"></h2><p class="muted" th:text="#{buyer.files.selectionHint}"></p>
         <div class="buyer-selection-actions"><label class="checkbox"><input type="checkbox" id="buyer-select-page"><span th:text="#{buyer.files.selectPage}"></span></label><strong id="buyer-selected" role="status"></strong></div>
-        <div class="buyer-selection-actions"><button type="button" id="buyer-download-selected" class="button" disabled th:text="#{buyer.files.downloadSelected}"></button><button type="button" id="buyer-delete-selected" class="button danger" disabled th:text="#{buyer.files.deleteSelected}"></button><button type="button" id="buyer-refresh" class="button" th:text="#{buyer.files.refresh}"></button></div>
+        <div class="buyer-selection-actions"><button type="button" id="buyer-delete-selected" class="button danger" disabled th:text="#{buyer.files.deleteSelected}"></button><button type="button" id="buyer-refresh" class="button" th:text="#{buyer.files.refresh}"></button></div>
     </section>
     <p id="buyer-status" role="status" aria-live="polite"></p><p id="buyer-empty" class="panel" hidden th:text="#{buyer.files.empty}"></p>
     <div id="buyer-orders"></div>

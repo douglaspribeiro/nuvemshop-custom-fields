@@ -68,8 +68,8 @@ class UserJourneyAuditInterceptorTest {
         verify(audits).complete(9L,"REJECTED",200);
     }
     @Test void successfulReadsAreSilentButReadFailuresAreLogged(org.springframework.boot.test.system.CapturedOutput output) throws Exception {
-        for (String route : new String[]{"/admin/templates", "/admin/images/{id}", "/admin/billing/status", "/admin/buyer-uploads/download-zip"}) {
-            var request=request(route);request.setMethod(route.endsWith("download-zip")?"POST":"GET");var response=new MockHttpServletResponse();
+        for (String route : new String[]{"/admin/templates", "/admin/images/{id}", "/admin/billing/status", "/admin/buyer-uploads/{id}/download"}) {
+            var request=request(route);request.setMethod("GET");var response=new MockHttpServletResponse();
             interceptor.preHandle(request,response,handler());interceptor.afterCompletion(request,response,handler(),null);
         }
         assertThat(output.getAll()).doesNotContain("admin.change", "admin.error", "admin.flow");

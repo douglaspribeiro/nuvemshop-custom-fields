@@ -188,29 +188,6 @@ public class BuyerUploadService {
         var traffic=downloadTraffic.get(storeId,key->new java.util.concurrent.atomic.AtomicLong());
         for(;;){long used=traffic.get();if(bytes>1_000_000_000L-used)throw rejected("upload.rate.limit");if(traffic.compareAndSet(used,used+bytes))return;}
     }
-    private static final class ArchiveOutput extends java.util.zip.ZipOutputStream {
-        ArchiveOutput(java.io.OutputStream output){super(output,StandardCharsets.UTF_8);}
-        void release(){def.end();}
-    }
-    public void writeArchive(Archive archive,java.io.OutputStream output) throws java.io.IOException {
-        var zip=new ArchiveOutput(output);
-        try {
-        // Finish only a complete ZIP; an interrupted archive must not look like a complete download.
-        for(var file:archive.files()) {
-            String name=(file.name()==null?"arquivo":file.name()).replaceAll("[^a-zA-Z0-9._-]","_");
-            zip.putNextEntry(new java.util.zip.ZipEntry("pedido-"+file.orderId()+"/item-"+file.itemId()+"/"+file.id()+"-"+name));
-            try(var input=storage.read(file.bucket(),file.key())) {
-                if(input.transferTo(zip)!=file.size())throw new java.io.IOException("Incomplete archive file");
-            }
-            zip.closeEntry();
-        }
-        zip.finish();zip.flush();
-        metrics.counter("ncf.buyer.downloads").increment(archive.files().size());
-        } catch (java.io.IOException | RuntimeException error) {
-            org.slf4j.LoggerFactory.getLogger(getClass()).warn("buyer.files.download_failed store_id={} files={} type={}",archive.storeId(),archive.files().size(),error.getClass().getSimpleName());
-            throw error;
-        } finally { zip.release(); }
-    }
     public Download download(long storeId,String id) {
         var archive=archive(storeId,List.of(id));var file=archive.files().getFirst();
         var stream=storage.read(file.bucket(),file.key());
