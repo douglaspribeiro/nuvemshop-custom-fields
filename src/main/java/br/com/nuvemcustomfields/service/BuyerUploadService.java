@@ -22,6 +22,8 @@ import java.util.*;
 public class BuyerUploadService {
     @org.springframework.beans.factory.annotation.Autowired
     private BuyerUploadOrders orders;
+    @org.springframework.beans.factory.annotation.Autowired
+    private BuyerUploadMetrics uploadMetrics;
     public record Uploaded(String id, String name, long size, String reference) {}
     public record Download(String name, long size, java.io.InputStream stream) {}
     private final JdbcTemplate jdbc;
@@ -43,10 +45,6 @@ public class BuyerUploadService {
             PlanLimitService limits, PlatformTransactionManager transactions, MeterRegistry metrics) {
         this.jdbc=jdbc;this.ledger=ledger;this.storage=storage;this.validator=validator;this.fields=fields;
         this.stores=stores;this.limits=limits;this.tx=new TransactionTemplate(transactions);this.metrics=metrics;
-        metrics.gauge("ncf.buyer.storage.bytes",jdbc,j -> {
-            try{return j.queryForObject("select coalesce(sum(size_bytes),0) from buyer_uploads where state not in ('DELETED','EXPIRED')",Double.class);}
-            catch(RuntimeException e){return Double.NaN;}
-        });
         metrics.gauge("ncf.buyer.cleanup.pending",jdbc,j -> {
             try{return j.queryForObject("select count(*) from buyer_uploads where state='DELETING'",Double.class);}
             catch(RuntimeException e){return Double.NaN;}
@@ -135,11 +133,13 @@ public class BuyerUploadService {
                 destination.put(bucket,key,bytes,checked.type());
                 ledger.stored(storeId,entry.id(),token,bytes.length);
             });
+            uploadMetrics.uploaded(destination.provider(),bytes.length);
             metrics.counter("ncf.buyer.uploads","outcome","success").increment();
             return new Uploaded(entry.id(),checked.name(),bytes.length,"NCF-FILE:"+entry.id());
         } catch(Exception e) {
             tx.executeWithoutResult(status -> { lock(storeId); jdbc.update("update buyer_uploads set state='DELETING',delete_reason='FAILED' where id=? and state='RESERVED'"
                     +(claimed[0]?"":" and bucket is null"),entry.id()); });
+            uploadMetrics.uploadFailed(destination.provider());
             metrics.counter("ncf.buyer.uploads","outcome","failed").increment();
             if(e instanceof BuyerUploadLedger.Rejected rejection) throw rejection;
             throw rejected("upload.failed");
@@ -194,7 +194,9 @@ public class BuyerUploadService {
     }
     public Download download(long storeId,String id) {
         var archive=archive(storeId,List.of(id));var file=archive.files().getFirst();
-        var stream=storage.forProvider(file.provider()).read(file.bucket(),file.key());
+        java.io.InputStream stream;
+        try {stream=uploadMetrics.download(file.provider(),file.size(),storage.forProvider(file.provider()).read(file.bucket(),file.key()));}
+        catch(RuntimeException e) {uploadMetrics.downloadFailed(file.provider());throw e;}
         metrics.counter("ncf.buyer.downloads").increment();
         return new Download(file.name(),file.size(),stream);
     }

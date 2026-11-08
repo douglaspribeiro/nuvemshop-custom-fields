@@ -1,5 +1,18 @@
 # Tráfego de vitrine no Grafana
 
+
+## Versão de 08/11/2026 — resumo objetivo e uploads
+
+A seção de e-mails passa de 20 para **6 painéis**: aceitos pelo SMTP no período, pendências nas filas de ativação/SES, falhas para investigar, operação atual, envios por dia e retorno de entrega acumulado. Elegibilidade, motivos e controles detalhados continuam nas métricas/backoffice/logs, sem cartões repetidos. Os painéis de consumo horário e elegibilidade descritos nas seções históricas abaixo foram substituídos por este resumo.
+
+O gráfico diário usa `ncf_activation_email_daily_sent{date,partial}`, derivado de `sent_at` persistido, com hoje parcial e até 14 dias anteriores em `America/Sao_Paulo`. Não fabrica zeros anteriores ao primeiro envio conhecido; exclusões de histórico não são reconstruídas. A antiga pendência de gráfico diário de consumo SQS foi substituída pelo resumo de fila, leitura recente e falhas; consumo de evento não significa entrega de e-mail. Os dados diários são atualizados a cada minuto, com descarte do snapshot após 180s; os demais snapshots de ativação preservam o intervalo existente de uma hora.
+
+Uploads ganham **7 painéis**: sucessos/falhas, tráfego no período, espaço ocupado, exclusão pendente, taxa de tráfego, downloads completos/interrompidos/falhos e arquivos por etapa. Métricas novas: `ncf_buyer_transfers_total{provider,direction,outcome}`, `ncf_buyer_transfer_bytes_total{provider,direction}`, `ncf_buyer_files{provider,state}`, `ncf_buyer_storage_bytes{provider}` e `ncf_buyer_snapshot_timestamp_seconds`. Labels são limitados aos dois provedores e valores fixos; não levam lojas, arquivos ou URLs.
+
+Snapshots de arquivos vêm do banco a cada minuto e usam `max` entre réplicas do mesmo banco. Reservas/temporários/carrinho/pedidos/exclusões pendentes ocupam espaço; não são um inventário físico dos buckets. Tráfego é payload: upload gravado com sucesso e bytes efetivamente lidos no download, mesmo parcial; não é a fatura AWS/OCI, a franquia comercial ou confirmação de recebimento no navegador. Contadores locais usam soma de incrementos entre réplicas; não há retroativo. Download completo só é contado ao finalizar a leitura com o tamanho esperado.
+
+As cópias app/infra foram atualizadas juntas. É necessário publicar a aplicação instrumentada e sincronizar o dashboard para aparecerem os novos dados. Validação local do JSON não comprova sincronização ou consultas no Grafana remoto.
+
 ## Fonte oficial após centralização
 
 O catálogo gerenciado fica no repositório `server-docker-1`, em
