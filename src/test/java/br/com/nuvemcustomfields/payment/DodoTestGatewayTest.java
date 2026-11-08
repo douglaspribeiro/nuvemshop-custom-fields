@@ -90,10 +90,12 @@ class DodoTestGatewayTest {
     }
     @Test void mapsPaidInvoicesAndScheduledCancellation() {
         server.expect(requestTo("https://test.dodopayments.com/subscriptions/sub_test"))
-                .andRespond(withSuccess("{\"subscription_id\":\"sub_test\",\"status\":\"active\",\"currency\":\"USD\",\"recurring_pre_tax_amount\":100,\"product_id\":\"pdt_test\",\"next_billing_date\":\"2026-11-15T12:00:00Z\",\"cancel_at_next_billing_date\":true,\"metadata\":{\"external_reference\":\"ncf_ref\"}}",MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess("{\"subscription_id\":\"sub_test\",\"customer\":{\"customer_id\":\"cus_test\",\"phone_number\":\"+57 300 1234567\"},\"status\":\"active\",\"currency\":\"USD\",\"recurring_pre_tax_amount\":100,\"product_id\":\"pdt_test\",\"next_billing_date\":\"2026-11-15T12:00:00Z\",\"cancel_at_next_billing_date\":true,\"metadata\":{\"external_reference\":\"ncf_ref\"}}",MediaType.APPLICATION_JSON));
         server.expect(requestTo("https://test.dodopayments.com/payments/pay_test"))
                 .andRespond(withSuccess("{\"payment_id\":\"pay_test\",\"subscription_id\":\"sub_test\",\"status\":\"succeeded\",\"currency\":\"USD\",\"total_amount\":110}",MediaType.APPLICATION_JSON));
-        assertThat(gateway.getSubscription("sub_test").cancellationEffectiveAt()).isEqualTo(Instant.parse("2026-11-15T12:00:00Z"));
+        var subscription = gateway.getSubscription("sub_test");
+        assertThat(subscription.cancellationEffectiveAt()).isEqualTo(Instant.parse("2026-11-15T12:00:00Z"));
+        assertThat(subscription.payerPhone()).isEqualTo("+57 300 1234567");
         var invoice=gateway.getInvoice("pay_test");assertThat(invoice.approved()).isTrue();assertThat(invoice.amountPaid()).isEqualByComparingTo("1.10");server.verify();
     }
 }

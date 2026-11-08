@@ -123,6 +123,7 @@ public class EfiUpgradeService {
             if(!cycleEnd(remote).equals(a.getPeriodEnd())) throw new IllegalArgumentException("Seu ciclo mudou. Revise o upgrade novamente.");
             if(a.getDueAmount().signum()>0 && (!validPayer(payer) || token==null || !token.matches("[a-zA-Z0-9]{20,120}")))
                 throw new IllegalArgumentException("Informe os dados de pagamento.");
+            if (a.getDueAmount().signum() > 0) sub.capturePayerPhone("+55" + payer.phone());
             a.captureAnalytics();
             coupons.reserve(a);
             a.setState(a.getDueAmount().signum()==0?State.PAID:State.CREATING);

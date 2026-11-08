@@ -42,6 +42,23 @@ class DodoLiveSubscriptionLifecycleTest {
         price.setCountryCode("MX"); price.setPlan(PlanType.PREMIUM); price.setProviderPriceId("prod_current"); price.setValidatedAt(Instant.now());
         when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO,PaymentEnvironment.PRODUCTION,"MX",PlanType.PREMIUM)).thenReturn(Optional.of(price));
     }
+    @Test void capturesPhoneAndPreservesItWhenLaterReconciliationOmitsIt() {
+        when(gateway.getSubscription("sub_1")).thenReturn(
+                remote("active", "prod_1", "9.99", null).withPayerPhone("+52 (55) 1234-5678"));
+        service.synchronizeFromSubscription(PaymentProviderType.DODO, "sub_1");
+        assertThat(local.getPayerPhone()).isEqualTo("+525512345678");
+        verify(subscriptions, atLeastOnce()).save(local);
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("active", "prod_1", "9.99", null));
+        service.synchronizeFromSubscription(PaymentProviderType.DODO, "sub_1");
+        assertThat(local.getPayerPhone()).isEqualTo("+525512345678");
+    }
+    @Test void rejectsPhoneFromSubscriptionWithMismatchedReference() {
+        when(gateway.getSubscription("sub_1")).thenReturn(
+                remote("active", "prod_foreign", "9.99", null).withPayerPhone("+52 5512345678"));
+        assertThatThrownBy(() -> service.synchronizeFromSubscription(PaymentProviderType.DODO, "sub_1"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(local.getPayerPhone()).isNull();
+    }
     @Test void activeEventDoesNotGrantUnpaidAccess() {
         service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1");
         assertThat(local.isAccessActive()).isFalse(); assertThat(store.getPlan()).isEqualTo(PlanType.FREE);

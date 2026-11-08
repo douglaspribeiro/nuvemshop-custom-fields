@@ -121,7 +121,7 @@ public class StripeGateway implements PaymentGateway {
     }
     public JsonNode getCheckout(String checkoutId) { return get("/checkout/sessions/" + id(checkoutId, "cs_")); }
     @Override public GatewaySubscription getSubscription(String subscriptionId) {
-        JsonNode remote = get("/subscriptions/" + id(subscriptionId, "sub_"));
+        JsonNode remote = get("/subscriptions/" + id(subscriptionId, "sub_") + "?expand[]=customer");
         JsonNode items = remote.path("items").path("data");
         if (!items.isArray() || items.size() != 1 || items.get(0).path("quantity").asInt() != 1)
             throw new PaymentGatewayException("Assinatura Stripe deve conter um único plano com quantidade 1.");
@@ -135,7 +135,8 @@ public class StripeGateway implements PaymentGateway {
         if ("canceled".equals(text(remote, "status"))) cancellation = null;
         return new GatewaySubscription(required(remote, "id"), null, required(remote.path("metadata"), "external_reference"),
                 required(remote, "status"), required(price, "currency").toUpperCase(Locale.ROOT), money(price, "unit_amount"), end,
-                resourceId(remote.path("customer")), required(price, "id"), start, end, cancellation);
+                resourceId(remote.path("customer")), required(price, "id"), start, end, cancellation)
+                .withPayerPhone(text(remote.path("customer"), "phone"));
     }
     @Override public Optional<GatewayInvoice> getLatestInvoice(String subscriptionId) {
         JsonNode remote = get("/subscriptions/" + id(subscriptionId, "sub_"));

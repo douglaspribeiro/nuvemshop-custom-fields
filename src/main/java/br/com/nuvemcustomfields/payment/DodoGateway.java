@@ -120,7 +120,8 @@ public abstract class DodoGateway implements PaymentGateway {
         return new GatewaySubscription(required(data, "subscription_id"), null,
                 text(data.path("metadata"), "external_reference"), status, required(data, "currency"), money(data, "recurring_pre_tax_amount"),
                 end, text(data.path("customer"), "customer_id"), required(data, "product_id"),
-                instant(text(data, "previous_billing_date")), end, scheduled ? end : null);
+                instant(text(data, "previous_billing_date")), end, scheduled ? end : null)
+                .withPayerPhone(text(data.path("customer"), "phone_number"));
     }
     @Override public Optional<GatewayInvoice> getLatestInvoice(String id) {
         var items = get("/payments?subscription_id=" + safeId(id) + "&page_size=100").path("items");

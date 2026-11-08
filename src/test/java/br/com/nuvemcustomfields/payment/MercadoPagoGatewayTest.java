@@ -120,6 +120,41 @@ class MercadoPagoGatewayTest {
                 .isInstanceOf(PaymentGatewayException.class);
     }
 
+    @Test
+    void capturesPhoneFromAuthenticatedPaymentWithoutChangingInvoiceStatus() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.example.com/authorized_payments/invoice-1"))
+                .andRespond(withSuccess("""
+                    {"id":"invoice-1","preapproval_id":"sub-1","payment":{"id":12345,"status":"approved"}}
+                    """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://api.example.com/v1/payments/12345"))
+                .andExpect(header("Authorization", "Bearer access-token"))
+                .andRespond(withSuccess("""
+                    {"id":12345,"payer":{"phone":{"area_code":"11","number":"999999999"}}}
+                    """, MediaType.APPLICATION_JSON));
+        var invoice = gateway(builder).getInvoice("invoice-1");
+        assertThat(invoice.payerPhone()).isEqualTo("11999999999");
+        assertThat(invoice.approved()).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void contactLookupFailureDoesNotBlockApprovedPayment() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.example.com/authorized_payments/invoice-1"))
+                .andRespond(withSuccess("""
+                    {"id":"invoice-1","preapproval_id":"sub-1","payment":{"id":12345,"status":"approved"}}
+                    """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://api.example.com/v1/payments/12345"))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withServerError());
+        var invoice = gateway(builder).getInvoice("invoice-1");
+        assertThat(invoice.payerPhone()).isNull();
+        assertThat(invoice.approved()).isTrue();
+        server.verify();
+    }
+
     private MercadoPagoGateway gateway(RestClient.Builder builder) {
         return new MercadoPagoGateway(new MercadoPagoProperties(true, "https://api.example.com", "access-token",
                 SECRET, 3, new BigDecimal("19.99"), new BigDecimal("29.99")), builder, new ObjectMapper());

@@ -64,13 +64,14 @@ class PaymentSubscriptionServiceTest {
         when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
         when(gateway.getSubscription("sub-1")).thenReturn(remote);
         when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(
-                new GatewayInvoice("invoice-1", "sub-1", "payment-1", "approved")));
+                new GatewayInvoice("invoice-1", "sub-1", "payment-1", "approved", null, null, "(11) 99999-9999")));
         when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
         when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
         when(subscriptions.save(local)).thenReturn(local);
 
         service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO, "sub-1");
 
+        assertThat(local.getPayerPhone()).isEqualTo("11999999999");
         assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
         assertThat(local.isAccessActive()).isTrue();
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
@@ -526,6 +527,7 @@ class PaymentSubscriptionServiceTest {
                 new EfiGateway.EfiPayer("Cliente Teste", "12345678901", "cliente@example.com",
                         "11999999999", "1990-01-01"), "12345678901234567890");
 
+        assertThat(saved.get().getPayerPhone()).isEqualTo("+5511999999999");
         assertThat(saved.get().getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
         assertThat(saved.get().getLastPaymentId()).isEqualTo("12345");
         assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
