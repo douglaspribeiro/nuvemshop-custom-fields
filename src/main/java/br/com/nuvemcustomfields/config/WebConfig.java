@@ -10,6 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    private final RequestTrackingInterceptor requestTracking = new RequestTrackingInterceptor();
 
     private final HomologAccessInterceptor homologAccess;
     private final UserJourneyAuditInterceptor journeyAudit;
@@ -26,6 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(requestTracking);
         registry.addInterceptor(journeyAudit)
                 .addPathPatterns("/admin/**", "/oauth/callback", "/support", "/support/", "/support/tickets/**");
         registry.addInterceptor(adminSessionInterceptor)
@@ -36,6 +38,11 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(backofficeSessionInterceptor)
                 .addPathPatterns("/backoffice/**")
                 .excludePathPatterns("/backoffice/login");
+    }
+
+    @Override
+    public void extendHandlerExceptionResolvers(java.util.List<org.springframework.web.servlet.HandlerExceptionResolver> resolvers) {
+        resolvers.add(0, requestTracking);
     }
 
     /** O nome do bean precisa ser localeResolver: e por ele que o DispatcherServlet procura. */
