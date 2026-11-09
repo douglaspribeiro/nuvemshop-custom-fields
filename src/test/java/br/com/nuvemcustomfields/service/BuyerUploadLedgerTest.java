@@ -174,8 +174,11 @@ class BuyerUploadLedgerTest {
         assertEquals(PRO_BYTES,ledger.usage(1).occupiedBytes());
     }
     @Test void thresholdsUseApprovedDecimalUnits() {
-        assertEquals(0,warningPercent(PRO_BYTES*79/100,PRO_BYTES));
-        assertEquals(80,warningPercent(PRO_BYTES*80/100,PRO_BYTES));
+        assertEquals(0,warningPercent(PRO_BYTES*49/100,PRO_BYTES));
+        assertEquals(50,warningPercent(PRO_BYTES*50/100,PRO_BYTES));
+        assertEquals(50,warningPercent(PRO_BYTES*74/100,PRO_BYTES));
+        assertEquals(75,warningPercent(PRO_BYTES*75/100,PRO_BYTES));
+        assertEquals(75,warningPercent(PRO_BYTES*94/100,PRO_BYTES));
         assertEquals(95,warningPercent(PRO_BYTES*95/100,PRO_BYTES));
         assertEquals(100,warningPercent(PRO_BYTES,PRO_BYTES));
     }

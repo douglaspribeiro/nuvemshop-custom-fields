@@ -105,7 +105,7 @@
             for (const file of files) if (selected.has(file.id)) { if (deletable(file)) selected.set(file.id, file);else selected.delete(file.id); }
             get("occupied").textContent = size(data.usage.occupiedBytes);get("available").textContent = size(Math.max(0, data.usage.quotaBytes - data.usage.occupiedBytes));get("quota").textContent = size(data.usage.quotaBytes);
             get("disabled").hidden = data.enabled && data.usage.acceptsUploads;
-            const percent = data.usage.warningPercent;get("warning").hidden = percent < 80;get("warning").textContent = percent >= 100 ? t("full") : t("warning", percent);
+            const percent = data.usage.warningPercent;get("warning").hidden = percent < 50;get("warning").textContent = percent >= 100 ? t("full") : t("warning", percent);
             get("pending").hidden = !data.pendingBytes;get("pending").textContent = t("pending", size(data.pendingBytes));
             get("page").textContent = t("page", page, pages, data.totalOrders);
             render();if (!quiet) show("");

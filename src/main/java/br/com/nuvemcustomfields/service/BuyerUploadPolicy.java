@@ -15,7 +15,8 @@ public final class BuyerUploadPolicy {
         if (quota <= 0) return 0;
         if (occupied >= quota) return 100;
         if (occupied >= quota * 95 / 100) return 95;
-        if (occupied >= quota * 80 / 100) return 80;
+        if (occupied >= quota * 75 / 100) return 75;
+        if (occupied >= quota * 50 / 100) return 50;
         return 0;
     }
 }
