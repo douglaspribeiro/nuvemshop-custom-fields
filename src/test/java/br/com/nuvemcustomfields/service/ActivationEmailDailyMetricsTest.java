@@ -22,9 +22,9 @@ class ActivationEmailDailyMetricsTest {
         assertThat(registry.find("ncf.activation.email.daily.sent").gauges()).hasSize(2);
         db.update("insert into nc39_activation_email_outbox values (?, 'D11')",Timestamp.from(now.minusSeconds(20*86400)));
         metrics.refresh(now);
-        assertThat(registry.find("ncf.activation.email.daily.sent").gauges()).hasSize(15);
+        assertThat(registry.find("ncf.activation.email.daily.sent").gauges()).hasSize(14);
         metrics.refresh(now.plusSeconds(86400));
-        assertThat(registry.find("ncf.activation.email.daily.sent").gauges()).hasSize(15);
+        assertThat(registry.find("ncf.activation.email.daily.sent").gauges()).hasSize(14);
         assertThat(registry.find("ncf.activation.email.daily.sent").tags("date","2026-11-08","partial","true").gauge()).isNull();
     }
 }

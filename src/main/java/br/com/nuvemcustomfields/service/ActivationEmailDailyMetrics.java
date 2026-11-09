@@ -33,7 +33,7 @@ public class ActivationEmailDailyMetrics {
             var first=jdbc.queryForObject("select min(sent_at) from nc39_activation_email_outbox where sent_at is not null and step in ('D3','D7','D11')",Timestamp.class);
             var totals=new TreeMap<LocalDate,Long>();
             if(first!=null) {
-                var start=today.minusDays(14);var firstDay=first.toInstant().atZone(ZONE).toLocalDate();if(firstDay.isAfter(start))start=firstDay;
+                var start=today.minusDays(13);var firstDay=first.toInstant().atZone(ZONE).toLocalDate();if(firstDay.isAfter(start))start=firstDay;
                 for(var day=start;!day.isAfter(today);day=day.plusDays(1))totals.put(day,0L);
                 jdbc.query("select sent_at from nc39_activation_email_outbox where sent_at>=? and sent_at<=? and step in ('D3','D7','D11')",(org.springframework.jdbc.core.RowCallbackHandler)rs -> {
                     var day=rs.getTimestamp(1).toInstant().atZone(ZONE).toLocalDate();totals.computeIfPresent(day,(d,n)->n+1);

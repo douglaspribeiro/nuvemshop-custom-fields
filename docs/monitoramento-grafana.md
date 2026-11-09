@@ -5,7 +5,7 @@
 
 A seção de e-mails passa de 20 para **6 painéis**: aceitos pelo SMTP no período, pendências nas filas de ativação/SES, falhas para investigar, operação atual, envios por dia e retorno de entrega acumulado. Elegibilidade, motivos e controles detalhados continuam nas métricas/backoffice/logs, sem cartões repetidos. Os painéis de consumo horário e elegibilidade descritos nas seções históricas abaixo foram substituídos por este resumo.
 
-O gráfico diário usa `ncf_activation_email_daily_sent{date,partial}`, derivado de `sent_at` persistido, com hoje parcial e até 14 dias anteriores em `America/Sao_Paulo`. Não fabrica zeros anteriores ao primeiro envio conhecido; exclusões de histórico não são reconstruídas. A antiga pendência de gráfico diário de consumo SQS foi substituída pelo resumo de fila, leitura recente e falhas; consumo de evento não significa entrega de e-mail. Os dados diários são atualizados a cada minuto, com descarte do snapshot após 180s; os demais snapshots de ativação preservam o intervalo existente de uma hora.
+O gráfico diário usa `ncf_activation_email_daily_sent{date,partial}`, derivado de `sent_at` persistido, com hoje parcial e até 13 dias anteriores em `America/Sao_Paulo`. Não fabrica zeros anteriores ao primeiro envio conhecido; exclusões de histórico não são reconstruídas. A antiga pendência de gráfico diário de consumo SQS foi substituída pelo resumo de fila, leitura recente e falhas; consumo de evento não significa entrega de e-mail. Os dados diários são atualizados a cada minuto, com descarte do snapshot após 180s; os demais snapshots de ativação preservam o intervalo existente de uma hora.
 
 Uploads ganham **7 painéis**: sucessos/falhas, tráfego no período, espaço ocupado, exclusão pendente, taxa de tráfego, downloads completos/interrompidos/falhos e arquivos por etapa. Métricas novas: `ncf_buyer_transfers_total{provider,direction,outcome}`, `ncf_buyer_transfer_bytes_total{provider,direction}`, `ncf_buyer_files{provider,state}`, `ncf_buyer_storage_bytes{provider}` e `ncf_buyer_snapshot_timestamp_seconds`. Labels são limitados aos dois provedores e valores fixos; não levam lojas, arquivos ou URLs.
 
@@ -403,9 +403,13 @@ Nenhuma publicação de dashboard, alteração do servidor, push ou deploy nesta
   CLAIMED ou REVIEW nem remover bloqueios de contato. Nesta data ainda não há ação
   no backoffice para reabrir FAILED; o botão de consumo SQS não reenvia esses e-mails.
 - **Comparação diária de envios e consumo:** substituir as visualizações temporais
-  dessas duas operações por **últimos 15 dias de calendário**, no fuso
+  dessas duas operações por **últimos 14 dias de calendário**, no fuso
   `America/Sao_Paulo`, com um ponto por dia e totais diários comparáveis. Não usar
   uma janela móvel das últimas 24 horas. Se incluir o dia atual, identificá-lo como
   parcial e distingui-lo dos dias completos. Sem dados não significa zero e não
   reconstruir histórico ausente. Esta mudança de visualização está registrada como
   pendência; o gráfico atual de envios ainda usa uma hora móvel e o de consumo, taxa.
+
+## Período atualizado — 14 dias
+
+O período padrão do dashboard passa a ser últimos 14 dias. Envios SMTP e falhas SES usam janela de 14 dias, e o retorno de entrega consulta apenas envios confirmados nesse intervalo. O gráfico diário tem até 14 dias de calendário (hoje parcial e 13 anteriores), sem zeros anteriores ao histórico conhecido. Filas, mensagens a revisar, controles e armazenamento continuam sendo estados atuais: não ocultar uma falha antiga que ainda precisa de ação.
