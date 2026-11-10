@@ -7,3 +7,5 @@ Cada link “Tenho interesse” abre `/admin/suggestions` com um rascunho traduz
 “Dispensar” oculta o bloco e guarda a preferência em `localStorage`, por loja e versão do anúncio (`ncf-coming-soon:{storeId}:personalization-v1`). Outros dispositivos/navegadores não compartilham a preferência. Com armazenamento bloqueado, a dispensa vale apenas na página atual. Sem JavaScript, o conteúdo e os links continuam acessíveis.
 
 Ao lançar um recurso, retire-o desta lista e anuncie sua disponibilidade com o destino correto. Para reapresentar uma atualização relevante, altere `data-coming-soon` no template `admin/index.html`. Mantenha a lista curta e não reutilize a versão para um anúncio que deva reaparecer.
+
+O card fica acima de “Sugerir uma melhoria”, abaixo das ações principais. A chamada discreta “Em breve ↓” no cabeçalho rola até o card e move o foco para seu título. Se dispensado, o clique reabre o card e remove a preferência de dispensa. A rolagem respeita a preferência por movimento reduzido; sem JavaScript, o link funciona como âncora.

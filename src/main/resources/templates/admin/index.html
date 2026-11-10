@@ -13,7 +13,10 @@
 <main class="shell">
     <section class="page-header">
         <div><p class="eyebrow" th:text="#{merchant.nav.overview}">Visão geral</p><h1 th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</h1><p th:text="#{merchant.overview.intro}">Acompanhe sua loja.</p></div>
-        <a class="button primary" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
+        <div class="merchant-overview-actions">
+            <a class="merchant-coming-soon-link" href="#coming-soon" data-coming-soon-link><span th:text="#{merchant.comingsoon.title}">Em breve</span> <span aria-hidden="true">↓</span></a>
+            <a class="button primary" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
+        </div>
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
@@ -114,13 +117,9 @@
             <details class="merchant-technical"><summary th:text="#{merchant.overview.technical}">Detalhes técnicos da loja</summary><p><span th:text="#{admin.index.store.id}">Store ID</span>: <span th:text="${store.storeId}">0</span></p></details>
         </div>
     </section>
-    <section class="panel merchant-suggestion-callout">
-        <div><h2 th:text="#{suggestions.title}">Sugerir uma melhoria</h2><p th:text="#{suggestions.intro}"></p></div>
-        <a class="button primary" th:href="@{/admin/suggestions}" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
-    </section>
-    <section class="panel merchant-coming-soon" data-coming-soon="personalization-v1" th:attr="data-store-id=${store.storeId}" aria-labelledby="coming-soon-title">
+    <section id="coming-soon" class="panel merchant-coming-soon" data-coming-soon="personalization-v1" th:attr="data-store-id=${store.storeId}" aria-labelledby="coming-soon-title">
         <div class="merchant-coming-soon-heading">
-            <h2 id="coming-soon-title" th:text="#{merchant.comingsoon.title}">Em breve</h2>
+            <h2 id="coming-soon-title" tabindex="-1" th:text="#{merchant.comingsoon.title}">Em breve</h2>
             <button type="button" class="button" data-coming-soon-dismiss hidden th:text="#{merchant.comingsoon.dismiss}">Dispensar</button>
         </div>
         <ul class="merchant-coming-soon-list">
@@ -131,6 +130,10 @@
             </li>
         </ul>
         <p class="muted merchant-coming-soon-note" th:text="#{merchant.comingsoon.note}">Estamos preparando essas novidades. A disponibilidade pode variar conforme o recurso.</p>
+    </section>
+    <section class="panel merchant-suggestion-callout">
+        <div><h2 th:text="#{suggestions.title}">Sugerir uma melhoria</h2><p th:text="#{suggestions.intro}"></p></div>
+        <a class="button primary" th:href="@{/admin/suggestions}" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

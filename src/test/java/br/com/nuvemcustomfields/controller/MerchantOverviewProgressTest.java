@@ -43,6 +43,9 @@ class MerchantOverviewProgressTest {
         assertThat(html).doesNotContain("Comece pelo primeiro produto","hero-primary","Configure seu primeiro produto");
         assertThat(html).contains("Confira na loja","merchant-quicklinks","merchant-suggestion-callout");
         assertThat(html.indexOf("merchant-suggestion-callout")).isGreaterThan(html.indexOf("merchant-quicklinks"));
+        assertThat(html.indexOf("id=\"coming-soon\"")).isGreaterThan(html.indexOf("merchant-quicklinks"))
+                .isLessThan(html.indexOf("merchant-suggestion-callout"));
+        assertThat(html).contains("href=\"#coming-soon\"", "data-coming-soon-link");
         String nav=html.substring(html.indexOf("<nav"),html.indexOf("</nav>"));
         assertThat(nav).doesNotContain("/admin/suggestions");
         String form=mvc.perform(get("/admin/suggestions").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

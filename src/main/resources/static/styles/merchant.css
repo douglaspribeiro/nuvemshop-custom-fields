@@ -281,3 +281,9 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-coming-soon-list a { margin-top:auto; font-weight:600; }
 .merchant-coming-soon-note { margin-bottom:0; font-size:.85rem; }
 @media(max-width:700px) { .merchant-coming-soon-list { grid-template-columns:minmax(0,1fr); gap:12px; } }
+
+.merchant-overview-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:16px; }
+.merchant-coming-soon-link { color:var(--merchant-green); font-size:.85rem; font-weight:600; text-underline-offset:3px; white-space:nowrap; }
+.merchant-coming-soon { scroll-margin-top:24px; }
+.merchant-coming-soon-link:focus-visible, #coming-soon-title:focus-visible { outline:3px solid #87c7a6; outline-offset:4px; }
+@media(max-width:700px) { .merchant-overview-actions { justify-content:flex-start; } }

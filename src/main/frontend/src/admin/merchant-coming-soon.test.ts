@@ -30,3 +30,24 @@ it('allows dismissing when browser storage is blocked', () => {
     expect(dom.window.document.querySelector('section')!.hidden).toBe(true);
     dom.window.close();
 });
+
+it.each([false, true])('reopens a dismissed announcement and respects reduced motion (%s)', reduced => {
+    const dom = new JSDOM('<a href="#coming-soon" data-coming-soon-link>Em breve</a>' + markup('123'), { url: 'https://app.test/admin', runScripts: 'outside-only' });
+    const { window } = dom;
+    const panel = window.document.querySelector('section')!;
+    panel.innerHTML += '<h2 tabindex="-1">Em breve</h2>';
+    let scrollOptions: unknown;
+    panel.scrollIntoView = options => { scrollOptions = options; };
+    Object.defineProperty(window, 'matchMedia', { value: () => ({ matches: reduced }) });
+    window.localStorage.setItem('ncf-coming-soon:123:personalization-v1', 'dismissed');
+    window.eval(script);
+    expect(panel.hidden).toBe(true);
+    window.document.querySelector('a')!.click();
+    expect(panel.hidden).toBe(false);
+    expect(window.localStorage.getItem('ncf-coming-soon:123:personalization-v1')).toBeNull();
+    expect(window.document.activeElement).toBe(panel.querySelector('h2'));
+    expect(scrollOptions).toEqual({ behavior: reduced ? 'instant' : 'smooth', block: 'start' });
+    window.document.querySelector('button')!.click();
+    expect(panel.hidden).toBe(true);
+    window.close();
+});
