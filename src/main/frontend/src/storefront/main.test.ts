@@ -79,6 +79,25 @@ describe("SDK storefront without a legacy script", () => {
         if (node.type === "select" && node.name?.startsWith("ncf-variant-")) return node;
         for (const child of node.children ?? []) { const found = variantSelect(child as Node | Node[]); if (found) return found; }
     }
+    it.each(["TEXT", "NUMBER", "TEXTAREA"])("keeps %s typing and quantity edits in the mounted form, including after validation", async fieldType => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,
+            fields:[{label:"Nome",propertyName:"Nome",fieldType,required:true,options:[]}],
+        })}));
+        await boot();
+        action(render.mock.calls.slice(-1)[0]![1])!.onClick!();
+        const tree = render.mock.calls.slice(-1)[0]![1] as Node;
+        function input(node: Node): Node | undefined {
+            if (node.name === "Nome") return node;
+            for (const child of node.children ?? []) { const found=input(child); if(found) return found; }
+        }
+        render.mockClear();
+        for (const value of ["1", "12", "123"]) input(tree)!.onChange!({value});
+        quantity(tree)!.onChange!({value:"12"});
+        expect(render).not.toHaveBeenCalled();
+        action(tree)!.onClick!();
+        expect(send.mock.calls.filter(([event])=>event==="cart:add").slice(-1)[0]![1]().cart.items[0])
+            .toMatchObject({quantity:12,properties:{Nome:"123"}});
+    });
     it("validates and sends through its own Patagonia button without a native gate event",async()=>{
         await boot();
         let tree=render.mock.calls[render.mock.calls.length-1][1] as Node;

@@ -31,7 +31,7 @@ type Props = {
 	color?: string;
 	values?: ValueMap;
 	locale?: string;
-	onValueChange: (key: string, value: FieldValue) => void;
+	onValueChange: (key: string, value: FieldValue, refresh?: boolean) => void;
 };
 
 export function PersonalizationFields({ fields, errors, color, values, locale, onValueChange, markerId = SDK_MARKER_ID, namePrefix = "" }: Props) {
@@ -49,7 +49,7 @@ function fieldGroup(
 	field: PersonalizationField,
 	errors: FieldError[],
 	color: string | undefined,
-	onValueChange: (key: string, value: FieldValue) => void,
+	onValueChange: (key: string, value: FieldValue, refresh?: boolean) => void,
     selected?: FieldValue, locale?: string, namePrefix = "",
 ): NubeComponent[] {
 	const children: NubeComponent[] = [input(field, color, onValueChange, selected, locale, namePrefix)];
@@ -67,13 +67,15 @@ function fieldGroup(
 function input(
 	field: PersonalizationField,
 	color: string | undefined,
-	onValueChange: (key: string, value: FieldValue) => void,
+	onValueChange: (key: string, value: FieldValue, refresh?: boolean) => void,
     selected?: FieldValue, locale?: string, namePrefix = "",
 ): NubeComponent {
 	const key = keyOf(field);
     const name = namePrefix + key;
 	const label = (field.required || field.fieldType === "SELECT") ? `${field.label} *` : field.label;
-	const handle = (event: { value?: string }) => onValueChange(key, event.value ?? "");
+	// Replacing the SDK slot during typing remounts the focused input.
+	// Discrete choices still refresh their selected/checked presentation.
+	const handle = (event: { value?: string }) => onValueChange(key, event.value ?? "", field.fieldType === "SELECT");
 	const labelStyle = color ? { color } : undefined;
 
     if (field.fieldType === "CHECKBOX") {
