@@ -99,11 +99,12 @@ public class ServiceStatusService {
             uptime.add(new Uptime(days[i], value));
         }
         var events = new ArrayList<Event>();
+        long historyStart = now.minus(java.time.Duration.ofDays(30)).getEpochSecond();
         if (monitor.path("logs").isArray()) {
             for (var log : monitor.path("logs")) {
                 int type = log.path("type").asInt();
                 long timestamp = log.path("datetime").asLong();
-                if ((type == 1 || type == 2) && timestamp > 0 && timestamp <= now.getEpochSecond()) {
+                if ((type == 1 || type == 2) && timestamp > 0 && timestamp >= historyStart && timestamp <= now.getEpochSecond()) {
                     events.add(new Event(type == 1 ? "down" : "up", Instant.ofEpochSecond(timestamp)));
                 }
             }

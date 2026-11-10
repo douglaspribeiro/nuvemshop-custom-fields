@@ -197,11 +197,11 @@ function render(nube: NubeSDK) {
                 if(productId!==renderProduct || draftGeneration!==renderGeneration) return;
                 values[field.propertyName || field.label]=value; errors=errors.filter(e => e.propertyName !== (field.propertyName || field.label));
             }, () => render(nube))}
-			onValueChange={(key, value) => {
+			onValueChange={(key, value, refresh = true) => {
                 if (productId !== renderProduct || draftGeneration !== renderGeneration) return;
 				values[key] = value;
                 errors = errors.filter(error => error.propertyName !== key);
-                render(nube);
+                if (refresh) render(nube);
 			}}
 		/>;
     if (!isPatagonia(nube)) { nube.render(SLOT, fields); return; }
@@ -232,7 +232,7 @@ function render(nube: NubeSDK) {
         <Text>{es ? "Completá los datos y usá este botón para agregar tu producto personalizado." : "Preencha os dados e use este botão para adicionar seu produto personalizado."}</Text>
         <NumberField name="ncf-personalized-quantity" label={es ? "Cantidad personalizada" : "Quantidade personalizada"}
             min={1} step={1} value={directQuantity} disabled={directPending}
-            onChange={event => { directQuantity = Number(event.value); render(nube); }} />
+            onChange={event => { directQuantity = Number(event.value); }} />
         <Button ariaLabel={es ? "Agregar con personalización" : "Adicionar com personalização"} disabled={directPending} onClick={() => {
             if (productId !== renderProduct || draftGeneration !== renderGeneration || directPending) return;
             const selectedId = selectedVariantId(nube);

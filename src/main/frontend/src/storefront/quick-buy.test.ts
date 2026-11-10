@@ -39,6 +39,17 @@ it.each([123,959276,5656805])("renders quick-buy fields without navigating for s
  expect(fetchPolicy.mock.calls[0][0]).toContain(`/stores/${id}/personalization?productId=456`);
  expect(additions()).toHaveLength(0);
 });
+it.each(["TEXT", "NUMBER", "TEXTAREA"])("keeps %s typing mounted in quick-buy and submits the complete value",async fieldType=>{
+ fetchPolicy.mockResolvedValue({ok:true,json:async()=>({...configured,fields:[{...configured.fields[0],fieldType,options:[]}]})});
+ await open();button().onClick!();
+ const input=control("ncf-quickbuy-456-Moagem"),quantity=control("ncf-quickbuy-quantity"),submit=button();
+ render.mockClear();
+ for(const value of ["1","12","123"])input.onChange!({value});
+ quantity.onChange!({value:"12"});
+ expect(render).not.toHaveBeenCalled();
+ submit.onClick!();
+ expect(additions()).toEqual([{product_id:456,variant_id:789,quantity:12,properties:{Moagem:"123"}}]);
+});
 it("validates the native add and reissues the selected properties and quantity delta once",async()=>{
  await open();quick.intercept(add());expect(answer().proceed).toBe(false);expect(additions()).toHaveLength(0);
  control("ncf-quickbuy-456-Moagem").onChange!({value:"Molido"});quick.intercept(add(456,2,7,null));

@@ -3,6 +3,29 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.58.0] - 2026-11-10
+
+### Features
+
+- adiciona chamada discreta para novidades em breve (`8c771da`)
+
+## [1.57.1] - 2026-11-10
+
+### Correções
+
+- melhoria no embreve (`13277f0`)
+
+## [1.57.0] - 2026-11-10
+
+### Features
+
+- apresenta funcionalidades em breve para lojistas (`e7459f7`)
+
+### Correções
+
+- clarify missing uptime data and limit status events to 30 days (`71be88a`)
+- correção campos perdendo o focus (`46c11d2`)
+
 ## [1.56.1] - 2026-11-06
 
 ### Correções

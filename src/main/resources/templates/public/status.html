@@ -39,14 +39,16 @@
         <div class="status-metrics">
             <article class="panel" th:each="metric : ${serviceStatus.uptime}">
                 <span th:text="${#messages.msg('status.period.' + metric.days)}"></span>
-                <strong th:text="${metric.percent == null ? '—' : metric.percent + '%'}"></strong>
+                <strong th:if="${metric.percent != null}" th:text="${metric.percent + '%'}"></strong>
+                <strong class="status-metric-missing" th:if="${metric.percent == null}" th:text="#{status.uptime.missing}">Sem dados</strong>
+                <small class="muted" th:if="${metric.percent == null}" th:text="#{status.uptime.missing.note}">O monitoramento não forneceu o percentual deste período.</small>
             </article>
         </div>
     </section>
 
     <section class="panel status-history" aria-labelledby="status-history-title">
-        <h2 id="status-history-title" th:text="#{status.history}">Eventos recentes</h2>
-        <p class="muted" th:if="${serviceStatus.events.isEmpty()}" th:text="#{status.noevents}">Nenhum evento disponível para exibição.</p>
+        <h2 id="status-history-title" th:text="#{status.history}">Eventos nos últimos 30 dias</h2>
+        <p class="muted" th:if="${serviceStatus.events.isEmpty()}" th:text="#{status.noevents}">Nenhum evento disponível nos últimos 30 dias.</p>
         <ol th:if="${!serviceStatus.events.isEmpty()}">
             <li th:each="event : ${serviceStatus.events}">
                 <span th:text="${#messages.msg('status.event.' + event.state)}"></span>

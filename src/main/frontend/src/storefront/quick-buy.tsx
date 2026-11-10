@@ -75,11 +75,11 @@ export function installQuickBuy(nube: NubeSDK, adder = createCartAdder(nube)) {
             {current.slot === "modal_content" ? <Text modifiers={["bold"]}>{typeof current.product.name === "string" ? current.product.name : current.product.name?.[es ? "es" : "pt"] || ""}</Text> : <Column gap={0} />}
             <PersonalizationFields markerId="ncf-sdk-quickbuy-fields" namePrefix={`ncf-quickbuy-${current.product.id}-`} fields={current.config.fields} errors={current.errors}
                 color={normalizedColor(current.config.style?.productTextColor)} values={current.values} locale={current.config.locale}
-                onValueChange={(key,value) => {
+                onValueChange={(key,value,refresh = true) => {
                     if (draft !== current || current.pending) return;
                     current.values[key] = value; drafts.set(current.product.id, {...current.values});
                     current.errors = current.errors.filter(error => error.propertyName !== key);
-                    render();
+                    if (refresh) render();
                 }} />
             {variants.length > 1 ? <Select key="ncf-quickbuy-variant" name="ncf-quickbuy-variant" label={es ? "Variante" : "Variação"}
                 value={current.variant == null ? "" : String(current.variant)} disabled={current.pending}
@@ -87,7 +87,7 @@ export function installQuickBuy(nube: NubeSDK, adder = createCartAdder(nube)) {
                     ...variants.map(variant => ({label:(variant.values ?? []).map(localized).join(" / ") || String(variant.id),value:String(variant.id)}))]}
                 onChange={event => {if(draft === current && !current.pending) {current.variant=Number(event.value)||null;render();}}} /> : <Column gap={0} />}
             <NumberField key="ncf-quickbuy-quantity" name="ncf-quickbuy-quantity" label={es ? "Cantidad" : "Quantidade"} min={1} step={1}
-                value={current.quantity} disabled={current.pending} onChange={event => {if(draft === current && !current.pending){current.quantity=Number(event.value);render();}}} />
+                value={current.quantity} disabled={current.pending} onChange={event => {if(draft === current && !current.pending){current.quantity=Number(event.value);}}} />
             <Button disabled={current.pending} onClick={() => {
                 if(draft !== current || current.pending)return;
                 submit(current, current.variant, current.quantity);

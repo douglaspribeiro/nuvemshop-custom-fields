@@ -30,6 +30,17 @@ As definicoes de produto e arquitetura estao mantidas no roadmap do portfolio:
 - MySQL 8 em runtime
 - H2 para testes
 
+## Limpeza e build do frontend
+
+`mvn clean` remove `target/` e `src/main/frontend/dist/`. O código-fonte,
+o Node local e as dependências em `node_modules/` são preservados.
+
+`mvn clean package` regenera os bundles do frontend, copia os arquivos para
+`target/classes/static/assets/` e empacota a aplicação.
+
+Use o build sem `-Dskip.frontend=true` depois de limpar: essa opção pula a geração
+dos bundles e, com `dist/` removido, eles não serão incluídos no pacote.
+
 ## E-mail de resposta do suporte (AWS SES)
 
 Ao responder um chamado pelo backoffice, o aplicativo envia a resposta para o

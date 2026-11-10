@@ -49,4 +49,22 @@ class ServiceStatusPageTest {
                 .andExpect(content().string(containsString("Servicio restablecido")))
                 .andExpect(content().string(not(containsString("??status."))));
     }
+
+    @Test void explainsMissingPercentagesWithoutHidingAvailableMetrics() throws Exception {
+        when(service.current()).thenReturn(new ServiceStatusService.Snapshot("up", false, Instant.now(),
+                List.of(new ServiceStatusService.Uptime(1, null), new ServiceStatusService.Uptime(7, "0"),
+                        new ServiceStatusService.Uptime(30, "99.9")), List.of()));
+        mvc.perform(get("/status/")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Sem dados")))
+                .andExpect(content().string(containsString("O monitoramento não forneceu o percentual deste período.")))
+                .andExpect(content().string(containsString("0%")))
+                .andExpect(content().string(containsString("99.9%")))
+                .andExpect(content().string(containsString("Eventos nos últimos 30 dias")))
+                .andExpect(content().string(containsString("Nenhum evento disponível nos últimos 30 dias.")))
+                .andExpect(content().string(not(containsString("??status."))));
+        mvc.perform(get("/status/").header("Accept-Language", "es-AR")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Sin datos")))
+                .andExpect(content().string(containsString("Eventos de los últimos 30 días")))
+                .andExpect(content().string(not(containsString("??status."))));
+    }
 }

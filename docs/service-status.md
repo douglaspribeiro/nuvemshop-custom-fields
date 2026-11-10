@@ -28,6 +28,9 @@ de configurar a chave e confira o horário da atualização, o estado e os perí
 - Consulta `POST https://api.uptimerobot.com/v2/getMonitors`, compatível com a
   chave específica do monitor, com credencial no corpo do formulário.
 - Busca disponibilidade de 1, 7 e 30 dias e até dez eventos de queda/recuperação.
+  Percentuais ausentes ou inválidos aparecem como “Sem dados”, com explicação,
+  preservando os percentuais válidos dos outros períodos.
+  Os eventos exibidos são filtrados para os últimos 30 dias, sem datas futuras.
   A abrangência do histórico depende do plano e dos dados retornados pelo UptimeRobot.
 - Compartilha o cache por 60 segundos entre visitantes **de cada instância**.
   Falhas também têm esse intervalo antes de uma nova tentativa. A página se

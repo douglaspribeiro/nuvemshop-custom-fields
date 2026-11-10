@@ -20,10 +20,15 @@ public class FeatureRequestController {
     private final Messages messages;
     public FeatureRequestController(FeatureRequestService requests,AdminStoreService stores,Messages messages){this.requests=requests;this.stores=stores;this.messages=messages;}
     @GetMapping("/admin/suggestions")
-    public String form(HttpSession session,Model model,HttpServletResponse response){
+    public String form(@RequestParam(required=false) String interest,HttpSession session,Model model,HttpServletResponse response){
         response.setHeader("Cache-Control","no-store");var store=stores.requireCurrentStore(session);
         String token=UUID.randomUUID().toString();session.setAttribute(TOKEN,token);
         model.addAttribute("store",store);model.addAttribute("submissionToken",token);model.addAttribute("suggestions",requests.forStore(store.getStoreId()));
+        if (java.util.Set.of("uploads", "templates", "bulk").contains(interest == null ? "" : interest)) {
+            String feature = messages.get("merchant.comingsoon." + interest + ".title");
+            if (!model.containsAttribute("draftTitle")) model.addAttribute("draftTitle", messages.get("merchant.comingsoon.request.title", feature));
+            if (!model.containsAttribute("draftDescription")) model.addAttribute("draftDescription", messages.get("merchant.comingsoon.request.description", feature));
+        }
         return "admin/suggestions";
     }
     @PostMapping("/admin/suggestions")
