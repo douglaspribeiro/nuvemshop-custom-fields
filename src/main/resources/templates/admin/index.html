@@ -39,20 +39,6 @@
         <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2><p class="muted" th:text="#{admin.index.storemode.description}">As alterações serão aplicadas nesta loja.</p>
         <form th:action="@{/backoffice/store-mode/exit}" method="post"><button class="button" type="submit" th:text="#{admin.index.storemode.exit}">Voltar ao backoffice</button></form>
     </section>
-    <section class="panel merchant-coming-soon" data-coming-soon="personalization-v1" th:attr="data-store-id=${store.storeId}" aria-labelledby="coming-soon-title">
-        <div class="merchant-coming-soon-heading">
-            <h2 id="coming-soon-title" th:text="#{merchant.comingsoon.title}">Em breve</h2>
-            <button type="button" class="button" data-coming-soon-dismiss hidden th:text="#{merchant.comingsoon.dismiss}">Dispensar</button>
-        </div>
-        <ul class="merchant-coming-soon-list">
-            <li th:each="feature : ${ {'uploads', 'templates', 'bulk'} }">
-                <h3 th:text="#{'merchant.comingsoon.' + ${feature} + '.title'}">Arquivos do comprador</h3>
-                <p th:text="#{'merchant.comingsoon.' + ${feature} + '.description'}">Novidades para personalizar seus produtos.</p>
-                <a th:href="@{/admin/suggestions(interest=${feature})}" th:attr="aria-label=#{merchant.comingsoon.interest.label(#{'merchant.comingsoon.' + ${feature} + '.title'})}" th:text="#{merchant.comingsoon.interest}">Tenho interesse</a>
-            </li>
-        </ul>
-        <p class="muted merchant-coming-soon-note" th:text="#{merchant.comingsoon.note}">Estamos preparando essas novidades. A disponibilidade pode variar conforme o recurso.</p>
-    </section>
     <section class="merchant-overview-hero" th:classappend="${configuredFields > 0} ? ' is-configured'">
         <div class="panel hero-primary" th:if="${configuredFields == 0}">
             <p class="eyebrow" th:text="#{merchant.overview.next}">Próximos passos</p>
@@ -131,6 +117,20 @@
     <section class="panel merchant-suggestion-callout">
         <div><h2 th:text="#{suggestions.title}">Sugerir uma melhoria</h2><p th:text="#{suggestions.intro}"></p></div>
         <a class="button primary" th:href="@{/admin/suggestions}" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
+    </section>
+    <section class="panel merchant-coming-soon" data-coming-soon="personalization-v1" th:attr="data-store-id=${store.storeId}" aria-labelledby="coming-soon-title">
+        <div class="merchant-coming-soon-heading">
+            <h2 id="coming-soon-title" th:text="#{merchant.comingsoon.title}">Em breve</h2>
+            <button type="button" class="button" data-coming-soon-dismiss hidden th:text="#{merchant.comingsoon.dismiss}">Dispensar</button>
+        </div>
+        <ul class="merchant-coming-soon-list">
+            <li th:each="feature : ${ {'uploads', 'templates', 'bulk'} }">
+                <h3 th:text="#{'merchant.comingsoon.' + ${feature} + '.title'}">Arquivos do comprador</h3>
+                <p th:text="#{'merchant.comingsoon.' + ${feature} + '.description'}">Novidades para personalizar seus produtos.</p>
+                <a th:href="@{/admin/suggestions(interest=${feature})}" th:attr="aria-label=#{merchant.comingsoon.interest.label(#{'merchant.comingsoon.' + ${feature} + '.title'})}" th:text="#{merchant.comingsoon.interest}">Tenho interesse</a>
+            </li>
+        </ul>
+        <p class="muted merchant-coming-soon-note" th:text="#{merchant.comingsoon.note}">Estamos preparando essas novidades. A disponibilidade pode variar conforme o recurso.</p>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
