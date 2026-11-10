@@ -269,3 +269,15 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-product-thumbnail svg { position:absolute; width:26px; height:26px; inset:0; margin:auto; }
 .merchant-product-thumbnail img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:white; }
 .merchant-product-details { min-width:0; overflow-wrap:anywhere; }
+
+.merchant-coming-soon { border-color:#cce0d3; background:#f6faf7; }
+.merchant-coming-soon[hidden], .merchant-coming-soon [hidden] { display:none; }
+.merchant-coming-soon-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.merchant-coming-soon-heading h2 { margin:0; }
+.merchant-coming-soon-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; padding:0; margin:20px 0; list-style:none; }
+.merchant-coming-soon-list li { display:flex; flex-direction:column; min-width:0; padding:18px; background:#fff; border:1px solid var(--merchant-line); border-radius:10px; overflow-wrap:anywhere; }
+.merchant-coming-soon-list h3 { margin:0; font-size:1rem; }
+.merchant-coming-soon-list p { color:var(--merchant-muted); line-height:1.6; }
+.merchant-coming-soon-list a { margin-top:auto; font-weight:600; }
+.merchant-coming-soon-note { margin-bottom:0; font-size:.85rem; }
+@media(max-width:700px) { .merchant-coming-soon-list { grid-template-columns:minmax(0,1fr); gap:12px; } }
