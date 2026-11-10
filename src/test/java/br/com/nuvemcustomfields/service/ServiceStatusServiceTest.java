@@ -86,4 +86,17 @@ class ServiceStatusServiceTest {
         assertThat(ServiceStatusService.parse(invalid, NOW).uptime()).allMatch(value -> value.percent() == null);
         assertThat(new UptimeRobotProperties("secret").toString()).doesNotContain("secret");
     }
+
+    @Test void limitsHistoryToTheLastThirtyDaysAndKeepsMissingRatiosUnknown() throws Exception {
+        long cutoff = NOW.minus(java.time.Duration.ofDays(30)).getEpochSecond();
+        var response = new ObjectMapper().readTree("""
+                {"stat":"ok","monitors":[{"status":2,"custom_uptime_ratios":"100--0","logs":[
+                {"type":1,"datetime":%d},{"type":2,"datetime":%d},
+                {"type":1,"datetime":%d},{"type":2,"datetime":%d}]}]}
+                """.formatted(cutoff - 1, cutoff, NOW.getEpochSecond(), NOW.getEpochSecond() + 1));
+        var result = ServiceStatusService.parse(response, NOW);
+        assertThat(result.uptime()).extracting(ServiceStatusService.Uptime::percent).containsExactly("100", null, "0");
+        assertThat(result.events()).extracting(ServiceStatusService.Event::at)
+                .containsExactly(NOW, Instant.ofEpochSecond(cutoff));
+    }
 }
