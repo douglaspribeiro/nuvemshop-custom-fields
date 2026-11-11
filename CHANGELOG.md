@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.58.1] - 2026-11-10
+
+### Correções
+
+- melhoria na tela de pedidos. (`2ab934d`)
+
+### Manutenção
+
+- limpa bundles do frontend no Maven clean (`e1e2063`)
+
 ## [1.58.0] - 2026-11-10
 
 ### Features
