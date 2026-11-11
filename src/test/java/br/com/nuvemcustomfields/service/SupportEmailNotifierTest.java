@@ -8,7 +8,10 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mail.MailSendException;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.Multipart;
 import org.springframework.mail.javamail.JavaMailSender;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -33,6 +36,27 @@ class SupportEmailNotifierTest {
         assertThat(captor.getValue().getFrom()).extracting(Object::toString).containsExactly("support@example.com");
         assertThat(captor.getValue().getSubject()).contains("#10", "Dúvida");
         assertThat(MailTestSupport.body(message, "text/plain")).contains("Resposta ágil", "https://app.example.com/support/tickets/10");
+    }
+
+    @Test
+    void sendsImagesAsAttachmentsAlongsideTheReply() throws Exception {
+        var message = MailTestSupport.message();
+        when(sender.createMimeMessage()).thenReturn(message);
+        byte[] cart = {1, 2, 3};
+        byte[] checkout = {4, 5, 6};
+        var withImages = new SupportReplyEvent(reply.ticketId(), reply.recipient(), reply.subject(), reply.message(), List.of(
+                new SupportReplyEvent.Attachment("imagem-1.png", "image/png", cart),
+                new SupportReplyEvent.Attachment("imagem-2.png", "image/png", checkout)));
+        new SupportEmailNotifier(configured, "https://app.example.com", sender).onReply(withImages);
+        verify(sender).send(message);
+        message.saveChanges();
+        Multipart mixed = (Multipart) message.getContent();
+        assertThat(mixed.getCount()).isEqualTo(3);
+        assertThat(MailTestSupport.body(message, "text/plain")).contains(reply.message());
+        assertThat(mixed.getBodyPart(1).getFileName()).isEqualTo("imagem-1.png");
+        assertThat(mixed.getBodyPart(1).getInputStream().readAllBytes()).containsExactly(cart);
+        assertThat(mixed.getBodyPart(2).getFileName()).isEqualTo("imagem-2.png");
+        assertThat(mixed.getBodyPart(2).getInputStream().readAllBytes()).containsExactly(checkout);
     }
 
     @Test

@@ -4,6 +4,7 @@ import br.com.nuvemcustomfields.properties.SesProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
@@ -56,6 +57,9 @@ public class SupportEmailNotifier {
             var helper = new MimeMessageHelper(mail, true, "UTF-8");
             helper.setFrom(properties.from()); helper.setTo(event.recipient()); helper.setSubject(subject);
             helper.setText(rendered.text(), rendered.html());
+            for (var attachment : event.attachments()) {
+                helper.addAttachment(attachment.filename(), new ByteArrayResource(attachment.bytes()), attachment.contentType());
+            }
             mail.setHeader("X-NCF-Ticket-ID",event.ticketId().toString());
             mail.setHeader("X-NCF-Email-Category","SUPPORT");
             sender.send(mail);

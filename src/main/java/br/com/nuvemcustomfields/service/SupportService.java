@@ -130,11 +130,16 @@ public class SupportService {
 
     @Transactional
     public void replyFromSupport(Long ticketId, String message) {
+        replyFromSupport(ticketId, message, List.of());
+    }
+
+    @Transactional
+    public void replyFromSupport(Long ticketId, String message, List<SupportReplyEvent.Attachment> attachments) {
         SupportTicket ticket = requireTicket(ticketId);
         addReply(ticket, SupportMessageAuthor.SUPPORT, message);
         String recipient = storeRepository.findByStoreId(ticket.getStoreId())
                 .map(Store::getStoreEmail).orElse(null);
-        events.publishEvent(new SupportReplyEvent(ticket.getId(), recipient, ticket.getSubject(), message.strip()));
+        events.publishEvent(new SupportReplyEvent(ticket.getId(), recipient, ticket.getSubject(), message.strip(), attachments));
     }
 
     @Transactional
