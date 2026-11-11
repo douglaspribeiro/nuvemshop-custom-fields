@@ -3,7 +3,9 @@ package br.com.nuvemcustomfields.i18n;
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
 import br.com.nuvemcustomfields.dto.ProductPage;
 import br.com.nuvemcustomfields.dto.ProductSummary;
+import br.com.nuvemcustomfields.entity.PersonalizationFieldHistory;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.repository.PersonalizationFieldHistoryRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,6 +70,9 @@ class LocalizedPagesRenderTest {
 
     @Autowired
     private StoreRepository storeRepository;
+
+    @Autowired
+    private PersonalizationFieldHistoryRepository fieldHistory;
 
     @MockitoBean
     private NuvemshopApiClient apiClient;
@@ -124,6 +130,34 @@ class LocalizedPagesRenderTest {
             var output=java.nio.file.Path.of(System.getProperty("ncf.release.screens"));java.nio.file.Files.createDirectories(output);
             java.nio.file.Files.writeString(output.resolve("pedidos-indisponiveis-"+country+".html"),body);
         }
+    }
+
+    @Test
+    @Transactional
+    void orderShowsEachPurchasedLineWithItsOwnPersonalization() throws Exception {
+        var session = sessionForStoreIn("AR");
+        fieldHistory.saveAndFlush(new PersonalizationFieldHistory(STORE_ID, PRODUCT_ID, "Molienda"));
+        when(apiClient.listRecentOrders(any(Store.class))).thenReturn(new ObjectMapper().readTree("""
+                [{"number":15094,"products":[
+                  {"id":1,"product_id":5001,"variant_id":10,"name":"Café Colombia","quantity":2,
+                    "image":{"src":"//cdn.example.com/cafe.jpg"},
+                    "properties":[{"name":"Molienda","value":"Grano"}]},
+                  {"id":2,"product_id":5002,"name":"Filtro","quantity":1,"properties":[]},
+                  {"id":3,"product_id":5001,"variant_id":10,"name":"Café Colombia","quantity":1,
+                    "properties":[{"name":"Molienda","value":"Prensa Francesa"}]}
+                ]}]
+                """));
+
+        String body = render("/admin/dashboard", session);
+        assertNoMissingKeys("/admin/dashboard", "AR", body);
+        String[] items = body.split("class=\"merchant-order-item\"");
+        assertThat(items).hasSize(3);
+        assertThat(items[1]).contains("Artículo 1", "Café Colombia", "ID del producto: 5001", "Cant.: 2", "Molienda: Grano")
+                .contains("src=\"https://cdn.example.com/cafe.jpg\"", "loading=\"lazy\"")
+                .doesNotContain("Prensa Francesa");
+        assertThat(items[2]).contains("Artículo 3", "Café Colombia", "ID del producto: 5001", "Cant.: 1", "Molienda: Prensa Francesa")
+                .contains("merchant-product-thumbnail")
+                .doesNotContain("Molienda: Grano", "cdn.example.com/cafe.jpg");
     }
 
     /**

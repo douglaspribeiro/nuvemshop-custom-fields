@@ -18,6 +18,7 @@ import br.com.nuvemcustomfields.service.StoreDepartureService;
 import br.com.nuvemcustomfields.service.BackofficeSalesService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
+import br.com.nuvemcustomfields.service.SupportReplyEvent;
 import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import br.com.nuvemcustomfields.service.PaymentConfigurationService;
 import jakarta.servlet.http.HttpSession;
@@ -32,8 +33,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -433,15 +439,43 @@ public class BackofficeController {
     public String replySupport(
             @PathVariable Long ticketId,
             @RequestParam String message,
+            @RequestParam(name = "attachments", required = false) List<MultipartFile> attachments,
             RedirectAttributes redirectAttributes
     ) {
         try {
-            supportService.replyFromSupport(ticketId, message);
-            redirectAttributes.addFlashAttribute("message", "Resposta enviada.");
+            supportService.replyFromSupport(ticketId, message, readSupportImages(attachments));
+            redirectAttributes.addFlashAttribute("message", "Resposta registrada.");
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        } catch (IOException ex) {
+            redirectAttributes.addFlashAttribute("error", "Não foi possível ler as imagens anexadas.");
         }
         return "redirect:/backoffice/support/" + ticketId;
+    }
+
+    private static List<SupportReplyEvent.Attachment> readSupportImages(List<MultipartFile> uploads) throws IOException {
+        if (uploads == null) {
+            return List.of();
+        }
+        var attachments = new ArrayList<SupportReplyEvent.Attachment>();
+        for (var upload : uploads) {
+            if (upload.isEmpty()) {
+                continue;
+            }
+            byte[] bytes = upload.getBytes();
+            String contentType = URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(bytes));
+            String extension;
+            if ("image/png".equals(contentType)) {
+                extension = ".png";
+            } else if ("image/jpeg".equals(contentType)) {
+                extension = ".jpg";
+            } else {
+                throw new IllegalArgumentException("Anexe apenas imagens PNG ou JPEG.");
+            }
+            String filename = "imagem-" + (attachments.size() + 1) + extension;
+            attachments.add(new SupportReplyEvent.Attachment(filename, contentType, bytes));
+        }
+        return attachments;
     }
 
     @PostMapping("/backoffice/support/{ticketId}/status")

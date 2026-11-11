@@ -42,8 +42,12 @@
     <div class="grid two settings-panel">
         <section class="panel">
             <h2>Responder</h2>
-            <form class="form" th:action="@{/backoffice/support/{id}/messages(id=${ticket.id})}" method="post">
+            <form class="form" th:action="@{/backoffice/support/{id}/messages(id=${ticket.id})}" method="post" enctype="multipart/form-data">
                 <textarea name="message" rows="6" maxlength="5000" required placeholder="Escreva a resposta para a loja..."></textarea>
+                <label for="support-attachments">Anexar imagens ao e-mail</label>
+                <input type="file" id="support-attachments" name="attachments" accept="image/png,image/jpeg" multiple
+                       aria-describedby="support-attachments-hint">
+                <small id="support-attachments-hint">PNG ou JPEG, até 5 MB por imagem e 6 MB por resposta.</small>
                 <button class="button primary" type="submit" th:disabled="${ticket.status.name() == 'CLOSED'}">Enviar resposta</button>
             </form>
         </section>
