@@ -64,23 +64,45 @@ public class ReportService {
 
     private List<PersonalizedOrderSummary> personalizedOrders(Store store, JsonNode orders) {
         List<PersonalizedOrderSummary> result = new ArrayList<>();
-        if (orders == null || !orders.isArray()) {
-            return result;
-        }
         var personalization = personalizationCatalog == null ? new OrderPersonalization(fieldRepository.findWithRuleByStoreId(store.getStoreId()))
                     : personalizationCatalog.forStore(store.getStoreId());
         for (JsonNode order : orders) {
-            List<String> properties = personalization.orderProperties(order);
-            if (!properties.isEmpty()) {
+            List<PersonalizedOrderSummary.Item> items = new ArrayList<>();
+            JsonNode products = order.path("products");
+            if (!products.isArray()) {
+                continue;
+            }
+            for (int index = 0; index < products.size(); index++) {
+                JsonNode product = products.get(index);
+                List<String> properties = personalization.productProperties(product);
+                if (!properties.isEmpty()) {
+                    items.add(new PersonalizedOrderSummary.Item(index + 1,
+                            product.path("name").asText("").strip(),
+                            orderItemImageUrl(product),
+                            product.path("quantity").asInt(), properties));
+                }
+            }
+            if (!items.isEmpty()) {
                 result.add(new PersonalizedOrderSummary(
                         order.path("id").asLong(),
                         order.path("number").asText(order.path("id").asText()),
                         order.path("created_at").asText(""),
-                        properties
+                        items
                 ));
             }
         }
         return result;
+    }
+
+    private static String orderItemImageUrl(JsonNode product) {
+        String src = product.path("image").path("src").asText("").strip();
+        if (src.startsWith("//")) {
+            return "https:" + src;
+        }
+        if (src.startsWith("http://")) {
+            return "https://" + src.substring("http://".length());
+        }
+        return src.startsWith("https://") ? src : null;
     }
 
     private boolean hasScope(Store store, String requiredScope) {

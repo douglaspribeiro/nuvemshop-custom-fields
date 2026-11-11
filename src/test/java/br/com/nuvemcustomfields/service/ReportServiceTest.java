@@ -72,7 +72,7 @@ class ReportServiceTest {
             """));
         var result = new ReportService(rules, fields, api).dashboard(store).personalizedOrders();
         assertThat(result).extracting(o -> o.number()).containsExactly("64801", "64802");
-        assertThat(result.get(0).properties()).containsExactly("Nome ou Frase para gravar: Ana Maria");
-        assertThat(result.get(1).properties()).containsExactly("Nome ou Frase para gravar: Feliz aniversário");
+        assertThat(result.get(0).items().getFirst().properties()).containsExactly("Nome ou Frase para gravar: Ana Maria");
+        assertThat(result.get(1).items().getFirst().properties()).containsExactly("Nome ou Frase para gravar: Feliz aniversário");
     }
 }

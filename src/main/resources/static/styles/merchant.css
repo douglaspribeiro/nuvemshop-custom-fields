@@ -143,6 +143,12 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-order { display:grid; grid-template-columns:140px minmax(0,1fr); gap:14px; padding:17px; border:1px solid var(--merchant-line); border-radius:10px; }
 .merchant-order strong,.merchant-order small { display:block; }
 .merchant-order small { margin-top:5px; color:var(--merchant-muted); }
+.merchant-order-items,.merchant-order-properties { list-style:none; margin:0; padding:0; }
+.merchant-order-items { display:grid; gap:8px; min-width:0; }
+.merchant-order-item { display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border:1px solid var(--merchant-line); border-radius:8px; overflow-wrap:anywhere; }
+.merchant-order-item-header { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
+.merchant-order-item-header .muted { font-size:.85rem; }
+.merchant-order-properties { display:grid; gap:4px; margin-top:6px; }
 .merchant-preview { display:grid; gap:14px; padding:20px; background:#f8faf8; border:1px solid var(--merchant-line); border-radius:11px; }
 .merchant-preview-card { padding:20px; background:#fff; border:1px solid var(--merchant-line); border-radius:9px; }
 .merchant-preview-card label { margin-top:13px; }

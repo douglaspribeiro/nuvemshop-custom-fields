@@ -50,9 +50,9 @@ class PersonalizationHistoryIntegrationTest {
                 ]}]
                 """);
         when(api.listRecentOrders(store)).thenReturn(orders);
-        assertThat(report.dashboard(store).personalizedOrders().getFirst().properties()).containsExactly("Nome (gravar): Ana");
+        assertThat(report.dashboard(store).personalizedOrders().getFirst().items().getFirst().properties()).containsExactly("Nome (gravar): Ana");
         admin.deleteField(store.getStoreId(),100L,field); nextRequest();
-        assertThat(report.dashboard(store).personalizedOrders().getFirst().properties()).containsExactly("Nome (gravar): Ana");
+        assertThat(report.dashboard(store).personalizedOrders().getFirst().items().getFirst().properties()).containsExactly("Nome (gravar): Ana");
         admin.deleteRule(store.getStoreId(),100L); nextRequest();
         var sale=BackofficeSalesService.summarizeOrder(store.getStoreId(),orders.get(0),catalog.forStore(store.getStoreId()));
         assertThat(sale.getPersonalizedItems()).isEqualTo(1);

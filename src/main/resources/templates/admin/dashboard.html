@@ -51,7 +51,22 @@
         <div class="merchant-order-list" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}">
             <article class="merchant-order" th:each="order : ${summary.personalizedOrders}">
                 <div><strong th:text="#{merchant.orders.order(${order.number})}">Pedido #123</strong><small th:attr="data-local-time=${order.createdAt}" th:text="${order.createdAt}">2026-06-02</small></div>
-                <div><span th:each="property : ${order.properties}" class="chip" th:text="${property}">Nome: Ana</span></div>
+                <ul class="merchant-order-items">
+                    <li th:each="item : ${order.items}" class="merchant-order-item">
+                        <div th:replace="~{fragments/merchant-shell :: productThumbnail(${item.imageUrl})}"></div>
+                        <div class="merchant-product-details">
+                            <div class="merchant-order-item-header">
+                                <span class="muted" th:text="#{merchant.orders.item(${item.position})}">Item 1</span>
+                                <strong th:if="${!#strings.isEmpty(item.name)}" th:text="${item.name}">Produto</strong>
+                                <span class="muted" th:if="${item.quantity > 0}"
+                                      th:text="#{merchant.orders.quantity(${item.quantity})}">Qtd.: 2</span>
+                            </div>
+                            <ul class="merchant-order-properties">
+                                <li th:each="property : ${item.properties}" th:text="${property}">Nome: Ana</li>
+                            </ul>
+                        </div>
+                    </li>
+                </ul>
             </article>
         </div>
     </section>

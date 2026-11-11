@@ -21,18 +21,6 @@ final class OrderPersonalization {
             fieldNames.computeIfAbsent(productId, ignored -> new HashSet<>()).add(propertyName(label));
     }
 
-    List<String> orderProperties(JsonNode order) {
-        List<String> properties = new ArrayList<>();
-        JsonNode products = order.path("products");
-        if (!products.isArray()) {
-            return properties;
-        }
-        for (JsonNode product : products) {
-            properties.addAll(productProperties(product));
-        }
-        return properties;
-    }
-
     List<String> productProperties(JsonNode product) {
         List<String> properties = new ArrayList<>();
         Set<String> names = fieldNames.getOrDefault(product.path("product_id").asLong(), Set.of());

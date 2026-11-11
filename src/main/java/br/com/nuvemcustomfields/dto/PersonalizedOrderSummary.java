@@ -6,6 +6,8 @@ public record PersonalizedOrderSummary(
         Long id,
         String number,
         String createdAt,
-        List<String> properties
+        List<Item> items
 ) {
+    public record Item(int position, String name, String imageUrl, int quantity, List<String> properties) {
+    }
 }
