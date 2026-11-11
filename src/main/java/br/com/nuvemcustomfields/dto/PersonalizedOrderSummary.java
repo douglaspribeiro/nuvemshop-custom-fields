@@ -8,6 +8,6 @@ public record PersonalizedOrderSummary(
         String createdAt,
         List<Item> items
 ) {
-    public record Item(int position, String name, String imageUrl, int quantity, List<String> properties) {
+    public record Item(int position, String productId, String name, String imageUrl, int quantity, List<String> properties) {
     }
 }

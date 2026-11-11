@@ -58,6 +58,7 @@
                             <div class="merchant-order-item-header">
                                 <span class="muted" th:text="#{merchant.orders.item(${item.position})}">Item 1</span>
                                 <strong th:if="${!#strings.isEmpty(item.name)}" th:text="${item.name}">Produto</strong>
+                                <span class="muted" th:text="#{merchant.orders.productId(${item.productId})}">ID do produto: 5001</span>
                                 <span class="muted" th:if="${item.quantity > 0}"
                                       th:text="#{merchant.orders.quantity(${item.quantity})}">Qtd.: 2</span>
                             </div>

@@ -77,6 +77,7 @@ public class ReportService {
                 List<String> properties = personalization.productProperties(product);
                 if (!properties.isEmpty()) {
                     items.add(new PersonalizedOrderSummary.Item(index + 1,
+                            product.path("product_id").asText(),
                             product.path("name").asText("").strip(),
                             orderItemImageUrl(product),
                             product.path("quantity").asInt(), properties));
