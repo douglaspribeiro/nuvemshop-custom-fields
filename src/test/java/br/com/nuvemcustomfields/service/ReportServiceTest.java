@@ -65,7 +65,7 @@ class ReportServiceTest {
         when(api.listRecentOrders(store)).thenReturn(new ObjectMapper().readTree("""
             [
               {"number":64800,"products":[{"product_id":373650805,"properties":{"gift":"25533"}}]},
-              {"number":64801,"products":[{"product_id":375508189,"properties":{"gift":"25533","Nome ou Frase para gravar":"Ana Maria"}}]},
+              {"number":64801,"products":[{"product_id":375508189,"properties":{"gift":"25533","Nome ou Frase para gravar":"Ana Maria","_ncf_file_1":"arte.png — NCF-FILE:00000000-0000-4000-8000-000000000001"}}]},
               {"number":64802,"products":[{"product_id":375508189,"properties":[{"name":"Nome ou Frase para gravar","value":"Feliz aniversário"}]}]},
               {"number":64803,"products":[{"product_id":373650805,"properties":{"Nome ou Frase para gravar":"Outro app"}}]}
             ]
@@ -73,6 +73,8 @@ class ReportServiceTest {
         var result = new ReportService(rules, fields, api).dashboard(store).personalizedOrders();
         assertThat(result).extracting(o -> o.number()).containsExactly("64801", "64802");
         assertThat(result.get(0).items().getFirst().properties()).containsExactly("Nome ou Frase para gravar: Ana Maria");
+        assertThat(result.get(0).items().getFirst().uploadIds()).containsExactly("00000000-0000-4000-8000-000000000001");
+        assertThat(result.get(1).items().getFirst().uploadIds()).isEmpty();
         assertThat(result.get(1).items().getFirst().properties()).containsExactly("Nome ou Frase para gravar: Feliz aniversário");
     }
 }

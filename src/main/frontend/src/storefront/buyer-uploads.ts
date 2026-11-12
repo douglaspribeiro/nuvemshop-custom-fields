@@ -75,7 +75,7 @@ export function createBuyerUploads(store: number, product: number, storage: Stor
                 });
             } else uploaded = await result(await fetch(prefix, { method: "POST", headers, body: data, credentials: "omit" }));
             await result(await fetch(`${prefix}/${uploaded.id}/validate`, { method: "POST", headers: { "X-Upload-Session": await session() } }));
-            const value = `${uploaded.name} (${uploaded.size} bytes) — ${uploaded.reference}`;
+            const value = `${uploaded.name} (${uploaded.size} bytes) — ${appOrigin()}/admin/buyer-uploads/${uploaded.id}/download — ${uploaded.reference}`;
             await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, value);
             progress(`Enviado: ${uploaded.name} (${uploaded.size} bytes). Disponível à loja por 90 dias após o pedido.`);
             return value;

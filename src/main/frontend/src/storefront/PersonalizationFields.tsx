@@ -76,7 +76,12 @@ function input(
 	const label = (field.required || field.fieldType === "SELECT") ? `${field.label} *` : field.label;
 	// Replacing the SDK slot during typing remounts the focused input.
 	// Discrete choices still refresh their selected/checked presentation.
-	const handle = (event: { value?: string }) => onValueChange(key, event.value ?? "", field.fieldType === "SELECT");
+	const handle = (event: { value?: string }) => {
+        const value = event.value ?? "";
+        const limited = (field.fieldType === "TEXT" || field.fieldType === "TEXTAREA") && field.maxLength != null
+            ? value.slice(0, field.maxLength) : value;
+        onValueChange(key, limited, field.fieldType === "SELECT" || limited !== value);
+    };
 	const labelStyle = color ? { color } : undefined;
 
     if (field.fieldType === "CHECKBOX") {

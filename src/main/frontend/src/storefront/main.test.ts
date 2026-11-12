@@ -63,6 +63,12 @@ describe("SDK storefront without a legacy script", () => {
 		} as unknown as NubeSDKState);
 	}
 
+    it("clips typed or pasted text at the configured limit", async () => {
+        await boot();
+        field(render.mock.calls[render.mock.calls.length - 1][1])!.onChange!({value:"A".repeat(31)});
+        expect(field(render.mock.calls[render.mock.calls.length - 1][1])!.value).toBe("A".repeat(30));
+    });
+
     function action(node: Node): Node | undefined {
         if(node.type === "button" && String(node.children).includes("Adicionar com personalização")) return node;
         for(const child of node.children ?? []) {const found=action(child);if(found)return found;}

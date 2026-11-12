@@ -80,7 +80,10 @@ public class ReportService {
                             product.path("product_id").asText(),
                             product.path("name").asText("").strip(),
                             orderItemImageUrl(product),
-                            product.path("quantity").asInt(), properties));
+                            product.path("quantity").asInt(), properties,
+                            java.util.regex.Pattern.compile("NCF-FILE:([a-f0-9-]{36})")
+                                    .matcher(product.path("properties").toString()).results()
+                                    .map(match -> match.group(1)).distinct().toList()));
                 }
             }
             if (!items.isEmpty()) {

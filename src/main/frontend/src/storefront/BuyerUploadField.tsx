@@ -3,6 +3,15 @@ import type { NubeComponent, NubeSDK } from "@tiendanube/nube-sdk-types";
 import type { PersonalizationField } from "../shared/config";
 import { appOrigin } from "../shared/config";
 import { createBuyerUploads } from "./buyer-uploads";
+import { styled } from "@tiendanube/nube-sdk-ui";
+
+const UploadArea = styled(Column)`
+    border:1px dashed currentColor;border-radius:12px;padding:20px;gap:12px;
+    background:transparent;color:inherit;font-family:inherit;text-align:center;
+    &:focus-within {outline:2px solid currentColor;outline-offset:3px;}
+    & input[type=file] {width:100%;max-width:100%;box-sizing:border-box;padding:12px;color:inherit;font:inherit;cursor:pointer;}
+    & input[type=file]::file-selector-button {border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit;font:inherit;padding:10px 16px;margin-right:12px;cursor:pointer;}
+`;
 
 const state = new Map<string, { busy: boolean; message: string; form: NubeComponent; value: string }>();
 export function resetBuyerUploadFields(nube:NubeSDK,store:number,product:number) {
@@ -42,7 +51,7 @@ export function buyerUploadField(nube: NubeSDK, store: number, product: number, 
     const entry=current;
     if(!value && entry.value) changed(entry.value);
     return <Column gap={4}>
-        {entry.form}
+        <UploadArea><Text>{field.label + (field.required ? " *" : "")}</Text>{entry.form}</UploadArea>
         <Text>{field.placeholder || "JPG, PNG ou PDF, até 20 MB."}</Text>
         <Text>{entry.message || (value.startsWith("__") ? "Enviando…" : value.replace(/\s*—\s*NCF-FILE:.*$/, ""))}</Text>
         <Button variant="link" onClick={async () => {

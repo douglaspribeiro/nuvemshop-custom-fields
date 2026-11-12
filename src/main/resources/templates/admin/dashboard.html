@@ -64,6 +64,7 @@
                             </div>
                             <ul class="merchant-order-properties">
                                 <li th:each="property : ${item.properties}" th:text="${property}">Nome: Ana</li>
+                                <li th:each="uploadId : ${item.uploadIds}"><a th:href="@{/admin/buyer-uploads/{id}/download(id=${uploadId})}" th:text="#{buyer.files.download}">Baixar arquivo</a></li>
                             </ul>
                         </div>
                     </li>

@@ -27,6 +27,8 @@ describe("buyer upload",()=>{
         const progress=vi.fn();const value=await createBuyerUploads(1,123,storage).upload(field,new File(["1234567890"],"arte.png"),progress);
         expect(fetch.mock.calls.map(call=>String(call[0]))).toEqual(["https://app.test/public/stores/1/buyer-uploads/session","https://app.test/public/stores/1/buyer-uploads","https://app.test/public/stores/1/buyer-uploads/"+id+"/validate"]);
         expect(value).toContain(`NCF-FILE:${id}`);expect(progress).toHaveBeenCalled();
+        expect(toCartProperties([field],{[field.propertyName]:value}).Arte)
+            .toContain(`https://app.test/admin/buyer-uploads/${id}/download`);
         expect(cache.get("ncf-upload-1-123-11")).toBe(value);
     });
     it("does not persist a file when its cart confirmation fails",async()=>{
