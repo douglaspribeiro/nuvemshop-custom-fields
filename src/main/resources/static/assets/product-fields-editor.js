@@ -44,6 +44,7 @@
         });
         custom.addEventListener('input', () => { syncFormat(); render(); });
         function visibility() {
+            if(type.value === 'FILE_UPLOAD' && !get('optionsText').value.trim()) get('optionsText').value='JPEG\nPNG\nPDF';
             const text = ['TEXT', 'TEXTAREA', 'NUMBER'].includes(type.value);
             const required = get('required');
             if (type.value === 'SELECT') {

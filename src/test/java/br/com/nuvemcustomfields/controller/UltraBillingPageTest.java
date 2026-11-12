@@ -56,6 +56,14 @@ class UltraBillingPageTest {
         when(payments.planAvailable(any(), eq(PlanType.PREMIUM_ULTRA))).thenReturn(true);
     }
 
+    @Test void existingSubscriberSeesTheirPlanWithoutANewSubscriptionPitch() throws Exception {
+        String body=mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("Você já tem o plano Pro", "Ver minha assinatura", "id=\"billing-subscription\"");
+        subscription.setAccessActive(false);subscription.setStatus(PaymentSubscriptionStatus.CANCELED);
+        String inactive=mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(inactive).doesNotContain("Você já tem o plano Pro");
+    }
+
     @Test void dodoTestOnlyShowsThePlanWithTheBoundProduct() throws Exception {
         subscription.setAccessActive(false); subscription.setStatus(PaymentSubscriptionStatus.CANCELED);
         when(payments.provider(any())).thenReturn(Optional.of(PaymentProviderType.DODO_TEST));

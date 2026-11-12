@@ -90,3 +90,43 @@
 .billing-shared-features h2,.billing-shared-features h3 { margin:0 0 8px; }
 .billing-shared-features h3 { margin-top:18px; font-size:.9rem; }
 .billing-shared-features p { margin:0; color:var(--merchant-muted); font-size:.85rem; line-height:1.65; }
+
+/* Purchase decision: tangible benefits first, subscription management afterwards. */
+.merchant-billing-page .billing-hero{gap:36px;padding:28px 0 40px;}
+.merchant-billing-page .billing-hero h1{font-size:clamp(2rem,3.6vw,3rem);line-height:1.12;max-width:640px;}
+.billing-hero-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;margin-top:24px;}
+.billing-hero-actions .button{padding:14px 22px;font-weight:700;}
+.billing-hero-actions>span{color:var(--merchant-muted);font-size:12px;max-width:210px;line-height:1.5;}
+#billing-plans{scroll-margin-top:24px;}
+.merchant-billing-page .billing-plan{padding:30px 24px 24px;border-radius:18px;box-shadow:0 8px 28px #173e2b08;}
+.billing-plan-header{min-height:207px;}
+.merchant-billing-page .billing-plan h2{font-size:25px;}
+.billing-plan-kicker{font-size:12px;font-weight:600;}
+.billing-plan-description{font-size:14px;line-height:1.6;}
+.billing-plan-usecase{display:grid;gap:5px;margin-top:16px;padding:12px;border-radius:9px;background:#f1f6f3;}
+.billing-plan-usecase>span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--merchant-muted);}
+.billing-plan-usecase>strong{font-size:13px;font-weight:500;line-height:1.5;}
+.merchant-billing-page .billing-plan-pro{background:#174d3b;border-color:#174d3b;color:#fff;box-shadow:0 14px 35px #174d3b24;}
+.billing-plan-pro .billing-plan-kicker,.billing-plan-pro .billing-plan-description,.billing-plan-pro .billing-plan-usecase>span,.billing-plan-pro .price>span:last-child{color:#d5e7dd;}
+.billing-plan-pro .billing-plan-usecase{background:#ffffff12;}
+.merchant-billing-page .billing-plan-pro .feature-list,.merchant-billing-page .billing-plan-pro .feature-list li:nth-child(-n+2),.billing-plan-pro .feature-list li::before{color:#f0f7f3;}
+.billing-plan-pro .billing-plan-price{border-color:#ffffff30;}
+.billing-plan-pro .button.primary{background:#fff;border-color:#fff;color:#174d3b;}
+.billing-plan-pro .button.primary:hover{background:#e5f1ea;}
+.billing-plan-pro .badge{background:#ffffff17;border-color:#ffffff35;color:#fff;}
+.billing-plan-pro .billing-recommended{background:#d7eddf;color:#174d3b;border:1px solid #b6d6c1;}
+.merchant-billing-page .billing-plan .price{font-size:30px;}
+.merchant-billing-page .billing-plan .feature-list{font-size:14px;gap:13px;padding:22px 0;}
+.billing-plan-actions .button{font-size:14px;min-height:48px;}
+.merchant-billing-page .billing-current{margin:24px 0;}
+@media(max-width:850px){.billing-plan-header{min-height:220px;}.merchant-billing-page .billing-plan{padding:26px 20px;}}
+@media(max-width:520px){.billing-plan-header{min-height:0;}.billing-hero-actions{align-items:flex-start;flex-direction:column;}.billing-hero-actions>span{max-width:none;}.merchant-billing-page .billing-hero{padding:12px 0 30px;}.merchant-billing-page .billing-plan{padding:26px 22px;}}
+
+.billing-beta{display:inline-block;padding:1px 6px;margin-left:5px;border:1px solid currentColor;border-radius:4px;font-size:10px;vertical-align:middle;opacity:.8;}
+.merchant-billing-page .billing-plan-pro h2,.merchant-billing-page .billing-plan-pro .price{color:#fff;}
+
+.billing-subscriber{display:flex;align-items:center;gap:14px;padding:18px 22px;margin:8px 0 18px;border:1px solid #bdd8c8;border-radius:12px;background:#edf7f1;color:var(--merchant-green-dark);}
+.billing-subscriber-icon{display:grid;place-items:center;width:34px;height:34px;flex-shrink:0;border-radius:50%;background:#d7ecdf;font-size:18px;}
+.billing-subscriber>div{flex:1;min-width:0;}.billing-subscriber strong{font-size:15px;}.billing-subscriber p{margin:5px 0 0;font-size:13px;line-height:1.5;}.billing-subscriber a{color:inherit;font-size:13px;font-weight:600;text-underline-offset:3px;}
+#billing-subscription{scroll-margin-top:24px;}
+@media(max-width:520px){.billing-subscriber{flex-wrap:wrap;padding:16px;}.billing-subscriber>div{flex-basis:calc(100% - 50px);}.billing-subscriber a{margin-left:48px;}}

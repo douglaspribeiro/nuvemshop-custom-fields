@@ -152,12 +152,12 @@ class LocalizedPagesRenderTest {
         assertNoMissingKeys("/admin/dashboard", "AR", body);
         String[] items = body.split("class=\"merchant-order-item\"");
         assertThat(items).hasSize(3);
-        assertThat(items[1]).contains("Artículo 1", "Café Colombia", "ID del producto: 5001", "Cant.: 2", "Molienda: Grano")
+        assertThat(items[1]).contains("Artículo 1", "Café Colombia", "ID del producto: 5001", "Cant.: 2", "<h3>Molienda</h3>", "<p>Grano</p>")
                 .contains("src=\"https://cdn.example.com/cafe.jpg\"", "loading=\"lazy\"")
                 .doesNotContain("Prensa Francesa");
-        assertThat(items[2]).contains("Artículo 3", "Café Colombia", "ID del producto: 5001", "Cant.: 1", "Molienda: Prensa Francesa")
+        assertThat(items[2]).contains("Artículo 3", "Café Colombia", "ID del producto: 5001", "Cant.: 1", "<h3>Molienda</h3>", "<p>Prensa Francesa</p>")
                 .contains("merchant-product-thumbnail")
-                .doesNotContain("Molienda: Grano", "cdn.example.com/cafe.jpg");
+                .doesNotContain("<p>Grano</p>", "cdn.example.com/cafe.jpg");
     }
 
     /**

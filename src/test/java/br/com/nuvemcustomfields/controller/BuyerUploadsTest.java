@@ -127,7 +127,7 @@ class BuyerUploadsTest {
         assertThat(fields.findWithRuleByStoreId(store)).hasSize(2);
     }
     @Test void recoversAllFilesFromAnAuthenticatedOrderWithATruncatedLegacyUrl() throws Exception {
-        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_ULTRA);stores.saveAndFlush(owner);
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_ULTRA);owner.setScope("read_orders");stores.saveAndFlush(owner);
         var configured=fields.findById(field).orElseThrow();configured.setMaxFiles(3);fields.saveAndFlush(configured);
         var a=upload();var b=upload();var c=upload();
         for(var file:List.of(a,b,c))uploads.cart(store,token,file.id());
@@ -141,6 +141,16 @@ class BuyerUploadsTest {
         assertThat(orders.fileIds(store+10000,item)).isEmpty();
         orders.order(store,300);
         assertThat(jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and order_id=300 and order_item_id=301 and state='ORDERED'",Long.class,store)).isEqualTo(3);
+        var name=new FieldForm();name.setLabel("Nome na camisa");name.setFieldType(FieldType.TEXT);admin.addField(store,123L,name);
+        properties.put("Nome na camisa","Pedro");
+        when(api.listRecentOrders(any())).thenReturn(json.createArrayNode().add(order));
+        var rendered=mvc.perform(get("/admin/dashboard").session(session)).andExpect(status().isOk()).andReturn();
+        var summary=(br.com.nuvemcustomfields.dto.DashboardSummary)rendered.getModelAndView().getModel().get("summary");
+        var groups=summary.personalizedOrders().getFirst().items().getFirst().fieldGroups();
+        assertThat(groups).extracting(br.com.nuvemcustomfields.dto.PersonalizedOrderSummary.Property::label).containsExactly("Arte","Nome na camisa");
+        assertThat(groups.getFirst().files()).extracting(br.com.nuvemcustomfields.dto.PersonalizedOrderSummary.Upload::id).containsExactlyInAnyOrder(a.id(),b.id(),c.id());
+        assertThat(groups.get(1).value()).isEqualTo("Pedro");
+        assertThat(rendered.getResponse().getContentAsString()).contains("merchant-order-files",a.id()+"/download",b.id()+"/download",c.id()+"/download");
         // A prefix shared by two records must never be guessed.
         String ambiguous=c.id().substring(0,30)+(c.id().endsWith("000000")?"111111":"000000");
         jdbc.update("insert into buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,created_at,expires_at) select ?,store_id,product_id,field_id,session_hash,?,size_bytes,'CART',created_at,expires_at from buyer_uploads where id=?",ambiguous,UUID.randomUUID().toString(),c.id());

@@ -62,10 +62,15 @@
                                 <span class="muted" th:if="${item.quantity > 0}"
                                       th:text="#{merchant.orders.quantity(${item.quantity})}">Qtd.: 2</span>
                             </div>
-                            <ul class="merchant-order-properties">
-                                <li th:each="property : ${item.properties}" th:text="${property}">Nome: Ana</li>
-                                <li th:each="uploadId : ${item.uploadIds}"><a th:href="@{/admin/buyer-uploads/{id}/download(id=${uploadId})}" th:text="#{buyer.files.download}">Baixar arquivo</a></li>
-                            </ul>
+                            <div class="merchant-order-fields">
+                                <section class="merchant-order-field" th:each="property : ${item.fieldGroups}">
+                                    <h3 th:text="${property.label}"></h3>
+                                    <p th:if="${#lists.isEmpty(property.files)}" th:text="${property.value}"></p>
+                                    <ul th:if="${!#lists.isEmpty(property.files)}" class="merchant-order-files">
+                                        <li th:each="file : ${property.files}"><span th:text="${file.name}"></span><a class="button small" th:href="@{/admin/buyer-uploads/{id}/download(id=${file.id})}" th:text="#{buyer.files.download}">Baixar</a></li>
+                                    </ul>
+                                </section>
+                            </div>
                         </div>
                     </li>
                 </ul>

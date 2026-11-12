@@ -18,6 +18,8 @@ public class ReportService {
     private OrderPersonalizationCatalog personalizationCatalog;
     @org.springframework.beans.factory.annotation.Autowired
     private BuyerUploadOrders uploadOrders;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
@@ -82,14 +84,14 @@ public class ReportService {
                 JsonNode product = products.get(index);
                 List<String> properties = personalization.productProperties(product);
                 if (!properties.isEmpty()) {
+                    var uploadIds=uploadOrders!=null ? uploadOrders.fileIds(store.getStoreId(),product) : java.util.regex.Pattern.compile("NCF-FILE:([a-f0-9-]{36})")
+                            .matcher(product.path("properties").toString()).results().map(match->match.group(1)).distinct().toList();
                     items.add(new PersonalizedOrderSummary.Item(index + 1,
                             product.path("product_id").asText(),
                             product.path("name").asText("").strip(),
                             orderItemImageUrl(product),
                             product.path("quantity").asInt(), properties,
-                            uploadOrders!=null ? uploadOrders.fileIds(store.getStoreId(),product) : java.util.regex.Pattern.compile("NCF-FILE:([a-f0-9-]{36})")
-                                    .matcher(product.path("properties").toString()).results()
-                                    .map(match -> match.group(1)).distinct().toList()));
+                            uploadIds, fieldGroups(store.getStoreId(),properties,uploadIds)));
                 }
             }
             if (!items.isEmpty()) {
@@ -100,6 +102,30 @@ public class ReportService {
                         items
                 ));
             }
+        }
+        return result;
+    }
+
+    private List<PersonalizedOrderSummary.Property> fieldGroups(long storeId,List<String> properties,List<String> ids) {
+        var result=new ArrayList<PersonalizedOrderSummary.Property>();
+        for(var property:properties) {
+            var parts=property.split(": ",2);
+            result.add(new PersonalizedOrderSummary.Property(parts[0],parts.length>1?parts[1]:"",List.of()));
+        }
+        if(jdbc==null || ids.isEmpty())return result;
+        var placeholders=String.join(",",java.util.Collections.nCopies(ids.size(),"?"));
+        var args=new ArrayList<Object>();args.add(storeId);args.addAll(ids);
+        var rows=jdbc.queryForList("select u.id,u.field_id,u.original_name,f.label from buyer_uploads u left join personalization_fields f on f.id=u.field_id where u.store_id=? and u.id in ("+placeholders+") and u.state='ORDERED' order by u.created_at,u.id",args.toArray());
+        var grouped=new java.util.LinkedHashMap<String,List<PersonalizedOrderSummary.Upload>>();
+        for(var row:rows) {
+            String label=java.util.Objects.toString(row.get("label"),"Arquivos");
+            grouped.computeIfAbsent(label,key->new ArrayList<>()).add(new PersonalizedOrderSummary.Upload((String)row.get("id"),java.util.Objects.toString(row.get("original_name"),"Arquivo")));
+        }
+        for(var group:grouped.entrySet()) {
+            int index=-1;
+            for(int n=0;n<result.size();n++)if(result.get(n).label().equals(group.getKey())){index=n;break;}
+            var property=new PersonalizedOrderSummary.Property(group.getKey(),"",List.copyOf(group.getValue()));
+            if(index>=0)result.set(index,property);else result.add(property);
         }
         return result;
     }

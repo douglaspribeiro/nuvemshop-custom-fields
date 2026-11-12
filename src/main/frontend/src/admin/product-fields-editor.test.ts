@@ -164,3 +164,13 @@ it('shows the compact upload preview with the configured count and plan byte lim
     expect(preview.querySelector('.field-preview-upload-help')?.textContent).toContain('20 MB');
     expect(preview.querySelector('.field-preview-upload-help')?.textContent).toContain('3 arquivos');
 });
+it('prefills upload formats without overwriting a merchant restriction',()=>{
+    boot();
+    input('optionsText').value='';
+    select('[name="fieldType"]','FILE_UPLOAD');
+    expect(input('optionsText').value).toBe('JPEG\nPNG\nPDF');
+    input('optionsText').value='PNG';
+    select('[name="fieldType"]','TEXT');
+    select('[name="fieldType"]','FILE_UPLOAD');
+    expect(input('optionsText').value).toBe('PNG');
+});
