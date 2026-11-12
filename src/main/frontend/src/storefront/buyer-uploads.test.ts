@@ -17,7 +17,7 @@ describe("buyer upload",()=>{
         expect(validate([{...field,required:false}],{[field.propertyName]:"__uploading__"})).toHaveLength(1);
         const value=`arte.png (10 bytes) — NCF-FILE:${id}`;
         expect(validate([field],{[field.propertyName]:value})).toHaveLength(0);
-        expect(toCartProperties([field],{[field.propertyName]:value})).toEqual({[field.propertyName]:value, Arte:"arte.png (10 bytes)"});
+        expect(toCartProperties([field],{[field.propertyName]:value})).toEqual({[field.propertyName]:`NCF-FILE:${id}`, Arte:"arte.png"});
     });
     it("reserves a session and confirms cart linkage before exposing the reference",async()=>{
         const fetch=vi.mocked(globalThis.fetch);
@@ -28,7 +28,7 @@ describe("buyer upload",()=>{
         expect(fetch.mock.calls.map(call=>String(call[0]))).toEqual(["https://app.test/public/stores/1/buyer-uploads/session","https://app.test/public/stores/1/buyer-uploads","https://app.test/public/stores/1/buyer-uploads/"+id+"/validate"]);
         expect(value).toContain(`NCF-FILE:${id}`);expect(progress).toHaveBeenCalled();
         expect(toCartProperties([field],{[field.propertyName]:value}).Arte)
-            .toContain(`https://app.test/admin/buyer-uploads/${id}/download`);
+            .toBe("arte.png");
         expect(cache.get("ncf-upload-1-123-11")).toBe(value);
     });
     it("does not persist a file when its cart confirmation fails",async()=>{
@@ -62,6 +62,9 @@ it("keeps several files, validates each reference and removes only the selected 
     const value=await client.upload(multi,new File(['b'],'b.png'),()=>{},true);
     expect(validate([multi],{[field.propertyName]:value})).toEqual([]);
     await expect(client.upload(multi,new File(['c'],'c.png'),()=>{},true)).rejects.toThrow('máximo 2');
+    const visible=toCartProperties([multi],{[field.propertyName]:value}).Arte;
+    expect(visible).toBe('a.png; b.png');
+    expect(visible).not.toContain('https://');
     await client.ensure(value);
     expect(fetch.mock.calls.filter(([url])=>String(url).endsWith('/cart'))).toHaveLength(2);
     const remaining=await client.remove(multi,value.split('\n')[0]);
@@ -71,4 +74,14 @@ it("applies the Pro byte limit before requesting a session",async()=>{
     await expect(createBuyerUploads(9,123,storage).upload({...field,maxFileBytes:10_000_000},
         {size:10_000_001} as File,()=>{})).rejects.toThrow('10 MB');
     expect(fetch).not.toHaveBeenCalled();
+});
+
+it("keeps five long filenames out of the compact technical property",()=>{
+    const references=Array.from({length:5},(_,index)=>`${'a'.repeat(160)}-${index}.png (100 bytes) — https://app.test/admin/buyer-uploads/00000000-0000-4000-8000-00000000000${index}/download — NCF-FILE:00000000-0000-4000-8000-00000000000${index}`).join('\n');
+    const properties=toCartProperties([{...field,maxFiles:5}],{[field.propertyName]:references});
+    expect(properties[field.propertyName].length).toBeLessThan(500);
+    expect(properties[field.propertyName].match(/NCF-FILE:/g)).toHaveLength(5);
+    expect(properties[field.propertyName]).not.toContain('.png');
+    expect(properties.Arte.length).toBeLessThanOrEqual(500);
+    expect(properties.Arte).not.toContain('https://');
 });

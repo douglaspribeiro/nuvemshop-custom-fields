@@ -1,4 +1,4 @@
-# Upload do comprador v2
+# Upload do comprador v2 (Beta)
 
 - Pro: um arquivo por campo, até 10.000.000 bytes, cota de 2 GB.
 - Ultra: máximo configurável de 1 a 5 arquivos por campo, até 20.000.000 bytes por arquivo, cota de 10 GB.
@@ -18,3 +18,5 @@ As descrições da loja foram atualizadas nos arquivos de texto; sua publicaçã
 ## GA4
 
 O editor emite `configuration_started` (primeira alteração por tipo de campo) e `configuration_submitted` (envio do formulário). Parâmetro `configuration_type`: TEXT, TEXTAREA, NUMBER, SELECT, CHECKBOX, IMAGE_SELECT ou FILE_UPLOAD. Não representa confirmação de salvamento. Sem rótulos, conteúdo ou nomes de arquivos. Sessões do operador não carregam o script. Para agrupar no GA4, cadastrar `configuration_type` como dimensão personalizada de evento. A configuração remota do GA4 não é alterada pelo deploy.
+
+As propriedades internas do pedido contêm somente IDs compactos (até 224 caracteres para cinco arquivos). A descrição visível contém nomes, limitada a 500 caracteres. Não enviar URLs nem tamanhos no carrinho. Pedidos antigos com URL cortada só podem recuperar uma associação quando o prefixo de UUID é suficientemente longo e identifica exatamente um arquivo da mesma loja e produto.

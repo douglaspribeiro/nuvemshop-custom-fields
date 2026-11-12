@@ -31,7 +31,7 @@ async function boot() {
         const client=createBuyerUploads(store,product);
         let sequence=0;
         control.value.addEventListener("change",async()=>{
-            const current=++sequence,value=control.value.value;
+            const current=++sequence,value=(control.wrapper as HTMLDivElement & {ncfUploadValue:string}).ncfUploadValue;
             const token=value && !value.startsWith("__") ? await client.sessionToken() : "";
             if(current!==sequence) return;
             parent.postMessage({type:"ncf-upload-value",value,token},"*");

@@ -2,8 +2,9 @@ import { appOrigin, type PersonalizationField } from "../shared/config";
 
 export const FILE_REFERENCE = /NCF-FILE:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 export function uploadValues(value: string): string[] { return value.split("\n").filter(part => FILE_REFERENCE.test(part)); }
+export function uploadReferences(value:string):string { return uploadValues(value).map(part=>`NCF-FILE:${uploadId(part)}`).join("\n"); }
 export function uploadId(value: string): string | undefined { return value.match(/NCF-FILE:([a-f0-9-]{36})$/)?.[1]; }
-export function uploadDisplay(value: string): string { return uploadValues(value).map(part => part.replace(/\s*—\s*NCF-FILE:.*$/, "")).join("; "); }
+export function uploadDisplay(value: string): string { return uploadValues(value).map(part => part.replace(/\s*—\s*NCF-FILE:.*$/, "").replace(/\s*—\s*https?:\/\/\S+\/admin\/buyer-uploads\/[a-f0-9-]{36}\/download$/, "").replace(/\s+\(\d+ bytes\)$/, "")).join("; "); }
 type Storage = { getItem(key: string): Promise<string | null> | string | null; setItem(key: string, value: string): unknown };
 const fallbackMemory=new Map<string,string>();
 const fallbackStorage: Storage = {
@@ -85,7 +86,7 @@ export function createBuyerUploads(store: number, product: number, storage: Stor
             const single = `${uploaded.name} (${uploaded.size} bytes) — ${appOrigin()}/admin/buyer-uploads/${uploaded.id}/download — ${uploaded.reference}`;
             const value = append && previous ? previous + "\n" + single : single;
             await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, value);
-            progress(`Enviado: ${uploaded.name} (${uploaded.size} bytes). Disponível à loja por 90 dias após o pedido.`);
+            progress(`Enviado: ${uploaded.name} (${uploaded.size} bytes).`);
             return value;
         },
         async remove(field: PersonalizationField, value: string) {

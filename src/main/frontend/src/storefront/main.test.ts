@@ -220,7 +220,7 @@ describe("SDK storefront without a legacy script", () => {
         if(ready){
             await vi.waitFor(()=>expect(send.mock.calls.some(call=>call[0]==="cart:add")).toBe(true));
             const payload=send.mock.calls.find(call=>call[0]==="cart:add")![1]();
-            expect(payload.cart.items[0].properties).toEqual({_ncf_file_11:reference,Arte:"arte.png (10 bytes)"});
+            expect(payload.cart.items[0].properties).toEqual({_ncf_file_11:"NCF-FILE:00000000-0000-4000-8000-000000000001",Arte:"arte.png"});
         }else{
             await vi.waitFor(()=>expect(JSON.stringify(render.mock.calls[render.mock.calls.length-1])).toContain("Arquivo expirado."));
             expect(send.mock.calls.some(call=>call[0]==="cart:add")).toBe(false);

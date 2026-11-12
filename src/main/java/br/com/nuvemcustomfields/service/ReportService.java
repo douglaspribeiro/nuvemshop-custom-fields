@@ -16,6 +16,8 @@ import java.util.List;
 public class ReportService {
     @org.springframework.beans.factory.annotation.Autowired
     private OrderPersonalizationCatalog personalizationCatalog;
+    @org.springframework.beans.factory.annotation.Autowired
+    private BuyerUploadOrders uploadOrders;
 
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
@@ -67,6 +69,10 @@ public class ReportService {
         var personalization = personalizationCatalog == null ? new OrderPersonalization(fieldRepository.findWithRuleByStoreId(store.getStoreId()))
                     : personalizationCatalog.forStore(store.getStoreId());
         for (JsonNode order : orders) {
+            if(uploadOrders!=null) {
+                try {uploadOrders.process(store.getStoreId(),order);}
+                catch(RuntimeException error) {org.slf4j.LoggerFactory.getLogger(getClass()).warn("buyer.order.reconcile.failed store_id={} order_id={} type={}",store.getStoreId(),order.path("id").asLong(),error.getClass().getSimpleName());}
+            }
             List<PersonalizedOrderSummary.Item> items = new ArrayList<>();
             JsonNode products = order.path("products");
             if (!products.isArray()) {
@@ -81,7 +87,7 @@ public class ReportService {
                             product.path("name").asText("").strip(),
                             orderItemImageUrl(product),
                             product.path("quantity").asInt(), properties,
-                            java.util.regex.Pattern.compile("NCF-FILE:([a-f0-9-]{36})")
+                            uploadOrders!=null ? uploadOrders.fileIds(store.getStoreId(),product) : java.util.regex.Pattern.compile("NCF-FILE:([a-f0-9-]{36})")
                                     .matcher(product.path("properties").toString()).results()
                                     .map(match -> match.group(1)).distinct().toList()));
                 }

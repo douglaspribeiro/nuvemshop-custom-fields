@@ -33,22 +33,34 @@ public class BuyerUploadOrders {
         Instant created=java.time.OffsetDateTime.parse(timestamp).toInstant();
         for(var item:order.path("products")) {
             long product=item.path("product_id").asLong(),itemId=item.path("id").asLong();
-            List<String> values=new ArrayList<>();
-            JsonNode properties=item.path("properties");
-            if(properties.isObject()) properties.elements().forEachRemaining(value -> values.add(value.asText()));
-            else if(properties.isArray()) properties.forEach(value -> values.add(value.path("value").asText()));
-            for(String value:values) {
-                var match=REFERENCE.matcher(value);
-                while(match.find()) {
-                    String id=match.group(1);
-                    var fields=jdbc.queryForList("select field_id from buyer_uploads where id=? and store_id=? and product_id=?",Long.class,id,storeId,product);
-                    if(fields.isEmpty()) continue;
-                    // Conflicts are preserved for operator investigation; never reassign art.
-                    ledger.confirmOrder(storeId,id,product,fields.getFirst(),orderId,itemId,created);
-                }
+            for(String id:fileIds(storeId,item)) {
+                var fields=jdbc.queryForList("select field_id from buyer_uploads where id=? and store_id=? and product_id=?",Long.class,id,storeId,product);
+                if(fields.isEmpty()) continue;
+                ledger.confirmOrder(storeId,id,product,fields.getFirst(),orderId,itemId,created);
             }
         }
     }
+    /** Only authenticated platform order data may be passed here. Never guess by name or time. */
+    public List<String> fileIds(long storeId,JsonNode item) {
+        var ids=new java.util.LinkedHashSet<String>();
+        var properties=item.path("properties");
+        List<String> values=new ArrayList<>();
+        if(properties.isObject())properties.elements().forEachRemaining(v->values.add(v.asText()));
+        else if(properties.isArray())properties.forEach(v->values.add(v.path("value").asText()));
+        for(String value:values) {
+            var full=REFERENCE.matcher(value);
+            while(full.find()) ids.addAll(jdbc.queryForList("select id from buyer_uploads where id=? and store_id=? and product_id=?",String.class,full.group(1),storeId,item.path("product_id").asLong()));
+            // Older 500-character properties can end mid-URL. Recover only a unique,
+            // sufficiently long UUID prefix belonging to this exact store/product.
+            var partial=Pattern.compile("/buyer-uploads/([a-f0-9-]{24,36})(?:/download|$)").matcher(value);
+            while(partial.find()) {
+                var candidates=jdbc.queryForList("select id from buyer_uploads where store_id=? and product_id=? and id like ?",String.class,storeId,item.path("product_id").asLong(),partial.group(1)+"%");
+                if(candidates.size()==1)ids.add(candidates.getFirst());
+            }
+        }
+        return List.copyOf(ids);
+    }
+
     /** Returns false on incomplete synchronization, so cleanup cannot delete a late order's art. */
     public boolean reconcile(long storeId) {
         var store=stores.findActiveByStoreId(storeId).orElse(null);

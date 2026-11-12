@@ -126,6 +126,27 @@ class BuyerUploadsTest {
                 .andExpect(redirectedUrl("/admin/products/123/fields"));
         assertThat(fields.findWithRuleByStoreId(store)).hasSize(2);
     }
+    @Test void recoversAllFilesFromAnAuthenticatedOrderWithATruncatedLegacyUrl() throws Exception {
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_ULTRA);stores.saveAndFlush(owner);
+        var configured=fields.findById(field).orElseThrow();configured.setMaxFiles(3);fields.saveAndFlush(configured);
+        var a=upload();var b=upload();var c=upload();
+        for(var file:List.of(a,b,c))uploads.cart(store,token,file.id());
+        var order=json.createObjectNode();order.put("id",300);order.put("created_at",Instant.now().toString());
+        var item=order.putArray("products").addObject();item.put("id",301);item.put("product_id",123);
+        var properties=item.putObject("properties");
+        properties.put("_ncf_file_"+field,a.reference()+"; "+b.reference());
+        properties.put("Arte","arquivo.png — https://app.test/admin/buyer-uploads/"+c.id().substring(0,30));
+        when(api.getOrder(any(),eq(300L))).thenReturn(order);
+        assertThat(orders.fileIds(store,item)).containsExactly(a.id(),b.id(),c.id());
+        assertThat(orders.fileIds(store+10000,item)).isEmpty();
+        orders.order(store,300);
+        assertThat(jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and order_id=300 and order_item_id=301 and state='ORDERED'",Long.class,store)).isEqualTo(3);
+        // A prefix shared by two records must never be guessed.
+        String ambiguous=c.id().substring(0,30)+(c.id().endsWith("000000")?"111111":"000000");
+        jdbc.update("insert into buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,created_at,expires_at) select ?,store_id,product_id,field_id,session_hash,?,size_bytes,'CART',created_at,expires_at from buyer_uploads where id=?",ambiguous,UUID.randomUUID().toString(),c.id());
+        assertThat(orders.fileIds(store,item)).containsExactly(a.id(),b.id());
+    }
+
     @Test void merchantCanConfigureMultipleFilesOnlyOnUltra() {
         var form=new FieldForm();form.setLabel("Referências");form.setFieldType(FieldType.FILE_UPLOAD);form.setMaxFiles(3);
         assertThatThrownBy(()->admin.addField(store,123L,form)).isInstanceOf(IllegalArgumentException.class).hasMessage("upload.multiple.ultra");

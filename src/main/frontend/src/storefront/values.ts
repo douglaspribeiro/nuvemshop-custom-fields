@@ -1,6 +1,6 @@
 import type { PersonalizationField } from "../shared/config";
 import { messages } from "../shared/i18n";
-import { uploadValues, uploadDisplay } from "./buyer-uploads";
+import { uploadReferences, uploadValues, uploadDisplay } from "./buyer-uploads";
 
 export type FieldValue = string | string[];
 export type ValueMap = Record<string, FieldValue>;
@@ -119,8 +119,8 @@ export function toCartProperties(
             const selected = [...new Set(field.options)].filter(option => choices.includes(option));
             if (selected.length) properties[key] = selected.join(", ");
         } else if (value && field.fieldType === "FILE_UPLOAD") {
-            properties[key] = value;
-            properties[field.label.replace(/\[/g,"(").replace(/\]/g,")").trim()] = uploadDisplay(value);
+            properties[key] = uploadReferences(value);
+            properties[field.label.replace(/\[/g,"(").replace(/\]/g,")").trim()] = uploadDisplay(value).slice(0,500);
         } else if (value) {
 			properties[key] = value;
 		}
