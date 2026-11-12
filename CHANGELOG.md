@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.59.0] - 2026-11-11
+
+### Features
+
+- nc 18 templates reutilizaveis (#1) (`e31d0af`)
+
 ## [1.58.3] - 2026-11-10
 
 ### Outros
