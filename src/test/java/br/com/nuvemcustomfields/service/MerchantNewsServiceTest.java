@@ -14,10 +14,10 @@ class MerchantNewsServiceTest {
     void everyPlanSeesTheSameAvailableFeaturesAndDirectLinks(PlanType plan) {
         when(uploads.enabled(anyLong())).thenReturn(true);
         var items=new MerchantNewsService(uploads).forStore(store(plan));
-        assertThat(items).extracting(MerchantNewsService.Item::href).containsExactly("/admin/templates","/admin/templates","/admin/products");
+        assertThat(items).extracting(MerchantNewsService.Item::href).containsExactly("/admin/products","/admin/templates","/admin/templates","/admin/products");
     }
     @Test void uploadAnnouncementWaitsForConfiguredStorage() {
         var items=new MerchantNewsService(uploads).forStore(store(PlanType.FREE));
-        assertThat(items).extracting(MerchantNewsService.Item::id).containsExactly("templates-batch-v1","templates-v1");
+        assertThat(items).extracting(MerchantNewsService.Item::id).containsExactly("named-colors-v1","templates-batch-v1","templates-v1");
     }
 }

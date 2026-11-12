@@ -66,4 +66,20 @@ class RenewalFailurePolicyTest {
         assertThat(RenewalFailurePolicy.failedCharge(PaymentProviderType.STRIPE,"unpaid","uncollectible")).isTrue();
         assertThat(RenewalFailurePolicy.failedCharge(PaymentProviderType.EFI,"active","waiting")).isFalse();
     }
+
+    @Test void statusOnlyCreemRenewalRequiresPreviousPaymentAndExcludesOtherProviders() {
+        sub.setProvider(PaymentProviderType.CREEM);sub.setLastPaymentId("old_paid");sub.setLastPaymentStatus("paid");
+        remote=new GatewaySubscription("contract","plan","ref","unpaid","BRL",new BigDecimal("59.90"),null);
+        assertThat(policy.apply(sub,store,remote,null,false)).isTrue();verify(queue,times(1)).save(any());
+        sub.clearRenewalFailure();sub.setProvider(PaymentProviderType.EFI);
+        assertThat(policy.apply(sub,store,remote,null,false)).isFalse();
+        sub.setProvider(PaymentProviderType.CREEM);sub.setLastPaymentStatus("pending");
+        assertThat(policy.apply(sub,store,remote,null,false)).isFalse();
+        sub.setLastPaymentStatus("paid");sub.setProviderEnvironment(PaymentEnvironment.SANDBOX);
+        assertThat(policy.apply(sub,store,remote,null,false)).isFalse();
+        sub.setProviderEnvironment(PaymentEnvironment.PRODUCTION);store.setManualPlanOverride(true);
+        assertThat(policy.apply(sub,store,remote,null,false)).isFalse();
+        store.setManualPlanOverride(false);sub.setCancellationPending(true);
+        assertThat(policy.apply(sub,store,remote,null,false)).isFalse();verify(queue,times(1)).save(any());
+    }
 }

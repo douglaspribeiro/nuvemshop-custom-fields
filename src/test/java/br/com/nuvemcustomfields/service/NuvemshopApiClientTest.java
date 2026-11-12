@@ -189,6 +189,33 @@ class NuvemshopApiClientTest {
         return headers;
     }
 
+    @Test
+    void publicStoreLinkUsesMainUrlAndFallsBackToOriginalDomainSafely() {
+        for (var entry : java.util.Map.of(
+                "{\"url_with_protocol\":\"https://moda.example.com\"}", "https://moda.example.com",
+                "{\"original_domain\":\"moda.lojavirtualnuvem.com.br\"}", "https://moda.lojavirtualnuvem.com.br",
+                "{\"url_with_protocol\":\"javascript:alert(1)\",\"original_domain\":\"moda.mitiendanube.com\"}", "https://moda.mitiendanube.com").entrySet()) {
+            var builder=RestClient.builder();var server=MockRestServiceServer.bindTo(builder).build();
+            var client=new NuvemshopApiClient(properties(),builder);
+            server.expect(requestTo("https://api.example.com/v1/123/store?fields=url_with_protocol,original_domain"))
+                    .andExpect(header("Authentication","bearer store-token"))
+                    .andRespond(withSuccess(entry.getKey(),MediaType.APPLICATION_JSON));
+            assertThat(client.getStorePublicUrl(store())).isEqualTo(entry.getValue());server.verify();
+        }
+    }
+
+    @Test
+    void missingOrUnsafeUrlsAreNotRenderedAndRevokedTokensAreNotUsed() {
+        var builder=RestClient.builder();var server=MockRestServiceServer.bindTo(builder).build();
+        var client=new NuvemshopApiClient(properties(),builder);
+        server.expect(requestTo("https://api.example.com/v1/123/store?fields=url_with_protocol,original_domain"))
+                .andRespond(withSuccess("{\"url_with_protocol\":\"javascript:alert(1)\"}",MediaType.APPLICATION_JSON));
+        assertThat(client.getStorePublicUrl(store())).isNull();
+        var inactive=store();inactive.setUninstalledAt(java.time.Instant.now());
+        assertThat(client.getStorePublicUrl(inactive)).isNull();
+        var noToken=store();noToken.setAccessToken(null);assertThat(client.getStorePublicUrl(noToken)).isNull();server.verify();
+    }
+
     private Store store() {
         Store store = new Store();
         store.setStoreId(123L);

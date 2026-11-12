@@ -922,6 +922,7 @@ public class PaymentSubscriptionService {
                 && (invoice == null || !invoice.approved() || Objects.equals(invoice.paymentId(), local.getLastPaymentId())))
             throw new PaymentGatewayException("Aguardando confirmação do pagamento proporcional Creem.");
         PlanType sourcePlan = local.getPlan();
+        String previousPaymentId = local.getLastPaymentId();
         boolean upgraded = matchesUpgrade(local, remote);
         if (upgraded) {
             local.setPlan(local.getUpgradePlan());
@@ -971,7 +972,7 @@ public class PaymentSubscriptionService {
             local.setWebhookDowngradeAfter(null);
             local.setWebhookDowngradeStatus(null);
         }
-        if (renewalFailures != null && renewalFailures.apply(local, store, remote, invoice, upgraded)) {
+        if (renewalFailures != null && renewalFailures.apply(local, store, remote, invoice, upgraded, previousPaymentId)) {
             if (!Instant.now().isBefore(local.getGraceUntil())) deactivate(local, store, source);
         } else if (local.getProvider() == PaymentProviderType.STRIPE && "incomplete_expired".equals(status)) {
             markExpiredCheckout(local, status, "A assinatura Stripe incompleta expirou. Você pode tentar novamente.");

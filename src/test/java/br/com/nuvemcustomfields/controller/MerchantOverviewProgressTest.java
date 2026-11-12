@@ -27,7 +27,7 @@ class MerchantOverviewProgressTest {
         var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,s.getStoreId());
         String initial=mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(initial).contains("Comece pelo primeiro produto", "Novidades do app", "Templates reutilizáveis", "data-merchant-news");
-        assertThat(initial).contains("Templates em lote");
+        assertThat(initial).contains("Alterações em massa com templates", "Cores com nomes e escolha visual");
         assertThat(initial).doesNotContain("/admin/suggestions?interest=bulk");
         assertThat(initial).doesNotContain("/admin/suggestions?interest=uploads", "/admin/suggestions?interest=templates");
         assertThat(initial).doesNotContain("Em testes");

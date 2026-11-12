@@ -69,13 +69,15 @@
         </div>
 
         <div class="merchant-product-list" th:if="${!#lists.isEmpty(products)}">
-            <article class="merchant-product" th:each="product : ${products}">
+            <article class="merchant-product" th:each="product : ${products}"
+                     th:with="paused=${planPausedProductIds != null and planPausedProductIds.contains(product.id)}"
+                     th:classappend="${paused} ? ' is-plan-paused'">
                 <div class="merchant-product-summary">
                     <div th:replace="~{fragments/merchant-shell :: productThumbnail(${product.imageUrl})}"></div>
                     <div class="merchant-product-details">
                         <h3 th:text="${product.name}">Produto</h3>
-                        <span class="status" th:if="${planPausedProductIds != null and planPausedProductIds.contains(product.id)}" th:text="#{plan.pause.status}">Pausado pelo plano</span>
-                        <span class="status" th:classappend="${configuredFieldProductIds.contains(product.id)} ? ' is-configured'"
+                        <span class="status is-plan-paused" th:if="${paused}" th:text="#{plan.pause.status}">Pausado pelo plano</span>
+                        <span class="status" th:unless="${paused}" th:classappend="${configuredFieldProductIds.contains(product.id)} ? ' is-configured'"
                           th:text="${configuredFieldProductIds.contains(product.id)} ? #{admin.products.configured} : #{admin.products.notconfigured}">Não configurado</span>
                         <small th:text="#{merchant.products.id(${product.id})}">ID do produto</small>
                     </div>

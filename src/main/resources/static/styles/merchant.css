@@ -132,6 +132,8 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-product .row-actions { justify-content:flex-end; }
 .merchant-product .status { display:inline-block; font-size:.78rem; font-weight:750; }
 .merchant-product .status.is-configured { color:#176a50; }
+.merchant-product.is-plan-paused { background:#fff8eb; border-color:#d6a24a; border-left:4px solid #b7791f; }
+.merchant-product .status.is-plan-paused { color:#74420e; background:#ffedc7; border:1px solid #d6a24a; border-radius:6px; padding:4px 8px; }
 .merchant-page .grid.two { align-items:start; }
 .merchant-page .field-item { border-color:var(--merchant-line); border-radius:10px; }
 .merchant-page .fields-edit-only { grid-template-columns:minmax(0,1fr); }

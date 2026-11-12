@@ -52,7 +52,7 @@ public class RenewalFailureEmailService {
                 || (sub.getProvider() == PaymentProviderType.EFI && !grace && sub.getStatus() != PaymentSubscriptionStatus.ERROR)
                 || (!grace && store.getEffectivePlan().isBillable()) || !Set.of(PaymentSubscriptionStatus.ERROR,
                     PaymentSubscriptionStatus.PAST_DUE, PaymentSubscriptionStatus.PAUSED).contains(sub.getStatus())
-                || !RenewalFailurePolicy.failedCharge(sub.getProvider(), sub.getProviderStatus(), sub.getLastPaymentStatus()))
+                || !RenewalFailurePolicy.recordedFailure(sub))
             return unavailable("O aviso exige uma cobrança de produção não paga e acesso efetivamente no plano gratuito.");
         boolean previousPayment = sub.getRenewalFailureDetectedAt() != null || paidHistory.existsByStoreId(storeId) || events.existsByStoreIdAndToPlanInAndSourceIn(storeId,
             List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA),
@@ -117,8 +117,11 @@ public class RenewalFailureEmailService {
             case "insufficient_funds" -> es ? "Motivo informado: fondos o límite insuficientes." : "Motivo informado: saldo ou limite insuficiente.";
             case "card_expired", "expired_card" -> es ? "Motivo informado: tarjeta vencida." : "Motivo informado: cartão vencido.";
             case "card_declined" -> es ? "Motivo informado: pago rechazado por el emisor de la tarjeta." : "Motivo informado: pagamento recusado pelo emissor do cartão.";
-            default -> es ? "El proveedor registró el cobro como no pagado, sin un motivo específico disponible para informar."
-                : "O provedor registrou a cobrança como não paga, sem um motivo específico disponível para informar.";
+            default -> RenewalFailurePolicy.creemOverdue(sub.getProvider(), sub.getProviderStatus())
+                ? (es ? "El proveedor informó una falla en la renovación, sin un motivo específico disponible para informar."
+                    : "O provedor informou uma falha na renovação, sem um motivo específico disponível para informar.")
+                : (es ? "El proveedor registró el cobro como no pagado, sin un motivo específico disponible para informar."
+                    : "O provedor registrou a cobrança como não paga, sem um motivo específico disponível para informar.");
         };
     }
     private static String fingerprint(Store store, PaymentSubscription sub, String body) {

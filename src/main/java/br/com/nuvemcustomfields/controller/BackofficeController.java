@@ -61,6 +61,7 @@ public class BackofficeController {
     private final FeatureFlagRepository featureFlagRepository;
     private final IntegrationLogRepository integrationLogRepository;
     private final BackofficeService backofficeService;
+    private final br.com.nuvemcustomfields.service.NuvemshopApiClient apiClient;
     private final BackofficeSalesService backofficeSalesService;
     private final SupportService supportService;
     private final ScriptInstallService scriptInstallService;
@@ -88,7 +89,8 @@ public class BackofficeController {
             @Value("${APP_VERSION:dev}") String appVersion,
             StoreDepartureService departures,
             br.com.nuvemcustomfields.repository.WinbackCampaignRepository winbackCampaigns,
-            br.com.nuvemcustomfields.service.RenewalFailureEmailService renewalEmails
+            br.com.nuvemcustomfields.service.RenewalFailureEmailService renewalEmails,
+            br.com.nuvemcustomfields.service.NuvemshopApiClient apiClient
     ) {
         this.properties = properties;
         this.storeRepository = storeRepository;
@@ -106,6 +108,7 @@ public class BackofficeController {
         this.departures = departures;
         this.winbackCampaigns = winbackCampaigns;
         this.renewalEmails = renewalEmails;
+        this.apiClient = apiClient;
     }
 
     @GetMapping("/backoffice/login")
@@ -171,7 +174,14 @@ public class BackofficeController {
     @GetMapping("/backoffice/stores/{storeId}")
     public String store(@PathVariable Long storeId, Model model, HttpSession session) {
         LOGGER.debug("backoffice.store.open store_id={}", storeId);
-        model.addAttribute("store", storeRepository.findByStoreId(storeId).orElseThrow());
+        var store = storeRepository.findByStoreId(storeId).orElseThrow();
+        model.addAttribute("store", store);
+        String storeUrl = null;
+        try { storeUrl = apiClient.getStorePublicUrl(store); }
+        catch (RuntimeException error) {
+            LOGGER.warn("backoffice.store.url_unavailable store_id={} error_type={}", storeId, error.getClass().getSimpleName());
+        }
+        model.addAttribute("storeUrl", storeUrl);
         model.addAttribute("storeEmailToken", BackofficeStoreEmailController.token(session));
         model.addAttribute("departureActionToken", BackofficeStoreDepartureController.token(session));
         model.addAttribute("planTypes", PlanType.values());

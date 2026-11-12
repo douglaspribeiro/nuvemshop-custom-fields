@@ -15,6 +15,8 @@ A página `/admin` exibe um bloco discreto com funcionalidades novas e links dir
 
 | ID | Funcionalidade | Destino |
 |---|---|---|
+| `named-colors-v1` | Cores com nomes e escolha visual | `/admin/products` |
+| `templates-batch-v1` | Alterações em massa com templates | `/admin/templates` |
 | `templates-v1` | Templates reutilizáveis | `/admin/templates` |
 | `buyer-uploads-v2` | Arquivos do comprador | `/admin/products` |
 
@@ -26,7 +28,7 @@ A página `/admin` exibe um bloco discreto com funcionalidades novas e links dir
 4. Mantenha a seleção curta, preferencialmente até três itens. Esse é um critério editorial; o código não impõe limite automático.
 5. Atualize esta documentação e os testes de elegibilidade quando necessário.
 
-O filtro universal está hoje na entrada de `forStore`, pois as duas novidades cadastradas estão em homologação. Ao acrescentar funcionalidades já públicas, ajuste a seleção para que apenas os itens em homologação dependam desse filtro. Não restrinja uma novidade pública acidentalmente.
+A elegibilidade é definida por item em `forStore`; atualmente apenas a notícia de upload depende do armazenamento habilitado.
 
 ## Dispensar e reapresentar
 

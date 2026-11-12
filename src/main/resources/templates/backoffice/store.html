@@ -15,6 +15,8 @@
             <p class="eyebrow">Loja</p>
             <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
             <p class="muted" th:text="'Store ID ' + ${store.storeId}">Store ID 0</p>
+            <p th:if="${storeUrl != null}"><a th:href="${storeUrl}" th:text="${storeUrl}" target="_blank" rel="noopener noreferrer" style="overflow-wrap:anywhere"></a></p>
+            <p class="muted" th:if="${storeUrl == null}">Link da loja indisponível</p>
             <p class="muted" th:text="${'Mercado ' + (store.storeCountryCode ?: '-') + ' / ' + (store.storeCurrency ?: '-')}">Mercado BR / BRL</p>
             <small class="muted" th:if="${store.installedAt != null}">Instalada em <span th:attr="data-local-time=${store.installedAt}" data-time-format="date" th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">01/01/2026</span></small><small class="muted store-last-access" th:if="${store.lastAdminAccessAt != null}">Último acesso em <span th:attr="data-local-time=${store.lastAdminAccessAt}" data-time-format="datetime" th:text="${#temporals.format(store.lastAdminAccessAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></small><small class="muted store-last-access" th:if="${store.lastAdminAccessAt == null}">Último acesso: não registrado</small>
         </div>
@@ -173,13 +175,21 @@
         <div class="empty" th:if="${paymentSubscription == null}">Sem assinatura criada.</div>
         <div th:if="${paymentSubscription != null}">
             <p>Gateway: <strong th:text="${paymentSubscription.provider}">MERCADO_PAGO</strong></p>
-            <p>Status: <strong th:text="${paymentSubscription.status}">ACTIVE</strong>
+            <p th:if="${store.manualPlanOverride}">Status do plano: <strong>Configuração manual</strong></p>
+            <p th:unless="${store.manualPlanOverride}">Status: <strong th:text="${paymentSubscription.status}">ACTIVE</strong>
                 / remoto: <span th:text="${paymentSubscription.providerStatus ?: '-'}">authorized</span></p>
             <p>Plano e valor: <span th:text="${paymentSubscription.plan.displayName}">Essencial</span>
                 — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
             <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
             <p>Última cobrança: <span th:text="${paymentSubscription.lastPaymentId ?: '-'}">-</span>
                 / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
+            <p th:if="${paymentSubscription.cancellationRequestedAt != null}">Cancelamento solicitado em:
+                <span th:attr="data-local-time=${paymentSubscription.cancellationRequestedAt}" data-time-format="datetime"
+                      th:text="${#temporals.format(paymentSubscription.cancellationRequestedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+            <p class="muted" th:if="${paymentSubscription.cancellationRequestedAt == null and (paymentSubscription.status.name() == 'CANCELED' or paymentSubscription.cancellationPending or paymentSubscription.cancellationEffectiveAt != null)}">Data da solicitação de cancelamento não registrada.</p>
+            <p th:if="${paymentSubscription.cancellationEffectiveAt != null}">Cancelamento efetivo em:
+                <span th:attr="data-local-time=${paymentSubscription.cancellationEffectiveAt}" data-time-format="datetime"
+                      th:text="${#temporals.format(paymentSubscription.cancellationEffectiveAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
             <div th:if="${!#strings.isEmpty(paymentSubscription.cancellationReason)}">
                 <strong>Motivo do cancelamento</strong>
                 <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${paymentSubscription.cancellationReason}"></p>

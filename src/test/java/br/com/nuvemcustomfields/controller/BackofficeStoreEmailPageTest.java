@@ -94,4 +94,21 @@ class BackofficeStoreEmailPageTest {
                 .andExpect(redirectedUrl(path + "#store-email")).andExpect(flash().attributeExists("message"));
         verify(emails).send(987654321L, "Aviso", "Olá");
     }
+
+    @Test void manualPlanOverrideIsShownWithoutCallingThePlanCanceled() throws Exception {
+        var store=new Store();store.setStoreId(987654329L);store.setStoreName("Plano manual");
+        store.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);store.setManualPlanOverride(true);stores.saveAndFlush(store);
+        var sub=new br.com.nuvemcustomfields.entity.PaymentSubscription();sub.setStoreId(store.getStoreId());
+        sub.setProvider(br.com.nuvemcustomfields.entity.PaymentProviderType.CREEM);sub.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);
+        sub.setCountryCode("BR");sub.setCurrency("USD");sub.setAmountValue(java.math.BigDecimal.TEN);
+        sub.setExternalReference("manual-view");sub.setProviderSubscriptionId("sub_manual_view");
+        sub.setStatus(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.CANCELED);sub.setProviderStatus("canceled");subscriptions.saveAndFlush(sub);
+        var session=new MockHttpSession();session.setAttribute(BackofficeSessionInterceptor.SESSION_KEY,true);
+        String html=mvc.perform(get("/backoffice/stores/987654329").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        int start=html.indexOf("<h2>Assinatura externa</h2>");String card=html.substring(start,html.indexOf("</section>",start));
+        org.assertj.core.api.Assertions.assertThat(card).contains("Configuração manual").doesNotContain("CANCELED","remoto:");
+        org.assertj.core.api.Assertions.assertThat(subscriptions.findByStoreId(store.getStoreId()).orElseThrow().getStatus())
+                .isEqualTo(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.CANCELED);
+        assertNoEmailSent();
+    }
 }

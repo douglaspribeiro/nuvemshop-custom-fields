@@ -116,4 +116,25 @@ class RenewalFailureEmailServiceTest {
         assertThatThrownBy(() -> service.send(12L,service.preview(12L).fingerprint())).hasMessageContaining("aviso automático");
         verifyNoInteractions(emails);
     }
+
+    @Test void creemNoticeUsesRecordedOverdueIncidentWithoutRelabelingThePaidCharge() {
+        sub.setProvider(PaymentProviderType.CREEM);sub.setProviderStatus("past_due");sub.setLastPaymentStatus("paid");
+        sub.setStatus(PaymentSubscriptionStatus.PAST_DUE);sub.startRenewalFailure(java.time.Instant.now(),"creem-overdue:incident");
+        sub.setAccessActive(true);store.setPlan(PlanType.PREMIUM_ULTRA);
+        var notice=service.preview(12L);assertThat(notice.eligible()).isTrue();
+        assertThat(notice.body()).contains("falha na renovação","24 horas").doesNotContain("saldo ou limite insuficiente");
+        service.sendAutomatic(12L,notice.fingerprint());verify(emails).sendAction(any(),any(),any(),any(),any());
+        sub.setStatus(PaymentSubscriptionStatus.CANCELED);sub.setProviderStatus("canceled");
+        sub.setAccessActive(false);store.setPlan(PlanType.FREE);
+        assertThat(service.preview(12L).eligible()).isFalse();
+    }
+    @Test void creemStatusOnlyNoticeIsTranslatedAndRecoveredPaymentsAreNotNotified() {
+        sub.setProvider(PaymentProviderType.CREEM);sub.setProviderStatus("unpaid");sub.setLastPaymentStatus("paid");
+        sub.setStatus(PaymentSubscriptionStatus.PAST_DUE);sub.startRenewalFailure(java.time.Instant.now(),"creem-overdue:incident");
+        sub.setAccessActive(true);store.setPlan(PlanType.PREMIUM_ULTRA);store.setStoreCountryCode("AR");
+        assertThat(service.preview(12L).eligible()).isTrue();assertThat(service.preview(12L).body()).contains("falla en la renovación");
+        var notice=service.preview(12L);sub.clearRenewalFailure();sub.setStatus(PaymentSubscriptionStatus.ACTIVE);sub.setProviderStatus("active");
+        assertThatThrownBy(()->service.sendAutomatic(12L,notice.fingerprint())).isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(emails);
+    }
 }

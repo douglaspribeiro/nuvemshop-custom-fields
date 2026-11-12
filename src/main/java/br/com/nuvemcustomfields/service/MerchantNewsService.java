@@ -14,6 +14,7 @@ public class MerchantNewsService {
     }
     public List<Item> forStore(Store store) {
         var news = new ArrayList<Item>();
+        news.add(new Item("named-colors-v1", "merchant.news.colors", "/admin/products"));
         news.add(new Item("templates-batch-v1", "merchant.news.templateBatch", "/admin/templates"));
         news.add(new Item("templates-v1", "merchant.news.templates", "/admin/templates"));
         if (uploads.enabled(store.getStoreId())) news.add(new Item("buyer-uploads-v2", "merchant.news.uploads", "/admin/products"));

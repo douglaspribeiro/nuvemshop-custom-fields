@@ -144,6 +144,26 @@ public class NuvemshopApiClient {
         return getStoreProfile(store).name();
     }
 
+    public String getStorePublicUrl(Store store) {
+        if (!store.isActive() || store.getAccessToken() == null || store.getAccessToken().isBlank()) return null;
+        JsonNode response = restClient.get()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/store?fields=url_with_protocol,original_domain", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve().body(JsonNode.class);
+        if (response == null) return null;
+        for (String field : List.of("url_with_protocol", "original_domain")) {
+            String value = response.path(field).asText("").strip();
+            if (value.isEmpty()) continue;
+            if (field.equals("original_domain") && !value.contains("://")) value = "https://" + value;
+            try {
+                URI url = URI.create(value);
+                if (("https".equalsIgnoreCase(url.getScheme()) || "http".equalsIgnoreCase(url.getScheme()))
+                        && url.getHost() != null && url.getUserInfo() == null) return url.toASCIIString();
+            } catch (IllegalArgumentException ignored) { /* Try the original store domain. */ }
+        }
+        return null;
+    }
+
     public StoreProfile getStoreProfile(Store store) {
         LOGGER.info("nuvemshop.api.get_store.start store_id={}", store.getStoreId());
         try {

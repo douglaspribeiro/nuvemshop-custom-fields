@@ -89,6 +89,60 @@ class CreemSubscriptionLifecycleTest {
                 argThat(invoice -> "tran_upgrade".equals(invoice.paymentId())));
         verify(notifications, never()).enqueue(any(), any());
     }
+
+    @Test void overdueWithoutInvoiceQueuesOneNoticeAndRetainsThePreviousPaidTransaction() {
+        var queue=mock(RenewalFailureEmailRepository.class);service.setRenewalFailures(new RenewalFailurePolicy(queue));
+        active();local.setProviderEnvironment(PaymentEnvironment.PRODUCTION);when(gateway.environment()).thenReturn(PaymentEnvironment.PRODUCTION);
+        local.setLastPaymentId("tran_previous");local.setLastPaymentStatus("paid");
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("past_due","prod_1","9.99",null));
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PAST_DUE);
+        assertThat(local.getRenewalFailureDetectedAt()).isNotNull();assertThat(local.getRenewalFailurePaymentId()).startsWith("creem-overdue:");
+        assertThat(local.getLastPaymentId()).isEqualTo("tran_previous");assertThat(local.getLastPaymentStatus()).isEqualTo("paid");
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);assertThat(local.isAccessActive()).isTrue();
+        Instant grace=local.getGraceUntil();String incident=local.getRenewalFailurePaymentId();
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1");
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_previous","paid")));
+        service.reconcile(42L);
+        assertThat(local.getGraceUntil()).isEqualTo(grace);assertThat(local.getRenewalFailurePaymentId()).isEqualTo(incident);
+        var notice=org.mockito.ArgumentCaptor.forClass(RenewalFailureEmail.class);verify(queue,times(1)).save(notice.capture());
+        assertThat(notice.getValue().getPaymentId()).isEqualTo(incident);
+        assertThat(notice.getValue().getNextAttemptAt()).isAfterOrEqualTo(local.getRenewalFailureDetectedAt().plusSeconds(3600));
+        assertThat(java.time.Duration.between(local.getRenewalFailureDetectedAt(),grace)).isEqualTo(java.time.Duration.ofDays(1));
+        // Exercise the queued item through the actual notice builder and dispatcher.
+        store.setStoreEmail("owner@example.com");store.setStoreCountryCode("BR");
+        var mail=mock(StoreAdminEmailService.class);
+        var notices=new RenewalFailureEmailService(stores,subscriptions,mock(PlanEventRepository.class),
+                mock(PaymentNotificationOutboxRepository.class),mail,"https://app.example.com");
+        var manager=mock(org.springframework.transaction.PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
+        var row=notice.getValue();org.springframework.test.util.ReflectionTestUtils.setField(row,"id",1L);
+        row.setNextAttemptAt(Instant.now().minusSeconds(1));
+        when(queue.findDue(eq(RenewalFailureEmail.State.PENDING),any(),any())).thenReturn(List.of(row),List.of());
+        when(queue.findById(1L)).thenReturn(Optional.of(row));when(queue.saveAndFlush(row)).thenReturn(row);
+        new RenewalFailureEmailDispatcher(queue,subscriptions,notices,manager).dispatch();
+        assertThat(row.getState()).isEqualTo(RenewalFailureEmail.State.SENT);
+        verify(mail,times(1)).sendAction(eq(42L),contains("renovar"),contains("falha na renovação"),any(),any());
+        // A newly confirmed transaction wins even if the remote status has not caught up yet.
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_renewed","paid")));
+        service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1");
+        assertThat(local.getRenewalFailureDetectedAt()).isNull();
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_1","9.99",null));
+        service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1");
+        assertThat(local.getRenewalFailureDetectedAt()).isNull();assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+    }
+    @Test void realCancellationIsImmediateEvenAfterAnOverdueNoticeWasQueued() {
+        var queue=mock(RenewalFailureEmailRepository.class);service.setRenewalFailures(new RenewalFailurePolicy(queue));
+        active();local.setProviderEnvironment(PaymentEnvironment.PRODUCTION);when(gateway.environment()).thenReturn(PaymentEnvironment.PRODUCTION);
+        local.setLastPaymentId("tran_previous");local.setLastPaymentStatus("paid");
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("past_due","prod_1","9.99",null));
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1");
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("canceled","prod_1","9.99",null));
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1");
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.isAccessActive()).isFalse();assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
+        assertThat(local.getWebhookDowngradeAfter()).isNull();verify(queue,times(1)).save(any());
+    }
     void active() { local.setStatus(PaymentSubscriptionStatus.ACTIVE); local.setAccessActive(true); local.setNextPaymentAt(end); store.setPlan(PlanType.PREMIUM); }
     GatewaySubscription remote(String status,String product,String amount,Instant cancellation) {
         return new GatewaySubscription("sub_1",null,"ncf_ref",status,"USD",new BigDecimal(amount),end,"cust_1",product,Instant.now(),end,cancellation);
