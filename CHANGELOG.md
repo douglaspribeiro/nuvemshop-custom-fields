@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.61.1] - 2026-11-12
+
+### Correções
+
+- align buyer upload widget and merchant preview styling (`27f9711`)
+
 ## [1.61.0] - 2026-11-12
 
 ### Features
