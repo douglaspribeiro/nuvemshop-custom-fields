@@ -3,7 +3,8 @@ spring:
   autoconfigure:
     exclude: org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    # Context-cache eviction must not drop tables belonging to another live context.
+    url: jdbc:h2:mem:${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
     username: sa
     password:
   flyway:
@@ -45,3 +46,7 @@ backoffice:
 pricing:
   fx-estimates:
     enabled: false
+
+# Existing feature tests run with homologation access enabled explicitly.
+homolog:
+  allowed-store-ids: "*"

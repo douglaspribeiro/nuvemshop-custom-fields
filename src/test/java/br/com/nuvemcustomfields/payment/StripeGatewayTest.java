@@ -27,7 +27,7 @@ class StripeGatewayTest {
     final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     final ObjectMapper mapper = new ObjectMapper();
     StripeGateway gateway(boolean enabled) {
-        return new StripeGateway(new StripeProperties(enabled,true,"sk_test_fixture_only","whsec_fixture_only","42",0,20),catalog,builder.build(),mapper);
+        return new StripeGateway(new StripeProperties(enabled,true,"sk_test_fixture_only","whsec_fixture_only",0,20),catalog,builder.build(),mapper, new br.com.nuvemcustomfields.properties.HomologProperties("42"));
     }
     PaymentCatalogPrice price() {
         var price = new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.STRIPE); price.setEnvironment(PaymentEnvironment.SANDBOX);
@@ -46,7 +46,7 @@ class StripeGatewayTest {
                 .andExpect(header("Stripe-Version",StripeGateway.API_VERSION)).andRespond(withSuccess(response,MediaType.APPLICATION_JSON));
     }
     @Test void createsProductAndMonthlyDefaultPriceTogetherWithIdempotencyBeforeSalesAreEnabled() {
-        var gateway = new StripeGateway(new StripeProperties(false,true,"rk_test_fixture_only","","",0,20),catalog,builder.build(),mapper);
+        var gateway = new StripeGateway(new StripeProperties(false,true,"rk_test_fixture_only","",0,20),catalog,builder.build(),mapper, new br.com.nuvemcustomfields.properties.HomologProperties("42"));
         assertThat(gateway.apiConfigured()).isTrue(); assertThat(gateway.operational()).isFalse();
         server.expect(requestTo("https://api.stripe.com/v1/products")).andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization","Bearer rk_test_fixture_only"))
@@ -86,8 +86,8 @@ class StripeGatewayTest {
         assertThat(gateway(true).supports(store)).isFalse();
         assertThatThrownBy(() -> gateway(true).createCheckout(store,PlanType.PREMIUM,"ref","https://app.test")).isInstanceOf(IllegalArgumentException.class);
         store.setStoreId(42L); store.setStoreCountryCode("BR"); assertThat(gateway(true).supports(store)).isFalse();
-        assertThat(new StripeProperties(true,true,"sk_live_fixture","whsec_fixture","42",0,20).configured()).isFalse();
-        assertThat(new StripeProperties(true,true,"sk_test_fixture","whsec_fixture","0",0,20).allows(42L)).isFalse();
+        assertThat(new StripeProperties(true,true,"sk_live_fixture","whsec_fixture",0,20).configured()).isFalse();
+        assertThat(new br.com.nuvemcustomfields.properties.HomologProperties("0").allows(42L)).isFalse();
         verifyNoInteractions(catalog);
     }
     @ParameterizedTest
@@ -114,16 +114,19 @@ class StripeGatewayTest {
         }
     }
     @Test void readsBasilPeriodsAndDoesNotDependOnRemovedInvoicePaidField() {
-        server.expect(requestTo("https://api.stripe.com/v1/subscriptions/sub_1"))
+        server.expect(requestTo("https://api.stripe.com/v1/subscriptions/sub_1?expand%5B%5D=customer"))
                 .andRespond(withSuccess("""
-                    {"id":"sub_1","livemode":false,"metadata":{"external_reference":"ncf_ref"},"customer":"cus_1","status":"active",
+                    {"id":"sub_1","livemode":false,"metadata":{"external_reference":"ncf_ref"},"customer":{"id":"cus_1","phone":"+54 11 1234-5678"},"status":"active",
                      "cancel_at_period_end":true,"items":{"data":[{"id":"si_1","quantity":1,"current_period_start":1790000000,"current_period_end":1890000000,
                       "price":{"id":"price_1","currency":"ars","unit_amount":559900,"recurring":{"interval":"month","interval_count":1,"usage_type":"licensed"}}}]}}
                     """,MediaType.APPLICATION_JSON));
         server.expect(requestTo("https://api.stripe.com/v1/invoices/in_1"))
                 .andRespond(withSuccess("{\"id\":\"in_1\",\"livemode\":false,\"status\":\"paid\",\"currency\":\"ars\",\"amount_paid\":0,\"amount_remaining\":0,\"parent\":{\"subscription_details\":{\"subscription\":\"sub_1\"}}}",MediaType.APPLICATION_JSON));
         var gateway = gateway(false);
-        assertThat(gateway.getSubscription("sub_1").cancellationEffectiveAt()).isEqualTo(Instant.ofEpochSecond(1890000000));
+        var subscription = gateway.getSubscription("sub_1");
+        assertThat(subscription.cancellationEffectiveAt()).isEqualTo(Instant.ofEpochSecond(1890000000));
+        assertThat(subscription.customerId()).isEqualTo("cus_1");
+        assertThat(subscription.payerPhone()).isEqualTo("+54 11 1234-5678");
         assertThat(gateway.getInvoice("in_1").approved()).isTrue(); server.verify();
     }
     @Test void fullRefundChangesAnOtherwisePaidInvoiceIntoRevokedPayment() {

@@ -26,8 +26,10 @@ class MerchantOverviewProgressTest {
         var s=new Store();s.setStoreId(990088772L);s.setStoreCountryCode("BR");stores.saveAndFlush(s);
         var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,s.getStoreId());
         String initial=mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(initial).contains("Comece pelo primeiro produto", "Em breve", "Arquivos do comprador", "Templates reutilizáveis", "Edição em massa");
-        assertThat(initial).contains("/admin/suggestions?interest=uploads", "/admin/suggestions?interest=templates", "/admin/suggestions?interest=bulk");
+        assertThat(initial).contains("Comece pelo primeiro produto", "Novidades do app", "Templates reutilizáveis", "data-merchant-news");
+        assertThat(initial).contains("Em breve", "Edição em massa");
+        assertThat(initial).contains("/admin/suggestions?interest=bulk");
+        assertThat(initial).doesNotContain("/admin/suggestions?interest=uploads", "/admin/suggestions?interest=templates");
         assertThat(initial).doesNotContain("Em testes");
         for (String feature : java.util.List.of("uploads", "templates", "bulk")) {
             String interestForm = mvc.perform(get("/admin/suggestions").param("interest", feature).session(session))

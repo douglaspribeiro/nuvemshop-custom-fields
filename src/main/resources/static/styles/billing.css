@@ -85,3 +85,8 @@
 .billing-free-actions .button { font-size:.76rem; }
 @media (max-width:760px) { .billing-example { display:none; } .billing-current > div:nth-child(2) { flex-basis:calc(100% - 56px); } .billing-current .billing-current-link { justify-content:center; } }
 @media (max-width:520px) { .merchant-billing-page .billing-free-option { gap:18px; } .billing-free-limits { min-width:0; } .billing-free-actions { width:100%; } }
+
+.billing-shared-features { margin-top:20px; }
+.billing-shared-features h2,.billing-shared-features h3 { margin:0 0 8px; }
+.billing-shared-features h3 { margin-top:18px; font-size:.9rem; }
+.billing-shared-features p { margin:0; color:var(--merchant-muted); font-size:.85rem; line-height:1.65; }

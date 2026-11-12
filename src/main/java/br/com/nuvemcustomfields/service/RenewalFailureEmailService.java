@@ -57,7 +57,7 @@ public class RenewalFailureEmailService {
         boolean previousPayment = sub.getRenewalFailureDetectedAt() != null || paidHistory.existsByStoreId(storeId) || events.existsByStoreIdAndToPlanInAndSourceIn(storeId,
             List.of(PlanType.PREMIUM, PlanType.PREMIUM_PLUS, PlanType.PREMIUM_ULTRA),
             List.of("EFI_CHECKOUT", "PAYMENT_RECONCILE", "PAYMENT_WEBHOOK", "PAYMENT_UPGRADE",
-                "STRIPE_CHECKOUT", "CREEM_CHECKOUT", "DLOCAL_GO_CHECKOUT", "PENDING_TIMEOUT_RECONCILE"));
+                "STRIPE_CHECKOUT", "CREEM_CHECKOUT", "PENDING_TIMEOUT_RECONCILE"));
         if (!previousPayment) return unavailable("Não há histórico de pagamento confirmado para classificar esta falha como renovação.");
         if (!text(store.getStoreEmail())) return unavailable("A loja não possui e-mail cadastrado.");
         boolean es = "es".equals(StoreLocale.forCountry(store.getStoreCountryCode()).getLanguage());

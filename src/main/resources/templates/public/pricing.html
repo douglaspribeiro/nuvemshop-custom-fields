@@ -28,7 +28,7 @@
 
     <section class="pricing-free" aria-labelledby="free-plan-title">
         <div class="pricing-free-name"><h2 id="free-plan-title">Free</h2><span>Gratuito</span></div>
-        <p><span>Para experimentar:</span> 1 produto personalizado · 1 campo por produto · <span th:text="#{billing.images.none}">Sem opções com imagens</span></p>
+        <p><span>Para experimentar:</span> 1 produto personalizado · 1 campo por produto · <span th:text="#{billing.free.media.none}">Sem opções com imagens</span></p>
         <a th:href="@{/install}">Começar grátis <span aria-hidden="true">→</span></a>
     </section>
 
@@ -38,49 +38,51 @@
         <article class="pricing-card" aria-labelledby="essential-plan-title">
             <p class="pricing-card-tag">Primeiros passos</p>
             <h2 id="essential-plan-title">Essencial</h2>
-            <p class="pricing-card-description">Para ampliar a personalização dos seus produtos.</p>
+            <p class="pricing-card-description" th:text="#{billing.plan.essential.description}"></p>
             <div class="pricing-amount"><strong th:text="${publicMarket.essentialPrice}">USD 4.99</strong><small>/mês</small></div>
             <p class="muted" th:if="${publicMarket.essentialEstimate != null}" th:text="|≈ ${publicMarket.essentialEstimate}/mês · estimativa|">Estimativa</p>
             <ul>
-                <li><strong>10</strong> produtos personalizados</li>
-                <li><strong>3</strong> campos por produto</li>
-                <li>Templates por nicho</li>
-                <li th:text="${planDefinitions['PREMIUM'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM'].imageProductLimit})}"></li>
-                <li th:text="#{billing.images.options(${planDefinitions['PREMIUM'].imageOptionLimit})}"></li>
+                <li th:text="${planDefinitions['PREMIUM'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM'].productLimit})}"></li>
+                <li th:text="${planDefinitions['PREMIUM'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM'].fieldLimit})}"></li>
+                <li th:if="${planDefinitions['PREMIUM'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM'].imageProductLimit}, ${planDefinitions['PREMIUM'].imageOptionLimit})}"></li>
             </ul>
             <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
         </article>
         <article class="pricing-card featured" aria-labelledby="pro-plan-title">
             <p class="pricing-card-tag">Mais escolhido</p>
             <h2 id="pro-plan-title">Pro</h2>
-            <p class="pricing-card-description">Mais produtos e liberdade para criar seus campos.</p>
+            <p class="pricing-card-description" th:text="#{billing.plan.pro.description}"></p>
             <div class="pricing-amount"><strong th:text="${publicMarket.proPrice}">USD 7.49</strong><small>/mês</small></div>
             <p class="muted" th:if="${publicMarket.proEstimate != null}" th:text="|≈ ${publicMarket.proEstimate}/mês · estimativa|">Estimativa</p>
             <ul>
-                <li><strong>50</strong> produtos personalizados</li>
-                <li>Campos <strong>ilimitados</strong></li>
-                <li th:text="${planDefinitions['PREMIUM_PLUS'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM_PLUS'].imageProductLimit})}"></li>
-                <li th:text="#{billing.images.options(${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})}"></li>
+                <li th:text="${planDefinitions['PREMIUM_PLUS'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_PLUS'].productLimit})}"></li>
+                <li th:text="${planDefinitions['PREMIUM_PLUS'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_PLUS'].fieldLimit})}"></li>
+                <li th:if="${planDefinitions['PREMIUM_PLUS'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM_PLUS'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM_PLUS'].imageProductLimit}, ${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})}"></li>
+                <li th:text="#{billing.plan.uploads(${T(br.com.nuvemcustomfields.service.BuyerUploadPolicy).PRO_BYTES / 1000000000})}"></li>
             </ul>
             <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
         </article>
         <article class="pricing-card" aria-labelledby="ultra-plan-title">
             <p class="pricing-card-tag">Operações maiores</p>
             <h2 id="ultra-plan-title">Ultra</h2>
-            <p class="pricing-card-description">Para expandir seu catálogo com atendimento prioritário.</p>
+            <p class="pricing-card-description" th:text="#{billing.plan.ultra.description}"></p>
             <div class="pricing-amount"><strong th:text="${publicMarket.ultraPrice}">USD 14.99</strong><small>/mês</small></div>
             <p class="muted" th:if="${publicMarket.ultraEstimate != null}" th:text="|≈ ${publicMarket.ultraEstimate}/mês · estimativa|">Estimativa</p>
             <ul>
-                <li>Produtos personalizados <strong>ilimitados</strong></li>
-                <li>Campos <strong>ilimitados</strong></li>
+                <li th:text="${planDefinitions['PREMIUM_ULTRA'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_ULTRA'].productLimit})}"></li>
+                <li th:text="${planDefinitions['PREMIUM_ULTRA'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_ULTRA'].fieldLimit})}"></li>
                 <li>Atendimento prioritário</li>
-                <li th:text="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit == -1} ? #{billing.images.unlimited} : #{billing.images.products(${planDefinitions['PREMIUM_ULTRA'].imageProductLimit})}"></li>
-                <li th:text="#{billing.images.options(${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})}"></li>
+                <li th:if="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM_ULTRA'].imageProductLimit}, ${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})}"></li>
+                <li th:text="#{billing.plan.uploads(${T(br.com.nuvemcustomfields.service.BuyerUploadPolicy).ULTRA_BYTES / 1000000000})}"></li>
             </ul>
             <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
         </article>
     </section>
 
+    <section class="pricing-details" aria-label="Recursos incluídos">
+        <div><h2 th:text="#{billing.shared.heading}"></h2><p th:text="#{billing.shared.description}"></p></div>
+        <div><h2 th:text="#{billing.uploads.heading}"></h2><p th:text="#{billing.uploads.description}"></p></div>
+    </section>
     <p class="pricing-install-note">Instale o aplicativo e escolha seu plano no painel da loja.</p>
     <section class="pricing-details" aria-label="Informações sobre a assinatura">
         <div><h2>Mensal, sem fidelidade.</h2>

@@ -27,7 +27,7 @@ class PlanLimitServiceTest {
 
     private final PlanLimitService service = new PlanLimitService(
             mock(PersonalizationRuleRepository.class),
-            mock(PersonalizationFieldRepository.class), catalog
+            mock(PersonalizationFieldRepository.class), catalog, new br.com.nuvemcustomfields.properties.HomologProperties("*")
     );
 
     @Test
@@ -55,7 +55,7 @@ class PlanLimitServiceTest {
     @Test
     void suspendedBillingUsesFreeLimitsAsEffectivePlan() {
         PersonalizationRuleRepository ruleRepository = mock(PersonalizationRuleRepository.class);
-        PlanLimitService suspendedService = new PlanLimitService(ruleRepository, mock(PersonalizationFieldRepository.class), catalog);
+        PlanLimitService suspendedService = new PlanLimitService(ruleRepository, mock(PersonalizationFieldRepository.class), catalog, new br.com.nuvemcustomfields.properties.HomologProperties("*"));
         Store store = new Store();
         store.setStoreId(123L);
         store.setPlan(PlanType.PREMIUM_PLUS);
@@ -79,7 +79,7 @@ class PlanLimitServiceTest {
     @Test void plusCountsUniqueConfiguredProductsAndUltraHasNoProductCeiling() {
         var fields=mock(PersonalizationFieldRepository.class);
         var rules=mock(PersonalizationRuleRepository.class);
-        var limits=new PlanLimitService(rules,fields,catalog);
+        var limits=new PlanLimitService(rules,fields,catalog, new br.com.nuvemcustomfields.properties.HomologProperties("*"));
         var store=new Store();store.setStoreId(123L);store.setPlan(PlanType.PREMIUM_PLUS);
         catalog.activePlan(PlanType.PREMIUM_PLUS).setImageProductLimit(50);
         catalog.activePlan(PlanType.PREMIUM_PLUS).setImageOptionLimit(8);

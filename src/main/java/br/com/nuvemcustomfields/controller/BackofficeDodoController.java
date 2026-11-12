@@ -24,10 +24,12 @@ import java.util.*;
 public class BackofficeDodoController {
     private final DodoTestGateway gateway;
     private final DodoTestProperties properties;
+    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     private final DodoLiveGateway live;
     private final br.com.nuvemcustomfields.properties.NuvemshopBillingProperties billing;
     private final PaymentCatalogPriceRepository catalog;
-    public BackofficeDodoController(DodoTestGateway gateway, DodoTestProperties properties, PaymentCatalogPriceRepository catalog, DodoLiveGateway live, br.com.nuvemcustomfields.properties.NuvemshopBillingProperties billing) {
+    public BackofficeDodoController(DodoTestGateway gateway, DodoTestProperties properties, PaymentCatalogPriceRepository catalog, DodoLiveGateway live, br.com.nuvemcustomfields.properties.NuvemshopBillingProperties billing, br.com.nuvemcustomfields.properties.HomologProperties homolog) {
+        this.homolog = homolog;
         this.gateway = gateway; this.properties = properties; this.catalog = catalog; this.live = live; this.billing = billing;
     }
     @GetMapping("/backoffice/payments/{dodoMode:dodo|dodo-test}")
@@ -38,8 +40,8 @@ public class BackofficeDodoController {
         response.setHeader("Cache-Control", "no-store");
         model.addAttribute("actionToken", session.getAttribute(sessionKey));
         model.addAttribute("configured", selected.configured());
-        model.addAttribute("allowedStoreIds", properties.allowedStoreIds());
-        model.addAttribute("allTestStoresAllowed", properties.allowsAllStores());
+        model.addAttribute("allowedStoreIds", homolog.allowedStoreIds());
+        model.addAttribute("allTestStoresAllowed", homolog.allowsAllStores());
         model.addAttribute("testMode", selected.provider() == PaymentProviderType.DODO_TEST);
         model.addAttribute("gatewayPath", "/backoffice/payments/" + dodoMode);
         model.addAttribute("gatewayName", selected.provider() == PaymentProviderType.DODO_TEST ? "Dodo de teste" : "Dodo live");

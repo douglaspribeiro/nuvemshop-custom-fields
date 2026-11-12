@@ -28,6 +28,12 @@ public class LocalNuvemshopApiClient extends NuvemshopApiClient {
                 .stream().filter(item->query==null || query.isBlank() || item.name().toLowerCase(java.util.Locale.ROOT).contains(query.toLowerCase(java.util.Locale.ROOT))).toList();
         return new ProductPage(products.stream().skip((long)(p-1)*size).limit(size).toList(),p,size,products.size(),(long)p*size<products.size(),query);
     }
+    @Override public ProductSummary getProduct(Store store,long productId) {
+        check(store);
+        return listProducts(store,1,200,null).items().stream()
+                .filter(product -> product.id()==productId).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("template.product.invalid"));
+    }
     private JsonNode empty(Store s){check(s);return JsonNodeFactory.instance.arrayNode();}
     @Override public JsonNode listWebhooks(Store s){return empty(s);}
     @Override public JsonNode listScripts(Store s){return empty(s);}

@@ -35,6 +35,14 @@ public class StoreDataErasureService {
         // Pode chegar antes de app/uninstalled. Conta uma saída por exclusão,
         // separada de desinstalações confirmadas, antes de apagar o cadastro.
         departures.record(storeId, true);
+        jdbcTemplate.update("delete from personalization_image_references where store_id=?",storeId);
+        jdbcTemplate.update("delete from template_applications where store_id=?",storeId);
+        jdbcTemplate.update("delete from store_templates where store_id=?",storeId);
+        // A deletion worker retains only the opaque object id and deletion intent.
+        // Never keep customer session/order metadata after a permanent erasure.
+        jdbcTemplate.update("update buyer_uploads set state='DELETING',delete_reason='ERASED',session_hash='',request_id=id,"
+                + "original_name=null,content_type=null,product_id=0,field_id=0,order_id=null,order_item_id=null,order_created_at=null,retry_at=null where store_id=?", storeId);
+        jdbcTemplate.update("delete from buyer_upload_sessions where store_id=?", storeId);
         // Keep only the durable S3 deletion ledger after owner data is erased.
         jdbcTemplate.update("update personalization_images set state='DELETING',field_id=null,retry_at=?,updated_at=? where store_id=?",
                 java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(300)), java.sql.Timestamp.from(java.time.Instant.now()), storeId);

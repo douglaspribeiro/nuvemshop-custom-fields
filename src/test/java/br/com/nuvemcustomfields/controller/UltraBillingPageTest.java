@@ -175,8 +175,18 @@ class UltraBillingPageTest {
                 new BigDecimal("29.99"), 75, 6, planCatalog.today(), null);
         String plans = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(plans).contains("75 produtos personalizados", "6 campos por produto", "1 produto personalizado")
-                .doesNotContain("50 produtos personalizados");
+        assertThat(plans).contains("75 produtos personalizados", "6 campos por produto", "1 produto personalizado",
+                        "2 GB de armazenamento", "10 GB de armazenamento", "Até 20 MB por arquivo", "90 dias após o pedido")
+                .doesNotContain("20 GB de armazenamento", "50 produtos personalizados", "Templates por nicho", "??billing.");
+        assertThat(plans.split("Editor de campos, modelos reutilizáveis",-1)).hasSize(2);
+        if (Boolean.getBoolean("ncf.billing.export")) {
+            String html=plans.replaceAll("(?s)<script\\b[^>]*>.*?</script>", "");
+            for (String stylesheet : java.util.List.of("app.css","merchant.css","billing.css")) {
+                String css=new String(getClass().getResourceAsStream("/static/styles/"+stylesheet).readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+                html=html.replaceAll("<link[^>]+href=\"/styles/"+stylesheet.replace(".","\\.")+"[^\"]*\"[^>]*>", java.util.regex.Matcher.quoteReplacement("<style>"+css+"</style>"));
+            }
+            java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/ncf-plan-review.html"),html);
+        }
     }
 
     @Test void activeProCanReachUltraConfirmationAndSubmitReviewedPrice() throws Exception {

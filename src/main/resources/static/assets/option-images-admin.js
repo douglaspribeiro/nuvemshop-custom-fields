@@ -1,5 +1,7 @@
 (() => {
-    document.querySelectorAll(".image-options-form").forEach(form => {
+    function initialize(form) {
+        if(form.dataset.imageOptionsInitialized)return;
+        form.dataset.imageOptionsInitialized="true";
         const editor = form.querySelector(".image-options-editor");
         const hidden = editor.querySelector("[name=imageOptionsJson]");
         const rows = editor.querySelector(".image-options-rows");
@@ -17,6 +19,7 @@
             hidden.dispatchEvent(new Event("change", {bubbles:true}));
         }
         function lock() {
+            editor.dataset.uploadingCount=String(uploads);
             form.querySelectorAll("button[type=submit]").forEach(button => button.disabled = uploads > 0);
             add.disabled = uploads > 0 || options.length >= maxOptions || editor.dataset.enabled !== "true";
         }
@@ -43,7 +46,7 @@
                     uploads++; lock(); status.textContent=editor.dataset.uploading;
                     const body=new FormData();body.append("file",file.files[0]);
                     try {
-                        const response=await fetch(editor.dataset.uploadUrl,{method:"POST",body,credentials:"same-origin",headers:{Accept:"application/json"}});
+                        const response=await fetch(editor.dataset.uploadUrl,{method:"POST",body,credentials:"same-origin",headers:{Accept:"application/json",...(editor.dataset.action?{"X-NCF-Action":editor.dataset.action}:{})}});
                         const data=await response.json().catch(()=>{throw new Error(editor.dataset.failed);});
                         if(!response.ok || !data.id) {const failure=new Error(data.error || editor.dataset.failed);failure.localized=true;throw failure;}
                         // Replace only after a successful upload. Previous asset is retained until form save.
@@ -79,5 +82,7 @@
             } else sync();
         });
         render();visibility();
-    });
+    }
+    window.ncfInitOptionImages=initialize;
+    document.querySelectorAll('.image-options-form').forEach(initialize);
 })();

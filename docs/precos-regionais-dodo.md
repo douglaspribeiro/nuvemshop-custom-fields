@@ -32,7 +32,7 @@ credenciais, o provedor, a URL e o ambiente:
 | Webhook | /prod/webhooks/dodo-test | /prod/webhooks/dodo |
 
 Ambos ficam desabilitados por padrão. Teste permite restringir IDs em
-`DODO_TEST_ALLOWED_STORE_IDS`; vazio ou `0` autoriza todas as lojas fora do Brasil
+`HOMOLOG_ALLOWED_STORE_IDS`; `*` autoriza todas as lojas fora do Brasil
 com país/plano de teste habilitado. Live exige rota por país habilitada em
 **Pagamentos**, com gateway DODO e ambiente PRODUCTION. Habilitar o teste nunca
 ativa produção, e o catálogo público não consulta preços sandbox.

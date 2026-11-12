@@ -17,6 +17,8 @@ import java.util.List;
 
 @Service
 public class PersonalizationAdminService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private BuyerUploadLedger buyerUploads;
 
     @org.springframework.beans.factory.annotation.Autowired
     private StorefrontCache storefrontCache;
@@ -140,13 +142,20 @@ public class PersonalizationAdminService {
     @Transactional
     public int applyTemplate(Store store, Long productId, String productName, NicheTemplate template, PlanLimitService planLimitService) {
         images.lockStore(store.getStoreId());
+        store=stores.findActiveByStoreId(store.getStoreId()).orElseThrow(()->new StoreTemplateService.Invalid("template.not.found"));
+        if(!hasRule(store.getStoreId(),productId) && !planLimitService.canAddProduct(store))
+            throw new StoreTemplateService.Invalid("template.products.limit");
         PersonalizationRule rule = ensureRule(store.getStoreId(), productId, productName);
+        long limit=planLimitService.fieldLimit(store.getEffectivePlan());
+        if(limit!=-1 && fieldRepository.countByRuleId(rule.getId())+template.fields().size()>limit)
+            throw new StoreTemplateService.Invalid("template.fields.limit");
+        var names=new java.util.HashSet<String>();
+        for(var field:fieldRepository.findByRuleIdOrderBySortOrderAscIdAsc(rule.getId()))names.add(OrderPersonalization.propertyName(field.getLabel()).toLowerCase(java.util.Locale.ROOT));
+        for(var definition:template.fields())if(!names.add(OrderPersonalization.propertyName(definition.label()).toLowerCase(java.util.Locale.ROOT)))
+            throw new StoreTemplateService.Invalid("template.labels.duplicate");
         int created = 0;
-        int sortOrder = 0;
+        int sortOrder = fieldRepository.findByRuleIdOrderBySortOrderAscIdAsc(rule.getId()).stream().mapToInt(PersonalizationField::getSortOrder).max().orElse(-1)+1;
         for (var fieldTemplate : template.fields()) {
-            if (!planLimitService.canAddField(store, rule.getId())) {
-                break;
-            }
             PersonalizationField field = new PersonalizationField();
             var form = fieldTemplate.toForm(sortOrder++);
             validateImagePlan(store.getStoreId(), productId, form);
@@ -161,13 +170,17 @@ public class PersonalizationAdminService {
     }
 
     private void validateImagePlan(Long storeId, Long productId, FieldForm form) {
+        if (form.getFieldType() == FieldType.FILE_UPLOAD) {
+            if (!buyerUploads.usage(storeId).acceptsUploads()) throw new IllegalArgumentException("upload.unavailable");
+            BuyerUploadService.formats(form.getOptionsText());
+        }
         if (form.getFieldType() == FieldType.IMAGE_SELECT) {
             var store = stores.findActiveByStoreId(storeId).orElseThrow(() -> new IllegalArgumentException("image.options.invalid"));
             limits.requireImageConfiguration(store, productId, ImageOptions.parse(form.getImageOptionsJson()).size());
         }
     }
 
-    private void applyForm(PersonalizationField field, FieldForm form) {
+    void applyForm(PersonalizationField field, FieldForm form) {
         if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");
@@ -186,6 +199,11 @@ public class PersonalizationAdminService {
         field.setOptionsText(form.getOptionsText() == null || form.getOptionsText().isBlank()
                 ? null
                 : form.getOptionsText().strip());
+        if (form.getFieldType() == FieldType.FILE_UPLOAD) {
+            field.setOptionsText(String.join("\n", BuyerUploadService.formats(form.getOptionsText()).stream().sorted().toList()));
+            field.setMaxLength(100);
+            field.setValidationPattern(null);
+        }
         field.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
     }
 }

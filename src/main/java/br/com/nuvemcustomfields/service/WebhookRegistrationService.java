@@ -16,6 +16,9 @@ public class WebhookRegistrationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(WebhookRegistrationService.class);
 
     private static final Set<String> REQUIRED_EVENTS = Set.of(
+            "order/created",
+            "order/updated",
+            "order/paid",
             "app/uninstalled",
             "product/deleted",
             "app/suspended",

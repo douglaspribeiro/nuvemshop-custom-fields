@@ -31,6 +31,21 @@
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="card">
+        <h2>Armazenamento dos arquivos enviados pelos compradores</h2>
+        <p class="muted">Escolha onde salvar os novos uploads desta loja. Arquivos já enviados continuam no armazenamento original.</p>
+        <p>Padrão do sistema: <strong th:text="${buyerStorageDefault}">AWS_S3</strong> · Destino desta loja: <strong th:text="${buyerStorageEffective}">AWS_S3</strong></p>
+        <form th:action="@{/backoffice/stores/{storeId}/buyer-upload-storage(storeId=${store.storeId})}" method="post">
+            <label for="buyer-storage-provider">Destino dos novos uploads</label>
+            <select id="buyer-storage-provider" name="provider">
+                <option value="" th:selected="${store.buyerUploadStorageProvider == null}">Usar padrão do sistema</option>
+                <option value="AWS_S3" th:selected="${store.buyerUploadStorageProvider != null and store.buyerUploadStorageProvider.name() == 'AWS_S3'}">AWS S3</option>
+                <option value="OCI_OBJECT_STORAGE" th:selected="${store.buyerUploadStorageProvider != null and store.buyerUploadStorageProvider.name() == 'OCI_OBJECT_STORAGE'}">OCI Object Storage</option>
+            </select>
+            <button class="button" type="submit">Salvar armazenamento</button>
+        </form>
+    </section>
+
     <section class="panel" id="store-email">
         <h2>Enviar e-mail ao administrador da loja</h2>
         <p class="muted">Envie uma mensagem para o e-mail cadastrado da loja.</p>

@@ -50,9 +50,9 @@ class BackofficePlansTest {
     @Test void publicPricingDisplaysImageEntitlementsFromTheCatalog() throws Exception {
         mvc.perform(get("/precos/")).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Sem opções com imagem")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Até 3 opções de imagem por campo")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Até 8 opções de imagem por campo")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Até 25 opções de imagem por campo")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("até 3 por campo")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("até 8 por campo")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("até 25 por campo")));
     }
     private MockHttpSession admin() {
         var session = new MockHttpSession(); session.setAttribute(BackofficeSessionInterceptor.SESSION_KEY, true); return session;

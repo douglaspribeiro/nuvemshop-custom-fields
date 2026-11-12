@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import br.com.nuvemcustomfields.properties.HomologProperties;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.*;
@@ -29,6 +30,7 @@ public class StripeGateway implements PaymentGateway {
     public static final String WEBHOOK_API_VERSION = "2026-03-25.dahlia";
     private static final Set<String> WEBHOOK_API_VERSIONS = Set.of(API_VERSION, WEBHOOK_API_VERSION);
     private static final String BASE = "https://api.stripe.com/v1";
+    private final HomologProperties homolog;
     private final StripeProperties properties;
     private final PaymentCatalogPriceRepository catalog;
     private final RestClient client;
@@ -36,10 +38,11 @@ public class StripeGateway implements PaymentGateway {
 
     @org.springframework.beans.factory.annotation.Autowired
     public StripeGateway(StripeProperties properties, PaymentCatalogPriceRepository catalog,
-                         RestClient.Builder builder, ObjectMapper mapper) {
-        this(properties, catalog, timedClient(builder, properties), mapper);
+                         RestClient.Builder builder, ObjectMapper mapper, HomologProperties homolog) {
+        this(properties, catalog, timedClient(builder, properties), mapper, homolog);
     }
-    StripeGateway(StripeProperties properties, PaymentCatalogPriceRepository catalog, RestClient client, ObjectMapper mapper) {
+    StripeGateway(StripeProperties properties, PaymentCatalogPriceRepository catalog, RestClient client, ObjectMapper mapper, HomologProperties homolog) {
+        this.homolog = homolog;
         this.properties = properties; this.catalog = catalog; this.client = client; this.mapper = mapper;
     }
     private static RestClient timedClient(RestClient.Builder builder, StripeProperties p) {
@@ -58,7 +61,7 @@ public class StripeGateway implements PaymentGateway {
                 && price(store, PlanType.PREMIUM_PLUS).filter(p -> p.getCurrency().equals(price(store, PlanType.PREMIUM).orElseThrow().getCurrency())).isPresent();
     }
     private boolean allowed(Store store) {
-        return store != null && "AR".equalsIgnoreCase(store.getStoreCountryCode()) && properties.allows(store.getStoreId());
+        return store != null && "AR".equalsIgnoreCase(store.getStoreCountryCode()) && (!properties.sandbox() || homolog.allows(store.getStoreId()));
     }
     @Override public BigDecimal amount(PlanType plan) { throw new IllegalArgumentException("O preço Stripe depende do catálogo da Argentina."); }
     @Override public BigDecimal amount(Store store, PlanType plan) { return requirePrice(store, plan).getAmountValue(); }
@@ -121,7 +124,7 @@ public class StripeGateway implements PaymentGateway {
     }
     public JsonNode getCheckout(String checkoutId) { return get("/checkout/sessions/" + id(checkoutId, "cs_")); }
     @Override public GatewaySubscription getSubscription(String subscriptionId) {
-        JsonNode remote = get("/subscriptions/" + id(subscriptionId, "sub_"));
+        JsonNode remote = get("/subscriptions/" + id(subscriptionId, "sub_") + "?expand[]=customer");
         JsonNode items = remote.path("items").path("data");
         if (!items.isArray() || items.size() != 1 || items.get(0).path("quantity").asInt() != 1)
             throw new PaymentGatewayException("Assinatura Stripe deve conter um único plano com quantidade 1.");
@@ -135,7 +138,8 @@ public class StripeGateway implements PaymentGateway {
         if ("canceled".equals(text(remote, "status"))) cancellation = null;
         return new GatewaySubscription(required(remote, "id"), null, required(remote.path("metadata"), "external_reference"),
                 required(remote, "status"), required(price, "currency").toUpperCase(Locale.ROOT), money(price, "unit_amount"), end,
-                resourceId(remote.path("customer")), required(price, "id"), start, end, cancellation);
+                resourceId(remote.path("customer")), required(price, "id"), start, end, cancellation)
+                .withPayerPhone(text(remote.path("customer"), "phone"));
     }
     @Override public Optional<GatewayInvoice> getLatestInvoice(String subscriptionId) {
         JsonNode remote = get("/subscriptions/" + id(subscriptionId, "sub_"));

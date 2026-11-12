@@ -31,7 +31,7 @@ class CreemGatewayTest {
     CreemGateway gateway(boolean enabled) { return gateway(enabled, true, "42"); }
     CreemGateway gateway(boolean enabled, boolean sandbox, String allowedStoreIds) {
         return new CreemGateway(new CreemProperties(enabled, sandbox, "api-key", "secret", 3, 20), catalog,
-                builder.build(), mapper, new WinbackProperties(false, null, null, allowedStoreIds));
+                builder.build(), mapper, new br.com.nuvemcustomfields.properties.HomologProperties(allowedStoreIds));
     }
     String product() { return "{\"id\":\"prod_1\",\"mode\":\"test\",\"currency\":\"USD\",\"price\":999,\"billing_type\":\"recurring\",\"billing_period\":\"every-month\",\"status\":\"active\",\"tax_mode\":\"inclusive\",\"tax_category\":\"saas\"}"; }
     PaymentCatalogPrice price() {

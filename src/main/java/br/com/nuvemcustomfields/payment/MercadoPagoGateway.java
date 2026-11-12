@@ -134,8 +134,29 @@ public class MercadoPagoGateway implements PaymentGateway {
                 requiredText(response, "id"),
                 requiredText(response, "preapproval_id"),
                 text(payment, "id"),
-                text(payment, "status")
+                text(payment, "status"), null, null, paymentPhone(text(payment, "id"))
         );
+    }
+
+    private String paymentPhone(String paymentId) {
+        if (paymentId == null || !paymentId.matches("[0-9]+")) return null;
+        try {
+            JsonNode payment = get("/v1/payments/" + paymentId);
+            if (payment == null || !paymentId.equals(text(payment, "id"))) return null;
+            String phone = phone(payment.path("payer").path("phone"));
+            return phone != null ? phone : phone(payment.path("additional_info").path("payer").path("phone"));
+        } catch (PaymentGatewayException ex) {
+            // Contact enrichment is optional and must never prevent payment reconciliation.
+            return null;
+        }
+    }
+
+    private static String phone(JsonNode phone) {
+        String number = text(phone, "number");
+        if (number == null || number.isBlank()) return null;
+        if (number.strip().startsWith("+")) return number;
+        String area = text(phone, "area_code");
+        return (area == null ? "" : area) + number;
     }
 
     private void validateSignature(String signature, String requestId, String dataId) throws Exception {

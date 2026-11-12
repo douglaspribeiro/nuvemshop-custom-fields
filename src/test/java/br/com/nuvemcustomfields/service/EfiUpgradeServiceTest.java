@@ -93,6 +93,7 @@ class EfiUpgradeServiceTest {
     @Test void successfulAdjustmentKeepsSingleSubscriptionAndDoesNotChargeAgain(){
         createQuote(" brinde ");service.pay(storeId,quote.getId(),payer,token);service.pay(storeId,quote.getId(),payer,token);
         var sub=subscriptions.findByStoreId(storeId).orElseThrow();
+        assertThat(sub.getPayerPhone()).isEqualTo("+55" + payer.phone());
         assertThat(sub.getProviderSubscriptionId()).isEqualTo("991122");assertThat(sub.getPlan()).isEqualTo(PlanType.PREMIUM_ULTRA);
         assertThat(sub.getNextPaymentAt()).isEqualTo(end);assertThat(sub.isUpgradePaymentPending()).isFalse();
         assertThat(adjustments.findById(quote.getId()).orElseThrow().getState()).isEqualTo(UpgradeAdjustment.State.COMPLETED);

@@ -50,6 +50,8 @@ import java.math.BigDecimal;
 
 @Controller
 public class BackofficeController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private br.com.nuvemcustomfields.service.BuyerFileStorage buyerFileStorageRouter;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BackofficeController.class);
 
@@ -172,6 +174,8 @@ public class BackofficeController {
         model.addAttribute("store", storeRepository.findByStoreId(storeId).orElseThrow());
         model.addAttribute("storeEmailToken", BackofficeStoreEmailController.token(session));
         model.addAttribute("planTypes", PlanType.values());
+        model.addAttribute("buyerStorageDefault", buyerFileStorageRouter.provider());
+        model.addAttribute("buyerStorageEffective", buyerFileStorageRouter.forStore(storeId).provider());
         model.addAttribute("events", planEventRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("logs", integrationLogRepository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId));
         model.addAttribute("paymentSubscription", paymentSubscriptionRepository.findByStoreId(storeId).orElse(null));
@@ -326,7 +330,7 @@ public class BackofficeController {
         model.addAttribute("catalogPrices", paymentConfigurationService.catalog());
         model.addAttribute("routingHistory", paymentConfigurationService.history());
         model.addAttribute("providers", java.util.Arrays.stream(PaymentProviderType.values())
-                .filter(provider -> provider != PaymentProviderType.PADDLE).toArray(PaymentProviderType[]::new));
+                .filter(PaymentProviderType::isAvailable).toArray(PaymentProviderType[]::new));
         model.addAttribute("environments", PaymentEnvironment.values());
         model.addAttribute("paymentConfiguration", paymentConfigurationService);
         return "backoffice/payments";

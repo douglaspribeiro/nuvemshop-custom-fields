@@ -68,6 +68,22 @@
         <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.fields}">Campos configurados</span><strong th:text="${configuredFields}">0</strong><span class="stat-note" th:text="#{merchant.nav.products}">Produtos e campos</span></div>
         <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.plan}">Plano em uso</span><strong th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="${planName}">FREE</strong><a class="stat-note" th:href="@{/admin/billing}" th:text="#{merchant.nav.billing}">Planos e cobrança</a></div>
     </section>
+    <section class="panel merchant-news" th:if="${!#lists.isEmpty(merchantNews)}" data-merchant-news
+             th:attr="data-store-id=${store.storeId}" aria-labelledby="merchant-news-title">
+        <div class="merchant-news-heading">
+            <div><p class="eyebrow" th:text="#{merchant.news.eyebrow}">Para sua loja</p>
+                <h2 id="merchant-news-title" th:text="#{merchant.news.title}">Novidades do app</h2></div>
+            <button type="button" class="button" data-dismiss-news hidden th:text="#{merchant.news.dismiss}">Dispensar novidades</button>
+        </div>
+        <ul class="merchant-news-list">
+            <li th:each="item : ${merchantNews}" th:attr="data-news-id=${item.id}">
+                <h3 th:text="${#messages.msg(item.messageKey + '.title')}">Nova funcionalidade</h3>
+                <p th:text="${#messages.msg(item.messageKey + '.description')}">Veja como usar.</p>
+                <a th:href="@{${item.href}}" th:text="${#messages.msg(item.messageKey + '.action')}">Conhecer</a>
+            </li>
+        </ul>
+    </section>
+    <script th:if="${!#lists.isEmpty(merchantNews)}" th:src="@{/assets/merchant-news.js(v=${assetVersion})}" defer></script>
     <section class="panel merchant-upgrade">
         <div><span class="eyebrow" th:text="#{merchant.upgrade.eyebrow}">Seu plano</span>
             <h2 th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full} : #{merchant.upgrade.available}">Veja o que seu plano permite</h2>
@@ -123,8 +139,8 @@
             <button type="button" class="button" data-coming-soon-dismiss hidden th:text="#{merchant.comingsoon.dismiss}">Dispensar</button>
         </div>
         <ul class="merchant-coming-soon-list">
-            <li th:each="feature : ${ {'uploads', 'templates', 'bulk'} }">
-                <h3 th:text="#{'merchant.comingsoon.' + ${feature} + '.title'}">Arquivos do comprador</h3>
+            <li th:each="feature : ${ {'bulk'} }">
+                <h3 th:text="#{'merchant.comingsoon.' + ${feature} + '.title'}">Edição em massa</h3>
                 <p th:text="#{'merchant.comingsoon.' + ${feature} + '.description'}">Novidades para personalizar seus produtos.</p>
                 <a th:href="@{/admin/suggestions(interest=${feature})}" th:attr="aria-label=#{merchant.comingsoon.interest.label(#{'merchant.comingsoon.' + ${feature} + '.title'})}" th:text="#{merchant.comingsoon.interest}">Tenho interesse</a>
             </li>

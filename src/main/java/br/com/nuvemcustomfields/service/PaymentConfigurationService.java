@@ -23,8 +23,8 @@ public class PaymentConfigurationService {
         this.rules=rules; this.history=history; this.catalog=catalog; this.router=router;
     }
 
-    public List<PaymentRoutingRule> rules() { return rules.findAll().stream().filter(rule -> rule.getProvider() != PaymentProviderType.PADDLE).sorted((a,b)->a.getCountryCode().compareTo(b.getCountryCode())).toList(); }
-    public List<PaymentCatalogPrice> catalog() { return catalog.findAllByOrderByCountryCodeAscPlanAsc().stream().filter(price -> price.getProvider() != PaymentProviderType.PADDLE).toList(); }
+    public List<PaymentRoutingRule> rules() { return rules.findAll().stream().filter(rule -> rule.getProvider().isAvailable()).sorted((a,b)->a.getCountryCode().compareTo(b.getCountryCode())).toList(); }
+    public List<PaymentCatalogPrice> catalog() { return catalog.findAllByOrderByCountryCodeAscPlanAsc().stream().filter(price -> price.getProvider().isAvailable()).toList(); }
     public List<PaymentRoutingHistory> history() { return history.findTop50ByOrderByChangedAtDesc(); }
     public boolean configured(PaymentProviderType provider) { return router.configured(provider); }
     public PaymentEnvironment runningEnvironment(PaymentProviderType provider) { return router.environment(provider); }
@@ -33,10 +33,10 @@ public class PaymentConfigurationService {
     public void saveRoute(String country, PaymentProviderType provider, PaymentEnvironment environment,
                           boolean enabled, String operator) {
         String code=country(country);
-        if ((provider == PaymentProviderType.STRIPE || provider == PaymentProviderType.DLOCAL_GO) && !"AR".equals(code))
+        if (provider == PaymentProviderType.STRIPE && !"AR".equals(code))
             throw new IllegalArgumentException("Esta integração está disponível apenas para a Argentina.");
-        if (provider == PaymentProviderType.PADDLE)
-            throw new IllegalArgumentException("Paddle foi removido e não aceita novas assinaturas.");
+        if (!provider.isAvailable())
+            throw new IllegalArgumentException("O gateway foi removido e não aceita novas assinaturas.");
         if (provider == PaymentProviderType.DODO_TEST)
             throw new IllegalArgumentException("DODO_TEST é selecionado apenas para lojas autorizadas. Configure o produto na área Dodo de teste, sem alterar a rota do país.");
         if (enabled) validateMarket(code, provider, environment);
@@ -54,8 +54,8 @@ public class PaymentConfigurationService {
     public PriceSaveResult savePrice(Long id, String currency, BigDecimal amount, String providerPriceId,
                                      boolean enabled) {
         PaymentCatalogPrice price=catalog.findById(id).orElseThrow(() -> new IllegalArgumentException("Preço não encontrado."));
-        if (price.getProvider() == PaymentProviderType.PADDLE)
-            throw new IllegalArgumentException("Paddle foi removido e este preço histórico não pode ser alterado.");
+        if (!price.getProvider().isAvailable())
+            throw new IllegalArgumentException("O gateway foi removido e este preço histórico não pode ser alterado.");
         if (amount==null || amount.signum()<=0) throw new IllegalArgumentException("O valor deve ser positivo.");
         String normalizedCurrency=currency==null?"":currency.trim().toUpperCase(Locale.ROOT);
         if (!normalizedCurrency.matches("[A-Z]{3}")) throw new IllegalArgumentException("Moeda inválida.");
@@ -66,7 +66,7 @@ public class PaymentConfigurationService {
             return new PriceSaveResult(false, false, "Preço salvo, mas permanece desabilitado.");
         }
         try {
-            if (price.getProvider().isStripeOrCreem() || price.getProvider() == PaymentProviderType.DLOCAL_GO) router.require(price.getProvider()).validateCatalog(price);
+            if (price.getProvider().isStripeOrCreem()) router.require(price.getProvider()).validateCatalog(price);
             if (price.getProvider().isDodo()) router.require(price.getProvider()).validateCatalog(price);
             price.setValidationError(null); price.setValidatedAt(Instant.now()); catalog.save(price);
             return new PriceSaveResult(true, true, "Preço validado e habilitado.");
@@ -96,7 +96,7 @@ public class PaymentConfigurationService {
         for (PlanType plan : List.of(PlanType.PREMIUM,PlanType.PREMIUM_PLUS)) {
             PaymentCatalogPrice price=prices.stream().filter(p->p.getPlan()==plan && p.isEnabled() && p.isRecurring() && p.isValidated()).findFirst()
                     .orElseThrow(()->new IllegalArgumentException("Catálogo incompleto para "+plan.getDisplayName()+"."));
-            if (provider.isStripeOrCreem() || provider == PaymentProviderType.DLOCAL_GO) router.require(provider).validateCatalog(price);
+            if (provider.isStripeOrCreem()) router.require(provider).validateCatalog(price);
         }
     }
     private static String country(String value) {

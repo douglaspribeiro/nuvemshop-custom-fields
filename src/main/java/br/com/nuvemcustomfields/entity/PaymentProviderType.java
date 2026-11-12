@@ -10,6 +10,8 @@ public enum PaymentProviderType {
     STRIPE,
     DLOCAL_GO;
 
+    public boolean isAvailable() { return this != PADDLE && this != DLOCAL_GO; }
+
     public boolean isStripeOrCreem() { return this == STRIPE || this == CREEM; }
 
     public boolean isDodo() { return this == DODO || this == DODO_TEST; }

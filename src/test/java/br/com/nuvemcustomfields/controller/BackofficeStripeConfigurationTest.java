@@ -38,8 +38,10 @@ class BackofficeStripeConfigurationTest {
         catalog.findAll().stream().filter(p -> p.getProvider()==PaymentProviderType.STRIPE).forEach(catalog::delete);
         routes.deleteAll();
     }
-    @Test void pageOffersStripePriceIdsAndCanReplaceAnInvisibleHistoricalPaddleRoute() throws Exception {
-        var route = new PaymentRoutingRule(); route.setCountryCode("AR"); route.setProvider(PaymentProviderType.PADDLE);
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value=PaymentProviderType.class, names={"PADDLE", "DLOCAL_GO"})
+    void pageOffersStripePriceIdsAndCanReplaceAnInvisibleHistoricalRoute(PaymentProviderType historical) throws Exception {
+        var route = new PaymentRoutingRule(); route.setCountryCode("AR"); route.setProvider(historical);
         route.setEnvironment(PaymentEnvironment.SANDBOX); route.setUpdatedBy("test"); routes.saveAndFlush(route);
         var price = price(PlanType.PREMIUM);
         mvc.perform(get("/backoffice/payments").session(admin())).andExpect(status().isOk())
@@ -47,7 +49,7 @@ class BackofficeStripeConfigurationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("price_...")));
         var disabled = configuration.savePrice(price.getId(),"ARS",new BigDecimal("5599.00"),"price_1",false);
         assertThat(disabled.enabled()).isFalse(); verify(gateway,never()).validateCatalog(any());
-        assertThat(routes.findByCountryCodeIgnoreCase("AR").orElseThrow().getProvider()).isEqualTo(PaymentProviderType.PADDLE);
+        assertThat(routes.findByCountryCodeIgnoreCase("AR").orElseThrow().getProvider()).isEqualTo(historical);
     }
     @Test void validatesRemoteCatalogBeforeEnablingTheArgentinaRoute() {
         for (PlanType plan : java.util.List.of(PlanType.PREMIUM,PlanType.PREMIUM_PLUS)) {
@@ -77,6 +79,23 @@ class BackofficeStripeConfigurationTest {
         mvc.perform(post("/webhooks/stripe").contentType("application/json").content("{}" )).andExpect(status().isUnauthorized());
         mvc.perform(post("/prod/webhooks/stripe").contentType("application/json").content("{}" )).andExpect(status().isUnauthorized());
     }
+    @Test void removedDlocalCannotBeConfiguredAndItsRoutesAreGone() throws Exception {
+        assertThatThrownBy(() -> configuration.saveRoute("AR",PaymentProviderType.DLOCAL_GO,
+                PaymentEnvironment.SANDBOX,false,"test")).hasMessageContaining("removido");
+        var historical = price(PlanType.PREMIUM);
+        historical.setProvider(PaymentProviderType.DLOCAL_GO); catalog.saveAndFlush(historical);
+        assertThat(configuration.catalog()).noneMatch(p -> p.getProvider()==PaymentProviderType.DLOCAL_GO);
+        assertThatThrownBy(() -> configuration.savePrice(historical.getId(),"ARS",BigDecimal.TEN,"123",false))
+                .hasMessageContaining("histórico");
+        mvc.perform(get("/backoffice/payments").session(admin())).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("DLOCAL_GO"))));
+        mvc.perform(post("/webhooks/dlocal-go").contentType("application/json").content("{}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/prod/webhooks/dlocal-go").contentType("application/json").content("{}"))
+                .andExpect(status().isNotFound());
+        catalog.delete(historical);
+    }
+
     PaymentCatalogPrice price(PlanType plan) {
         var price = new PaymentCatalogPrice(); price.setProvider(PaymentProviderType.STRIPE); price.setEnvironment(PaymentEnvironment.SANDBOX);
         price.setCountryCode("AR"); price.setPlan(plan); price.setCurrency("ARS"); price.setAmountValue(new BigDecimal("5599.00"));

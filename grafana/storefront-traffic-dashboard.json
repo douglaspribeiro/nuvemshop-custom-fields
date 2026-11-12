@@ -1161,7 +1161,7 @@
     },
     {
       "id": 22,
-      "title": "E-mails · consumo horário da email-tracking-events",
+      "title": "E-mails · envios, entrega e problemas",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -1174,29 +1174,30 @@
     },
     {
       "id": 23,
-      "title": "SES · consumidor habilitado",
+      "title": "Ativação · aceitos pelo SMTP · últimos 14 dias",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
         "y": 77,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Ativado indica configuração, não comprova conectividade AWS. Consulte última leitura e falhas.",
+      "description": "Envios de ativação confirmados pelo transporte no intervalo selecionado. Não significa entrega na caixa postal. increase é estimativa; histórico antes da coleta não é reconstruído.",
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ncf_ses_events_consumer_enabled{job=\"app-custom-fields\"})",
+          "expr": "sum(increase(ncf_activation_email_sent_total{job=\"app-custom-fields\"}[14d]))",
           "instant": true,
-          "range": false
+          "range": false,
+          "legendFormat": "Aceitos pelo SMTP"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "decimals": 0,
-          "noValue": "Sem métricas",
+          "noValue": "Sem dados",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1206,21 +1207,8 @@
               }
             ]
           },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Desativado",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "Ativado · 1h",
-                  "color": "green"
-                }
-              }
-            }
-          ]
+          "mappings": [],
+          "min": 0
         },
         "overrides": []
       },
@@ -1234,34 +1222,43 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto"
-      }
+        "textMode": "value_and_name"
+      },
+      "timeFrom": "14d"
     },
     {
       "id": 24,
-      "title": "SES · última leitura SQS",
+      "title": "E-mails · aguardando processamento",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
-        "x": 4,
+        "x": 6,
         "y": 77,
-        "w": 5,
+        "w": 6,
         "h": 5
       },
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Instante da última chamada ReceiveMessage bem-sucedida, inclusive fila retornando vazia; zero significa nenhuma consulta bem-sucedida neste processo. Avaliar em conjunto com up/saúde da coleta.",
+      "description": "Duas filas distintas: mensagens de ativação persistidas e eventos de retorno do SES aguardando consumo. Eventos não equivalem à quantidade de e-mails. Snapshot desatualizado vira Sem dados.",
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ncf_ses_events_last_poll_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
+          "expr": "sum(max by (step, state) (ncf_activation_email_outbox{job=\"app-custom-fields\",state=~\"PENDING\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
           "instant": true,
-          "range": false
+          "range": false,
+          "legendFormat": "Ativação pendente"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(max by (state) (ncf_ses_events_queue_depth{job=\"app-custom-fields\",state=~\"visible|delayed\"} and on (job, instance) ((time() - ncf_ses_events_last_attributes_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "Eventos SES na fila"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dateTimeAsIso",
+          "unit": "short",
           "decimals": 0,
-          "noValue": "Sem métricas",
+          "noValue": "Sem dados",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1271,17 +1268,8 @@
               }
             ]
           },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Ainda não consultou",
-                  "color": "orange"
-                }
-              }
-            }
-          ]
+          "mappings": [],
+          "min": 0
         },
         "overrides": []
       },
@@ -1295,85 +1283,42 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto"
+        "textMode": "value_and_name"
       }
     },
     {
       "id": 25,
-      "title": "SES · mensagens consumidas no período",
+      "title": "E-mails · pendências atuais e falhas em 14 dias",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
-        "x": 9,
+        "x": 12,
         "y": 77,
-        "w": 5,
+        "w": 6,
         "h": 5
       },
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Conta DeleteMessage confirmado depois de ambos os processadores terminarem. Não significa e-mail entregue ou aberto. Inclui eventos ignorados por não pertencerem às campanhas e reentregas. increase é estimativa e requer amostras; não há retroativo.",
+      "description": "Ativação a revisar: quantidade atual de mensagens FAILED/REVIEW, sem corte por data enquanto não forem resolvidas. Falhas no consumo SES: ocorrências nos últimos 14 dias, não e-mails únicos.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(ncf_ses_events_messages_total{job=\"app-custom-fields\",result=\"acknowledged\"}[$__range]))",
+          "expr": "sum(max by (step, state) (ncf_activation_email_outbox{job=\"app-custom-fields\",state=~\"REVIEW|FAILED\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
           "instant": true,
-          "range": false
+          "range": false,
+          "legendFormat": "Ativação a revisar"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(ncf_ses_events_failures_total{job=\"app-custom-fields\"}[14d]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "Falhas no consumo SES"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "decimals": 0,
-          "noValue": "Sem métricas",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 26,
-      "title": "SES · falhas no período",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 14,
-        "y": 77,
-        "w": 5,
-        "h": 5
-      },
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Soma falhas ao receber, processar, confirmar remoção e consultar atributos. Falha de atributos não interrompe o consumo. Veja a divisão por etapa abaixo.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(increase(ncf_ses_events_failures_total{job=\"app-custom-fields\"}[$__range]))",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "Sem métricas",
+          "noValue": "Sem dados",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1387,7 +1332,8 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "min": 0
         },
         "overrides": []
       },
@@ -1401,818 +1347,36 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto"
-      }
+        "textMode": "value_and_name"
+      },
+      "timeFrom": "14d"
     },
     {
-      "id": 27,
-      "title": "SES · última remoção confirmada",
+      "id": 26,
+      "title": "E-mails · operação atual",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
-        "x": 19,
+        "x": 18,
         "y": 77,
-        "w": 5,
+        "w": 6,
         "h": 5
       },
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Último DeleteMessage bem-sucedido neste processo. Fila sem mensagens pode ter consultas saudáveis e nenhuma remoção. Confirma remoção da fila, não entrega de e-mail.",
+      "description": "Envio liberado combina controles locais; não comprova conectividade SMTP. Consumidor saudável exige habilitação e leitura SQS recente. Sem dados não é Não. Detalhes técnicos permanecem no backoffice/logs e nas métricas, sem cartões repetidos.",
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ncf_ses_events_last_ack_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "dateTimeAsIso",
-          "decimals": 0,
-          "noValue": "Sem métricas",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Nenhuma neste processo",
-                  "color": "orange"
-                }
-              }
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 82,
-        "w": 12,
-        "h": 8
-      },
-      "id": 28,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (state) (ncf_ses_events_queue_depth{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_ses_events_last_attributes_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
-          "legendFormat": "{{state}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "SES · mensagens na fila (aproximadas)",
-      "type": "timeseries",
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Consulta GetQueueAttributes uma vez por hora. visible: disponíveis; in_flight: recebidas ainda não removidas; delayed: com atraso de disponibilização. Valores SQS são aproximados. Usa máximo entre réplicas para não somar o mesmo backlog. Falhas deixam valores desconhecidos (NaN), não zero. Amostras com mais de 65 minutos são ocultadas. Exige sqs:GetQueueAttributes."
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 82,
-        "w": 12,
-        "h": 8
-      },
-      "id": 29,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (result) (rate(ncf_ses_events_messages_total{job=\"app-custom-fields\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{result}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "SES · recebidas, tratadas e consumidas / minuto",
-      "type": "timeseries",
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. O volume aparece em picos horários. received: retornadas pelo SQS; processed: ambos os processadores terminaram sem exceção; acknowledged: DeleteMessage confirmado. São execuções, não eventos de negócio únicos nem e-mails enviados. Erro de ACK pode causar reentrega mesmo com processamento concluído."
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 90,
-        "w": 12,
-        "h": 8
-      },
-      "id": 30,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (stage) (rate(ncf_ses_events_failures_total{job=\"app-custom-fields\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{stage}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "SES · falhas por etapa / minuto",
-      "type": "timeseries",
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. receive: obter cliente/ReceiveMessage; process: interpretar ou persistir evento; acknowledge: DeleteMessage; attributes: GetQueueAttributes. Mensagens com falha de processamento ou remoção permanecem para nova tentativa; replays são idempotentes nas campanhas."
-    },
-    {
-      "id": 31,
-      "title": "SES · última consulta da quantidade na fila",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 12,
-        "y": 90,
-        "w": 12,
-        "h": 4
-      },
-      "description": "Consumidor compartilhado de eventos SES (winback e NC-39), fila configurada em AWS_SES_EVENTS_QUEUE_URL. Rotina horária; a primeira execução ocorre uma hora após iniciar a versão instrumentada. Sem métricas indica versão ainda não publicada ou coleta indisponível, nunca fila vazia. Última amostra completa de GetQueueAttributes. Separada da leitura das mensagens, também horária. Se falhar, não mostra backlog antigo como se fosse atual; consulte falhas attributes e permissões AWS.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max(ncf_ses_events_last_attributes_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "dateTimeAsIso",
-          "decimals": 0,
-          "noValue": "Sem métricas",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Ainda sem amostra",
-                  "color": "orange"
-                }
-              }
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 32,
-      "type": "row",
-      "title": "Ativação · elegibilidade e envios D3 / D7 / D11",
-      "collapsed": false,
-      "gridPos": {
-        "x": 0,
-        "y": 98,
-        "w": 24,
-        "h": 1
-      },
-      "panels": []
-    },
-    {
-      "id": 33,
-      "title": "Ativação · lojas elegíveis agora",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 0,
-        "y": 99,
-        "w": 4,
-        "h": 5
-      },
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Lojas distintas aptas a pelo menos uma etapa. Independe das flags globais da campanha; elegível não significa envio liberado.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max(ncf_activation_email_stores{job=\"app-custom-fields\",status=\"eligible\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "Sem dados",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 34,
-      "title": "Ativação · liberadas para envio real",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 4,
-        "y": 99,
-        "w": 5,
-        "h": 5
-      },
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Candidatas com rotina habilitada, simulação desligada, proteções liberadas, feedback SES e SMTP configurados. É uma estimativa: o worker revalida antes de enviar e o provedor pode rejeitar. Não é quantidade de e-mails já enviados.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(max by (step) (ncf_activation_email_ready{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "Sem dados",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 35,
-      "title": "Ativação · mensagens pendentes",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 9,
-        "y": 99,
-        "w": 5,
-        "h": 5
-      },
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Registros PENDING persistidos. Pode incluir etapas aguardando tentativa ou supressão no próximo ciclo. Não corresponde automaticamente ao público elegível.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(max by (step, state) (ncf_activation_email_outbox{job=\"app-custom-fields\",state=\"PENDING\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "Sem dados",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 36,
-      "title": "Ativação · entregas a revisar",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 14,
-        "y": 99,
-        "w": 5,
-        "h": 5
-      },
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. CLAIMED: entrega reservada; REVIEW: resultado incerto; FAILED: tentativas de validação esgotadas. Não reenvie cegamente mensagens com resultado incerto.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(max by (step, state) (ncf_activation_email_outbox{job=\"app-custom-fields\",state=~\"CLAIMED|REVIEW|FAILED\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "Sem dados",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 37,
-      "title": "Ativação · última avaliação",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 19,
-        "y": 99,
-        "w": 5,
-        "h": 5
-      },
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Horário da última avaliação bem-sucedida. Ausência não significa zero. As demais contagens ficam ocultas após 65 minutos sem atualização; o timestamp permanece para diagnóstico.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max(ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) * 1000",
-          "instant": true,
-          "range": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "dateTimeAsIso",
-          "decimals": 0,
-          "noValue": "Sem dados",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 104,
-        "w": 12,
-        "h": 8
-      },
-      "id": 38,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (step) (ncf_activation_email_eligible{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
-          "legendFormat": "{{step}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "Ativação · elegíveis por etapa",
-      "type": "timeseries",
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Quantidade de lojas por etapa em cada snapshot. O mesmo perfil pode aparecer em etapas diferentes ao longo do tempo. D11 não expira no D12."
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 104,
-        "w": 12,
-        "h": 8
-      },
-      "id": 39,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (status) (ncf_activation_email_stores{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
-          "legendFormat": "{{status}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "Ativação · lojas por situação",
-      "type": "timeseries",
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Cada loja ativa entra em uma situação: eligible, review, handled, waiting ou blocked. Contagens são snapshots, não eventos acumulados. Sem dados não significa zero."
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 112,
-        "w": 24,
-        "h": 8
-      },
-      "id": 40,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (step) (increase(ncf_activation_email_sent_total{job=\"app-custom-fields\"}[1h]))",
-          "legendFormat": "{{step}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "Ativação · envios confirmados na última hora",
-      "type": "timeseries",
-      "description": "Gráfico de linha dos e-mails de ativação aceitos pelo transporte, separados em D3/D7/D11. Cada ponto estima quantos envios ocorreram na hora móvel anterior. Não representa entrega na caixa postal nem leitura. Simulados e resultados SMTP incertos ficam excluídos. Contadores começam em zero na inicialização, não recuperam envios anteriores à versão instrumentada e exigem amostras para increase. Reinícios são tratados por increase; lacunas e envios anteriores à primeira coleta não são reconstruídos."
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 120,
-        "w": 12,
-        "h": 8
-      },
-      "id": 41,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (reason) (ncf_activation_email_blocked{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
-          "legendFormat": "{{reason}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "Ativação · bloqueios de público por motivo",
-      "type": "timeseries",
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Lojas distintas cuja situação final é blocked, uma causa por loja; prioriza a causa D11. first_activation: ainda há produto configurado; stage_expired/outside_cohort/not_allowlisted: D3/D7; invalid_recipient: endereço inválido; already_contacted: D11 anterior; unsubscribe/ses_*: proteção de contato."
-    },
-    {
-      "datasource": "${DS_PROMETHEUS}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short",
-          "min": 0,
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 120,
-        "w": 12,
-        "h": 8
-      },
-      "id": 42,
-      "maxDataPoints": 100,
-      "interval": "1m",
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (state) (max by (step, state) (ncf_activation_email_outbox{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900)))",
-          "legendFormat": "{{state}}",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ],
-      "title": "Ativação · fila persistida por estado",
-      "type": "timeseries",
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Quantidade atual de mensagens persistidas, incluindo instalações inativas e histórico. SENT indica retorno confirmado do transporte; SIMULATED não envia e-mail. Exclui marcadores ACTIVATED. Totais podem diminuir por exclusão LGPD; são gauges, não contadores de envio."
-    },
-    {
-      "id": 43,
-      "title": "Ativação · controles de envio",
-      "type": "stat",
-      "datasource": "${DS_PROMETHEUS}",
-      "gridPos": {
-        "x": 0,
-        "y": 128,
-        "w": 24,
-        "h": 6
-      },
-      "description": "Snapshot de elegibilidade somente leitura, na inicialização e a cada hora; não cria fila e não envia e-mail. Usa as regras do processamento e o endereço válido cadastrado. D11 inclui lojas ativas com pelo menos 11 dias e sem campos configurados atualmente, inclusive instalações antigas; D3/D7 preservam data de corte, lista e janela de 24h. Descadastros, bounces/reclamações e contatos D11 já tratados impedem reenvio. Sim = controle ativo/válido. dry_run=Sim significa simulação e bloqueia envio real. Data de corte e lista são somente D3/D7; D11 alcança qualquer instalação elegível. live_enabled combina os controles globais e configuração local, sem comprovar conectividade ou autorização no provedor.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (control) (ncf_activation_email_control{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
+          "expr": "max(ncf_activation_email_control{job=\"app-custom-fields\",control=\"live_enabled\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
           "instant": true,
           "range": false,
-          "legendFormat": "{{control}}"
+          "legendFormat": "Envio real liberado"
+        },
+        {
+          "refId": "B",
+          "expr": "max(ncf_ses_events_consumer_enabled{job=\"app-custom-fields\"} * on(job,instance) ((time() - ncf_ses_events_last_poll_timestamp_seconds{job=\"app-custom-fields\"}) < bool 3900))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "Consumidor SES lendo"
         }
       ],
       "fieldConfig": {
@@ -2241,102 +1405,189 @@
                 }
               }
             }
-          ]
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 27,
+      "title": "Ativação · últimos 14 dias · hoje parcial",
+      "type": "barchart",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 82,
+        "w": 16,
+        "h": 8
+      },
+      "description": "Dias de calendário America/Sao_Paulo: hoje e 13 dias anteriores. Histórico de sent_at persistido, não janela móvel. Hoje é parcial. Dias anteriores ao primeiro envio conhecido ficam ausentes, não zero. O gráfico reflete o histórico retido no banco; exclusão de dados não é reconstruída. Independe do intervalo global do dashboard.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (date, partial) (ncf_activation_email_daily_sent{job=\"app-custom-fields\"} and on(job,instance) ((time() - ncf_activation_email_daily_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 180))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "date",
+        "showValue": "auto",
+        "stacking": "none",
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "barWidth": 0.8,
+        "groupWidth": 0.8
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "partial": true
+            },
+            "renameByName": {
+              "Value": "Envios aceitos pelo SMTP"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "date",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Ativação · retorno de entrega · envios dos últimos 14 dias",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 16,
+        "y": 82,
+        "w": 8,
+        "h": 8
+      },
+      "description": "Retorno SES de e-mails de ativação com sent_at nos últimos 14 dias: delivered=entregue, bounced=devolvido, complaint=reclamação, awaiting=sem retorno conclusivo. Estado atualizado a cada snapshot; não mede leitura. Requer a versão do aplicativo com filtro de 14 dias.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (outcome) (ncf_activation_email_delivery_last14d{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_activation_email_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 3900))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "enabled"
+              "options": "delivered"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Rotina habilitada"
+                "value": "Entregues (SES)"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "dry_run"
+              "options": "bounced"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Simulação"
+                "value": "Devolvidos"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "suppression_ready"
+              "options": "complaint"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Proteções liberadas"
+                "value": "Reclamações"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "cohort_valid"
+              "options": "awaiting"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "D3/D7 · corte válido"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "allowlist_nonempty"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "D3/D7 · lista preenchida"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "feedback_configured"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Eventos SES configurados"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "smtp_configured"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "SMTP configurado"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "live_enabled"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Envio real liberado"
+                "value": "Sem confirmação de entrega"
               }
             ]
           }
@@ -2354,6 +1605,393 @@
         "graphMode": "none",
         "textMode": "value_and_name"
       }
+    },
+    {
+      "id": 44,
+      "title": "Uploads · volume, tráfego e armazenamento AWS / OCI",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 90,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 45,
+      "title": "Uploads no período",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 91,
+        "w": 6,
+        "h": 5
+      },
+      "description": "Envios aceitos ou falhos depois da reserva/validação no serviço. Requisições rejeitadas antes de iniciar esse fluxo não são uploads completos. Contadores locais somados por provedor; increase pode extrapolar e não recupera tráfego anterior à coleta.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(provider,outcome) (increase(ncf_buyer_transfers_total{job=\"app-custom-fields\",direction=\"upload\",outcome=~\"success|failed\"}[$__range]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{provider}} · {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 46,
+      "title": "Tráfego de arquivos no período",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 6,
+        "y": 91,
+        "w": 6,
+        "h": 5
+      },
+      "description": "Upload: bytes de objetos gravados com sucesso. Download: bytes lidos do armazenamento pelo aplicativo, incluindo respostas parciais. Não é tráfego faturado pelo provedor, CDN, overhead HTTP, uploads remotos incertos ou comprovação de entrega ao cliente. Não é a franquia comercial mensal.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(provider,direction) (increase(ncf_buyer_transfer_bytes_total{job=\"app-custom-fields\"}[$__range]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{provider}} · {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 47,
+      "title": "Espaço ocupado agora",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 12,
+        "y": 91,
+        "w": 6,
+        "h": 5
+      },
+      "description": "Ledger do banco: reservas, temporários, carrinho, pedidos e exclusão pendente. Não é inventário do bucket nem soma entre réplicas; max evita duplicar a mesma base. Snapshot de 60s, descartado após 180s.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(provider) (ncf_buyer_storage_bytes{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_buyer_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 180))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 48,
+      "title": "Arquivos com exclusão pendente",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 18,
+        "y": 91,
+        "w": 6,
+        "h": 5
+      },
+      "description": "Arquivos ainda ocupam espaço até confirmação do provedor. Valor crescente pede investigar IAM, retenção, versionamento e logs.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(provider) (ncf_buyer_files{job=\"app-custom-fields\",state=\"DELETING\"} and on (job, instance) ((time() - ncf_buyer_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 180))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "Bps",
+          "min": 0,
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 96,
+        "w": 16,
+        "h": 8
+      },
+      "id": 49,
+      "maxDataPoints": 100,
+      "interval": "1m",
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(provider,direction) (rate(ncf_buyer_transfer_bytes_total{job=\"app-custom-fields\"}[$__rate_interval]))",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{provider}} · {{direction}}"
+        }
+      ],
+      "title": "Tráfego de arquivos · bytes por segundo",
+      "type": "timeseries",
+      "description": "Taxa de payload observado no aplicativo por destino e direção. Não é medição da fatura AWS/OCI. Sem preenchimento retroativo ou zeros artificiais quando não houver coleta."
+    },
+    {
+      "id": 50,
+      "title": "Downloads no período",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 16,
+        "y": 96,
+        "w": 8,
+        "h": 8
+      },
+      "description": "success=leitura encerrada com o tamanho esperado; incomplete=encerrada antes do total; failed=falha ao abrir/ler/fechar o stream. Contagem de tentativas, não arquivos ou compradores únicos. Não comprova que o navegador recebeu todos os bytes.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(provider,outcome) (increase(ncf_buyer_transfers_total{job=\"app-custom-fields\",direction=\"download\"}[$__range]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{provider}} · {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 51,
+      "title": "Arquivos atuais por provedor e etapa",
+      "type": "table",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 104,
+        "w": 24,
+        "h": 7
+      },
+      "description": "Inventário ativo do ledger, com quantidade por provedor e estado. ORDERED=associado ao pedido, CART=no carrinho, TEMPORARY=envio temporário, RESERVED=reservado e DELETING=aguardando exclusão. Sem nomes de arquivos, IDs de lojas ou URLs nas métricas.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(provider,state) (ncf_buyer_files{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_buyer_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 180))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "provider": "Armazenamento",
+              "state": "Etapa",
+              "Value": "Arquivos"
+            }
+          }
+        }
+      ]
     }
   ],
   "refresh": "30s",
@@ -2367,13 +2005,13 @@
     "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-14d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "America/Sao_Paulo",
   "title": "Nuvemshop · Tráfego de Vitrine",
   "uid": "ncf-storefront-traffic",
-  "version": 6,
+  "version": 8,
   "weekStart": ""
 }

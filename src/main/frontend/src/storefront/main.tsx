@@ -12,6 +12,8 @@ import { normalizedColor } from "../shared/properties";
 import { messages } from "../shared/i18n";
 import { createCartImageRenderer } from "./cart-images";
 import { PersonalizationFields, SDK_MARKER_ID } from "./PersonalizationFields";
+import { buyerUploadField, resetBuyerUploadFields } from "./BuyerUploadField";
+import { createBuyerUploads } from "./buyer-uploads";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
 import { installQuickBuy } from "./quick-buy";
 import { createCartAdder } from "./cart-add";
@@ -39,6 +41,7 @@ let values: ValueMap = {};
 let errors: FieldError[] = [];
 let textColor: string | undefined;
 
+let verifyingUploads = false;
 let cartAdder: ReturnType<typeof createCartAdder>;
 let reportedNativeGate = false;
 let draftGeneration = 0;
@@ -105,6 +108,9 @@ export function App(nube: NubeSDK) {
             render(nube);
             return;
         }
+        if(store && productId && config.fields.some(field => field.fieldType === "FILE_UPLOAD")) resetBuyerUploadFields(nube,store,productId);
+        if(store && productId) for(const field of config.fields.filter(f => f.fieldType === "FILE_UPLOAD"))
+            void createBuyerUploads(store,productId,nube.getBrowserAPIs().asyncSessionStorage).forget(field);
         directMessage = config.locale.startsWith("es") ? "Revisá la personalización en el carrito." : "Confira a personalização no carrinho.";
         void renderCartImages(state);
 		values = {};
@@ -187,6 +193,10 @@ function render(nube: NubeSDK) {
 			color={textColor}
             values={values}
             locale={config.locale}
+            upload={field => buyerUploadField(nube,store!,productId!,field,String(values[field.propertyName || field.label] || ""),value => {
+                if(productId!==renderProduct || draftGeneration!==renderGeneration) return;
+                values[field.propertyName || field.label]=value; errors=errors.filter(e => e.propertyName !== (field.propertyName || field.label));
+            }, () => render(nube))}
 			onValueChange={(key, value, refresh = true) => {
                 if (productId !== renderProduct || draftGeneration !== renderGeneration) return;
 				values[key] = value;
@@ -292,6 +302,24 @@ function gate(nube: NubeSDK, state: NubeSDKState | null, direct = false) {
 	}
 
 	const properties = toCartProperties(config.fields, values);
+    if(config.fields.some(field => field.fieldType === "FILE_UPLOAD" && values[field.propertyName || field.label])) {
+        respond(nube,requestId,false,"validating_uploads");
+        if(verifyingUploads)return;
+        verifyingUploads=true;
+        const checkedProduct=productId;
+        const checkedGeneration=draftGeneration;
+        const checkedValues=JSON.stringify(values);
+        const client=createBuyerUploads(store!,productId!,nube.getBrowserAPIs().asyncSessionStorage);
+        void Promise.all(config.fields.filter(field=>field.fieldType === "FILE_UPLOAD")
+            .map(field=>client.ensure(String(values[field.propertyName || field.label] || ""))))
+            .then(()=>{if(productId===checkedProduct && draftGeneration===checkedGeneration && JSON.stringify(values)===checkedValues)reissue(nube,payload,properties);})
+            .catch(error=>{
+                if(productId!==checkedProduct || draftGeneration!==checkedGeneration)return;
+                errors=config.fields.filter(field=>field.fieldType === "FILE_UPLOAD").map(field=>({propertyName:field.propertyName || field.label,label:field.label,
+                    message:error instanceof Error?error.message:"Reenvie o arquivo para continuar."}));render(nube);
+            }).finally(()=>{verifyingUploads=false;});
+        return;
+    }
 
 	if (!direct && !hasAnyValue(properties)) {
 		respond(nube, requestId, true);

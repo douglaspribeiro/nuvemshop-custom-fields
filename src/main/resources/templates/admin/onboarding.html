@@ -20,6 +20,7 @@
         <a class="button" th:href="@{/admin/products}" th:text="#{merchant.nav.products}">Produtos e campos</a>
     </section>
 
+    <p><a class="button" href="/admin/templates" th:text="#{template.library}"></a></p>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
@@ -85,7 +86,7 @@
                                 th:attr="data-name=${product.name}">Produto</option>
                     </select>
                 </label>
-                <button class="button primary" type="submit" th:text="#{admin.onboarding.apply}">Aplicar template</button>
+                <button class="button primary" type="submit" th:text="#{template.apply}">Revisar e aplicar</button>
             </form>
         </article>
     </section>

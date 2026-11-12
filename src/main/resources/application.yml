@@ -20,8 +20,8 @@ spring:
       cleanup-cron: ${SPRING_SESSION_JDBC_CLEANUP_CRON:0 * * * * *}
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 20000000B
+      max-request-size: 21000000B
   messages:
     basename: messages
     encoding: UTF-8
@@ -131,19 +131,12 @@ backoffice:
   password: ${BACKOFFICE_PASSWORD:admin}
 
 payments:
-  dlocal-go:
-    enabled: ${DLOCAL_GO_ENABLED:false}
-    sandbox: ${DLOCAL_GO_SANDBOX:true}
-    api-key: ${DLOCAL_GO_API_KEY:}
-    secret-key: ${DLOCAL_GO_SECRET_KEY:}
-    allowed-store-ids: ${DLOCAL_GO_ALLOWED_STORE_IDS:}
-    timeout-seconds: ${DLOCAL_GO_TIMEOUT_SECONDS:20}
   stripe:
     enabled: ${STRIPE_ENABLED:false}
     sandbox: ${STRIPE_SANDBOX:true}
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-    allowed-store-ids: ${STRIPE_ALLOWED_STORE_IDS:}
+
     grace-days: ${STRIPE_GRACE_DAYS:0}
     timeout-seconds: ${STRIPE_TIMEOUT_SECONDS:20}
   upgrade:
@@ -179,7 +172,7 @@ payments:
     enabled: ${DODO_TEST_ENABLED:false}
     api-key: ${DODO_TEST_API_KEY:}
     webhook-key: ${DODO_TEST_WEBHOOK_KEY:}
-    allowed-store-ids: ${DODO_TEST_ALLOWED_STORE_IDS:}
+
     timeout-seconds: ${DODO_TEST_TIMEOUT_SECONDS:20}
   creem:
     enabled: ${CREEM_ENABLED:false}
@@ -215,8 +208,6 @@ winback:
   mail-enabled: ${WINBACK_MAIL_ENABLED:false}
   queue-url: ${WINBACK_SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao}
   region: ${WINBACK_AWS_REGION:us-east-2}
-  # Durante os testes, somente estas lojas entram na reconquista. Use 0 para todas.
-  allowed-store-ids: ${WINBACK_ALLOWED_STORE_IDS:8289259,8126986,7800303,7799255,5538394}
   publish-delay-ms: 30000
 
 logging:
@@ -249,6 +240,23 @@ pricing:
   fx-estimates:
     enabled: ${FX_ESTIMATES_ENABLED:true}
 
+# Private artwork storage for Pro/Ultra buyer uploads.
+buyer-uploads:
+  provider: ${BUYER_UPLOAD_PROVIDER:AWS_S3}
+  oci:
+    bucket: ${BUYER_UPLOAD_OCI_BUCKET:}
+    namespace: ${BUYER_UPLOAD_OCI_NAMESPACE:}
+    region: ${BUYER_UPLOAD_OCI_REGION:sa-saopaulo-1}
+    prefix: ${BUYER_UPLOAD_OCI_PREFIX:production/buyer-files}
+    auth: ${BUYER_UPLOAD_OCI_AUTH:CONFIG_FILE}
+    config-file: ${BUYER_UPLOAD_OCI_CONFIG_FILE:~/.oci/config}
+    profile: ${BUYER_UPLOAD_OCI_PROFILE:DEFAULT}
+  s3:
+    bucket: ${BUYER_UPLOAD_S3_BUCKET:}
+    region: ${BUYER_UPLOAD_S3_REGION:us-east-2}
+    prefix: ${BUYER_UPLOAD_S3_PREFIX:production/buyer-files}
+  cleanup-delay-ms: ${BUYER_UPLOAD_CLEANUP_DELAY_MS:60000}
+  reconcile-delay-ms: ${BUYER_UPLOAD_RECONCILE_DELAY_MS:300000}
 # NC-39: deployment never enables a campaign implicitly.
 activation:
   email:
@@ -259,3 +267,6 @@ activation:
     suppression-ready: ${ACTIVATION_EMAIL_SUPPRESSION_READY:false}
     schedule-delay-ms: ${ACTIVATION_EMAIL_SCHEDULE_DELAY_MS:3600000}
     metrics-delay-ms: ${ACTIVATION_EMAIL_METRICS_DELAY_MS:3600000}
+
+homolog:
+  allowed-store-ids: ${HOMOLOG_ALLOWED_STORE_IDS:0}

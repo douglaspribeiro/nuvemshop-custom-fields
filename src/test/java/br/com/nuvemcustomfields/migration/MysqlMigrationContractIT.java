@@ -84,6 +84,43 @@ class MysqlMigrationContractIT {
         });
     }
 
+    @Test void upgradesV72ToPlanAccessWithoutChangingBuyerFilesOrSessions() {
+        isolatedDatabase(source -> {
+            var jdbc=new JdbcTemplate(source);
+            flyway(source,"72").migrate();
+            jdbc.update("INSERT INTO stores(store_id,access_token,plan) VALUES(900003,'test-only','PREMIUM_ULTRA')");
+            jdbc.update("INSERT INTO buyer_upload_entitlements(store_id,offer_code,quota_bytes,enabled,created_at) VALUES(900003,'BUYER_UPLOAD_V1',25000000000,true,NOW())");
+            jdbc.update("INSERT INTO buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,order_id,order_item_id,created_at,expires_at,bucket,object_key) VALUES('file-test',900003,123,456,'session-test','request-test',100,'ORDERED',789,987,NOW(),DATE_ADD(NOW(),INTERVAL 90 DAY),'private-test','test/art.png')");
+            jdbc.update("INSERT INTO buyer_upload_sessions(session_hash,store_id,created_at,expires_at) VALUES('session-test',900003,NOW(),DATE_ADD(NOW(),INTERVAL 1 DAY))");
+            var files=jdbc.queryForList("SELECT * FROM buyer_uploads");
+            var sessions=jdbc.queryForList("SELECT * FROM buyer_upload_sessions");
+            assertThat(flyway(source,"73").migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForList("SELECT * FROM buyer_uploads")).isEqualTo(files);
+            assertThat(jdbc.queryForList("SELECT * FROM buyer_upload_sessions")).isEqualTo(sessions);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='buyer_upload_entitlements'",Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='payment_subscriptions' AND column_name='buyer_upload_offer'",Integer.class)).isZero();
+        });
+    }
+
+    @Test void upgradesProductionV70AndKeepsBothManualOverrideAndHistoricalUploadLocation() {
+        isolatedDatabase(source -> {
+            var jdbc=new JdbcTemplate(source);
+            var production=flyway(source,"70");production.migrate();
+            jdbc.update("INSERT INTO stores(store_id,access_token,plan,manual_plan_override) VALUES(900004,'test-only','PREMIUM_PLUS',true)");
+            assertThat(flyway(source,"74").migrate().migrationsExecuted).isEqualTo(4);
+            jdbc.update("INSERT INTO buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,created_at,expires_at,bucket,object_key) VALUES('legacy-aws',900004,123,456,'session','request',100,'TEMPORARY',NOW(),DATE_ADD(NOW(),INTERVAL 1 DAY),'original-bucket','original/key')");
+            var latest=flyway(source,null);
+            assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(latest.validateWithResult().validationSuccessful).isTrue();
+            assertThat(jdbc.queryForObject("SELECT manual_plan_override FROM stores WHERE store_id=900004",Boolean.class)).isTrue();
+            assertThat(jdbc.queryForObject("SELECT buyer_upload_storage_provider FROM stores WHERE store_id=900004",String.class)).isNull();
+            assertThat(jdbc.queryForObject("SELECT storage_provider FROM buyer_uploads WHERE id='legacy-aws'",String.class)).isEqualTo("AWS_S3");
+            assertThat(jdbc.queryForObject("SELECT bucket FROM buyer_uploads WHERE id='legacy-aws'",String.class)).isEqualTo("original-bucket");
+            assertThat(jdbc.queryForObject("SELECT object_key FROM buyer_uploads WHERE id='legacy-aws'",String.class)).isEqualTo("original/key");
+            assertThat(latest.migrate().migrationsExecuted).isZero();
+        });
+    }
+
     @Test void preservesHistoricalFieldNamesAndQueuesReclassificationOnMysql() {
         isolatedDatabase(source -> {
             var jdbc=new JdbcTemplate(source);

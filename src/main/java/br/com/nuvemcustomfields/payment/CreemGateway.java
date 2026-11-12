@@ -2,7 +2,7 @@ package br.com.nuvemcustomfields.payment;
 
 import br.com.nuvemcustomfields.entity.*;
 import br.com.nuvemcustomfields.properties.CreemProperties;
-import br.com.nuvemcustomfields.properties.WinbackProperties;
+import br.com.nuvemcustomfields.properties.HomologProperties;
 import br.com.nuvemcustomfields.repository.PaymentCatalogPriceRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,18 +28,18 @@ public class CreemGateway implements PaymentGateway {
     private final PaymentCatalogPriceRepository catalog;
     private final RestClient client;
     private final ObjectMapper mapper;
-    private final WinbackProperties winback;
+    private final HomologProperties homolog;
 
     @org.springframework.beans.factory.annotation.Autowired
     public CreemGateway(CreemProperties properties, PaymentCatalogPriceRepository catalog,
-                        RestClient.Builder builder, ObjectMapper mapper, WinbackProperties winback) {
-        this(properties, catalog, timedClient(builder, properties), mapper, winback);
+                        RestClient.Builder builder, ObjectMapper mapper, HomologProperties homolog) {
+        this(properties, catalog, timedClient(builder, properties), mapper, homolog);
     }
 
     CreemGateway(CreemProperties properties, PaymentCatalogPriceRepository catalog, RestClient client, ObjectMapper mapper,
-                 WinbackProperties winback) {
+                 HomologProperties homolog) {
         this.properties = properties; this.catalog = catalog; this.client = client; this.mapper = mapper;
-        this.winback = winback;
+        this.homolog = homolog;
     }
     private static RestClient timedClient(RestClient.Builder builder, CreemProperties properties) {
         var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
@@ -187,10 +187,7 @@ public class CreemGateway implements PaymentGateway {
 
     private boolean purchaseAllowed(Store store) {
         if (!properties.sandbox()) return true;
-        // Sandbox requires explicit membership; winback's "0 means all" convention does not apply here.
-        if (store == null || store.getStoreId() == null || winback.allowedStoreIds() == null) return false;
-        return Arrays.stream(winback.allowedStoreIds().split(","))
-                .map(String::trim).anyMatch(id -> id.equals(store.getStoreId().toString()));
+        return store != null && homolog.allows(store.getStoreId());
     }
     private void requirePurchaseAllowed(Store store) {
         if (!purchaseAllowed(store))

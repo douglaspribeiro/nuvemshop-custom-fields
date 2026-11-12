@@ -1,6 +1,6 @@
 # Em breve na página inicial
 
-A página `/admin` divulga arquivos do comprador, templates reutilizáveis e edição em massa para todos os planos e lojas. O bloco é informativo: não concede acesso às funcionalidades nem promete uma data de lançamento. Os textos ficam em `messages.properties` e `messages_es.properties`.
+O card “Em breve” em `/admin` divulga edição em massa para todos os planos e lojas. Arquivos do comprador e templates reutilizáveis aparecem em “Novidades do app” conforme a disponibilidade para a loja. O bloco é informativo: não concede acesso às funcionalidades nem promete uma data de lançamento. Os textos ficam em `messages.properties` e `messages_es.properties`.
 
 Cada link “Tenho interesse” abre `/admin/suggestions` com um rascunho traduzido do recurso. O lojista pode editar e enviar pelo fluxo existente. Só o envio registra a solicitação, consultável em `/backoffice/suggestions`; clicar no link não cadastra interesse nem inscreve em notificações automáticas.
 

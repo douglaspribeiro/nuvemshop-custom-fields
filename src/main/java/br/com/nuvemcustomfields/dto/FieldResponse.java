@@ -16,8 +16,13 @@ public record FieldResponse(
         List<String> options,
         List<ImageOptionResponse> imageOptions,
         boolean showImageZoom,
-        Integer mobileImageColumns
+        Integer mobileImageColumns,
+        Long id
 ) {
+    public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
+            String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns) {
+        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,null);
+    }
 
     public static FieldResponse from(PersonalizationField field) { return from(field, 25); }
     public static FieldResponse from(PersonalizationField field, int imageOptionLimit) {
@@ -26,10 +31,10 @@ public record FieldResponse(
                 field.getLabel(),
                 field.getFieldType(),
                 field.isRequired() || field.getFieldType() == FieldType.SELECT,
-                field.getMaxLength(),
+                field.getFieldType() == FieldType.FILE_UPLOAD ? null : field.getMaxLength(),
                 field.getPlaceholder(),
                 field.getValidationPattern(),
-                propertyName(field.getLabel()),
+                field.getFieldType() == FieldType.FILE_UPLOAD ? "_ncf_file_" + field.getId() : propertyName(field.getLabel()),
                 field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(ImageOption::label).toList()
                         : field.getFieldType() == FieldType.CHECKBOX ? field.options().stream().distinct().toList() : field.options(),
                 field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(option -> {
@@ -37,7 +42,8 @@ public record FieldResponse(
                     return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);
                 }).toList() : List.of(),
                 field.isShowImageZoom(),
-                field.getMobileImageColumns()
+                field.getMobileImageColumns(),
+                field.getId()
         );
     }
 

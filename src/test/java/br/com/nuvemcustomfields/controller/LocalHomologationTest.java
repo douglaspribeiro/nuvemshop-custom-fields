@@ -53,4 +53,28 @@ class LocalHomologationTest {
         mvc.perform(post("/local/homologacao").param("accessKey","local-key-12345678901234567890")).andExpect(redirectedUrl("/admin"));
         assertThat(stores.findAll().stream().filter(s->s.getStoreId().equals(LocalHomologationGuard.STORE_ID)).count()).isEqualTo(1);
     }
+    @Test void localTemplateCanBeReviewedAndAppliedToAFixtureProduct() throws Exception {
+        var result=mvc.perform(post("/local/homologacao").param("accessKey","local-key-12345678901234567890"))
+                .andExpect(redirectedUrl("/admin")).andReturn();
+        var session=(MockHttpSession)result.getRequest().getSession();
+        var store=stores.findByStoreId(LocalHomologationGuard.STORE_ID).orElseThrow();
+        assertThat(api.getProduct(store,900001L).name()).isEqualTo("Caneca de teste");
+        assertThatThrownBy(() -> api.getProduct(store,123L)).hasMessage("template.product.invalid");
+        var created=mvc.perform(post("/admin/templates").session(session).header("X-NCF-Action","template-write")
+                .contentType("application/json").content("{\"name\":\"Modelo local\",\"fields\":[{\"label\":\"Nome\",\"fieldType\":\"TEXT\",\"required\":false,\"maxLength\":40}]}"))
+                .andExpect(status().isOk()).andReturn();
+        var mapper=new com.fasterxml.jackson.databind.ObjectMapper();
+        String key=mapper.readTree(created.getResponse().getContentAsString()).path("key").asText();
+        var review=mvc.perform(get("/admin/templates/review").session(session).param("key",key).param("productId","900001"))
+                .andExpect(status().isOk()).andExpect(view().name("admin/template-review")).andReturn();
+        var preview=(br.com.nuvemcustomfields.service.StoreTemplateService.Preview)review.getModelAndView().getModel().get("preview");
+        String body=mapper.writeValueAsString(java.util.Map.of("key",key,"productId",900001,"mode","APPEND",
+                "confirmed",false,"requestId",java.util.UUID.randomUUID().toString(),"reviewToken",preview.reviewToken()));
+        mvc.perform(post("/admin/templates/apply").session(session).header("X-NCF-Action","template-write")
+                .contentType("application/json").content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.redirect").value("/admin/products/900001/fields"));
+        mvc.perform(get("/public/stores/"+store.getStoreId()+"/personalization").param("productId","900001"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fields[0].label").value("Nome"));
+    }
+
 }

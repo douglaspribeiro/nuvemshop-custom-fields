@@ -27,7 +27,7 @@ public class ActivationEmailMetrics {
             Gauge.builder("ncf.activation.email.ready", this, m -> m.value("ready", step)).tag("step", step).register(registry);
         }
         for (String outcome : ActivationEmailMetricsSnapshotService.DELIVERY_OUTCOMES)
-            Gauge.builder("ncf.activation.email.delivery", this, m -> m.value("delivery", outcome))
+            Gauge.builder("ncf.activation.email.delivery.last14d", this, m -> m.value("delivery", outcome))
                     .tag("outcome", outcome).register(registry);
         for (String reason : ActivationEmailMetricsSnapshotService.REASONS)
             Gauge.builder("ncf.activation.email.blocked", this, m -> m.value("blocked", reason)).tag("reason", reason).register(registry);

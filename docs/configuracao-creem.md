@@ -20,9 +20,9 @@ apenas criar/vincular produtos pela área de Planos, basta a chave de API.
 A URL da API é escolhida pelo ambiente; não há URL arbitrária configurável.
 O perfil `local-homolog` continua exclusivo para pagamentos Efí sandbox.
 
-Com `CREEM_SANDBOX=true`, apenas lojas cujo ID conste explicitamente em
-`WINBACK_ALLOWED_STORE_IDS` podem iniciar compras ou upgrades Creem. A mesma
-lista é usada mesmo quando a reconquista está desabilitada. Lista vazia ou `0`
+Com `CREEM_SANDBOX=true`, apenas lojas cujo ID esteja autorizado em
+`HOMOLOG_ALLOWED_STORE_IDS` podem iniciar compras ou upgrades Creem. A mesma
+lista é usada mesmo quando a reconquista está desabilitada. `*` libera todas as lojas; lista vazia ou `0`
 bloqueia todas as compras Creem em sandbox. Em produção essa restrição não se
 aplica. Consultas, webhooks e cancelamentos de contratos existentes continuam
 funcionando para permitir a conciliação dos pagamentos.

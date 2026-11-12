@@ -20,6 +20,7 @@ public class WinbackQueueService {
     private static final Logger LOGGER = LoggerFactory.getLogger(WinbackQueueService.class);
     private final WinbackOutboxRepository outbox;
     private final StoreRepository stores;
+    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     private final WinbackProperties properties;
     private final ObjectProvider<SqsClient> client;
     private final ObjectMapper json;
@@ -28,7 +29,8 @@ public class WinbackQueueService {
     public WinbackQueueService(WinbackOutboxRepository outbox, StoreRepository stores,
             WinbackProperties properties, @org.springframework.beans.factory.annotation.Qualifier("winbackSqsClient")
             ObjectProvider<SqsClient> client, ObjectMapper json,
-            WinbackTrackingService tracking) {
+            WinbackTrackingService tracking, br.com.nuvemcustomfields.properties.HomologProperties homolog) {
+        this.homolog = homolog;
         this.outbox = outbox;
         this.stores = stores;
         this.properties = properties;
@@ -40,7 +42,7 @@ public class WinbackQueueService {
     @Transactional
     public void enqueue(Store store) {
         if (store.getUninstalledAt() == null || store.isErasurePending()) return;
-        if (!properties.accepts(store.getStoreId())) {
+        if (!homolog.allows(store.getStoreId())) {
             LOGGER.info("winback.uninstall_received store_id={} flow=disabled_by_allow_list", store.getStoreId());
             return;
         }
@@ -58,7 +60,7 @@ public class WinbackQueueService {
         Store store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         WinbackOutbox event = outbox.findForUpdate(id).orElse(null);
         if (event == null || event.getPublishedAt() != null || event.getNextAttemptAt().isAfter(Instant.now())) return;
-        if (!properties.accepts(storeId)) {
+        if (!homolog.allows(storeId)) {
             LOGGER.info("winback.queue.skipped event_id={} store_id={} reason=disabled_by_allow_list", id, storeId);
             outbox.delete(event);
             return;

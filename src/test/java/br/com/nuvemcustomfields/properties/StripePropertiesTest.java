@@ -31,12 +31,12 @@ class StripePropertiesTest {
         assertThat(properties(false,key).apiConfigured()).isFalse();
     }
     @Test void acceptingRestrictedKeysDoesNotBypassWebhookAndNewSalesGates() {
-        var noWebhook=new StripeProperties(true,true,"rk_test_fixture_only","","42",0,20);
+        var noWebhook=new StripeProperties(true,true,"rk_test_fixture_only","",0,20);
         assertThat(noWebhook.apiConfigured()).isTrue(); assertThat(noWebhook.operational()).isFalse();
-        var disabled=new StripeProperties(false,false,"rk_live_fixture_only","whsec_fixture","",0,20);
+        var disabled=new StripeProperties(false,false,"rk_live_fixture_only","whsec_fixture",0,20);
         assertThat(disabled.operational()).isTrue(); assertThat(disabled.configured()).isFalse();
     }
     private StripeProperties properties(boolean sandbox,String key) {
-        return new StripeProperties(true,sandbox,key,"whsec_fixture","42",0,20);
+        return new StripeProperties(true,sandbox,key,"whsec_fixture",0,20);
     }
 }

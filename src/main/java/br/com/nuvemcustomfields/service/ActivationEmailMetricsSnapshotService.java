@@ -39,7 +39,7 @@ public class ActivationEmailMetricsSnapshotService {
             persisted.merge(step + ":" + row[1], ((Number) row[2]).longValue(), Long::sum);
         }
         Map<String, Long> delivery = zeros(DELIVERY_OUTCOMES);
-        for (var row : outbox.countsByDeliveryOutcome()) {
+        for (var row : outbox.countsByDeliveryOutcome(now.minus(java.time.Duration.ofDays(14)), now)) {
             String outcome = Objects.toString(row[0]);
             if (DELIVERY_OUTCOMES.contains(outcome)) delivery.put(outcome, ((Number) row[1]).longValue());
         }

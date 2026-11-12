@@ -22,6 +22,7 @@ import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import br.com.nuvemcustomfields.service.NicheTemplateService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PlanLimitService;
+import br.com.nuvemcustomfields.service.MerchantNewsService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
 import br.com.nuvemcustomfields.i18n.Messages;
 import br.com.nuvemcustomfields.service.ReportService;
@@ -75,6 +76,7 @@ public class AdminController {
     private final NuvemshopProperties nuvemshopProperties;
     private final PaymentSubscriptionService paymentSubscriptionService;
     private final Messages messages;
+    private final MerchantNewsService merchantNews;
 
     public AdminController(
             AdminStoreService adminStoreService,
@@ -86,7 +88,8 @@ public class AdminController {
             ReportService reportService,
             NuvemshopProperties nuvemshopProperties,
             PaymentSubscriptionService paymentSubscriptionService,
-            Messages messages
+            Messages messages,
+            MerchantNewsService merchantNews
     ) {
         this.adminStoreService = adminStoreService;
         this.integrationLogService = integrationLogService;
@@ -98,6 +101,7 @@ public class AdminController {
         this.nuvemshopProperties = nuvemshopProperties;
         this.paymentSubscriptionService = paymentSubscriptionService;
         this.messages = messages;
+        this.merchantNews = merchantNews;
     }
 
     @ModelAttribute("nuvemshopClientId")
@@ -127,6 +131,7 @@ public class AdminController {
         var rules = personalizationAdminService.listRules(store.getStoreId());
         model.addAttribute("store", store);
         model.addAttribute("rules", rules);
+        model.addAttribute("merchantNews", merchantNews.forStore(store));
         model.addAttribute("configuredFields", personalizationAdminService.countFields(store.getStoreId()));
         model.addAttribute("setupRule", rules.isEmpty() ? null : rules.get(0));
         model.addAttribute("usage", planLimitService.usage(store, 0));
@@ -296,8 +301,7 @@ public class AdminController {
                 || !paymentSubscriptionService.planAvailable(store, plan)) {
             return "redirect:/admin/billing";
         }
-        if (subscription.getProvider() == PaymentProviderType.DLOCAL_GO)
-            return "redirect:/admin/billing/upgrade/dlocal-go?plan=" + plan.name();
+
         if (subscription.getProvider() == PaymentProviderType.EFI)
             return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
         model.addAttribute("store", store);
@@ -321,8 +325,7 @@ public class AdminController {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
             var subscription = paymentSubscriptionService.find(store.getStoreId()).orElseThrow();
-            if (subscription.getProvider() == PaymentProviderType.DLOCAL_GO)
-                return "redirect:/admin/billing/upgrade/dlocal-go?plan=" + plan.name();
+
             if (subscription.getProvider() == PaymentProviderType.EFI)
                 return "redirect:/admin/billing/upgrade/efi?plan=" + plan.name();
             boolean confirmed = paymentSubscriptionService.upgrade(store.getStoreId(), plan, amount);
@@ -595,26 +598,11 @@ public class AdminController {
                 productId,
                 templateId
         );
-        if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
-            LOGGER.warn("admin.onboarding.apply.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
-            redirectAttributes.addFlashAttribute("error", messages.get("flash.product.limit"));
-            return "redirect:/admin/onboarding";
+        try { nicheTemplateService.requireTemplate(templateId); }
+        catch(IllegalArgumentException error) {
+            redirectAttributes.addFlashAttribute("error",messages.get("template.not.found"));return "redirect:/admin/onboarding";
         }
-        int created = personalizationAdminService.applyTemplate(
-                store,
-                productId,
-                productName,
-                nicheTemplateService.requireTemplate(templateId),
-                planLimitService
-        );
-        LOGGER.info(
-                "admin.onboarding.apply.done store_id={} product_id={} created_fields={}",
-                store.getStoreId(),
-                productId,
-                created
-        );
-        redirectAttributes.addFlashAttribute("message", messages.get("flash.template.applied", created));
-        return "redirect:/admin/products/" + productId + "/fields";
+        return "redirect:/admin/templates/review?key=catalog:" + templateId + "&productId=" + productId;
     }
 
     @GetMapping("/admin/products/{productId}/fields")
@@ -741,6 +729,10 @@ public class AdminController {
 
     private String imageConfigurationError(IllegalArgumentException error) {
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
+        if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()))) {
+            LOGGER.warn("admin.field.rejected code={}", error.getMessage());
+            return messages.get(error.getMessage());
+        }
         return messages.get("image.options.invalid");
     }
 

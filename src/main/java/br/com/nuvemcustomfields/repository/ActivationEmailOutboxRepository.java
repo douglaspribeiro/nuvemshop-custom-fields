@@ -27,10 +27,11 @@ public interface ActivationEmailOutboxRepository extends JpaRepository<Activatio
                 from nc39_activation_email_outbox o
                 left join nc39_activation_email_feedback f on f.event_id=o.id
                 where o.state='SENT' and o.step in ('D3','D7','D11')
+                  and o.sent_at >= :since and o.sent_at <= :until
                 group by o.id
             ) delivery_status group by outcome
             """, nativeQuery = true)
-    List<Object[]> countsByDeliveryOutcome();
+    List<Object[]> countsByDeliveryOutcome(Instant since, Instant until);
     boolean existsByStoreIdAndInstalledAtAndStep(Long storeId, Instant installedAt, String step);
     boolean existsByStoreIdAndStep(Long storeId, String step);
     List<ActivationEmailOutbox> findByStoreIdAndInstalledAtAndState(Long storeId, Instant installedAt, ActivationEmailOutbox.State state);

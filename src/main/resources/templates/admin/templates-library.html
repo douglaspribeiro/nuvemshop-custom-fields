@@ -1,0 +1,21 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="#{template.library}"></title>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('templates')}"></th:block>
+<main class="shell"><section class="page-header"><div><h1 th:text="#{template.library}"></h1><p th:text="#{template.independent}"></p></div><a class="button primary" href="/admin/templates/new" th:text="#{template.new}"></a></section>
+<p id="template-status" role="status" aria-live="polite"></p>
+<section><h2 th:text="#{template.mine}"></h2><p th:if="${#lists.isEmpty(ownTemplates)}" th:text="#{template.empty}"></p>
+<div class="template-grid"><article class="panel template-card" th:each="template : ${ownTemplates}">
+<h3 th:text="${template.name}"></h3><p th:text="${template.description}"></p><ul><li th:each="field : ${template.fields}" th:text="${field.label}"></li></ul>
+<div class="row-actions"><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
+<a class="button" th:href="@{/admin/templates/{id}/edit(id=${template.id})}" th:text="#{editor.edit}"></a>
+<button class="button" type="button" data-template-copy th:attr="data-key=${template.key},data-name=${template.name}" th:text="#{template.duplicate}"></button>
+<button class="button" type="button" data-template-delete th:attr="data-id=${template.id},data-revision=${template.revision}" th:text="#{template.delete}"></button></div></article></div></section>
+<section><h2 th:text="#{template.initial}"></h2><p th:text="#{template.initial.help}"></p>
+<div class="template-grid"><article class="panel template-card" th:each="template : ${initialTemplates}">
+<h3 th:text="${template.name}"></h3><p th:text="${template.description}"></p><ul><li th:each="field : ${template.fields}" th:text="${field.label}"></li></ul>
+<div class="row-actions"><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
+<button class="button" type="button" data-template-copy th:attr="data-key=${template.key},data-name=${template.name}" th:text="#{template.duplicate}"></button></div></article></div></section>
+</main><div id="template-ui" hidden th:attr="data-copy-prompt=#{template.copy.prompt},data-copy-suffix=#{template.copy.suffix},data-delete-confirm=#{template.delete.confirm},data-failed=#{template.failed},data-saved=#{template.saved}"></div>
+<script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>

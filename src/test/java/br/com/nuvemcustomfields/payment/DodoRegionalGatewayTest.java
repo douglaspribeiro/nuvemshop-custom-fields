@@ -24,7 +24,7 @@ class DodoRegionalGatewayTest {
     final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     DodoGateway gateway(boolean live) {
         return live ? new DodoLiveGateway(new DodoProperties(true,"dodo_live_test","secret",20),catalog,builder.build(),new ObjectMapper())
-                : new DodoTestGateway(new DodoTestProperties(true,"dodo_test_test","secret","42",20),catalog,builder.build(),new ObjectMapper());
+                : new DodoTestGateway(new DodoTestProperties(true,"dodo_test_test","secret",20),catalog,builder.build(),new ObjectMapper(), new br.com.nuvemcustomfields.properties.HomologProperties("42"));
     }
     PaymentCatalogPrice price(DodoGateway gateway, String country, String currency, String amount) {
         var p = new PaymentCatalogPrice(); p.setProvider(gateway.provider()); p.setEnvironment(gateway.environment());
@@ -65,8 +65,8 @@ class DodoRegionalGatewayTest {
         assertThatThrownBy(() -> DodoMarketPricing.validate("AR","ARS",BigDecimal.TEN)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> DodoMarketPricing.validate("CL","CLP",new BigDecimal("4199.99"))).isInstanceOf(IllegalArgumentException.class);
         assertThat(new DodoProperties(true,"opaque-live-api-key","secret",20).configured()).isTrue();
-        assertThat(new DodoTestProperties(true,"opaque-test-api-key","secret","42",20).configured()).isTrue();
-        assertThat(new DodoTestProperties(true," ","secret","42",20).configured()).isFalse();
+        assertThat(new DodoTestProperties(true,"opaque-test-api-key","secret",20).configured()).isTrue();
+        assertThat(new DodoTestProperties(true," ","secret",20).configured()).isFalse();
         assertThat(DodoMarketPricing.fromMinor(new BigDecimal("9900"),"MXN")).isEqualByComparingTo("99");
     }
     @ParameterizedTest @ValueSource(booleans={false,true})

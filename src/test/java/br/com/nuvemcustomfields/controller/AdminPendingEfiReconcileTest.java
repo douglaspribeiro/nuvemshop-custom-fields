@@ -13,6 +13,7 @@ import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import br.com.nuvemcustomfields.service.PersonalizationAdminService;
 import br.com.nuvemcustomfields.service.PlanLimitService;
+import br.com.nuvemcustomfields.service.MerchantNewsService;
 import br.com.nuvemcustomfields.service.ReportService;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpSession;
@@ -56,7 +57,7 @@ class AdminPendingEfiReconcileTest {
         final AdminController controller = new AdminController(stores, mock(IntegrationLogService.class),
                 mock(NuvemshopApiClient.class), mock(NicheTemplateService.class), mock(PlanLimitService.class),
                 personalization, mock(ReportService.class),
-                mock(NuvemshopProperties.class), payments, mock(Messages.class));
+                mock(NuvemshopProperties.class), payments, mock(Messages.class), mock(MerchantNewsService.class));
 
         Fixture() {
             Store store = new Store();

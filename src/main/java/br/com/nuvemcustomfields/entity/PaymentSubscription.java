@@ -70,6 +70,9 @@ public class PaymentSubscription {
     private PaymentEnvironment providerEnvironment = PaymentEnvironment.PRODUCTION;
     @Column(name = "payer_email", length = 254)
     private String payerEmail;
+
+    @Column(name = "payer_phone", length = 20)
+    private String payerPhone;
     @Column(name = "external_reference", nullable = false, unique = true, length = 64)
     private String externalReference;
     @Column(name = "checkout_url", columnDefinition = "TEXT")
@@ -170,6 +173,16 @@ public class PaymentSubscription {
     public void setCountryCode(String value) { countryCode = value; touch(); }
     public PaymentEnvironment getProviderEnvironment() { return providerEnvironment; }
     public void setProviderEnvironment(PaymentEnvironment value) { providerEnvironment = value; touch(); }
+    public String getPayerPhone() { return payerPhone; }
+    /** Missing or malformed provider data must not erase a previously captured phone. */
+    public void capturePayerPhone(String value) {
+        if (value == null || !value.strip().matches("\\+?[0-9(). -]+")) return;
+        String digits = value.replaceAll("[^0-9]", "");
+        if (digits.length() < 7 || digits.length() > 15) return;
+        payerPhone = (value.strip().startsWith("+") ? "+" : "") + digits;
+        touch();
+    }
+
     public String getPayerEmail() { return payerEmail; }
     public void setPayerEmail(String value) { payerEmail = value; touch(); }
     public String getExternalReference() { return externalReference; }

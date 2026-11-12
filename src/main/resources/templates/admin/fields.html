@@ -20,6 +20,10 @@
         <a class="button" th:href="@{/admin/products}" th:text="#{admin.products.title}">Produtos</a>
     </section>
 
+    <p th:if="${homologFeaturesAllowed == true}"><button type="button" class="button" data-save-product-template th:attr="data-product-id=${rule.productId},data-name=${rule.productName}" th:text="#{template.save.product}"></button></p>
+    <p id="template-status" role="status"></p>
+    <div id="template-ui" hidden th:attr="data-copy-prompt=#{template.copy.prompt},data-failed=#{template.failed},data-saved=#{template.saved}"></div>
+    <script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
 
@@ -40,7 +44,8 @@
                 de 1 campo neste produto
             </p>
             <p class="muted" th:if="${imageProductLimit != 0}"
-               th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed}, ${imageOptionLimit})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit}, ${imageOptionLimit})}"></p>
+               th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit})}"></p>
+            <p class="muted" th:if="${imageProductLimit != 0}" th:text="#{image.plan.options.limit(${imageOptionLimit})}"></p>
             <p class="muted" th:if="${imageProductLimit == 0}" th:text="#{billing.images.none}"></p>
         </div>
         <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
@@ -99,6 +104,7 @@
                         <label>
                             <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
+                    <small class="field-help field-upload-help" hidden>Para arquivo do comprador: JPEG, PNG ou PDF, um por linha. Em branco aceita os três. Até 20 MB; retenção de 90 dias.</small>
                     <small class="field-help field-checkbox-help" hidden th:text="#{editor.checkbox.help}"></small>
                             <textarea name="optionsText" rows="4" th:placeholder="#{admin.fields.options.placeholder}" th:text="${draft.optionsText}"></textarea>
                         </label>
@@ -185,6 +191,7 @@
                 <label>
                     <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
+                    <small class="field-help field-upload-help" hidden>Para arquivo do comprador: JPEG, PNG ou PDF, um por linha. Em branco aceita os três. Até 20 MB; retenção de 90 dias.</small>
                     <small class="field-help field-checkbox-help" hidden th:text="#{editor.checkbox.help}"></small>
                     <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
                 </label>
