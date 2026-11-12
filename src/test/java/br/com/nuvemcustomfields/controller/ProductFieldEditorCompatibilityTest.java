@@ -35,8 +35,9 @@ class ProductFieldEditorCompatibilityTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(html).contains("^[A-Z]{2}[0-9]{4}$", "AB1234", "Adicionar novo campo", "class=\"field-position\" value=\"4\"");
         assertThat(html.indexOf("field-summary")).isLessThan(html.indexOf("field-create-panel"));
-        var createTag = html.substring(html.indexOf("<details class=\"panel field-create-panel\""));
-        assertThat(createTag.substring(0, createTag.indexOf('>'))).doesNotContain("open");
+        var createTag = java.util.regex.Pattern.compile("<details\\b[^>]*\\bid=\"new-field\"[^>]*>").matcher(html);
+        assertThat(createTag.find()).as("O formulário de novo campo deve existir").isTrue();
+        assertThat(createTag.group()).doesNotContain(" open");
         var id = admin.requireRuleWithFields(storeId, productId).getFields().getFirst().getId();
         mvc.perform(post("/admin/products/" + productId + "/fields/" + id).session(session)
                 .param("label", "Código para gravar").param("fieldType", "TEXT").param("required", "true")
