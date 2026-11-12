@@ -3,6 +3,21 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.63.0] - 2026-11-12
+
+### Features
+
+- respond to merchant suggestions with status history and email (`f85f4cb`)
+- enhance buyer file orders and export personalization as CSV (`373711b`)
+
+### Correções
+
+- teste compatibility (`fb010de`)
+
+### Manutenção
+
+- remove zip file (`21124bb`)
+
 ## [1.62.1] - 2026-11-12
 
 ### Correções
