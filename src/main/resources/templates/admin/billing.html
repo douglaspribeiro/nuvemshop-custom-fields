@@ -219,7 +219,7 @@
         </th:block>
     </section>
 
-    <section class="panel billing-free-option" th:aria-label="#{plan.FREE}">
+    <section class="panel billing-free-option" th:if="${!hasSubscription}" th:aria-label="#{plan.FREE}">
         <div><p class="billing-plan-kicker" th:text="#{billing.plan.free.kicker}">Primeiros passos</p><h2 th:text="#{plan.FREE}">FREE</h2><p th:text="#{billing.plan.free.description}">Conheça a personalização e comece pelo seu primeiro produto.</p></div>
         <div class="billing-free-limits"><strong th:text="#{admin.billing.free.price}">Gratuito</strong>
             <span th:text="${planDefinitions['FREE'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['FREE'].productLimit})}">1 produto personalizado</span>

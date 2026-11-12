@@ -59,7 +59,7 @@
             if (requiredHelp) requiredHelp.hidden = !wasSelect;
             get('maxLength').closest('label').hidden = !text;
             const placeholderLabel = get('placeholder').closest('label');
-            placeholderLabel.hidden = !text && !['SELECT', 'FILE_UPLOAD'].includes(type.value);
+            placeholderLabel.hidden = !text && type.value !== 'SELECT';
             placeholderLabel.querySelectorAll('[data-select-text]').forEach(element => {
                 element.textContent = type.value === 'SELECT' ? element.dataset.selectText : element.dataset.text;
             });

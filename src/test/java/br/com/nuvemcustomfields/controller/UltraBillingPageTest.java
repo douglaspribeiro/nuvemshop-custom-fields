@@ -59,9 +59,11 @@ class UltraBillingPageTest {
     @Test void existingSubscriberSeesTheirPlanWithoutANewSubscriptionPitch() throws Exception {
         String body=mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(body).contains("Você já tem o plano Pro", "Ver minha assinatura", "id=\"billing-subscription\"");
+        assertThat(body).doesNotContain("billing-free-option");
         subscription.setAccessActive(false);subscription.setStatus(PaymentSubscriptionStatus.CANCELED);
         String inactive=mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(inactive).doesNotContain("Você já tem o plano Pro");
+        assertThat(inactive).contains("billing-free-option");
     }
 
     @Test void dodoTestOnlyShowsThePlanWithTheBoundProduct() throws Exception {
@@ -183,7 +185,7 @@ class UltraBillingPageTest {
                 new BigDecimal("29.99"), 75, 6, planCatalog.today(), null);
         String plans = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(plans).contains("75 produtos personalizados", "6 campos por produto", "1 produto personalizado",
+        assertThat(plans).contains("75 produtos personalizados", "6 campos por produto",
                         "2 GB de armazenamento", "10 GB de armazenamento", "até 20 MB por arquivo", "90 dias após o pedido")
                 .doesNotContain("20 GB de armazenamento", "50 produtos personalizados", "Templates por nicho", "??billing.");
         assertThat(plans.split("Editor de campos, modelos reutilizáveis",-1)).hasSize(2);
