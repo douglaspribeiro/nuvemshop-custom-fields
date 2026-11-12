@@ -41,7 +41,7 @@ class BuyerUploadLedgerTest {
         jdbc.update("insert into stores(store_id,plan) values (1,'PREMIUM_PLUS'),(2,'PREMIUM_ULTRA')");
         jdbc.update("insert into personalization_rules values (10,1,100),(20,2,200)");
         jdbc.update("insert into personalization_fields(id,rule_id) values (11,10),(22,20)");
-        ledger = new BuyerUploadLedger(jdbc, new br.com.nuvemcustomfields.properties.HomologProperties("*"));
+        ledger = new BuyerUploadLedger(jdbc);
         tx = new TransactionTemplate(new DataSourceTransactionManager(source));
     }
     private BuyerUploadLedger.Entry reserve(long bytes) {

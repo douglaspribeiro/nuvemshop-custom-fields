@@ -14,11 +14,11 @@ Espaços ao redor dos valores são aceitos. IDs devem ser inteiros positivos sem
 
 ## Funcionalidades controladas
 
-- Biblioteca de templates, editor, revisão, gravação de produto como template e aplicação individual.
-- Upload do comprador: criação/configuração de campos, interfaces administrativas, endpoints públicos e visibilidade do campo na vitrine. As cotas Pro/Ultra, armazenamento e validações continuam obrigatórios.
 - Dodo Test: seleção e compras para lojas autorizadas, mantendo o catálogo e a exclusão do Brasil.
 - Stripe sandbox e Creem sandbox: novas compras e upgrades onde suportados.
 - Winback: criação e envio de mensagens na fila, mantendo `WINBACK_ENABLED` e demais condições.
+
+Templates e upload do comprador não dependem dessa lista. Templates mantêm limites e validações por plano; novos uploads exigem Pro ou Ultra e armazenamento habilitado.
 
 Não é um bloqueio geral do aplicativo. Campos tradicionais, pagamentos em produção, webhooks, conciliação e cancelamento dos contratos existentes não recebem uma nova restrição. Rotinas de limpeza dos arquivos existentes continuam funcionando; os dados não são excluídos ao retirar uma loja da lista.
 
@@ -32,4 +32,4 @@ Substitua pelo ID real da loja demo. Para liberar todas, configure explicitament
 
 As antigas variáveis específicas de Stripe, Dodo Test e Winback não são mais lidas. Migre os IDs desejados para a variável universal antes de publicar. A lista agora é a mesma para todas as funcionalidades acima; não há seleção independente por funcionalidade.
 
-Recrie/reinicie a aplicação com o novo ambiente para aplicar uma alteração. A configuração não muda automaticamente em instâncias já iniciadas. Um script compartilhado pode ser publicado para todas as lojas; o servidor continua filtrando o acesso e os campos de arquivo por ID. O teste ponta a ponta na loja real continua necessário.
+Recrie/reinicie a aplicação com o novo ambiente para aplicar uma alteração. A configuração não muda automaticamente em instâncias já iniciadas. Um script compartilhado pode ser publicado para todas as lojas; o servidor aplica os limites do plano aos campos de arquivo. O teste ponta a ponta na loja real continua necessário.

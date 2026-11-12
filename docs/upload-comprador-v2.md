@@ -13,7 +13,7 @@
 
 Implantar aplicação e migrações pendentes. Publicar o Storefront SDK compilado em `src/main/frontend/dist/nuvemshop-storefront-sdk.js`. Os arquivos `buyer-upload.html`, `buyer-upload-widget.js` e `buyer-upload-dom.js` acompanham a aplicação. Conferir permissões de iframe no Partner Portal/SDK, além de CSP do servidor. Validar em loja real a seleção de vários arquivos, carrinho, checkout, pedido e downloads. Testes locais não comprovam entrega pela CDN ou permissões do Partner.
 
-As descrições da loja foram atualizadas nos arquivos de texto; sua publicação no Partner Portal é separada. O card `buyer-uploads-v2` reaparece para quem dispensou o anúncio anterior, respeitando a autorização de homologação e o armazenamento configurado.
+As descrições da loja foram atualizadas nos arquivos de texto; sua publicação no Partner Portal é separada. O card `buyer-uploads-v2` reaparece para quem dispensou o anúncio anterior, respeitando a disponibilidade do armazenamento configurado.
 
 ## GA4
 

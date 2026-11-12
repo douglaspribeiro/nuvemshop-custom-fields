@@ -18,7 +18,6 @@ public class PlanLimitService {
 
     private static final long UNLIMITED = -1L;
 
-    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     private final PlanCatalogService catalog;
     private final PersonalizationRuleRepository ruleRepository;
     private final PersonalizationFieldRepository fieldRepository;
@@ -26,8 +25,7 @@ public class PlanLimitService {
     @org.springframework.beans.factory.annotation.Autowired
     private ConfigurationPlanPolicy configurationPolicy;
 
-    public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository, PlanCatalogService catalog, br.com.nuvemcustomfields.properties.HomologProperties homolog) {
-        this.homolog = homolog;
+    public PlanLimitService(PersonalizationRuleRepository ruleRepository, PersonalizationFieldRepository fieldRepository, PlanCatalogService catalog) {
         this.catalog = catalog;
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
@@ -97,7 +95,7 @@ public class PlanLimitService {
                     .limit(imageLimit).collect(java.util.stream.Collectors.toSet())
                 : java.util.Set.<Long>of();
         var ordered = fields.stream()
-                .filter(field -> field.getFieldType() != FieldType.FILE_UPLOAD || homolog.allows(store.getStoreId()))
+                .filter(field -> field.getFieldType() != FieldType.FILE_UPLOAD || store.getEffectivePlan() == PlanType.PREMIUM_PLUS || store.getEffectivePlan() == PlanType.PREMIUM_ULTRA)
                 .filter(field -> field.getFieldType() != FieldType.IMAGE_SELECT
                         || imageLimit == UNLIMITED || visibleProducts.contains(field.getRule().getProductId()))
                 .sorted(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));

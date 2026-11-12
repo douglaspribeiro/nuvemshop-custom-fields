@@ -12,14 +12,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
     private final RequestTrackingInterceptor requestTracking = new RequestTrackingInterceptor();
 
-    private final HomologAccessInterceptor homologAccess;
     private final UserJourneyAuditInterceptor journeyAudit;
 
     private final AdminSessionInterceptor adminSessionInterceptor;
     private final BackofficeSessionInterceptor backofficeSessionInterceptor;
 
-    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor, UserJourneyAuditInterceptor journeyAudit, HomologAccessInterceptor homologAccess) {
-        this.homologAccess = homologAccess;
+    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor, UserJourneyAuditInterceptor journeyAudit) {
         this.journeyAudit = journeyAudit;
         this.adminSessionInterceptor = adminSessionInterceptor;
         this.backofficeSessionInterceptor = backofficeSessionInterceptor;
@@ -33,8 +31,6 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(adminSessionInterceptor)
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/embedded", "/admin/nexo/session");
-        registry.addInterceptor(homologAccess)
-                .addPathPatterns("/admin/**", "/public/stores/*/buyer-uploads/**");
         registry.addInterceptor(backofficeSessionInterceptor)
                 .addPathPatterns("/backoffice/**")
                 .excludePathPatterns("/backoffice/login");

@@ -30,9 +30,8 @@ public class BuyerUploadLedger {
     public static class Rejected extends IllegalArgumentException {
         public Rejected(String code) { super(code); }
     }
-    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     private final JdbcTemplate jdbc;
-    public BuyerUploadLedger(JdbcTemplate jdbc, br.com.nuvemcustomfields.properties.HomologProperties homolog) { this.jdbc = jdbc; this.homolog = homolog; }
+    public BuyerUploadLedger(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     @Transactional
     public Entry reserve(long storeId, long productId, long fieldId, String sessionToken,
@@ -208,7 +207,7 @@ public class BuyerUploadLedger {
         long occupied = jdbc.queryForObject("select coalesce(sum(size_bytes),0) from buyer_uploads where store_id=? "
                 + "and state not in ('DELETED','EXPIRED')", Long.class, storeId);
         long quota = quotas.isEmpty() ? 0 : quotas.getFirst();
-        return new Usage(occupied, quota, BuyerUploadPolicy.warningPercent(occupied, quota), quota > 0 && homolog.allows(storeId));
+        return new Usage(occupied, quota, BuyerUploadPolicy.warningPercent(occupied, quota), quota > 0);
     }
     private void lockStore(long storeId) {
         if (!lockStoreIfPresent(storeId)) throw new Rejected("upload.unavailable");

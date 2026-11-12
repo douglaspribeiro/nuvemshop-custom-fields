@@ -22,7 +22,6 @@ public class StoreTemplateService {
     public static class Invalid extends IllegalArgumentException {public Invalid(String code){super(code);}}
     public record Model(String key,Long id,String name,String description,String origin,long revision,List<TemplateFieldDefinition> fields) {}
     public record Preview(Model template,Long productId,List<TemplateFieldDefinition> existing,String reviewToken) {}
-    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     private final StoreTemplateRepository templates;
     private final StoreRepository stores;
     private final PersonalizationRuleRepository rules;
@@ -42,8 +41,7 @@ public class StoreTemplateService {
     public StoreTemplateService(StoreTemplateRepository templates,StoreRepository stores,PersonalizationRuleRepository rules,
             PersonalizationFieldRepository fields,PersonalizationAdminService admin,OptionImageService images,NicheTemplateService catalog,
             PlanLimitService limits,BuyerUploadService uploads,BuyerUploadLedger uploadRights,OrderPersonalizationCatalog history,
-            StorefrontCache cache,ObjectMapper json,Validator validator,JdbcTemplate jdbc,EntityManager em, br.com.nuvemcustomfields.properties.HomologProperties homolog) {
-        this.homolog = homolog;
+            StorefrontCache cache,ObjectMapper json,Validator validator,JdbcTemplate jdbc,EntityManager em) {
         this.templates=templates;this.stores=stores;this.rules=rules;this.fields=fields;this.admin=admin;this.images=images;
         this.catalog=catalog;this.limits=limits;this.uploads=uploads;this.uploadRights=uploadRights;this.history=history;
         this.cache=cache;this.json=json;this.validator=validator;this.jdbc=jdbc;this.em=em;
@@ -184,9 +182,8 @@ public class StoreTemplateService {
         definitions.stream().filter(f->f.fieldType()==FieldType.IMAGE_SELECT).forEach(f->ImageOptions.parse(f.imageOptionsJson()).forEach(o->options.put(o.id(),o)));
         return List.copyOf(options.values());
     }
-    private void requireAllowed(long store) { if (!homolog.allows(store)) throw error("template.not.found"); }
-    private Store active(long store) {requireAllowed(store);return stores.findActiveByStoreId(store).orElseThrow(()->error("template.not.found"));}
-    private Store lock(long store) {requireAllowed(store);return stores.findActiveByStoreIdForUpdate(store).orElseThrow(()->error("template.not.found"));}
+    private Store active(long store) {return stores.findActiveByStoreId(store).orElseThrow(()->error("template.not.found"));}
+    private Store lock(long store) {return stores.findActiveByStoreIdForUpdate(store).orElseThrow(()->error("template.not.found"));}
     private StoreTemplate require(long store,long id) {return templates.findByIdAndStoreId(id,store).orElseThrow(()->error("template.not.found"));}
     private Model source(long store,String key) {
         if(key==null)throw error("template.not.found");

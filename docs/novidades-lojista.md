@@ -7,8 +7,8 @@ A página `/admin` exibe um bloco discreto com funcionalidades novas e links dir
 - Não há filtro por plano nem indicação de plano nos cards. As regras de acesso continuam sendo aplicadas pelas funcionalidades de destino.
 - Cada novidade tem título, descrição curta do benefício e link de ação.
 - O bloco não é renderizado quando não há novidades elegíveis.
-- Atualmente, templates e uploads seguem `HOMOLOG_ALLOWED_STORE_IDS`: `0`, vazio ou ausente bloqueiam; `*` libera; uma lista autoriza apenas seus IDs. Consulte [a configuração universal de homologação](homologacao-funcionalidades.md).
-- A novidade de upload só aparece quando o armazenamento está habilitado. Ela é apresentada a todos os planos das lojas autorizadas, sem conceder acesso ao upload.
+- Templates e upload não dependem da lista de homologação; as permissões e limites de cada plano continuam valendo.
+- A novidade de upload só aparece quando o armazenamento está habilitado. Ela é apresentada a todos os planos, sem conceder acesso ao upload.
 - Textos em português e espanhol usam os arquivos de mensagens existentes.
 
 ## Novidades cadastradas
@@ -16,7 +16,7 @@ A página `/admin` exibe um bloco discreto com funcionalidades novas e links dir
 | ID | Funcionalidade | Destino |
 |---|---|---|
 | `templates-v1` | Templates reutilizáveis | `/admin/templates` |
-| `buyer-uploads-v1` | Arquivos do comprador | `/admin/products` |
+| `buyer-uploads-v2` | Arquivos do comprador | `/admin/products` |
 
 ## Como cadastrar uma novidade
 

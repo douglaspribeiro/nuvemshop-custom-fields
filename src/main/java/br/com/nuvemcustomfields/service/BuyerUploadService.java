@@ -97,6 +97,8 @@ public class BuyerUploadService {
         if(!destination.enabled()) throw rejected("upload.unavailable");
         Set<String> allowed=tx.execute(status -> {
         var store=stores.findActiveByStoreId(storeId).orElseThrow(() -> rejected("upload.unavailable"));
+        if(store.getEffectivePlan()!=br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS
+                && store.getEffectivePlan()!=br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA) throw rejected("upload.unavailable");
         var field=fields.findById(fieldId).orElseThrow(() -> rejected("upload.field.invalid"));
         if(field.getRule().getStoreId()!=storeId || field.getRule().getProductId()!=productId
                 || !field.getRule().isEnabled() || field.getFieldType()!=FieldType.FILE_UPLOAD

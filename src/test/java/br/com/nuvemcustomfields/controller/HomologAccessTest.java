@@ -25,48 +25,51 @@ class HomologAccessTest {
     @Autowired PersonalizationAdminService admin;
     @Autowired PlanLimitService limits;
     @Autowired PersonalizationFieldRepository fields;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean BuyerFileStorage storage;
 
     @BeforeEach void setup() {
         for (long id : new long[]{42,99}) {
             var store = stores.findByStoreId(id).orElseGet(Store::new);
             store.setStoreId(id); store.setAccessToken("test"); store.setPlan(PlanType.PREMIUM_PLUS);
-            stores.saveAndFlush(store);
+            store.setManualPlanOverride(false);stores.saveAndFlush(store);
         }
+        org.mockito.Mockito.when(storage.forStore(org.mockito.ArgumentMatchers.anyLong())).thenReturn(storage);
+        org.mockito.Mockito.when(storage.enabled()).thenReturn(true);
     }
     MockHttpSession session(long id) {
         var session = new MockHttpSession();
         session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,id);
         return session;
     }
-    @Test void onlyListedStoreCanOpenNewFeaturesAndDirectRequestsCannotBypassThePolicy() throws Exception {
-        mvc.perform(get("/admin/templates").session(session(42))).andExpect(status().isOk());
-        mvc.perform(get("/admin/templates").session(session(99))).andExpect(status().isNotFound());
-        mvc.perform(get("/admin/buyer-uploads").session(session(99))).andExpect(status().isNotFound());
-        mvc.perform(post("/admin/templates/apply").session(session(99)).contentType("application/json").content("{}"))
-                .andExpect(status().isNotFound());
-        mvc.perform(post("/admin/products/123/save-template").session(session(99)).contentType("application/json").content("{}"))
-                .andExpect(status().isNotFound());
-        mvc.perform(post("/public/stores/99/buyer-uploads/session")).andExpect(status().isNotFound());
-        assertThatThrownBy(() -> templates.list(99)).hasMessageContaining("template.not.found");
-        assertThat(uploads.usage(42).acceptsUploads()).isTrue();
-        assertThat(uploads.usage(99).acceptsUploads()).isFalse();
-    }
-    @Test void traditionalFieldsRemainAvailableAndFileFieldsAreNotPublishedForUnlistedStore() throws Exception {
-        long product=998877L;
-        admin.ensureRule(99L, product, "Demo");
-        var form=new FieldForm(); form.setLabel("Nome"); form.setFieldType(FieldType.TEXT);
-        admin.addField(99L,product,form);
-        var traditional=fields.findWithRuleByStoreId(99L).stream()
-                .filter(f -> f.getRule().getProductId().equals(product)).findFirst().orElseThrow();
-        var file=new PersonalizationField();file.setRule(traditional.getRule());
-        file.setFieldType(FieldType.FILE_UPLOAD);file.setSortOrder(1);
-        var store=stores.findByStoreId(99L).orElseThrow();
-        assertThat(limits.storefrontFields(store,java.util.List.of(traditional,file))).containsExactly(traditional);
-        form.setFieldType(FieldType.FILE_UPLOAD);
-        assertThatThrownBy(() -> admin.addField(99L,product,form)).hasMessageContaining("upload.unavailable");
+    @Test void templatesAndPaidUploadsAreAvailableOutsideTheFormerAllowlist() throws Exception {
+        mvc.perform(get("/admin/templates").session(session(99))).andExpect(status().isOk());
+        mvc.perform(get("/admin/buyer-uploads").session(session(99))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/buyer-uploads\"")));
+        assertThat(templates.list(99)).isNotNull();
+        var definition=new br.com.nuvemcustomfields.dto.TemplateFieldDefinition("Nome",FieldType.TEXT,true,40,"Exemplo",null,null,null,true,null);
+        var model=templates.create(99,"Modelo liberado",null,java.util.List.of(definition));
+        assertThat(templates.get(99,model.key()).name()).isEqualTo("Modelo liberado");
+        assertThatThrownBy(()->templates.get(42,model.key())).hasMessageContaining("template.not.found");
+        assertThat(uploads.usage(99).acceptsUploads()).isTrue();
+        long product=998878L;admin.ensureRule(99L,product,"Personalizado");
+        var form=new FieldForm();form.setLabel("Arte");form.setFieldType(FieldType.FILE_UPLOAD);admin.addField(99L,product,form);
+        var file=fields.findWithRuleByStoreId(99L).stream().filter(f->f.getRule().getProductId().equals(product)).findFirst().orElseThrow();
+        assertThat(limits.storefrontFields(stores.findByStoreId(99L).orElseThrow(),java.util.List.of(file))).containsExactly(file);
+        mvc.perform(get("/public/stores/99/personalization").param("productId",Long.toString(product)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fields[0].fieldType").value("FILE_UPLOAD"));
         mvc.perform(get("/admin/products/"+product+"/fields").session(session(99))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/templates\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/buyer-uploads\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"FILE_UPLOAD\""))));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"FILE_UPLOAD\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-save-product-template")));
+        mvc.perform(post("/public/stores/99/buyer-uploads/session")).andExpect(status().isOk());
+    }
+    @Test void ultraOverrideHasTheSameUploadAccessAndFreePlanStillCannotUpload() throws Exception {
+        var store=stores.findByStoreId(99L).orElseThrow();store.setPlan(PlanType.PREMIUM_ULTRA);store.setManualPlanOverride(true);stores.saveAndFlush(store);
+        assertThat(uploads.usage(99).acceptsUploads()).isTrue();
+        mvc.perform(get("/admin/buyer-uploads").session(session(99))).andExpect(status().isOk());
+        store.setPlan(PlanType.FREE);store.setManualPlanOverride(false);stores.saveAndFlush(store);
+        assertThat(uploads.usage(99).acceptsUploads()).isFalse();
+        mvc.perform(get("/admin/templates").session(session(99))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/buyer-uploads\""))));
+        mvc.perform(post("/public/stores/99/buyer-uploads/session")).andExpect(status().isBadRequest());
     }
 }

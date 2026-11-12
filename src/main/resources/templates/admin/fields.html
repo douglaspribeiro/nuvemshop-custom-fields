@@ -253,7 +253,7 @@
         </div>
         <a class="button primary" th:href="@{/admin/billing}" th:text="#{merchant.fields.upgrade.cta}">Aumentar limite</a>
     </section>
-    <section class="panel" th:if="${homologFeaturesAllowed == true}">
+    <section class="panel">
         <h2 th:text="#{template.save.product}">Salvar como template</h2>
         <p class="muted" th:text="#{template.save.product.help}"></p>
         <button type="button" class="button" data-save-product-template th:attr="data-product-id=${rule.productId},data-name=${rule.productName}" th:text="#{template.save.product}"></button>
