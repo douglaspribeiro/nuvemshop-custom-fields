@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.61.2] - 2026-11-12
+
+### Correções
+
+- compact buyer file references and recover truncated order uploads (`64669fa`)
+
 ## [1.61.1] - 2026-11-12
 
 ### Correções
