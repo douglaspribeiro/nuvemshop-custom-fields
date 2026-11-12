@@ -329,3 +329,12 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 @media(max-width:700px) { .merchant-overview-actions { justify-content:flex-start; } }
 
 .merchant-footer{padding-top:24px;padding-bottom:24px;border-top:1px solid var(--border,#e5e7eb);font-size:13px;text-align:center;}
+
+/* Keep the merchant preview aligned with the compact storefront upload widget. */
+.product-field-page .field-preview-upload{display:block;border:1px dashed color-mix(in srgb,currentColor 35%,transparent);border-radius:10px;padding:16px;font-size:14px;font-weight:400;background:transparent;}
+.product-field-page .field-preview-upload>span{font-weight:500;line-height:1.4;}
+.product-field-page .field-preview-upload input[type=file]{display:block;width:100%;min-height:0;height:auto;margin:12px 0 0;padding:0;border:0;border-radius:0;background:transparent;font-size:0;box-shadow:none;color:inherit;cursor:pointer;}
+.product-field-page .field-preview-upload input::file-selector-button{font-family:inherit;font-size:14px;color:inherit;background:transparent;border:1px solid color-mix(in srgb,currentColor 40%,transparent);border-radius:6px;padding:9px 14px;cursor:pointer;}
+.product-field-page .field-preview-upload-help{display:block;margin-top:10px;font-size:12px;opacity:.7;line-height:1.5;}
+.product-field-page .field-preview-upload-files{margin-top:10px;overflow-wrap:anywhere;}
+.product-field-page .field-preview-upload-files:empty{display:none;}

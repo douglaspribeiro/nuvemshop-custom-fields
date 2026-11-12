@@ -15,7 +15,8 @@ export function buyerUploadControl(store: number, product: number, field: Person
     const display=document.createElement("input");display.type="hidden";display.name=`properties[${field.label.replace(/\[/g,"(").replace(/\]/g,")").trim()}]`;
     const help=document.createElement("p");
     const status=document.createElement("p");status.setAttribute("role","status");status.setAttribute("aria-live","polite");
-    help.textContent=(field.placeholder ? field.placeholder+" " : "")+t(`JPG, PNG ou PDF, até ${(field.maxFileBytes ?? 20_000_000)/1_000_000} MB por arquivo. Máximo: ${field.maxFiles ?? 1}. Disponível por 90 dias após o pedido.`,`JPG, PNG o PDF, hasta ${(field.maxFileBytes ?? 20_000_000)/1_000_000} MB por archivo. Máximo: ${field.maxFiles ?? 1}. Disponible durante 90 días después del pedido.`);
+    help.className="ncf-upload-help";
+    help.textContent=t(`JPG, PNG ou PDF · até ${(field.maxFileBytes ?? 20_000_000)/1_000_000} MB por arquivo${(field.maxFiles ?? 1)>1 ? ` · até ${field.maxFiles} arquivos` : ""}`,`JPG, PNG o PDF · hasta ${(field.maxFileBytes ?? 20_000_000)/1_000_000} MB por archivo${(field.maxFiles ?? 1)>1 ? ` · hasta ${field.maxFiles} archivos` : ""}`);
     const remove=document.createElement("button");remove.type="button";remove.textContent=(field.maxFiles ?? 1)>1 ? t("Remover todos os arquivos","Eliminar todos los archivos") : t("Remover arquivo","Eliminar archivo");
     const list=document.createElement("ul");
     const client=createBuyerUploads(store,product);

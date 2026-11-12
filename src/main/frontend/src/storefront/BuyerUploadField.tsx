@@ -18,7 +18,7 @@ export function buyerUploadField(nube:NubeSDK,store:number,product:number,field:
         const target={frame:null as unknown as NubeComponent,changed};
         let revision=0;
         const frame=<Iframe id={`ncf-upload-${key}`} src={`${appOrigin()}/buyer-upload.html?store=${store}&product=${product}&field=${field.id}` as `https://${string}`}
-            width="100%" height="260px" autoresize sandbox="allow-scripts allow-same-origin"
+            width="100%" height="160px" style={{border:"none",display:"block"}} autoresize sandbox="allow-scripts allow-same-origin"
             onMessage={async event=>{
                 const data=event.value;
                 if(data?.type==="ncf-upload-ready") {

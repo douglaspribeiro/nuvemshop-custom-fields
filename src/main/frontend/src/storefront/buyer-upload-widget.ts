@@ -40,7 +40,7 @@ async function boot() {
             if(event.source===parent && event.data?.type==="ncf-upload-consumed") control.wrapper.dispatchEvent(new Event("ncf-upload-consumed"));
         });
         root.append(control.wrapper);
-        new ResizeObserver(()=>parent.postMessage({type:"resize",height:document.documentElement.scrollHeight},"*")).observe(root);
+        new ResizeObserver(()=>parent.postMessage({type:"resize",height:Math.ceil(root.getBoundingClientRect().height)},"*")).observe(root);
     } catch {root.textContent="Não foi possível carregar o envio de arquivos. Atualize a página para tentar novamente.";}
 }
 void boot();

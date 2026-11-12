@@ -7,8 +7,8 @@ afterEach(() => dom?.window.close());
 function boot(pattern = '') {
     dom = new JSDOM(`<form class="field-editor-form">
         <input name="label" value="Nome para gravar"><input type="checkbox" name="required" checked>
-        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option></select>
-        <label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
+        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>FILE_UPLOAD</option></select>
+        <input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
         <input type="checkbox" name="showImageZoom" checked>
         <select name="mobileImageColumns"><option value="">Automático</option><option value="2">2</option><option value="3">3</option></select>
@@ -151,4 +151,16 @@ it('previews several independent checkbox options without submitting preview ans
     expect(boxes.every(box => box.name === '' && !box.required)).toBe(true);
     input('optionsText').value = ''; select('[name=fieldType]', 'CHECKBOX');
     expect(dom.window.document.querySelectorAll('.field-preview-control input')).toHaveLength(1);
+});
+
+it('shows the compact upload preview with the configured count and plan byte limit',()=>{
+    boot();
+    const preview=dom.window.document.querySelector<HTMLElement>('.field-live-preview')!;
+    preview.dataset.uploadMaxMb='20';
+    select('[name="fieldType"]','FILE_UPLOAD');
+    const picker=preview.querySelector<HTMLInputElement>('input[type=file]')!;
+    expect(picker.multiple).toBe(true);
+    expect(picker.closest('.field-preview-upload')).not.toBeNull();
+    expect(preview.querySelector('.field-preview-upload-help')?.textContent).toContain('20 MB');
+    expect(preview.querySelector('.field-preview-upload-help')?.textContent).toContain('3 arquivos');
 });

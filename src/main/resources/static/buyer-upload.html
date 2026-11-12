@@ -1,5 +1,17 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-html,body{margin:0;background:transparent;font-family:system-ui,sans-serif;color:#333;font-size:14px}*{box-sizing:border-box}.ncf-field{border:1px dashed currentColor;border-radius:12px;padding:18px}.ncf-field>label{display:block}input[type=file]{display:block;width:100%;margin-top:12px;font:inherit;color:inherit}input::file-selector-button,button{font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:6px;padding:8px 12px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}p{line-height:1.5;overflow-wrap:anywhere}li{margin:8px 0;overflow-wrap:anywhere}button{margin:4px}input:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+html,body{margin:0;background:transparent;font-family:system-ui,sans-serif;color:#333;font-size:14px}
+*{box-sizing:border-box}
+.ncf-field{border:1px dashed color-mix(in srgb,currentColor 35%,transparent);border-radius:10px;padding:16px}
+.ncf-field>label{display:block;font-weight:500;line-height:1.4}
+input[type=file]{display:block;width:100%;margin-top:12px;padding:0;border:0;background:transparent;font-size:0;color:inherit;cursor:pointer}
+input::file-selector-button,button{font-family:inherit;font-size:14px;color:inherit;background:transparent;border:1px solid color-mix(in srgb,currentColor 40%,transparent);border-radius:6px;padding:9px 14px;cursor:pointer}
+input::file-selector-button:hover,button:hover{background:color-mix(in srgb,currentColor 5%,transparent)}
+button:disabled{opacity:.5;cursor:wait}
+p{line-height:1.5;overflow-wrap:anywhere;margin:10px 0 0}
+p:empty,ul:empty{display:none}
+.ncf-upload-help{font-size:12px;opacity:.7}
+ul{padding-left:18px;margin:12px 0 0}li{margin:6px 0;overflow-wrap:anywhere}li button{margin-left:8px;font-size:12px;padding:4px 8px}
+input:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 </style></head><body><main id="upload-root" aria-live="polite"></main><script src="/assets/buyer-upload-widget.js" defer></script></body></html>

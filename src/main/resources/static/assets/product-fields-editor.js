@@ -84,7 +84,14 @@
             let input;
             if(type.value === 'FILE_UPLOAD') {
                 input=document.createElement('input');input.type='file';input.multiple=Number(get('maxFiles')?.value || 1)>1;input.accept='.jpg,.jpeg,.png,.pdf';
-                wrapper.append(input);target.append(wrapper);return;
+                wrapper.className='field-preview-upload';
+                const help=document.createElement('small');help.className='field-preview-upload-help';
+                const maxFiles=Number(get('maxFiles')?.value || 1);
+                help.textContent=(preview.dataset.uploadHelp || 'JPG, PNG ou PDF · até {0} MB por arquivo').replace('{0}',preview.dataset.uploadMaxMb || '10');
+                if(maxFiles>1) help.textContent+=' · '+(preview.dataset.uploadCount || 'até {0} arquivos').replace('{0}',String(maxFiles));
+                const selected=document.createElement('div');selected.className='field-preview-upload-files';
+                input.addEventListener('change',()=>{selected.textContent=Array.from(input.files || []).map(file=>file.name).join(', ');});
+                wrapper.append(input,help,selected);target.append(wrapper);return;
             }
             if (type.value === 'IMAGE_SELECT') {
                 const gallery = document.createElement('div');
