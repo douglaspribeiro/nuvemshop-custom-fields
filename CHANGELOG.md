@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.60.0] - 2026-11-11
+
+### Features
+
+- improve buyer uploads and order downloads with text limits (`5efab8b`)
+
+### Manutenção
+
+- change hc log info to debug (`5948892`)
+
 ## [1.59.0] - 2026-11-11
 
 ### Features
