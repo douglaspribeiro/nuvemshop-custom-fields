@@ -16,7 +16,7 @@ public class HCController {
 
     @GetMapping("/support/health-check")
     public ResponseEntity<String> healthCheck() {
-        LOGGER.info("Health check endpoint called, version={}", appVersion);
+        LOGGER.debug("Health check endpoint called, version={}", appVersion);
         return ResponseEntity.ok("ok - version: " + appVersion);
     }
 }
