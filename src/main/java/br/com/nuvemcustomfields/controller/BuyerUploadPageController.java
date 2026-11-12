@@ -25,6 +25,8 @@ public class BuyerUploadPageController {
                 "ordered","deleting","expired","unavailable","page","previous",
                 "next","confirmTitle","confirmSummary","confirmWarning","cancel","confirmDelete",
                 "deletingNow","deleteQueued","deleteFailed","maxSelection","downloadFailed",
-                "downloadLimit","invalidSelection","missingFile")) ui.put(key,messages.get("buyer.files."+key));
+                "downloadLimit","invalidSelection","missingFile","orderStatus","paymentStatus","shippingStatus","status.unknown")) ui.put(key,messages.get("buyer.files."+key));
+        for(String state:java.util.List.of("open","closed","cancelled","authorized","pending","paid","partially_paid","abandoned","refunded","partially_refunded","voided","unpacked","shipped","unshipped","delivered","partially_packed","partially_fulfilled","fulfilled","unfulfilled"))
+            ui.put("status."+state,messages.get("buyer.files.status."+state));
         model.addAttribute("fileUi",ui);return "admin/buyer-uploads";}
 }

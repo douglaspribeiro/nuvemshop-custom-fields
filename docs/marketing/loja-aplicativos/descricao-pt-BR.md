@@ -2,26 +2,27 @@
 
 Descrição curta:
 
-Comece grátis a vender produtos personalizados: seu cliente informa nome, número ou mensagem no produto, e você recebe os detalhes no pedido.
+Venda personalizados com nomes, mensagens, imagens e arquivos do comprador. Receba os detalhes organizados por item do pedido. Comece grátis.
 
 Descrição completa:
 
-Comece grátis a vender produtos personalizados
+Seu próximo pedido personalizado começa com os detalhes certos
 
-Seu cliente informa o nome para uma lembrancinha, o número de uma camiseta ou a mensagem de um presente na página do produto. Com o Campos Personalizados, esses detalhes ficam registrados no item do pedido na Nuvemshop, para você preparar cada encomenda como o cliente pediu.
+Qual nome gravar? Qual estampa usar? Onde está a arte do cliente? Receba essas informações na página do produto, junto à compra, e reduza as mensagens para completar cada encomenda.
 
-Comece com o plano Free: gratuito, com 1 produto e 1 campo de personalização. Amplie conforme precisar.
+Com o Campos Personalizados, seu cliente escolhe e você encontra as respostas no item do pedido na Nuvemshop. Mais clareza para produzir, menos informações espalhadas em conversas.
 
-Ideal para papelaria, presentes, lembrancinhas, roupas, acessórios e produtos sob encomenda. Receba os detalhes junto à compra e reduza a necessidade de confirmar informações por mensagens separadas.
+Ideal para presentes, papelaria, camisetas, lembrancinhas e produtos sob encomenda.
 
-O que você pode fazer
+Funcionalidades para sua loja
 
-- Criar campos de texto curto, texto longo e números.
-- Oferecer listas de opções e escolhas com imagens cadastradas pela loja.
-- Definir campos obrigatórios, exemplos e limites de caracteres.
-- Organizar os campos por produto e usar modelos por nicho, conforme o plano.
-- Ajustar as cores dos textos no produto, carrinho e checkout.
-- Consultar pedidos personalizados recentes no aplicativo.
+- Texto curto, texto longo e números para nomes, dedicatórias e instruções.
+- Listas de opções e imagens da loja para escolher capas, estampas e modelos.
+- Arquivos do comprador (Beta): receba fotos, logotipos e artes em JPG, PNG ou PDF. Pro: 1 arquivo de até 10 MB por campo e 2 GB de armazenamento. Ultra: até 5 arquivos por campo, de até 20 MB cada, e 10 GB. Download no app por 90 dias após o pedido.
+- Campos obrigatórios e limites de caracteres para orientar o preenchimento.
+- Configuração por produto, com os detalhes associados ao item no carrinho, checkout e pedido.
+- Consulta de pedidos personalizados recentes no aplicativo.
+- Exportação CSV dos pedidos personalizados entre os últimos 50 pedidos da loja.
 
 Planos mensais no Brasil
 
@@ -32,13 +33,7 @@ Planos mensais no Brasil
 
 Compare os recursos e limites: https://campos-personalizados.wzhub.pro/precos/?country=BR
 
-Como começar
+Comece grátis com 1 produto e 1 campo. Seus próximos pedidos podem chegar com os detalhes que você precisa.
 
-Instale o aplicativo, autorize a conexão com a Nuvemshop e configure um campo no seu produto. Salve e confira o resultado na vitrine. As informações acompanham o item no carrinho, checkout e pedido.
-
-Suporte
-
-Central no aplicativo: https://campos-personalizados.wzhub.pro/support/
-E-mail: contato@wzhub.pro
-
-Arquivos do comprador (Beta): no Pro, receba 1 arquivo de até 10 MB por campo, com 2 GB de armazenamento. No Ultra, configure de 1 a 5 arquivos por campo, de até 20 MB cada, com 10 GB de armazenamento. Aceita JPG, PNG e PDF. Os arquivos ficam disponíveis por 90 dias após o pedido; o lojista pode baixá-los no aplicativo. Arquivos já enviados continuam preservados pelo prazo de retenção.
+Suporte: https://campos-personalizados.wzhub.pro/support/
+contato@wzhub.pro

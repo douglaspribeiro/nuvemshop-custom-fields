@@ -69,6 +69,43 @@ class BuyerUploadsTest {
         when(api.getOrder(any(),eq(300L))).thenReturn(json.readTree("{\"id\":300,\"created_at\":\""+platformTime+"\",\"products\":[{\"id\":"+item+",\"product_id\":123,\"properties\":{\"_ncf_file_"+field+"\":\""+file.reference()+"\"}}]}"));
         orders.order(store,300);
     }
+    @Test void refreshesOrderDetailsCachesRequestsAndFiltersByStatus() throws Exception {
+        var file=upload();confirm(file,301);
+        var order=(com.fasterxml.jackson.databind.node.ObjectNode)api.getOrder(stores.findByStoreId(store).orElseThrow(),300);
+        order.put("number",108).put("status","open").put("payment_status","paid").put("shipping_status","unshipped");
+        var item=(com.fasterxml.jackson.databind.node.ObjectNode)order.path("products").get(0);
+        ((com.fasterxml.jackson.databind.node.ObjectNode)item.path("properties")).put("Arte","arte.png");
+        item.put("name","Camisa personalizada");item.putObject("image").put("src","https://images.test/camisa.png");
+        jdbc.update("update buyer_uploads set metadata_checked_at=null where id=?",file.id());
+        clearInvocations(api);
+        mvc.perform(get("/admin/buyer-uploads/data").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.files[0].product_name").value("Camisa personalizada"))
+                .andExpect(jsonPath("$.files[0].product_image_url").value("https://images.test/camisa.png"))
+                .andExpect(jsonPath("$.files[0].order_number").value("108"))
+                .andExpect(jsonPath("$.files[0].order_status").value("open"))
+                .andExpect(jsonPath("$.files[0].payment_status").value("paid"));
+        mvc.perform(get("/admin/buyer-uploads/data").param("orderStatus","open").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalOrders").value(1));
+        mvc.perform(get("/admin/buyer-uploads/data").param("orderStatus","closed").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalOrders").value(0));
+        verify(api,times(1)).getOrder(any(),eq(300L));
+        order.put("status","closed");orders.order(store,300);
+        mvc.perform(get("/admin/buyer-uploads/data").param("orderStatus","closed").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalOrders").value(1));
+        var currentStore=stores.findByStoreId(store).orElseThrow();currentStore.setScope("read_orders");stores.saveAndFlush(currentStore);
+        when(api.listRecentOrders(any())).thenReturn(json.createArrayNode().add(order));
+        String csv=mvc.perform(get("/admin/dashboard/export.csv").session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(csv).contains("\"Arte\"", "arte.png").doesNotContain("/download", "NCF-FILE:");
+        jdbc.update("update buyer_uploads set metadata_checked_at=null where id=?",file.id());
+        clearInvocations(api);
+        when(api.getOrder(any(),eq(300L))).thenThrow(new IllegalStateException("offline"));
+        mvc.perform(get("/admin/buyer-uploads/data").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.files[0].product_name").value("Camisa personalizada"));
+        mvc.perform(get("/admin/buyer-uploads/data").session(session)).andExpect(status().isOk());
+        verify(api,times(1)).getOrder(any(),eq(300L));
+        mvc.perform(get("/admin/buyer-uploads/data").param("orderStatus","invalid").session(session)).andExpect(status().isBadRequest());
+    }
     @Test void changingDestinationPreservesDownloadsAndCleanupOfExistingFiles() throws Exception {
         var awsFile=upload();confirm(awsFile,301);
         var oci=mock(BuyerFileStorage.class);

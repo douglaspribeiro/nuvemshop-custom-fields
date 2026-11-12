@@ -34,6 +34,22 @@ function boot(initial = [file("a"), file("b")]) {
     return {doc, fetch, dialog, submit};
 }
 async function loaded(doc: Document) { await vi.waitFor(() => expect(doc.querySelectorAll("[data-file-select]")).toHaveLength(2)); }
+it("shows product names, safe thumbnails and localized order statuses", async () => {
+    const {doc}=boot([...[file('a'),file('b')].map(f=>({...f,product_name:'Camisa personalizada',product_image_url:'https://images.test/camisa.png',order_number:'108',order_status:'open',payment_status:'paid',shipping_status:'unshipped'}))]);
+    await loaded(doc);
+    expect(doc.querySelector('.buyer-order-heading')!.textContent).toContain('Pedido 108');
+    expect(doc.querySelector('.buyer-order-statuses')!.textContent).toContain('Pagamento: Pago');
+    expect(doc.querySelector('.buyer-file-product')!.textContent).toContain('Camisa personalizada');
+    expect(doc.querySelector('.buyer-file-product img')!.getAttribute('src')).toBe('https://images.test/camisa.png');
+});
+it("sends the order status filter and clears it with the other filters", async () => {
+    const {doc,fetch}=boot();await loaded(doc);
+    (doc.getElementById('buyer-order-status') as HTMLSelectElement).value='cancelled';
+    doc.getElementById('buyer-filters')!.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));
+    await vi.waitFor(()=>expect(fetch.mock.calls.at(-1)![0]).toContain('orderStatus=cancelled'));
+    click(doc,'clear-filters');
+    await vi.waitFor(()=>expect(fetch.mock.calls.at(-1)![0]).toContain('orderStatus=all'));
+});
 function click(doc: Document, id: string) { (doc.getElementById(`buyer-${id}`) as HTMLButtonElement).click(); }
 
 it("groups orders, supports partial selection and requires a reviewed confirmation before deletion", async () => {

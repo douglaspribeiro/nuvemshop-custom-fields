@@ -11,6 +11,7 @@
         <p class="muted" th:text="#{buyer.files.retention}"></p><p class="muted" th:text="#{buyer.files.quotaNote}"></p>
     </section>
     <form id="buyer-filters" class="form inline-form panel buyer-filter-bar">
+        <label><span th:text="#{buyer.files.orderStatus}"></span><select id="buyer-order-status"><option value="all" th:text="#{buyer.files.status.all}"></option><option value="open" th:text="#{buyer.files.status.open}"></option><option value="closed" th:text="#{buyer.files.status.closed}"></option><option value="cancelled" th:text="#{buyer.files.status.cancelled}"></option><option value="unknown" th:text="#{buyer.files.status.unknown}"></option></select></label>
         <label><span th:text="#{buyer.files.sort}"></span><select id="buyer-sort"><option value="oldest" th:text="#{buyer.files.oldest}"></option><option value="newest" th:text="#{buyer.files.newest}"></option><option value="largest" th:text="#{buyer.files.largest}"></option></select></label>
         <label><span th:text="#{buyer.files.before}"></span><input type="date" id="buyer-before"></label>
         <button type="submit" class="button" th:text="#{buyer.files.filter}"></button><button id="buyer-clear-filters" type="button" class="button" th:text="#{buyer.files.clear}"></button>

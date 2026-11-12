@@ -10,7 +10,7 @@
 </head>
 <body class="merchant-page product-field-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
-<main class="shell">
+<main class="shell" th:with="planNeedsAttention=${store.effectivePlan.name() == 'FREE' or store.effectivePlan.name() == 'FREE_GRATIS' or !canAddField or (planPausedProductIds != null and planPausedProductIds.contains(rule.productId))}">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.fields.eyebrow}">Editor</p>
@@ -32,24 +32,35 @@
             <p th:text="#{merchant.ftue.fields.detail}">Dê um nome ao campo, escolha o tipo e salve. Você poderá editar depois.</p></div>
     </section>
 
-    <section class="panel plan-strip">
-        <div>
-            <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
-            <p class="muted"
-               th:text="${usage.unlimitedFields()}
-                        ? #{usage.fields.unlimited(${usage.fieldsUsed})}
-                        : #{usage.fields.limited(${usage.fieldsUsed}, ${usage.fieldLimit})}">
-                de 1 campo neste produto
-            </p>
-            <p class="muted" th:if="${imageProductLimit != 0}"
-               th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit})}"></p>
-            <p class="muted" th:if="${imageProductLimit != 0}" th:text="#{image.plan.options.limit(${imageOptionLimit})}"></p>
-            <p class="muted" th:if="${imageProductLimit == 0}" th:text="#{billing.images.none}"></p>
-        </div>
-        <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
-    </section>
-
     <section class="field-editor-layout" th:classappend="${!canAddField} ? ' fields-edit-only'">
+        <aside class="field-editor-sidebar" th:classappend="${planNeedsAttention} ? 'field-sidebar-attention'">
+            <nav class="panel field-jump-card" th:aria-label="#{editor.navigation}">
+                <h2 th:text="#{admin.fields.list.title}"></h2>
+                <ul>
+                    <li th:each="field : ${rule.fields}"><a data-field-jump th:href="${'#configured-field-' + field.id}" th:text="${field.label}"></a></li>
+                    <li th:if="${canAddField}"><a class="field-jump-add" data-field-jump href="#new-field"><span aria-hidden="true">＋ </span><span th:text="#{editor.add}"></span></a></li>
+                    <li th:unless="${canAddField}"><a class="field-jump-add" href="#field-limit" th:text="#{editor.add}"></a></li>
+                </ul>
+            </nav>
+            <section class="panel field-plan-summary" th:classappend="${planNeedsAttention} ? 'field-plan-attention'">
+                    <div>
+                        <h2 th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</h2>
+                        <p class="muted"
+                           th:text="${usage.unlimitedFields()}
+                                    ? #{usage.fields.unlimited(${usage.fieldsUsed})}
+                                    : #{usage.fields.limited(${usage.fieldsUsed}, ${usage.fieldLimit})}">
+                            de 1 campo neste produto
+                        </p>
+                        <p class="muted" th:if="${imageProductLimit != 0}"
+                           th:text="${imageProductLimit == -1} ? #{image.plan.usage.unlimited(${imageProductsUsed})} : #{image.plan.usage(${imageProductsUsed}, ${imageProductLimit})}"></p>
+                        <p class="muted" th:if="${imageProductLimit != 0}" th:text="#{image.plan.options.limit(${imageOptionLimit})}"></p>
+                        <p class="muted" th:if="${imageProductLimit == 0}" th:text="#{billing.images.none}"></p>
+                    </div>
+                    <a class="button" th:href="@{/admin/billing}" th:text="${canAddField} ? #{merchant.upgrade.view} : #{merchant.fields.upgrade.cta}">Ver planos e limites</a>
+                </section>
+        </aside>
+        <div class="field-editor-main">
+
 
         <div class="panel" th:unless="${#lists.isEmpty(rule.fields)}">
             <div class="panel-title">
@@ -63,7 +74,7 @@
             </div>
 
             <div class="field-list">
-                <details class="field-item" th:each="field, position : ${rule.fields}" th:open="${position.first or (editedFieldId != null and editedFieldId == field.id)}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
+                <details class="field-item" th:id="${'configured-field-' + field.id}" th:each="field, position : ${rule.fields}" th:open="${position.first or (editedFieldId != null and editedFieldId == field.id)}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
                     <summary class="field-summary"><span><strong th:text="${draft.label}"></strong><small th:text="#{'field.type.' + ${draft.fieldType}}"></small></span><span class="field-edit-label" th:text="#{editor.edit}"></span></summary>
                     <form class="form field-editor-form image-options-form"
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
@@ -154,7 +165,7 @@
             </div>
         </div>
 
-        <details class="panel field-create-panel" th:if="${canAddField}" th:open="${#lists.isEmpty(rule.fields) or (error != null and editedFieldId == null)}">
+        <details id="new-field" class="panel field-create-panel" th:if="${canAddField}" th:open="${#lists.isEmpty(rule.fields) or (error != null and editedFieldId == null)}">
             <summary class="field-create-summary"><span th:text="#{editor.add}">Adicionar novo campo</span><small th:text="#{editor.add.help}"></small></summary>
             <p class="field-help" th:text="#{editor.new.help}"></p>
             <form class="form field-editor-form preview-source image-options-form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
@@ -233,8 +244,9 @@
             </form>
         </details>
 
+        </div>
     </section>
-    <section class="panel merchant-field-upgrade" th:unless="${canAddField}">
+    <section id="field-limit" class="panel merchant-field-upgrade" th:unless="${canAddField}">
         <div>
             <h2 th:text="#{merchant.fields.upgrade.title}">Quer adicionar outro campo?</h2>
             <p th:text="#{merchant.fields.upgrade.description}">O limite do plano vale apenas para novos campos. Editar os campos existentes continua disponível.</p>

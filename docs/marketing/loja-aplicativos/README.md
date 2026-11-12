@@ -58,9 +58,9 @@ As fontes editáveis estão em `fontes/`; não foi usado gerador de imagens por 
 As capturas contêm apenas dados fictícios. Não anunciar esses pedidos como vendas
 reais ou usar esses números como prova social.
 
-As descrições apresentam os recursos disponíveis, incluindo a seleção de imagens
-cadastradas pelo lojista. A funcionalidade de envio de arquivos pelo comprador
-não faz parte deste material promocional.
+As descrições destacam os benefícios para os pedidos personalizados e incluem
+arquivos do comprador (Beta) na lista de funcionalidades, com os limites de Pro
+e Ultra. Os textos não incluem uma seção de passos para instalação.
 
 ## Antes de atualizar o perfil
 

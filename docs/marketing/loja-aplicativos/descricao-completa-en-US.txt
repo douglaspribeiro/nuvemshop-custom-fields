@@ -1,19 +1,20 @@
-Start selling personalized products for free
+Personalized orders start with the right details
 
-Let customers enter a name for a party favor, a number for a shirt or a message for a gift on the product page. Campos Personalizados saves these details with the order item in Tiendanube, so you can prepare each order as requested.
+Which name should you print? Which design did the customer choose? Where is their artwork? Collect these details on the product page with the purchase and reduce follow-up messages.
 
-Start with the Free plan: 1 product and 1 personalization field, free of charge. Upgrade as your needs grow.
+Campos Personalizados saves the answers with the order item in Tiendanube, so you can prepare each product as requested. Keep personalization details out of scattered conversations.
 
-Ideal for stationery, gifts, party favors, clothing, accessories and made-to-order products. Receive the details with the purchase and reduce the need to confirm information through separate messages.
+Made for gifts, stationery, shirts, party favors and made-to-order products.
 
-What you can do
+Features for your store
 
-- Create short text, long text and number fields.
-- Offer selection lists and choices with images added by your store.
-- Set required fields, examples and character limits.
-- Organize fields by product and use category templates, depending on your plan.
-- Adjust text colors on the product page, in the cart and at checkout.
-- View recent personalized orders in the app.
+- Short text, long text and numbers for names, messages and instructions.
+- Selection lists and store images for covers, prints and designs.
+- Buyer files (Beta): receive photos, logos and artwork in JPG, PNG or PDF. Pro: 1 file per field, up to 10 MB, with 2 GB storage. Ultra: up to 5 files per field, up to 20 MB each, with 10 GB. Download files in the app for 90 days after the order.
+- Required fields and character limits to guide customers.
+- Fields configured per product, with answers linked to the item in the cart, checkout and order.
+- Recent personalized orders in the app.
+- CSV export of personalized orders found among the store’s last 50 orders.
 
 Monthly plans in US dollars (USD)
 
@@ -24,13 +25,7 @@ Monthly plans in US dollars (USD)
 
 Compare features and limits: https://campos-personalizados.wzhub.pro/precos/?country=US
 
-Getting started
+Start free with 1 product and 1 field. Make the details part of your next order.
 
-Install the app, authorize the connection to Tiendanube and configure a field on your product. Save and check the result on your storefront. The details stay linked to the item in the cart, at checkout and in the order.
-
-Support
-
-In-app support center: https://campos-personalizados.wzhub.pro/support/
-Email: contato@wzhub.pro
-
-Buyer files (Beta): Pro accepts 1 file per field, up to 10 MB per file, with 2 GB of storage. Ultra lets the merchant configure 1 to 5 files per field, up to 20 MB each, with 10 GB of storage. JPG, PNG and PDF are supported. Files remain available in the app for 90 days after the order. Previously uploaded files remain available for their retention period.
+Support: https://campos-personalizados.wzhub.pro/support/
+contato@wzhub.pro

@@ -16,23 +16,13 @@ O Campos Personalizados é um aplicativo para Nuvemshop que permite ao lojista c
 
 Além de textos e listas, é possível oferecer opções com imagens cadastradas pelo lojista: capas de caderno, estampas, modelos ou outras escolhas visuais. O comprador compara as imagens e seleciona a opção desejada.
 
-## Como funciona o Campos Personalizados?
-
-- Instale o aplicativo e autorize a conexão com sua loja Nuvemshop.
-- Escolha o produto que deseja personalizar.
-- Configure os campos, as orientações e as opções disponíveis.
-- Use os modelos por nicho para começar uma configuração ou crie seus próprios campos.
-- O comprador preenche os dados na página do produto.
-- As respostas acompanham o item no carrinho e na finalização da compra.
-- Depois da compra, consulte a venda na Nuvemshop: os detalhes da personalização ficam registrados no próprio item vendido.
-- Consulte no painel do aplicativo os pedidos recentes com personalização.
-
 ## Quais são as funcionalidades do Campos Personalizados?
 
 - **Texto e área de texto:** receba nomes, frases, dedicatórias e instruções.
 - **Campos numéricos:** solicite informações em formato de número.
 - **Listas de seleção:** ofereça opções predefinidas para o comprador escolher.
 - **Opções com imagens:** cadastre imagens de capas, estampas e modelos, com miniaturas e possibilidade de ampliação.
+- **Arquivos do comprador (Beta):** receba fotos, logotipos e artes em JPG, PNG ou PDF. Pro: 1 arquivo por campo de até 10 MB e 2 GB de armazenamento. Ultra: de 1 a 5 arquivos por campo, até 20 MB cada, e 10 GB. Download no aplicativo por 90 dias após o pedido.
 - **Campos obrigatórios:** defina quais informações precisam ser preenchidas antes da compra.
 - **Orientações e validações:** configure textos de exemplo, limite de caracteres e regras de preenchimento.
 - **Configuração por produto:** organize os campos e sua ordem de exibição conforme cada item do catálogo.
@@ -42,11 +32,7 @@ Além de textos e listas, é possível oferecer opções com imagens cadastradas
 - **Detalhes no item vendido:** depois que o cliente finaliza a compra, nomes, mensagens e opções escolhidas ficam registrados junto ao produto no pedido. Ao abrir a venda no painel da Nuvemshop, o lojista pode consultar esses detalhes para preparar o produto como o cliente pediu.
 - **Pedidos personalizados:** consulte os pedidos recentes e as informações de personalização pelo painel do aplicativo.
 
-### Upload de imagens pelo comprador — em desenvolvimento
-
-Estamos desenvolvendo um campo para que o próprio comprador envie uma foto, logotipo ou arte ao personalizar o produto. Esse recurso ainda não está disponível e é diferente da seleção de imagens já cadastradas pelo lojista.
-
-Quando disponibilizado, terá limites e disponibilidade conforme o plano contratado. Os limites específicos e a data de lançamento ainda serão informados.
+- **Exportação CSV:** exporte os pedidos personalizados encontrados entre os últimos 50 pedidos da loja, com uma linha por campo.
 
 ## Vantagens de instalar o Campos Personalizados
 
@@ -66,19 +52,9 @@ Os valores abaixo são mensais para lojas brasileiras. Os recursos e os limites 
 - **Pro — R$ 29,99/mês:** até 50 produtos personalizados e campos ilimitados. Permite imagens nos 50 produtos, com até 8 opções de imagem por campo.
 - **Ultra — R$ 59,90/mês:** produtos personalizados e campos ilimitados. Permite imagens em produtos ilimitados, com até 25 opções de imagem por campo, além de atendimento prioritário.
 
-Os limites de imagens acima se referem às opções cadastradas pelo lojista. Eles não representam limites do futuro upload pelo comprador.
+Os limites de opções com imagens se referem às imagens cadastradas pelo lojista. Os limites de arquivos do comprador são informados na lista de funcionalidades.
 
 Preços e detalhes: https://campos-personalizados.wzhub.pro/precos/
-
-## Como integrar o Campos Personalizados com a Nuvemshop?
-
-1. Clique em **Instalar aplicativo**.
-2. Autorize as permissões solicitadas pela Nuvemshop.
-3. Acesse o painel do aplicativo pela sua loja.
-4. Escolha um produto e configure seus campos ou use um modelo disponível.
-5. Salve a configuração e confira o produto na vitrine.
-
-A integração usa a autorização da própria Nuvemshop. Os pedidos são finalizados no fluxo de compra da sua loja.
 
 ## Suporte ao lojista
 

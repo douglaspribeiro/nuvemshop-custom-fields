@@ -38,9 +38,10 @@ public class BuyerUploadController {
     @GetMapping("/admin/buyer-uploads/data")
     public ResponseEntity<?> list(HttpSession session,@RequestParam(defaultValue="1") int page,
             @RequestParam(defaultValue="oldest") String sort,
+            @RequestParam(defaultValue="all") String orderStatus,
             @RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso=org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.Instant before) {
         long store=stores.requireCurrentStore(session).getStoreId();
-        var result=files.orders(store,page,sort,before);
+        var result=files.orders(store,page,sort,before,orderStatus);
         return ok(Map.of("usage",ledger.usage(store),"files",result.files(),"enabled",files.enabled(),
                 "page",result.page(),"pages",result.pages(),"totalOrders",result.totalOrders(),"pendingBytes",result.pendingBytes()));
     }

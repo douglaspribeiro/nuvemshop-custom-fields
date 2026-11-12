@@ -24,7 +24,24 @@ public class BuyerUploadOrders {
     }
     public void order(long storeId,long orderId) {
         var store=stores.findActiveByStoreId(storeId).orElse(null);
-        if(store!=null) process(storeId,api.getOrder(store,orderId));
+        if(store!=null) {
+            var order=api.getOrder(store,orderId);
+            if(order==null || order.path("id").asLong()!=orderId) throw new IllegalArgumentException("upload.order.invalid");
+            process(storeId,order);
+        }
+    }
+    /** Refresh at most the 20 visible orders; also throttle failed API attempts. */
+    public void refreshVisible(long storeId,List<Long> orderIds) {
+        var now=Timestamp.from(Instant.now());
+        var stale=Timestamp.from(Instant.now().minusSeconds(300));
+        for(Long orderId:orderIds) {
+            int claimed=jdbc.update("update buyer_uploads set metadata_checked_at=? where store_id=? and order_id=? and (metadata_checked_at is null or metadata_checked_at<?)",now,storeId,orderId,stale);
+            if(claimed==0) continue;
+            try { order(storeId,orderId); }
+            catch(RuntimeException e) {
+                org.slf4j.LoggerFactory.getLogger(BuyerUploadOrders.class).warn("buyer_upload.order_refresh.failed store_id={} order_id={} error={}",storeId,orderId,e.getClass().getSimpleName());
+            }
+        }
     }
     void process(long storeId,JsonNode order) {
         if(order==null || order.path("id").asLong()<=0) throw new IllegalArgumentException("upload.order.invalid");
@@ -38,7 +55,18 @@ public class BuyerUploadOrders {
                 if(fields.isEmpty()) continue;
                 ledger.confirmOrder(storeId,id,product,fields.getFirst(),orderId,itemId,created);
             }
+            String image=item.path("image").path("src").asText("").strip();
+            if(image.startsWith("//")) image="https:"+image;
+            if(!image.startsWith("https://") && !image.startsWith("http://")) image="";
+            jdbc.update("update buyer_uploads set product_name=?,product_image_url=? where store_id=? and order_id=? and order_item_id=? and product_id=?",
+                    text(item,"name",512),image.length()<=1024?image:"",storeId,orderId,itemId,product);
         }
+        jdbc.update("update buyer_uploads set order_number=?,order_status=?,payment_status=?,shipping_status=?,metadata_checked_at=? where store_id=? and order_id=?",
+                text(order,"number",64),text(order,"status",40),text(order,"payment_status",40),text(order,"shipping_status",40),Timestamp.from(Instant.now()),storeId,orderId);
+    }
+    private static String text(JsonNode node,String key,int max) {
+        String value=node.path(key).asText("").strip();
+        return value.substring(0,Math.min(value.length(),max));
     }
     /** Only authenticated platform order data may be passed here. Never guess by name or time. */
     public List<String> fileIds(long storeId,JsonNode item) {

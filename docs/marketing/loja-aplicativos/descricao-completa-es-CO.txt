@@ -1,19 +1,20 @@
-Empieza gratis a vender productos personalizados
+Cada pedido personalizado empieza con los detalles correctos
 
-Tu cliente indica el nombre para un recuerdo, el número de una camiseta o el mensaje de un regalo en la página del producto. Campos Personalizados guarda esos detalles en el artículo del pedido en Tiendanube, para preparar cada encargo como lo pidió el cliente.
+¿Qué nombre imprimir? ¿Qué diseño eligió el cliente? ¿Dónde está su archivo? Recibe esta información en la página del producto junto a la compra y reduce los mensajes para completar cada encargo.
 
-Empieza con el plan Free: gratis, con 1 producto y 1 campo de personalización. Amplía la capacidad cuando lo necesites.
+Campos Personalizados guarda las respuestas en el artículo del pedido en Tiendanube. Prepara cada producto como lo pidió el cliente, con los detalles reunidos en la compra.
 
-Ideal para papelería, regalos, recuerdos, ropa, accesorios y productos por encargo. Recibe los detalles junto a la compra y reduce la necesidad de confirmar información por mensajes separados.
+Ideal para regalos, papelería, camisetas, recuerdos y productos por encargo.
 
-Qué puedes hacer
+Funcionalidades para tu tienda
 
-- Crear campos de texto corto, texto largo y números.
-- Ofrecer listas de opciones y elecciones con imágenes cargadas por tu tienda.
-- Definir campos obligatorios, ejemplos y límites de caracteres.
-- Organizar los campos por producto y usar plantillas por rubro, según el plan.
-- Ajustar los colores de los textos en el producto, carrito y checkout.
-- Consultar pedidos personalizados recientes en la aplicación.
+- Texto corto, texto largo y números para nombres, dedicatorias e instrucciones.
+- Listas e imágenes de la tienda para elegir tapas, estampas y modelos.
+- Archivos del comprador (Beta): fotos, logotipos y diseños en JPG, PNG o PDF. Pro: 1 archivo de hasta 10 MB por campo y 2 GB de almacenamiento. Ultra: hasta 5 archivos por campo, de hasta 20 MB cada uno, y 10 GB. Descarga en la app durante 90 días después del pedido.
+- Campos obligatorios y límites de caracteres para guiar al cliente.
+- Campos por producto, con respuestas vinculadas al artículo en carrito, checkout y pedido.
+- Consulta de pedidos personalizados recientes en la app.
+- Exportación CSV de pedidos personalizados entre los últimos 50 pedidos de la tienda.
 
 Planes mensuales en Colombia, en dólares estadounidenses (USD)
 
@@ -24,13 +25,7 @@ Planes mensuales en Colombia, en dólares estadounidenses (USD)
 
 Compara funcionalidades y límites: https://campos-personalizados.wzhub.pro/precos/?country=CO
 
-Cómo empezar
+Empieza gratis con 1 producto y 1 campo. Recibe tu próximo pedido con los detalles que necesitas.
 
-Instala la aplicación, autoriza la conexión con Tiendanube y configura un campo en tu producto. Guarda y revisa el resultado en tu tienda. Los detalles acompañan el artículo en el carrito, checkout y pedido.
-
-Soporte
-
-Centro en la aplicación: https://campos-personalizados.wzhub.pro/support/
-Correo: contato@wzhub.pro
-
-Archivos del comprador (Beta): Pro permite 1 archivo de hasta 10 MB por campo, con 2 GB de almacenamiento. En Ultra, configura de 1 a 5 archivos por campo, de hasta 20 MB cada uno, con 10 GB de almacenamiento. Acepta JPG, PNG y PDF. Los archivos quedan disponibles durante 90 días después del pedido y se descargan desde la aplicación. Se conservan los archivos ya enviados durante su plazo de retención.
+Soporte: https://campos-personalizados.wzhub.pro/support/
+contato@wzhub.pro

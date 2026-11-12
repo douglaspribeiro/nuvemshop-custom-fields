@@ -19,6 +19,13 @@ public class BuyerUpload {
     @Column(name = "order_id") private Long orderId;
     @Column(name = "order_item_id") private Long orderItemId;
     @Column(name = "order_created_at") private Instant orderCreatedAt;
+    @Column(name = "product_name", length = 512) private String productName;
+    @Column(name = "product_image_url", length = 1024) private String productImageUrl;
+    @Column(name = "order_number", length = 64) private String orderNumber;
+    @Column(name = "order_status", length = 40) private String orderStatus;
+    @Column(name = "payment_status", length = 40) private String paymentStatus;
+    @Column(name = "shipping_status", length = 40) private String shippingStatus;
+    @Column(name = "metadata_checked_at") private Instant metadataCheckedAt;
     @Column(name = "created_at", nullable = false) private Instant createdAt;
     @Column(name = "expires_at", nullable = false) private Instant expiresAt;
     @Column(name = "delete_reason", length = 20) private String deleteReason;

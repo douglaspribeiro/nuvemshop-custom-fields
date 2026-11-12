@@ -89,6 +89,17 @@ class LocalizedPagesRenderTest {
                 .thenReturn(new ObjectMapper().createArrayNode());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings={"FREE","PREMIUM","PREMIUM_PLUS","PREMIUM_ULTRA"})
+    void buyerFilesMenuAppearsOnlyForEligiblePlans(String plan) throws Exception {
+        var session=sessionForStoreIn("BR");
+        var store=storeRepository.findByStoreId(STORE_ID).orElseThrow();
+        store.setPlan(br.com.nuvemcustomfields.entity.PlanType.valueOf(plan));storeRepository.saveAndFlush(store);
+        String body=render("/admin/products",session);
+        if(plan.equals("PREMIUM_PLUS") || plan.equals("PREMIUM_ULTRA")) assertThat(body).contains("href=\"/admin/buyer-uploads\"");
+        else assertThat(body).doesNotContain("href=\"/admin/buyer-uploads\"");
+    }
+
     @Test
     void productListRendersThumbnailAndPlaceholderForProductWithoutImage() throws Exception {
         when(apiClient.listProducts(any(Store.class), anyInt(), anyInt(), nullable(String.class)))
@@ -158,6 +169,37 @@ class LocalizedPagesRenderTest {
         assertThat(items[2]).contains("Artículo 3", "Café Colombia", "ID del producto: 5001", "Cant.: 1", "<h3>Molienda</h3>", "<p>Prensa Francesa</p>")
                 .contains("merchant-product-thumbnail")
                 .doesNotContain("<p>Grano</p>", "cdn.example.com/cafe.jpg");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"BR","AR"})
+    @Transactional
+    void exportsOnlyPersonalizedItemsAsQuotedCsvInTheStoreLanguage(String country) throws Exception {
+        var session=sessionForStoreIn(country);
+        fieldHistory.saveAndFlush(new PersonalizationFieldHistory(STORE_ID,PRODUCT_ID,"Nome"));
+        when(apiClient.listRecentOrders(any(Store.class))).thenReturn(new ObjectMapper().readTree("""
+                [{"id":300,"number":108,"created_at":"2026-11-12T10:00:00Z","products":[
+                    {"id":301,"product_id":5001,"name":"Camisa; personalizada","quantity":2,
+                     "properties":[{"name":"Nome","value":"=1+1"}]},
+                    {"id":302,"product_id":5002,"name":"Sem personalização","quantity":1,"properties":[]}
+                ]}]
+                """));
+        var response=mockMvc.perform(get("/admin/dashboard/export.csv").session(session)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(response.getContentType()).isEqualTo("text/csv;charset=UTF-8");
+        assertThat(response.getHeader("Content-Disposition")).contains("attachment", "pedidos-personalizados.csv");
+        assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+        String csv=response.getContentAsString();
+        assertThat(csv).startsWith("\uFEFF\"Pedido\"").contains("\"108\"", "\"Camisa; personalizada\"", "\"'=1+1\"")
+                .doesNotContain("Sem personalização");
+        assertThat(csv.split("\r\n")).hasSize(2);
+        assertThat(csv).contains(country.equals("BR")?"\"Resposta\"":"\"Respuesta\"");
+    }
+
+    @Test
+    void doesNotExportAnEmptyCsvWhenTheOrderApiFails() throws Exception {
+        var session=sessionForStoreIn("BR");
+        when(apiClient.listRecentOrders(any(Store.class))).thenThrow(new org.springframework.web.client.RestClientException("offline"));
+        mockMvc.perform(get("/admin/dashboard/export.csv").session(session)).andExpect(status().isServiceUnavailable());
     }
 
     /**

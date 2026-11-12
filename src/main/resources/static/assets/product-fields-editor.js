@@ -182,4 +182,10 @@
     }
     window.ncfInitFieldEditor=initialize;
     document.querySelectorAll('.field-editor-form').forEach(initialize);
+    document.querySelectorAll('[data-field-jump]').forEach(link => link.addEventListener('click', () => {
+        const target = document.getElementById(link.hash.slice(1));
+        if (!target) return;
+        target.open = true;
+        target.querySelector('input[name="label"]')?.focus({preventScroll:true});
+    }));
 })();

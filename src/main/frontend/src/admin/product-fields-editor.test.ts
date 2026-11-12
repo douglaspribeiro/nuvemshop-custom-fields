@@ -26,6 +26,18 @@ function select(selector: string, value: string) {
     const control = dom.window.document.querySelector<HTMLSelectElement>(selector)!;
     control.value = value; control.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
 }
+it('opens the selected field or new field form and focuses its label', () => {
+    dom = new JSDOM(`<a data-field-jump href="#configured-field-1">Nome</a><a data-field-jump href="#new-field">Adicionar</a>
+        <details id="configured-field-1"><summary>Nome</summary><input name="label"></details>
+        <details id="new-field"><summary>Novo campo</summary><input name="label"></details>`, {runScripts:'outside-only'});
+    dom.window.eval(source);
+    for (const id of ['configured-field-1', 'new-field']) {
+        dom.window.document.querySelector<HTMLAnchorElement>(`a[href="#${id}"]`)!.click();
+        const target = dom.window.document.getElementById(id) as HTMLDetailsElement;
+        expect(target.open).toBe(true);
+        expect(dom.window.document.activeElement).toBe(target.querySelector('[name="label"]'));
+    }
+});
 it('previews enlargement links, toggles them live and keeps image selection available', () => {
     boot();
     input('imageOptionsJson').value = JSON.stringify([{id:'image-1',label:'Azul marinho'},{id:'',label:'Rascunho'}]);

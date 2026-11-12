@@ -216,7 +216,21 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 }
 
 /* Guided product configuration */
-.product-field-page .field-editor-layout { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:24px; max-width:860px; margin:0 auto; }
+.product-field-page .field-editor-layout { display:grid; grid-template-columns:minmax(0,1fr) 260px; align-items:start; gap:24px; max-width:1180px; margin:0 auto; }
+.product-field-page .field-editor-main { grid-column:1; grid-row:1; display:grid; gap:24px; min-width:0; }
+.product-field-page .field-editor-sidebar { grid-column:2; grid-row:1; display:flex; flex-direction:column; gap:18px; position:sticky; top:24px; min-width:0; }
+.product-field-page .field-editor-sidebar .panel { margin:0; padding:20px; }
+.product-field-page .field-editor-sidebar h2 { font-size:1rem; margin:0 0 12px; }
+.product-field-page .field-jump-card ul { list-style:none; padding:0; margin:0; display:grid; gap:6px; max-height:45vh; overflow:auto; }
+.product-field-page .field-jump-card a { display:block; padding:10px 12px; border-radius:8px; color:var(--merchant-ink); text-decoration:none; overflow-wrap:anywhere; }
+.product-field-page .field-jump-card a:hover, .product-field-page .field-jump-card a:focus-visible { background:#edf6f0; }
+.product-field-page .field-jump-card .field-jump-add { color:var(--merchant-green); font-weight:600; border-top:1px solid var(--merchant-line); border-radius:0; margin-top:6px; }
+.product-field-page .field-plan-summary { background:#f8faf9; font-size:.8rem; }
+.product-field-page .field-plan-summary p { margin:8px 0; }
+.product-field-page .field-plan-summary .button { margin-top:10px; font-size:.8rem; }
+.product-field-page .field-plan-attention { order:-1; background:#fff9eb; border-color:#e5bd63; box-shadow:0 3px 12px #b3871820; }
+.product-field-page .field-plan-attention h2 { font-size:1.1rem; }
+.product-field-page .field-item, .product-field-page .field-create-panel { scroll-margin-top:24px; }
 .product-field-page .field-help { display:block; margin:0; font-size:.8rem; font-weight:400; line-height:1.55; color:var(--merchant-muted); }
 .product-field-page label { gap:7px; min-width:0; }
 .product-field-page .field-editor-form { gap:20px; }
@@ -255,7 +269,12 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
     .product-field-page .field-preview-images[data-mobile-columns] img { width:100%; max-width:88px; height:auto; aspect-ratio:1; justify-self:center; }
 }
 .product-field-page .fields-edit-only { grid-template-columns:minmax(0,1fr); }
-@media(max-width:850px) { .product-field-page .field-editor-layout { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:850px) {
+    .product-field-page .field-editor-layout { grid-template-columns:minmax(0,1fr); }
+    .product-field-page .field-editor-sidebar { grid-column:1; grid-row:1; position:static; }
+    .product-field-page .field-editor-main { grid-column:1; grid-row:2; }
+    .product-field-page .field-editor-sidebar:not(.field-sidebar-attention) .field-plan-summary { order:1; }
+}
 @media(max-width:480px) { .product-field-page .panel { padding:18px; } .product-field-page .field-item > form { padding:16px; } }
 
 .product-field-page .field-create-summary { display:grid; gap:6px; cursor:pointer; color:var(--merchant-green); font-weight:700; }
@@ -348,3 +367,9 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-order-files li>span{min-width:0;overflow-wrap:anywhere;font-size:13px;}
 .merchant-order-files a{flex-shrink:0;}
 @media(max-width:480px){.merchant-order-files li{align-items:flex-start;flex-direction:column;gap:8px;}}
+
+.buyer-order-statuses { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.buyer-order-status { background:#edf3ef; color:var(--merchant-ink); border-radius:6px; padding:5px 9px; font-size:.78rem; }
+.buyer-file-product { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.buyer-file-product img { width:42px; height:42px; object-fit:cover; border:1px solid var(--merchant-line); border-radius:7px; flex:none; }
+.buyer-file-product strong { display:block; font-size:.82rem; font-weight:600; }

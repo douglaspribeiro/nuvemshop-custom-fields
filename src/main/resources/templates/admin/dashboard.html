@@ -39,8 +39,10 @@
     <section class="panel">
         <div class="panel-title">
             <h2 th:text="#{admin.dashboard.orders.title}">Pedidos com personalizacao</h2>
+            <a class="button small" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}" th:href="@{/admin/dashboard/export.csv}" th:text="#{admin.dashboard.export}">Exportar CSV</a>
             <span class="muted" th:text="#{admin.dashboard.orders.subtitle}">Ultimos 50 pedidos</span>
         </div>
+        <p class="field-help" th:if="${summary.ordersAvailable and !#lists.isEmpty(summary.personalizedOrders)}" th:text="#{admin.dashboard.export.help}"></p>
         <p class="notice error" th:if="${!summary.ordersAvailable}" th:text="${summary.ordersUnavailableReason == 'load_failed' ? #messages.msg('admin.dashboard.orders.load_failed') : #messages.msg('admin.dashboard.orders.unavailable')}">
             Reinstale o app para liberar a leitura de pedidos.
         </p>
