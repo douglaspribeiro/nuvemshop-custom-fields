@@ -13,10 +13,20 @@ public class FeatureRequest {
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=30) private PlanType planAtSubmission;
     @Column(nullable=false,length=36,unique=true) private String submissionToken;
     @Column(nullable=false) private Instant createdAt=Instant.now();
+    @Enumerated(EnumType.STRING) @Column(nullable=false,length=30)
+    @org.hibernate.annotations.ColumnDefault("'RECEIVED'")
+    private FeatureRequestStatus status=FeatureRequestStatus.RECEIVED;
+    @Column(nullable=false) @org.hibernate.annotations.ColumnDefault("0") private long revision;
+    @OneToMany(mappedBy="request",cascade=CascadeType.ALL,orphanRemoval=true) @OrderBy("createdAt ASC, id ASC")
+    @org.hibernate.annotations.BatchSize(size=50)
+    private java.util.List<FeatureRequestUpdate> updates=new java.util.ArrayList<>();
     private Instant discordSentAt;
     @Column(nullable=false) private Instant nextNotificationAt=Instant.now();
     @Column(nullable=false) private int notificationAttempts;
     public Long getId(){return id;}
+    public FeatureRequestStatus getStatus(){return status;} public void setStatus(FeatureRequestStatus v){status=v;}
+    public long getRevision(){return revision;} public void setRevision(long v){revision=v;}
+    public java.util.List<FeatureRequestUpdate> getUpdates(){return updates;}
     public Long getStoreId(){return storeId;} public void setStoreId(Long v){storeId=v;}
     public String getTitle(){return title;} public void setTitle(String v){title=v;}
     public String getDescription(){return description;} public void setDescription(String v){description=v;}

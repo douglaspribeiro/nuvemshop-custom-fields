@@ -30,6 +30,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void addsSuggestionResponsesWithoutLosingExistingRequestsAndCascadesErasure() {
+        isolatedDatabase(source->{
+            var jdbc=new JdbcTemplate(source);flyway(source,"78").migrate();
+            jdbc.update("INSERT INTO feature_requests(id,store_id,title,description,plan_at_submission,submission_token,created_at,next_notification_at) VALUES(900079,900079,'Arquivos','Quero arquivos','FREE','00000000-0000-0000-0000-000000090079',NOW(),NOW())");
+            assertThat(flyway(source,"79").migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT status FROM feature_requests WHERE id=900079",String.class)).isEqualTo("RECEIVED");
+            assertThat(jdbc.queryForObject("SELECT revision FROM feature_requests WHERE id=900079",Long.class)).isZero();
+            jdbc.update("INSERT INTO feature_request_updates(request_id,status,message,submission_token,email_state) VALUES(900079,'AVAILABLE','Já disponível','00000000-0000-0000-0000-000000090078','PENDING')");
+            validateHibernateAndReadField(source,null);
+            jdbc.update("DELETE FROM feature_requests WHERE id=900079");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM feature_request_updates",Long.class)).isZero();
+        });
+    }
     @Test void upgradesPopulatedV53ThroughV54AndV55WithoutLosingExistingData() {
         isolatedDatabase(source -> {
             var jdbc = new JdbcTemplate(source);

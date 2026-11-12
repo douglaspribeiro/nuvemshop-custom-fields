@@ -46,9 +46,9 @@ it("sends the order status filter and clears it with the other filters", async (
     const {doc,fetch}=boot();await loaded(doc);
     (doc.getElementById('buyer-order-status') as HTMLSelectElement).value='cancelled';
     doc.getElementById('buyer-filters')!.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));
-    await vi.waitFor(()=>expect(fetch.mock.calls.at(-1)![0]).toContain('orderStatus=cancelled'));
+    await vi.waitFor(()=>expect(fetch.mock.calls[fetch.mock.calls.length - 1][0]).toContain('orderStatus=cancelled'));
     click(doc,'clear-filters');
-    await vi.waitFor(()=>expect(fetch.mock.calls.at(-1)![0]).toContain('orderStatus=all'));
+    await vi.waitFor(()=>expect(fetch.mock.calls[fetch.mock.calls.length - 1][0]).toContain('orderStatus=all'));
 });
 function click(doc: Document, id: string) { (doc.getElementById(`buyer-${id}`) as HTMLButtonElement).click(); }
 

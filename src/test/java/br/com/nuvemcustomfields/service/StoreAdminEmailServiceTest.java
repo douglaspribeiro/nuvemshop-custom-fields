@@ -63,6 +63,16 @@ class StoreAdminEmailServiceTest {
         assertThat(alternatives.getBodyPart(1).getContent().toString()).contains("Reativar meu plano Ultra", "&lt;script&gt;").doesNotContain("<script>");
     }
 
+    @Test void identifiesFeatureResponsesInTheStoreEmailHistory() throws Exception {
+        recipient("owner@example.com");var message=MailTestSupport.message();when(sender.createMimeMessage()).thenReturn(message);
+        service.sendAction(12L,"Resposta à sua sugestão #3","O recurso já está disponível.","Ver minha sugestão",
+                "https://app.example.com/admin/suggestions?requestId=3#suggestion-3","FEATURE_REQUEST","feature-request-update:5");
+        verify(sender).send(message);
+        assertThat(message.getHeader("X-NCF-Store-ID",null)).isEqualTo("12");
+        assertThat(message.getHeader("X-NCF-Email-Category",null)).isEqualTo("FEATURE_REQUEST");
+        assertThat(message.getHeader("X-NCF-Email-Source",null)).isEqualTo("feature-request-update:5");
+    }
+
     @Test void rejectsMissingOrMultipleRecipients() {
         for (String email : new String[]{null, "invalid", "a@example.com,b@example.com"}) {
             recipient(email);

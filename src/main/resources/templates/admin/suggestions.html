@@ -23,7 +23,17 @@
 <aside class="merchant-suggestion-sidebar">
     <section class="panel"><a th:href="@{/support/}" th:text="#{suggestions.support}"></a></section>
     <section class="panel merchant-suggestion-history"><h2 th:text="#{suggestions.history}"></h2><p class="muted" th:if="${#lists.isEmpty(suggestions)}" th:text="#{suggestions.empty}"></p>
-        <article th:each="suggestion:${suggestions}"><h3 th:text="${suggestion.title}"></h3><p class="merchant-suggestion-description" th:text="${suggestion.description}"></p><small th:text="#{suggestions.received}"></small><time th:attr="data-local-time=${suggestion.createdAt}" data-time-format="datetime" th:text="${#temporals.format(suggestion.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time></article>
+        <article th:each="suggestion:${suggestions}" th:id="${'suggestion-'+suggestion.id}">
+            <h3 th:text="${suggestion.title}"></h3><span class="badge" th:text="#{'suggestions.status.'+${suggestion.status}}"></span>
+            <p class="merchant-suggestion-description" th:text="${suggestion.description}"></p><small th:text="#{suggestions.received}"></small><time th:attr="data-local-time=${suggestion.createdAt}" data-time-format="datetime" th:text="${#temporals.format(suggestion.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time>
+            <section class="merchant-suggestion-updates" th:unless="${#lists.isEmpty(suggestion.updates)}">
+                <h4 th:text="#{suggestions.updates}"></h4>
+                <article th:each="update:${suggestion.updates}"><strong th:text="#{'suggestions.status.'+${update.status}}"></strong>
+                    <p class="merchant-suggestion-description" th:if="${!#strings.isEmpty(update.message)}" th:text="${update.message}"></p>
+                    <time th:attr="data-local-time=${update.createdAt}" data-time-format="datetime" th:text="${#temporals.format(update.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time>
+                </article>
+            </section>
+        </article>
     </section>
 </aside>
 </div>

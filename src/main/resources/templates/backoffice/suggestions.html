@@ -1,5 +1,40 @@
-<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sugestões dos lojistas</title><link rel="stylesheet" th:href="@{/styles/app.css}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
-</head><body class="backoffice-page"><main class="backoffice-shell">
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sugestões dos lojistas</title><link rel="stylesheet" th:href="@{/styles/app.css}"><th:block th:replace="~{fragments/local-time :: script}"></th:block></head>
+<body class="backoffice-page"><main class="backoffice-shell">
 <header class="backoffice-header"><div><h1>Sugestões dos lojistas</h1><p>Últimas 100 melhorias solicitadas. Não são chamados de suporte nem compromissos de entrega.</p></div><a class="button" th:href="@{/backoffice/support}">Voltar ao suporte</a></header>
-<section class="backoffice-directory"><p th:if="${#lists.isEmpty(suggestions)}">Nenhuma sugestão registrada.</p><article th:each="s:${suggestions}"><h2 th:text="'#'+${s.id}+' · '+${s.title}"></h2><p th:text="'Loja '+${s.storeId}+' · Plano '+${s.planAtSubmission.displayName}"></p><p style="white-space:pre-wrap" th:text="${s.description}"></p><p th:text="${s.discordSentAt==null ? 'Discord: envio pendente' : 'Discord: enviado'}"></p><p th:attr="data-local-time=${s.createdAt}" data-time-format="datetime" th:text="${#temporals.format(s.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></p><hr></article></section>
+<p class="notice" th:if="${message}" th:text="${message}"></p><p class="notice error" th:if="${error}" th:text="${error}"></p>
+<section class="backoffice-directory">
+    <p th:if="${#lists.isEmpty(suggestions)}">Nenhuma sugestão registrada.</p>
+    <article class="panel" th:each="s:${suggestions}" th:id="${'suggestion-'+s.id}">
+        <h2 th:text="'#'+${s.id}+' · '+${s.title}"></h2>
+        <p th:text="'Loja '+${s.storeId}+' · Plano '+${s.planAtSubmission.displayName}"></p>
+        <span class="badge" th:text="#{'suggestions.status.'+${s.status}}"></span>
+        <p style="white-space:pre-wrap;overflow-wrap:anywhere" th:text="${s.description}"></p>
+        <p th:text="${s.discordSentAt==null ? 'Discord: envio pendente' : 'Discord: enviado'}"></p>
+        <time th:attr="data-local-time=${s.createdAt}" data-time-format="datetime" th:text="${#temporals.format(s.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time>
+        <section th:unless="${#lists.isEmpty(s.updates)}">
+            <h3>Histórico de atualizações</h3>
+            <article th:each="update:${s.updates}">
+                <strong th:text="#{'suggestions.status.'+${update.status}}"></strong>
+                <p style="white-space:pre-wrap;overflow-wrap:anywhere" th:if="${!#strings.isEmpty(update.message)}" th:text="${update.message}"></p>
+                <time th:attr="data-local-time=${update.createdAt}" data-time-format="datetime" th:text="${#temporals.format(update.createdAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time>
+                <p class="muted" th:if="${update.emailState=='PENDING'}">E-mail aguardando envio. Requer o provedor de e-mail configurado.</p>
+                <p class="muted" th:if="${update.emailState=='SENT'}">Notificação enviada ao provedor de e-mail.</p>
+                <p class="notice warning" th:if="${update.emailState=='FAILED' or update.emailState=='SENDING'}">Envio não confirmado. Confira o histórico de e-mails da loja e o provedor antes de tentar enviar outra resposta. A atualização permanece disponível para o lojista.</p>
+                <hr>
+            </article>
+        </section>
+        <details th:open="${draftRequestId != null and draftRequestId==s.id}">
+            <summary>Responder ou atualizar status</summary>
+            <form class="form" method="post" th:action="@{/backoffice/suggestions/{id}/respond(id=${s.id})}">
+                <input type="hidden" name="csrfToken" th:value="${csrfToken}"><input type="hidden" name="submissionToken" th:value="${updateTokens[s.id]}"><input type="hidden" name="revision" th:value="${s.revision}">
+                <label>Status<select name="status" required><option th:each="status:${statuses}" th:value="${status}" th:selected="${status==s.status}" th:text="#{'suggestions.status.'+${status}}"></option></select></label>
+                <label>Resposta ao lojista (opcional)<textarea name="message" maxlength="4000" rows="5" th:text="${draftRequestId != null and draftRequestId==s.id ? draftMessage : ''}"></textarea></label>
+                <p class="muted">A resposta aparece no histórico do lojista e gera uma notificação por e-mail. Alterações apenas de status ficam no histórico, sem envio de e-mail. Evite prometer datas que ainda não foram confirmadas.</p>
+                <button type="submit" class="button primary">Publicar atualização</button>
+            </form>
+        </details>
+    </article>
+</section>
 </main></body></html>

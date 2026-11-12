@@ -1,6 +1,8 @@
 package br.com.nuvemcustomfields.service;
 
 import br.com.nuvemcustomfields.entity.FeatureRequest;
+import br.com.nuvemcustomfields.entity.FeatureRequestStatus;
+import br.com.nuvemcustomfields.entity.FeatureRequestUpdate;
 import br.com.nuvemcustomfields.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +18,8 @@ public class FeatureRequestService {
     private final StoreRepository stores;
     private final DiscordSupportWebhookClient discord;
     private final TransactionTemplate tx;
-    public FeatureRequestService(FeatureRequestRepository requests,StoreRepository stores,DiscordSupportWebhookClient discord,PlatformTransactionManager manager){this.requests=requests;this.stores=stores;this.discord=discord;this.tx=new TransactionTemplate(manager);}
+    private final FeatureRequestUpdateRepository updates;
+    public FeatureRequestService(FeatureRequestRepository requests,StoreRepository stores,DiscordSupportWebhookClient discord,PlatformTransactionManager manager,FeatureRequestUpdateRepository updates){this.requests=requests;this.stores=stores;this.discord=discord;this.tx=new TransactionTemplate(manager);this.updates=updates;}
     @Transactional public FeatureRequest submit(Long storeId,String title,String description,String token){
         var store=stores.findActiveByStoreIdForUpdate(storeId).orElseThrow(()->new IllegalArgumentException("Loja ativa não encontrada."));
         var existing=requests.findBySubmissionToken(token).orElse(null);
@@ -27,8 +30,35 @@ public class FeatureRequestService {
         var request=new FeatureRequest();request.setStoreId(storeId);request.setTitle(title);request.setDescription(description);request.setSubmissionToken(token);request.setPlanAtSubmission(store.getEffectivePlan());
         return requests.save(request);
     }
-    public List<FeatureRequest> forStore(Long id){return requests.findTop50ByStoreIdOrderByCreatedAtDesc(id);}
-    public List<FeatureRequest> recent(){return requests.findTop100ByOrderByCreatedAtDesc();}
+    @Transactional(readOnly=true) public List<FeatureRequest> forStore(Long id){return withHistory(requests.findTop50ByStoreIdOrderByCreatedAtDesc(id));}
+    @Transactional(readOnly=true) public List<FeatureRequest> forStore(Long id,Long highlightedId){
+        var list=new java.util.ArrayList<>(requests.findTop50ByStoreIdOrderByCreatedAtDesc(id));
+        if(highlightedId!=null && list.stream().noneMatch(r->r.getId().equals(highlightedId)))
+            requests.findByIdAndStoreId(highlightedId,id).ifPresent(r->{if(list.size()==50)list.removeLast();list.addFirst(r);});
+        return withHistory(list);
+    }
+    @Transactional(readOnly=true) public List<FeatureRequest> recent(){return withHistory(requests.findTop100ByOrderByCreatedAtDesc());}
+    private List<FeatureRequest> withHistory(List<FeatureRequest> list){list.forEach(r->r.getUpdates().size());return list;}
+
+    @Transactional
+    public FeatureRequestUpdate respond(Long id,FeatureRequestStatus status,String message,long revision,String token) {
+        if(status==null || token==null || !token.matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Atualização inválida. Abra a página novamente.");
+        String body=message==null?"":message.strip();
+        if(body.length()>4000) throw new IllegalArgumentException("A resposta deve ter até 4.000 caracteres.");
+        var request=requests.lockById(id).orElseThrow(()->new IllegalArgumentException("Sugestão não encontrada."));
+        var previous=updates.findBySubmissionToken(token).orElse(null);
+        if(previous!=null) {
+            if(!previous.getRequest().getId().equals(id) || previous.getStatus()!=status || !previous.getMessage().equals(body))
+                throw new IllegalArgumentException("Este envio já foi utilizado com outra atualização.");
+            return previous;
+        }
+        if(request.getRevision()!=revision) throw new IllegalArgumentException("A sugestão foi atualizada. Recarregue a página antes de responder.");
+        if(body.isBlank() && status==request.getStatus()) throw new IllegalArgumentException("Escreva uma resposta ou altere o status.");
+        var update=new FeatureRequestUpdate();update.setRequest(request);update.setStatus(status);update.setMessage(body);update.setSubmissionToken(token);
+        update.setEmailState(body.isBlank()?"NOT_REQUIRED":"PENDING");
+        request.setStatus(status);request.setRevision(revision+1);request.getUpdates().add(update);
+        return updates.save(update);
+    }
     private static String normalize(String value,int max){if(value==null || value.isBlank() || value.strip().length()>max)throw new IllegalArgumentException("Preencha a sugestão respeitando o limite de caracteres.");return value.strip();}
 
     @Scheduled(fixedDelayString="${suggestions.notification-delay-ms:60000}")

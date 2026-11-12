@@ -8,8 +8,8 @@ O vídeo será produzido pelo responsável usando o sistema.
 - `descricao-pt-BR.md`: descrição curta e longa para o Brasil.
 - `descricao-completa.txt` e `descricao-curta.txt`: versões brasileiras em texto simples.
 - `descricao-es-AR.md`: Argentina, em espanhol, com preços em USD.
-- `descricao-es-MX.md`: México, em espanhol, com preços em USD.
-- `descricao-es-CL.md`: Chile, em espanhol, com preços em USD.
+- `descricao-es-MX.md`: México, em espanhol, com preços em MXN.
+- `descricao-es-CL.md`: Chile, em espanhol, com preços em CLP.
 - `descricao-es-CO.md`: Colômbia, em espanhol, com preços em USD.
 - `descricao-en-US.md`: versão em inglês, com preços em USD para demais países.
 - `descricao-completa-{idioma}.txt` e `descricao-curta-{idioma}.txt`: textos separados para cada uma dessas versões.
@@ -32,7 +32,7 @@ são **JPEG, PNG ou WebP**. O pacote usa PNG.
 
 As descrições estão localizadas por país, com nomes e valores dos planos. As imagens
 continuam em português; para publicar em outros países, adaptar também os textos
-das imagens. Usar a descrição correspondente ao mercado. Brasil mantém preços em BRL; os demais países usam USD.
+das imagens. Usar a descrição correspondente ao mercado. Brasil usa BRL, Chile usa CLP e México usa MXN; as demais descrições usam USD.
 
 As descrições completas têm no máximo **2.000 caracteres**, contando espaços e
 quebras de linha. Os arquivos `.txt` estão prontos para copiar no Portal; os `.md`

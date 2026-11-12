@@ -71,7 +71,7 @@ public class StoreEmailHistoryService {
         public String categoryLabel() {
             if(category.startsWith("ACTIVATION_")) return "Ativação · "+category.substring(11);
             if(category.startsWith("WINBACK_")) return "Reconquista · "+category.substring(8);
-            return switch(category) {case "SUPPORT"->"Resposta de suporte";case "ACTION"->"Aviso com ação";
+            return switch(category) {case "SUPPORT"->"Resposta de suporte";case "ACTION"->"Aviso com ação";case "FEATURE_REQUEST"->"Resposta à sugestão";
                 case "RENEWAL_FAILURE"->"Falha de renovação";case "CONFIGURATION_PAUSE"->"Configuração pausada";default->"Mensagem do backoffice";};
         }
         public String stateLabel() {return switch(state) {case "ACCEPTED"->"Envio registrado";case "UNKNOWN"->"Resultado incerto";default->"Sem confirmação de envio";};}

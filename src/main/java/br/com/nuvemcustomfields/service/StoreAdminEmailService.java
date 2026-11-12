@@ -75,6 +75,10 @@ public class StoreAdminEmailService {
     }
 
     public void sendAction(Long storeId, String subject, String body, String actionLabel, String actionUrl) {
+        sendAction(storeId,subject,body,actionLabel,actionUrl,"ACTION",null);
+    }
+
+    public void sendAction(Long storeId, String subject, String body, String actionLabel, String actionUrl,String category,String sourceKey) {
         var plain = prepare(storeId, subject, body);
         java.net.URI uri;
         try { uri = java.net.URI.create(actionUrl); }
@@ -87,7 +91,7 @@ public class StoreAdminEmailService {
             helper.setFrom(plain.getFrom()); helper.setTo(plain.getTo()); helper.setSubject(plain.getSubject());
             var rendered = design.render(subject, body, actionLabel, actionUrl, null);
             helper.setText(rendered.text(), rendered.html());
-            StoreEmailHistoryService.identify(mail,storeId,"ACTION",null);
+            StoreEmailHistoryService.identify(mail,storeId,category,sourceKey);
             sender.send(mail);
         } catch (jakarta.mail.MessagingException | RuntimeException ex) { throw deliveryFailure(storeId, ex); }
         LOGGER.info("store.admin_email.sent store_id={}", storeId);

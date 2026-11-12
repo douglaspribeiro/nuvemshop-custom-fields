@@ -16,12 +16,12 @@ Funcionalidades para tu tienda
 - Consulta de pedidos personalizados recientes en la app.
 - Exportación CSV de pedidos personalizados entre los últimos 50 pedidos de la tienda.
 
-Planes mensuales en Chile, en dólares estadounidenses (USD)
+Planes mensuales en Chile, en pesos chilenos (CLP)
 
 - Free: gratis, con 1 producto y 1 campo.
-- Esencial: USD 4.99/mes.
-- Pro: USD 7.49/mes.
-- Ultra: USD 14.99/mes.
+- Esencial: CLP 4.199/mes.
+- Pro: CLP 6.299/mes.
+- Ultra: CLP 12.599/mes.
 
 Compara funcionalidades y límites: https://campos-personalizados.wzhub.pro/precos/?country=CL
 

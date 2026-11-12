@@ -15,15 +15,16 @@ import java.util.UUID;
 @Controller
 public class FeatureRequestController {
     private static final String TOKEN="featureRequestSubmissionToken";
+    private static final String BACKOFFICE_TOKEN="featureRequestResponseCsrf";
     private final FeatureRequestService requests;
     private final AdminStoreService stores;
     private final Messages messages;
     public FeatureRequestController(FeatureRequestService requests,AdminStoreService stores,Messages messages){this.requests=requests;this.stores=stores;this.messages=messages;}
     @GetMapping("/admin/suggestions")
-    public String form(@RequestParam(required=false) String interest,HttpSession session,Model model,HttpServletResponse response){
+    public String form(@RequestParam(required=false) String interest,@RequestParam(required=false) Long requestId,HttpSession session,Model model,HttpServletResponse response){
         response.setHeader("Cache-Control","no-store");var store=stores.requireCurrentStore(session);
         String token=UUID.randomUUID().toString();session.setAttribute(TOKEN,token);
-        model.addAttribute("store",store);model.addAttribute("submissionToken",token);model.addAttribute("suggestions",requests.forStore(store.getStoreId()));
+        model.addAttribute("store",store);model.addAttribute("submissionToken",token);model.addAttribute("suggestions",requests.forStore(store.getStoreId(),requestId));
         if (java.util.Set.of("uploads", "templates", "bulk").contains(interest == null ? "" : interest)) {
             String feature = messages.get("merchant.comingsoon." + interest + ".title");
             if (!model.containsAttribute("draftTitle")) model.addAttribute("draftTitle", messages.get("merchant.comingsoon.request.title", feature));
@@ -40,5 +41,21 @@ public class FeatureRequestController {
         return "redirect:/admin/suggestions";
     }
     @GetMapping("/backoffice/suggestions")
-    public String backoffice(Model model,HttpServletResponse response){response.setHeader("Cache-Control","no-store");model.addAttribute("suggestions",requests.recent());return "backoffice/suggestions";}
+    public String backoffice(Model model,HttpServletResponse response,HttpSession session){
+        response.setHeader("Cache-Control","no-store");
+        if(session.getAttribute(BACKOFFICE_TOKEN)==null)session.setAttribute(BACKOFFICE_TOKEN,UUID.randomUUID().toString());
+        var recent=requests.recent();var tokens=new java.util.HashMap<Long,String>();recent.forEach(r->tokens.put(r.getId(),UUID.randomUUID().toString()));
+        model.addAttribute("suggestions",recent);model.addAttribute("updateTokens",tokens);model.addAttribute("csrfToken",session.getAttribute(BACKOFFICE_TOKEN));
+        model.addAttribute("statuses",br.com.nuvemcustomfields.entity.FeatureRequestStatus.values());
+        return "backoffice/suggestions";
+    }
+    @PostMapping("/backoffice/suggestions/{id}/respond")
+    public String respond(@PathVariable Long id,@RequestParam br.com.nuvemcustomfields.entity.FeatureRequestStatus status,
+            @RequestParam(defaultValue="") String message,@RequestParam long revision,@RequestParam String submissionToken,
+            @RequestParam String csrfToken,HttpSession session,RedirectAttributes flash) {
+        if(!csrfToken.equals(session.getAttribute(BACKOFFICE_TOKEN)))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Formulário inválido. Abra a página novamente.");
+        try{requests.respond(id,status,message,revision,submissionToken);flash.addFlashAttribute("message","Atualização publicada. Respostas por e-mail são enviadas pelo sistema em até um minuto, quando o envio estiver configurado.");}
+        catch(IllegalArgumentException ex){flash.addFlashAttribute("error",ex.getMessage());flash.addFlashAttribute("draftRequestId",id);flash.addFlashAttribute("draftMessage",message);}
+        return "redirect:/backoffice/suggestions#suggestion-"+id;
+    }
 }

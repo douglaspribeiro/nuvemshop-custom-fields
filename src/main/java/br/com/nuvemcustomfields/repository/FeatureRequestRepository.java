@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.*;
 public interface FeatureRequestRepository extends JpaRepository<FeatureRequest,Long> {
     Optional<FeatureRequest> findBySubmissionToken(String token);
+    Optional<FeatureRequest> findByIdAndStoreId(Long id,Long storeId);
     List<FeatureRequest> findTop50ByStoreIdOrderByCreatedAtDesc(Long storeId);
     List<FeatureRequest> findTop100ByOrderByCreatedAtDesc();
     long countByStoreIdAndCreatedAtAfter(Long storeId,Instant after);

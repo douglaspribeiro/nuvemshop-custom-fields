@@ -373,3 +373,7 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .buyer-file-product { display:flex; align-items:center; gap:10px; margin-top:8px; }
 .buyer-file-product img { width:42px; height:42px; object-fit:cover; border:1px solid var(--merchant-line); border-radius:7px; flex:none; }
 .buyer-file-product strong { display:block; font-size:.82rem; font-weight:600; }
+
+.merchant-suggestion-updates { margin-top:16px; padding:14px; border-left:3px solid var(--merchant-green); background:#f5faf7; border-radius:0 8px 8px 0; }
+.merchant-suggestion-updates h4 { margin:0 0 12px; }
+.merchant-suggestion-history .merchant-suggestion-updates article { padding:10px 0; overflow-wrap:anywhere; }
