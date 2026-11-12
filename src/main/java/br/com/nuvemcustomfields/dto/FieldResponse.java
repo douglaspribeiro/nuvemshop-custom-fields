@@ -17,15 +17,20 @@ public record FieldResponse(
         List<ImageOptionResponse> imageOptions,
         boolean showImageZoom,
         Integer mobileImageColumns,
-        Long id
+        Long id,
+        int maxFiles,
+        long maxFileBytes
 ) {
     public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
             String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns) {
-        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,null);
+        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,null,1,10_000_000L);
     }
 
     public static FieldResponse from(PersonalizationField field) { return from(field, 25); }
     public static FieldResponse from(PersonalizationField field, int imageOptionLimit) {
+        return from(field, imageOptionLimit, br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);
+    }
+    public static FieldResponse from(PersonalizationField field, int imageOptionLimit, br.com.nuvemcustomfields.entity.PlanType plan) {
         var images = field.getFieldType() == FieldType.IMAGE_SELECT ? field.imageOptions().stream().limit(imageOptionLimit).toList() : List.<ImageOption>of();
         return new FieldResponse(
                 field.getLabel(),
@@ -43,7 +48,9 @@ public record FieldResponse(
                 }).toList() : List.of(),
                 field.isShowImageZoom(),
                 field.getMobileImageColumns(),
-                field.getId()
+                field.getId(),
+                plan == br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA ? field.getMaxFiles() : 1,
+                br.com.nuvemcustomfields.service.BuyerUploadPolicy.maxFileBytes(plan)
         );
     }
 

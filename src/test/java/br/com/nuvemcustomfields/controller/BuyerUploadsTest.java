@@ -126,6 +126,37 @@ class BuyerUploadsTest {
                 .andExpect(redirectedUrl("/admin/products/123/fields"));
         assertThat(fields.findWithRuleByStoreId(store)).hasSize(2);
     }
+    @Test void merchantCanConfigureMultipleFilesOnlyOnUltra() {
+        var form=new FieldForm();form.setLabel("Referências");form.setFieldType(FieldType.FILE_UPLOAD);form.setMaxFiles(3);
+        assertThatThrownBy(()->admin.addField(store,123L,form)).isInstanceOf(IllegalArgumentException.class).hasMessage("upload.multiple.ultra");
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_ULTRA);stores.saveAndFlush(owner);
+        admin.addField(store,123L,form);
+        assertThat(fields.findWithRuleByStoreId(store)).anyMatch(f->f.getLabel().equals("Referências") && f.getMaxFiles()==3);
+        form.setMaxFiles(6);
+        assertThatThrownBy(()->admin.addField(store,123L,form)).isInstanceOf(IllegalArgumentException.class).hasMessage("upload.files.invalid");
+    }
+
+    @Test void ultraMultipleFilesShareOneOrderItemAndRemainDownloadableAfterDowngrade() throws Exception {
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_ULTRA);stores.saveAndFlush(owner);
+        var configured=fields.findById(field).orElseThrow();configured.setMaxFiles(2);fields.saveAndFlush(configured);
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId","123"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fields[0].maxFiles").value(2))
+                .andExpect(jsonPath("$.fields[0].maxFileBytes").value(20000000));
+        var a=upload();var b=upload();
+        assertThatThrownBy(()->upload()).isInstanceOf(BuyerUploadLedger.Rejected.class).hasMessage("upload.files.limit");
+        uploads.cart(store,token,a.id());uploads.cart(store,token,b.id());
+        String timestamp=Instant.now().toString();
+        when(api.getOrder(any(),eq(300L))).thenReturn(json.readTree("{\"id\":300,\"created_at\":\""+timestamp+"\",\"products\":[{\"id\":301,\"product_id\":123,\"properties\":{\"_ncf_file_"+field+"\":\""+a.reference()+"; "+b.reference()+"\"}}]}"));
+        orders.order(store,300);orders.order(store,300);
+        assertThat(jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and order_id=300 and order_item_id=301 and state='ORDERED'",Long.class,store)).isEqualTo(2);
+        owner.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(owner);
+        try(var stream=uploads.download(store,a.id()).stream()){assertThat(stream.readAllBytes()).isEqualTo(png().getBytes());}
+        try(var stream=uploads.download(store,b.id()).stream()){assertThat(stream.readAllBytes()).isEqualTo(png().getBytes());}
+        mvc.perform(get("/public/stores/"+store+"/personalization").param("productId","123"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fields[0].maxFiles").value(1))
+                .andExpect(jsonPath("$.fields[0].maxFileBytes").value(10000000));
+    }
+
     @Test void productToOrderToAuthenticatedDownloadAndDeletion() throws Exception {
         mvc.perform(get("/public/stores/"+store+"/personalization").param("productId","123"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.fields[0].fieldType").value("FILE_UPLOAD")).andExpect(jsonPath("$.fields[0].id").value(field));
@@ -140,7 +171,7 @@ class BuyerUploadsTest {
         mvc.perform(get("/admin/buyer-uploads/"+file.id()+"/download").session(session)).andExpect(status().isBadRequest());
     }
     @Test void filesFromDifferentItemsDoNotMixAndWebhookReplayIsIdempotent() throws Exception {
-        var a=upload();var b=upload();confirm(a,301);confirm(b,302);orders.order(store,300);
+        var a=upload();confirm(a,301);var b=upload();confirm(b,302);orders.order(store,300);
         assertThat(jdbc.queryForObject("select order_item_id from buyer_uploads where id=?",Long.class,a.id())).isEqualTo(301);
         assertThat(jdbc.queryForObject("select order_item_id from buyer_uploads where id=?",Long.class,b.id())).isEqualTo(302);
     }

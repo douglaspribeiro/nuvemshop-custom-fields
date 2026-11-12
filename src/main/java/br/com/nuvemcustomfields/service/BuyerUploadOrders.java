@@ -39,12 +39,13 @@ public class BuyerUploadOrders {
             else if(properties.isArray()) properties.forEach(value -> values.add(value.path("value").asText()));
             for(String value:values) {
                 var match=REFERENCE.matcher(value);
-                if(!match.find()) continue;
-                String id=match.group(1);
-                var fields=jdbc.queryForList("select field_id from buyer_uploads where id=? and store_id=? and product_id=?",Long.class,id,storeId,product);
-                if(fields.isEmpty()) continue;
-                // Conflicts are preserved for operator investigation; never reassign art.
-                ledger.confirmOrder(storeId,id,product,fields.getFirst(),orderId,itemId,created);
+                while(match.find()) {
+                    String id=match.group(1);
+                    var fields=jdbc.queryForList("select field_id from buyer_uploads where id=? and store_id=? and product_id=?",Long.class,id,storeId,product);
+                    if(fields.isEmpty()) continue;
+                    // Conflicts are preserved for operator investigation; never reassign art.
+                    ledger.confirmOrder(storeId,id,product,fields.getFirst(),orderId,itemId,created);
+                }
             }
         }
     }

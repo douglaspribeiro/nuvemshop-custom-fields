@@ -1,6 +1,6 @@
 import type { PersonalizationField } from "../shared/config";
 import { messages } from "../shared/i18n";
-import { FILE_REFERENCE } from "./buyer-uploads";
+import { uploadValues, uploadDisplay } from "./buyer-uploads";
 
 export type FieldValue = string | string[];
 export type ValueMap = Record<string, FieldValue>;
@@ -24,7 +24,7 @@ export function validate(
 		const raw = values[key];
 		const value = typeof raw === "string" ? raw.trim() : "";
         if (field.fieldType === "FILE_UPLOAD") {
-            if ((field.required && !value) || (value && !FILE_REFERENCE.test(value)))
+            if ((field.required && !value) || (value && (uploadValues(value).length !== value.split("\n").length || uploadValues(value).length > (field.maxFiles ?? 1))))
                 errors.push({ propertyName: key, label: field.label, message: "Conclua o envio do arquivo antes de adicionar o produto." });
             continue;
         }
@@ -120,7 +120,7 @@ export function toCartProperties(
             if (selected.length) properties[key] = selected.join(", ");
         } else if (value && field.fieldType === "FILE_UPLOAD") {
             properties[key] = value;
-            properties[field.label.replace(/\[/g,"(").replace(/\]/g,")").trim()] = value.replace(/\s*—\s*NCF-FILE:.*$/, "");
+            properties[field.label.replace(/\[/g,"(").replace(/\]/g,")").trim()] = uploadDisplay(value);
         } else if (value) {
 			properties[key] = value;
 		}

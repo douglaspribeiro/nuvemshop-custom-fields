@@ -183,7 +183,7 @@ public class AdminController {
         Store store = adminStoreService.requireCurrentStore(session);
         LOGGER.debug("admin.help.open store_id={}", store.getStoreId());
         model.addAttribute("store", store);
-        model.addAttribute("logs", integrationLogService.recent(store.getStoreId()));
+        model.addAttribute("logs", integrationLogService.recentImportant(store.getStoreId()));
         return "admin/help";
     }
 
@@ -729,7 +729,7 @@ public class AdminController {
 
     private String imageConfigurationError(IllegalArgumentException error) {
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
-        if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()))) {
+        if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()) || "upload.files.invalid".equals(error.getMessage()) || "upload.multiple.ultra".equals(error.getMessage()))) {
             LOGGER.warn("admin.field.rejected code={}", error.getMessage());
             return messages.get(error.getMessage());
         }

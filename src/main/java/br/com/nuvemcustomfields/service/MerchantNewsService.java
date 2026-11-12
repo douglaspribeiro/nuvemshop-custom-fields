@@ -18,7 +18,7 @@ public class MerchantNewsService {
         if (!homolog.allows(store.getStoreId())) return List.of();
         var news = new ArrayList<Item>();
         news.add(new Item("templates-v1", "merchant.news.templates", "/admin/templates"));
-        if (uploads.enabled(store.getStoreId())) news.add(new Item("buyer-uploads-v1", "merchant.news.uploads", "/admin/products"));
+        if (uploads.enabled(store.getStoreId())) news.add(new Item("buyer-uploads-v2", "merchant.news.uploads", "/admin/products"));
         return List.copyOf(news);
     }
 }

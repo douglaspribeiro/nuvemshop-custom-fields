@@ -36,10 +36,11 @@ class BuyerUploadLedgerTest {
         try (var connection = source.getConnection()) {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V71__buyer_upload_ledger.sql"));
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V73__buyer_upload_access_by_plan.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V77__buyer_upload_multiple_files.sql"));
         }
         jdbc.update("insert into stores(store_id,plan) values (1,'PREMIUM_PLUS'),(2,'PREMIUM_ULTRA')");
         jdbc.update("insert into personalization_rules values (10,1,100),(20,2,200)");
-        jdbc.update("insert into personalization_fields values (11,10),(22,20)");
+        jdbc.update("insert into personalization_fields(id,rule_id) values (11,10),(22,20)");
         ledger = new BuyerUploadLedger(jdbc, new br.com.nuvemcustomfields.properties.HomologProperties("*"));
         tx = new TransactionTemplate(new DataSourceTransactionManager(source));
     }
@@ -65,6 +66,7 @@ class BuyerUploadLedgerTest {
         jdbc.update("update buyer_uploads set size_bytes=? where id=?",PRO_BYTES+1,file.id());
         assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(1));
         jdbc.update("update stores set plan='PREMIUM_ULTRA' where store_id=1");
+        jdbc.update("update personalization_fields set max_files=5 where id=11");
         assertEquals(ULTRA_BYTES,ledger.usage(1).quotaBytes());
         assertDoesNotThrow(() -> reserve(1));
         jdbc.update("update stores set plan='PREMIUM_PLUS' where store_id=1");
@@ -108,9 +110,8 @@ class BuyerUploadLedgerTest {
         assertEquals(100, ledger.usage(1).occupiedBytes());
     }
     @Test void orderedRetentionComesFromOrderAndCannotBeRebound() {
-        var first = reserve(100);
-        var second = reserve(200);
-        cart(first); cart(second);
+        var first = reserve(100);cart(first);
+        var second = reserve(200);cart(second);
         Instant created = Instant.now().minusSeconds(86400);
         run(() -> ledger.confirmOrder(1,first.id(),100,11,300,301,created));
         run(() -> ledger.confirmOrder(1,second.id(),100,11,300,302,created));
@@ -162,16 +163,28 @@ class BuyerUploadLedgerTest {
     }
     @Test void concurrentReservationsCannotExceedQuota() throws Exception {
         // Occupy everything except one maximum-sized file, without allocating files.
-        var existing = reserve(1);
-        jdbc.update("update buyer_uploads set size_bytes=? where id=?",PRO_BYTES-MAX_FILE_BYTES,existing.id());
+        var existing = reserve(1);cart(existing);
+        jdbc.update("update buyer_uploads set size_bytes=? where id=?",PRO_BYTES-10_000_000L,existing.id());
         var start = new CountDownLatch(1);
         try (var pool = Executors.newFixedThreadPool(2)) {
-            var a = pool.submit(() -> { start.await(); try { reserve(MAX_FILE_BYTES); return true; } catch (BuyerUploadLedger.Rejected e) { return false; } });
-            var b = pool.submit(() -> { start.await(); try { reserve(MAX_FILE_BYTES); return true; } catch (BuyerUploadLedger.Rejected e) { return false; } });
+            var a = pool.submit(() -> { start.await(); try { reserve(10_000_000L); return true; } catch (BuyerUploadLedger.Rejected e) { return false; } });
+            var b = pool.submit(() -> { start.await(); try { reserve(10_000_000L); return true; } catch (BuyerUploadLedger.Rejected e) { return false; } });
             start.countDown();
             assertNotEquals(a.get(10,TimeUnit.SECONDS),b.get(10,TimeUnit.SECONDS));
         }
         assertEquals(PRO_BYTES,ledger.usage(1).occupiedBytes());
+    }
+    @Test void limitsNewFileSizesAndCountsByCurrentPlanWithoutDeletingExistingFiles() {
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(10_000_001L));
+        var pro=reserve(10_000_000L);
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> reserve(1));
+        jdbc.update("update personalization_fields set max_files=2 where id=22");
+        var ultra=tx.execute(status -> ledger.reserve(2,200,22,SESSION,UUID.randomUUID().toString(),20_000_000L));
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> tx.execute(status -> ledger.reserve(2,200,22,SESSION,UUID.randomUUID().toString(),20_000_001L)));
+        tx.execute(status -> ledger.reserve(2,200,22,SESSION,UUID.randomUUID().toString(),1));
+        assertThrows(BuyerUploadLedger.Rejected.class, () -> tx.execute(status -> ledger.reserve(2,200,22,SESSION,UUID.randomUUID().toString(),1)));
+        jdbc.update("update stores set plan='PREMIUM_PLUS' where store_id=2");
+        assertEquals(20_000_001L,ledger.usage(2).occupiedBytes());
     }
     @Test void thresholdsUseApprovedDecimalUnits() {
         assertEquals(0,warningPercent(PRO_BYTES*49/100,PRO_BYTES));

@@ -58,7 +58,7 @@
                 <li th:text="${planDefinitions['PREMIUM_PLUS'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_PLUS'].productLimit})}"></li>
                 <li th:text="${planDefinitions['PREMIUM_PLUS'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_PLUS'].fieldLimit})}"></li>
                 <li th:if="${planDefinitions['PREMIUM_PLUS'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM_PLUS'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM_PLUS'].imageProductLimit}, ${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})}"></li>
-                <li th:text="#{billing.plan.uploads(${T(br.com.nuvemcustomfields.service.BuyerUploadPolicy).PRO_BYTES / 1000000000})}"></li>
+                <li th:text="#{billing.plan.uploads.pro}"></li>
             </ul>
             <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
         </article>
@@ -73,7 +73,7 @@
                 <li th:text="${planDefinitions['PREMIUM_ULTRA'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_ULTRA'].fieldLimit})}"></li>
                 <li>Atendimento prioritário</li>
                 <li th:if="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM_ULTRA'].imageProductLimit}, ${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})}"></li>
-                <li th:text="#{billing.plan.uploads(${T(br.com.nuvemcustomfields.service.BuyerUploadPolicy).ULTRA_BYTES / 1000000000})}"></li>
+                <li th:text="#{billing.plan.uploads.ultra}"></li>
             </ul>
             <a class="pricing-plan-cta" th:href="@{/install}">Instalar aplicativo <span aria-hidden="true">→</span></a>
         </article>

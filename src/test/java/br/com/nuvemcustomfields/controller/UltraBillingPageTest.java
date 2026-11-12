@@ -176,7 +176,7 @@ class UltraBillingPageTest {
         String plans = mvc.perform(get("/admin/billing").session(session)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(plans).contains("75 produtos personalizados", "6 campos por produto", "1 produto personalizado",
-                        "2 GB de armazenamento", "10 GB de armazenamento", "Até 20 MB por arquivo", "90 dias após o pedido")
+                        "2 GB de armazenamento", "10 GB de armazenamento", "até 20 MB por arquivo", "90 dias após o pedido")
                 .doesNotContain("20 GB de armazenamento", "50 produtos personalizados", "Templates por nicho", "??billing.");
         assertThat(plans.split("Editor de campos, modelos reutilizáveis",-1)).hasSize(2);
         if (Boolean.getBoolean("ncf.billing.export")) {

@@ -169,6 +169,7 @@ public class StoreTemplateService {
     }
     private void features(Store owner,List<TemplateFieldDefinition> definitions,Long product) {
         for(var definition:definitions) {
+            if(definition.fieldType()==FieldType.FILE_UPLOAD && definition.maxFiles()!=null && definition.maxFiles()>1 && owner.getEffectivePlan()!=PlanType.PREMIUM_ULTRA) throw error("upload.multiple.ultra");
             if(definition.fieldType()==FieldType.FILE_UPLOAD && !uploadsAvailable(owner))throw error("template.upload.unavailable");
             if(definition.fieldType()==FieldType.IMAGE_SELECT) {
                 var options=ImageOptions.parse(definition.imageOptionsJson());

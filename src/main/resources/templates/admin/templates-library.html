@@ -18,4 +18,5 @@
 <div class="row-actions"><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
 <button class="button" type="button" data-template-copy th:attr="data-key=${template.key},data-name=${template.name}" th:text="#{template.duplicate}"></button></div></article></div></section>
 </main><div id="template-ui" hidden th:attr="data-copy-prompt=#{template.copy.prompt},data-copy-suffix=#{template.copy.suffix},data-delete-confirm=#{template.delete.confirm},data-failed=#{template.failed},data-saved=#{template.saved}"></div>
-<script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>
+<script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block><th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</body></html>

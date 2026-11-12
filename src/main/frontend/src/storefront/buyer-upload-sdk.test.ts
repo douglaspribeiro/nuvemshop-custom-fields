@@ -1,0 +1,22 @@
+import { beforeEach, afterEach, it, expect, vi } from 'vitest';
+import type { NubeSDK } from '@tiendanube/nube-sdk-types';
+import type { PersonalizationField } from '../shared/config';
+beforeEach(()=>{vi.resetModules();vi.stubGlobal('self',{__APP_DATA__:{id:'upload-test'}});});
+afterEach(()=>vi.unstubAllGlobals());
+it('shares the SDK session with its iframe without putting the token in its URL',async()=>{
+    const {buyerUploadField}=await import('./BuyerUploadField');
+    const token='a'.repeat(64),setItem=vi.fn(async()=>{}),postMessageToIframe=vi.fn();
+    const storage={getItem:vi.fn(async(key:string)=>key.startsWith('ncf-upload-session')?token:null),setItem};
+    const nube={getBrowserAPIs:()=>({asyncSessionStorage:storage,postMessageToIframe})} as unknown as NubeSDK;
+    const field:PersonalizationField={id:101,label:'Arte',fieldType:'FILE_UPLOAD',maxFiles:2,maxFileBytes:20_000_000,required:true,maxLength:null,placeholder:null,validationPattern:null,propertyName:'_ncf_file_101',options:['PNG']};
+    const changed=vi.fn();
+    const component=buyerUploadField(nube,501,123,field,'',changed,vi.fn()) as any;
+    const frame=Array.isArray(component.children)?component.children[0]:component.children;
+    expect(frame.src).not.toContain(token);
+    await frame.onMessage({value:{type:'ncf-upload-ready'}});
+    expect(postMessageToIframe).toHaveBeenCalledWith(frame,{type:'ncf-upload-session',token});
+    const value='arte.png — NCF-FILE:00000000-0000-4000-8000-000000000001';
+    await frame.onMessage({value:{type:'ncf-upload-value',value,token}});
+    expect(changed).toHaveBeenCalledWith(value);
+    expect(setItem).toHaveBeenCalledWith('ncf-upload-session-501',token);
+});

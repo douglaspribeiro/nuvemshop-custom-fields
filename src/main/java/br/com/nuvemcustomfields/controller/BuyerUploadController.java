@@ -75,7 +75,8 @@ public class BuyerUploadController {
         String message=switch(code) {
             case "upload.selection.invalid" -> messages.get("buyer.files.invalidSelection");
             case "upload.not.found", "upload.not.ordered" -> messages.get("buyer.files.missingFile");
-            case "upload.size.invalid", "upload.size.mismatch" -> "Envie um arquivo completo de até 20 MB.";
+            case "upload.size.invalid", "upload.size.mismatch" -> messages.get("upload.size.plan");
+            case "upload.files.limit" -> messages.get("upload.files.limit");
             case "upload.content.invalid", "upload.formats.invalid" -> "Arquivo inválido. Use JPG, PNG ou PDF sem senha, ações ou anexos.";
             case "upload.quota.exceeded", "upload.unavailable" -> "O envio está indisponível nesta loja. Entre em contato com a loja.";
             case "upload.rate.limit", "upload.session.limit" -> "Muitas tentativas de envio. Aguarde e tente novamente.";

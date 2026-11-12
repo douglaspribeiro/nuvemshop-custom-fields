@@ -117,7 +117,7 @@ public class PublicPersonalizationController {
 
         int imageOptionLimit = planLimitService.imageOptionLimit(store.getEffectivePlan());
         var fields = planLimitService.storefrontFields(store, rule.getFields()).stream()
-                .map(field -> FieldResponse.from(field, imageOptionLimit))
+                .map(field -> FieldResponse.from(field, imageOptionLimit, store.getEffectivePlan()))
                 .toList();
         LOGGER.debug(
                 "public.personalization.enabled store_id={} product_id={} rule_id={} fields_count={} country={} locale={}",

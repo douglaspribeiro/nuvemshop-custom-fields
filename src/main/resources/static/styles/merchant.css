@@ -327,3 +327,5 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-coming-soon { scroll-margin-top:24px; }
 .merchant-coming-soon-link:focus-visible, #coming-soon-title:focus-visible { outline:3px solid #87c7a6; outline-offset:4px; }
 @media(max-width:700px) { .merchant-overview-actions { justify-content:flex-start; } }
+
+.merchant-footer{padding-top:24px;padding-bottom:24px;border-top:1px solid var(--border,#e5e7eb);font-size:13px;text-align:center;}

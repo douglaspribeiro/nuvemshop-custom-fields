@@ -200,7 +200,7 @@ public class BuyerUploadService {
         metrics.counter("ncf.buyer.downloads").increment();
         return new Download(file.name(),file.size(),stream);
     }
-    @Scheduled(fixedDelayString="${buyer-uploads.cleanup-delay-ms:60000}")
+    @Scheduled(fixedDelayString="${buyer-uploads.cleanup-delay-ms:3600000}")
     public void cleanup() {
         var due=jdbc.queryForList("select store_id,id,state from buyer_uploads where (retry_at is null or retry_at<=?) and (state='DELETING' "
                 + "or (state in ('RESERVED','TEMPORARY','CART','ORDERED') and expires_at<=?)) order by expires_at limit 100",ts(Instant.now()),ts(Instant.now()));

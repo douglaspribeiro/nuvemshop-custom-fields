@@ -21,7 +21,6 @@
             <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>
             <a th:href="@{/admin/billing}" th:classappend="${active == 'billing'} ? ' is-active'" th:aria-current="${active == 'billing'} ? 'page'" th:text="#{merchant.nav.billing}">Planos e cobrança</a>
             <a th:href="@{/admin/help}" th:classappend="${active == 'help'} ? ' is-active'" th:aria-current="${active == 'help'} ? 'page'" th:text="#{merchant.nav.help}">Ajuda</a>
-            <a th:href="@{/status/}" th:text="#{status.title}">Status do serviço</a>
         </div>
     </nav>
     <div class="shell notice warning" role="status" th:if="${active != 'overview' and planPausedProductIds != null and !#sets.isEmpty(planPausedProductIds)}">
@@ -30,6 +29,9 @@
         <a th:href="@{/admin/billing}" th:text="#{plan.pause.action}">Reativar assinatura</a>
     </div>
 </header>
+<footer th:fragment="footer" class="shell merchant-footer">
+    <a th:href="@{/status/}" th:text="#{status.title}">Status do serviço</a>
+</footer>
 <div th:fragment="productThumbnail(imageUrl)" class="merchant-product-thumbnail" aria-hidden="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
     <img th:if="${imageUrl != null}" th:src="${imageUrl}" alt=""

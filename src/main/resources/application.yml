@@ -255,7 +255,7 @@ buyer-uploads:
     bucket: ${BUYER_UPLOAD_S3_BUCKET:}
     region: ${BUYER_UPLOAD_S3_REGION:us-east-2}
     prefix: ${BUYER_UPLOAD_S3_PREFIX:production/buyer-files}
-  cleanup-delay-ms: ${BUYER_UPLOAD_CLEANUP_DELAY_MS:60000}
+  cleanup-delay-ms: ${BUYER_UPLOAD_CLEANUP_DELAY_MS:3600000}
   reconcile-delay-ms: ${BUYER_UPLOAD_RECONCILE_DELAY_MS:300000}
 # NC-39: deployment never enables a campaign implicitly.
 activation:

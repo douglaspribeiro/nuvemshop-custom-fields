@@ -43,6 +43,9 @@ public class BuyerUploadLedger {
         lockStore(storeId);
         var usage = usageLocked(storeId);
         if (!usage.acceptsUploads()) throw new Rejected("upload.unavailable");
+        var plan = jdbc.queryForObject("select plan from stores where store_id=?", String.class, storeId);
+        if (sizeBytes > BuyerUploadPolicy.maxFileBytes(br.com.nuvemcustomfields.entity.PlanType.valueOf(plan)))
+            throw new Rejected("upload.size.invalid");
         String hash = hash(sessionToken);
         var existing = jdbc.query("select * from buyer_uploads where store_id=? and session_hash=? and request_id=?",
                 this::entry, storeId, hash, requestId);
@@ -59,6 +62,12 @@ public class BuyerUploadLedger {
         Long fields = jdbc.queryForObject("select count(*) from personalization_fields f join personalization_rules r on r.id=f.rule_id "
                 + "where f.id=? and r.store_id=? and r.product_id=?", Long.class, fieldId, storeId, productId);
         if (fields == null || fields != 1) throw new Rejected("upload.field.invalid");
+        int maxFiles = "PREMIUM_ULTRA".equals(plan) ? jdbc.queryForObject(
+                "select max_files from personalization_fields where id=?", Integer.class, fieldId) : 1;
+        Long selected = jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and field_id=? and session_hash=? and state in ('RESERVED','TEMPORARY') and expires_at>?",
+                Long.class, storeId, fieldId, hash, ts(Instant.now()));
+        if (selected != null && selected >= maxFiles) throw new Rejected("upload.files.limit");
+
         if (sizeBytes > usage.quotaBytes() - usage.occupiedBytes()) throw new Rejected("upload.quota.exceeded");
         Long attempts=jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and created_at>?",Long.class,
                 storeId,ts(Instant.now().minusSeconds(86400)));
@@ -66,7 +75,7 @@ public class BuyerUploadLedger {
         // Bound concurrent/abandoned reservations even for tiny files.
         Long pending = jdbc.queryForObject("select count(*) from buyer_uploads where store_id=? and session_hash=? "
                 + "and state in ('RESERVED','TEMPORARY','CART')", Long.class, storeId, hash);
-        if (pending != null && pending >= 20) throw new Rejected("upload.session.limit");
+        if (pending != null && pending >= ("PREMIUM_ULTRA".equals(plan) ? 100 : 20)) throw new Rejected("upload.session.limit");
         String id = UUID.randomUUID().toString();
         Instant now = Instant.now(), expires = now.plus(BuyerUploadPolicy.TEMPORARY_RETENTION);
         jdbc.update("insert into buyer_uploads (id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,created_at,expires_at) "

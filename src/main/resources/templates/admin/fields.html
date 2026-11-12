@@ -101,10 +101,11 @@
                         </label>
                         <input type="hidden" name="validationPattern" th:value="${draft.validationPattern}">
                         <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
+                        <label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" th:value="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? draft.maxFiles : 1}" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
                         <label>
                             <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
-                    <small class="field-help field-upload-help" hidden>Para arquivo do comprador: JPEG, PNG ou PDF, um por linha. Em branco aceita os três. Até 20 MB; retenção de 90 dias.</small>
+                    <small class="field-help field-upload-help" hidden th:text="#{upload.editor.help}"></small>
                     <small class="field-help field-checkbox-help" hidden th:text="#{editor.checkbox.help}"></small>
                             <textarea name="optionsText" rows="4" th:placeholder="#{admin.fields.options.placeholder}" th:text="${draft.optionsText}"></textarea>
                         </label>
@@ -188,10 +189,11 @@
                 </label>
                 <input type="hidden" th:field="*{validationPattern}">
                 <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
+                <label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
                 <label>
                     <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
-                    <small class="field-help field-upload-help" hidden>Para arquivo do comprador: JPEG, PNG ou PDF, um por linha. Em branco aceita os três. Até 20 MB; retenção de 90 dias.</small>
+                    <small class="field-help field-upload-help" hidden th:text="#{upload.editor.help}"></small>
                     <small class="field-help field-checkbox-help" hidden th:text="#{editor.checkbox.help}"></small>
                     <textarea th:field="*{optionsText}" rows="4" th:placeholder="#{admin.fields.options.placeholder}"></textarea>
                 </label>
@@ -245,5 +247,7 @@
 <script th:src="@{/assets/option-images-admin.js(v=${assetVersion})}"></script>
 <script th:src="@{/assets/product-fields-editor.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
+<th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+<script th:if="${ga4OperatorSession != true}" th:src="@{/assets/configuration-analytics.js(v=${assetVersion})}" defer></script>
 </body>
 </html>

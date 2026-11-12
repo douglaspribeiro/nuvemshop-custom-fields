@@ -1,65 +1,47 @@
-import { Button, Column, Form, Text } from "@tiendanube/nube-sdk-jsx";
+import { Column, Iframe } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent, NubeSDK } from "@tiendanube/nube-sdk-types";
 import type { PersonalizationField } from "../shared/config";
 import { appOrigin } from "../shared/config";
-import { createBuyerUploads } from "./buyer-uploads";
-import { styled } from "@tiendanube/nube-sdk-ui";
+import { createBuyerUploads, uploadValues } from "./buyer-uploads";
 
-const UploadArea = styled(Column)`
-    border:1px dashed currentColor;border-radius:12px;padding:20px;gap:12px;
-    background:transparent;color:inherit;font-family:inherit;text-align:center;
-    &:focus-within {outline:2px solid currentColor;outline-offset:3px;}
-    & input[type=file] {width:100%;max-width:100%;box-sizing:border-box;padding:12px;color:inherit;font:inherit;cursor:pointer;}
-    & input[type=file]::file-selector-button {border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit;font:inherit;padding:10px 16px;margin-right:12px;cursor:pointer;}
-`;
-
-const state = new Map<string, { busy: boolean; message: string; form: NubeComponent; value: string }>();
+const frames=new Map<string,{frame:NubeComponent;changed:(value:string)=>void}>();
 export function resetBuyerUploadFields(nube:NubeSDK,store:number,product:number) {
-    for(const [key,entry] of state) if(key.startsWith(`${store}-${product}-`)) {
-        nube.getBrowserAPIs().resetForm(entry.form);entry.value="";entry.message="";entry.busy=false;
-    }
+    for(const [key,entry] of frames) if(key.startsWith(`${store}-${product}-`))
+        nube.getBrowserAPIs().postMessageToIframe(entry.frame,{type:"ncf-upload-consumed"});
 }
-export function buyerUploadField(nube: NubeSDK, store: number, product: number, field: PersonalizationField,
-    value: string, changed: (value: string) => void, refresh: () => void): NubeComponent {
-    const client = createBuyerUploads(store,product,nube.getBrowserAPIs().asyncSessionStorage);
-    const key = `${store}-${product}-${field.id}`;
-    let current = state.get(key);
-    if (!current) {
-        const next = { busy: false, message: "", form: null as unknown as NubeComponent, value: "" };
-        const form = <Form.Root target={`${appOrigin()}/public/stores/${store}/buyer-uploads`} onChange={async () => {
-            if (next.busy) return;
-            const browser = nube.getBrowserAPIs() as ReturnType<NubeSDK["getBrowserAPIs"]> & {
-                getFormFile?: (form: NubeComponent, name: string) => Promise<File | null>;
-            };
-            if (!browser.getFormFile) { next.message = "O envio está indisponível neste navegador. Entre em contato com a loja."; refresh(); return; }
-            const file = await browser.getFormFile(form,"file");
-            if (!file) return;
-            next.busy = true; next.value="__uploading__"; changed(next.value);
-            try {
-                const uploaded = await client.upload(field,file,text => { next.message=text;refresh(); });
-                next.value=uploaded;changed(uploaded);
-            } catch (error) { next.message=error instanceof Error ? error.message : "Falha de rede. Tente novamente.";next.value="";changed(""); }
-            finally { next.busy=false;refresh(); }
-        }}>
-            <Form.Field type="file" name="file" label={field.label + (field.required ? " *" : "")}
-                accept={(field.options.length ? field.options : ["JPEG","PNG","PDF"]).map(format => format==="JPEG" ? ".jpg,.jpeg" : `.${format.toLowerCase()}`).join(",")}
-                maxSize={20_000_000} />
-        </Form.Root>;
-        next.form=form;current=next;state.set(key,next);
-        void client.restore(field).then(restored => { if(restored && !next.busy) { next.value=restored;changed(restored); refresh(); } });
+/** Files remain in a native, app-hosted picker: binary data never crosses the SDK Worker. */
+export function buyerUploadField(nube:NubeSDK,store:number,product:number,field:PersonalizationField,
+    _value:string,changed:(value:string)=>void,_refresh:()=>void):NubeComponent {
+    const key=`${store}-${product}-${field.id}`;
+    let entry=frames.get(key);
+    if(!entry) {
+        const target={frame:null as unknown as NubeComponent,changed};
+        let revision=0;
+        const frame=<Iframe id={`ncf-upload-${key}`} src={`${appOrigin()}/buyer-upload.html?store=${store}&product=${product}&field=${field.id}` as `https://${string}`}
+            width="100%" height="260px" autoresize sandbox="allow-scripts allow-same-origin"
+            onMessage={async event=>{
+                const data=event.value;
+                if(data?.type==="ncf-upload-ready") {
+                    try {
+                        const token=await createBuyerUploads(store,product,nube.getBrowserAPIs().asyncSessionStorage).sessionToken();
+                        nube.getBrowserAPIs().postMessageToIframe(target.frame,{type:"ncf-upload-session",token});
+                    } catch {nube.getBrowserAPIs().postMessageToIframe(target.frame,{type:"ncf-upload-session-error"});}
+                    return;
+                }
+                if(!data || data.type!=="ncf-upload-value" || typeof data.value!=="string") return;
+                const value=data.value;const current=++revision;
+                if(value && !value.startsWith("__") && (uploadValues(value).length!==value.split("\n").length || uploadValues(value).length>(field.maxFiles ?? 1))) return;
+                const storage=nube.getBrowserAPIs().asyncSessionStorage;
+                if(typeof data.token==="string" && /^[a-f0-9]{64}$/.test(data.token))
+                    await storage.setItem(`ncf-upload-session-${store}`,data.token);
+                await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`,value.startsWith("__")?"":value);
+                if(current===revision) target.changed(value);
+            }} />;
+        target.frame=frame;entry=target;frames.set(key,target);
+        void createBuyerUploads(store,product,nube.getBrowserAPIs().asyncSessionStorage).restore(field).then(value=>{
+            if(!revision && value) {target.changed(value);_refresh();}
+        });
     }
-    const entry=current;
-    if(!value && entry.value) changed(entry.value);
-    return <Column gap={4}>
-        <UploadArea><Text>{field.label + (field.required ? " *" : "")}</Text>{entry.form}</UploadArea>
-        <Text>{field.placeholder || "JPG, PNG ou PDF, até 20 MB."}</Text>
-        <Text>{entry.message || (value.startsWith("__") ? "Enviando…" : value.replace(/\s*—\s*NCF-FILE:.*$/, ""))}</Text>
-        <Button variant="link" onClick={async () => {
-            if(entry.busy) return;
-            entry.busy=true;
-            try { await client.remove(field,value || entry.value);entry.value=""; changed(""); entry.message="Arquivo removido."; }
-            catch {entry.message="Não foi possível remover. Tente novamente.";}
-            finally {entry.busy=false;refresh();}
-        }}>Remover arquivo</Button>
-    </Column>;
+    entry.changed=changed;
+    return <Column>{entry.frame}</Column>;
 }

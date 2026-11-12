@@ -171,6 +171,9 @@ public class PersonalizationAdminService {
 
     private void validateImagePlan(Long storeId, Long productId, FieldForm form) {
         if (form.getFieldType() == FieldType.FILE_UPLOAD) {
+            if (form.getMaxFiles() < 1 || form.getMaxFiles() > 5) throw new IllegalArgumentException("upload.files.invalid");
+            if (form.getMaxFiles() > 1 && stores.findByStoreId(storeId).orElseThrow().getEffectivePlan() != br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA)
+                throw new IllegalArgumentException("upload.multiple.ultra");
             if (!buyerUploads.usage(storeId).acceptsUploads()) throw new IllegalArgumentException("upload.unavailable");
             BuyerUploadService.formats(form.getOptionsText());
         }
@@ -188,6 +191,7 @@ public class PersonalizationAdminService {
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);
         field.setShowImageZoom(form.isShowImageZoom());
+        field.setMaxFiles(form.getFieldType() == FieldType.FILE_UPLOAD ? form.getMaxFiles() : 1);
         field.setMobileImageColumns(form.getFieldType() == FieldType.IMAGE_SELECT ? form.getMobileImageColumns() : null);
         field.setImageOptionsJson(form.getFieldType() == FieldType.IMAGE_SELECT
                 ? ImageOptions.serialize(ImageOptions.parse(form.getImageOptionsJson())) : null);

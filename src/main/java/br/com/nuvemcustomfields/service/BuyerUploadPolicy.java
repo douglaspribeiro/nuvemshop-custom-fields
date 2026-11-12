@@ -9,6 +9,9 @@ public final class BuyerUploadPolicy {
     public static final long ULTRA_BYTES = 10_000_000_000L;
     public static final Duration TEMPORARY_RETENTION = Duration.ofHours(24);
     public static final Duration ORDER_RETENTION = Duration.ofDays(90);
+    public static long maxFileBytes(br.com.nuvemcustomfields.entity.PlanType plan) {
+        return plan == br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA ? MAX_FILE_BYTES : 10_000_000L;
+    }
     private BuyerUploadPolicy() {}
 
     public static int warningPercent(long occupied, long quota) {

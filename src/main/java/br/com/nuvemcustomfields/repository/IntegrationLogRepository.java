@@ -8,6 +8,7 @@ import java.util.List;
 public interface IntegrationLogRepository extends JpaRepository<IntegrationLog, Long> {
 
     List<IntegrationLog> findTop20ByStoreIdOrderByCreatedAtDesc(Long storeId);
+    List<IntegrationLog> findTop20ByStoreIdAndLevelInOrderByCreatedAtDesc(Long storeId, List<String> levels);
     @org.springframework.data.jpa.repository.Query("select new br.com.nuvemcustomfields.dto.StoreMetricCount(l.storeId, count(l)) "
             + "from IntegrationLog l where l.eventType in ('storefront.sdk.rendered', 'storefront.sdk.patagonia_transition_rendered') "
             + "and l.storeId is not null group by l.storeId")

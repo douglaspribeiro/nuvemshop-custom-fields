@@ -32,6 +32,10 @@ public class FieldForm {
     private String imageOptionsJson;
     private boolean showImageZoom = true;
     private Integer mobileImageColumns;
+    @Min(1) @Max(5)
+    private Integer maxFiles = 1;
+    public Integer getMaxFiles() { return maxFiles == null ? 1 : maxFiles; }
+    public void setMaxFiles(Integer value) { maxFiles = value == null ? 1 : value; }
     public Integer getMobileImageColumns() { return mobileImageColumns; }
     public void setMobileImageColumns(Integer value) { mobileImageColumns = value; }
     @AssertTrue(message = "image.mobile.columns.invalid")

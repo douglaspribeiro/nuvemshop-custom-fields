@@ -11,7 +11,7 @@
 <div class="form"><label><span th:text="#{admin.fields.label}"></span><input name="label" required maxlength="100"></label>
 <label><span th:text="#{template.type}"></span><select name="fieldType"><option th:each="type : ${T(br.com.nuvemcustomfields.entity.FieldType).values()}" th:if="${type.name() != 'FILE_UPLOAD' or editorData.uploadAvailable}" th:value="${type}" th:text="#{'field.type.'+${type}}"></option></select></label>
 <label class="checkbox"><input type="checkbox" name="required"><span th:text="#{template.required}"></span></label>
-<label><span th:text="#{template.max.length}"></span><input name="maxLength" type="number" min="1" max="500" value="100" required></label>
+<label><span th:text="#{template.max.length}"></span><input name="maxLength" type="number" min="1" max="500" value="100" required></label><label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
 <label><span th:text="#{admin.fields.placeholder}"></span><input name="placeholder" maxlength="150"></label>
 <input type="hidden" name="validationPattern"><input type="hidden" name="sortOrder" value="0"><th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
 <label><span th:text="#{admin.fields.options}"></span><small class="field-help field-upload-help" hidden th:text="#{template.formats.help}"></small><textarea name="optionsText" rows="3"></textarea></label>
@@ -25,4 +25,6 @@
 <div id="template-ui" hidden th:attr="data-failed=#{template.failed},data-saved=#{template.saved},data-field=#{template.field},data-image-wait=#{template.image.wait},data-unsupported=#{template.upload.unavailable}"></div>
 <script th:inline="javascript">window.ncfTemplateEditor=/*[[${editorData}]]*/ {};</script>
 <script th:src="@{/assets/product-fields-editor.js(v=${assetVersion})}"></script><script th:src="@{/assets/option-images-admin.js(v=${assetVersion})}"></script><script th:src="@{/assets/store-templates.js(v=${assetVersion})}"></script>
-<th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>
+<th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block><th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+<script th:if="${ga4OperatorSession != true}" th:src="@{/assets/configuration-analytics.js(v=${assetVersion})}" defer></script>
+</body></html>

@@ -40,3 +40,5 @@ Suporte
 
 Central no aplicativo: https://campos-personalizados.wzhub.pro/support/
 E-mail: contato@wzhub.pro
+
+Arquivos do comprador: no Pro, receba 1 arquivo de até 10 MB por campo, com 2 GB de armazenamento. No Ultra, configure de 1 a 5 arquivos por campo, de até 20 MB cada, com 10 GB de armazenamento. Aceita JPG, PNG e PDF. Os arquivos ficam disponíveis por 90 dias após o pedido; o lojista pode baixá-los no aplicativo. Arquivos já enviados continuam preservados pelo prazo de retenção.

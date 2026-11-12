@@ -6,4 +6,5 @@
 <p th:if="${#lists.isEmpty(productPage.items)}" th:text="#{template.products.empty}"></p>
 <ul class="template-fields"><li th:each="product : ${productPage.items}" style="margin:12px 0"><a class="button" th:href="@{/admin/templates/review(key=${template.key},productId=${product.id})}" th:text="${product.name}"></a></li></ul>
 <nav class="pager"><a class="button" th:if="${productPage.hasPrevious()}" th:href="@{/admin/templates/choose(key=${template.key},page=${productPage.previousPage()},q=${productPage.query})}" th:text="#{common.previous}"></a><a class="button" th:if="${productPage.hasNext()}" th:href="@{/admin/templates/choose(key=${template.key},page=${productPage.nextPage()},q=${productPage.query})}" th:text="#{common.next}"></a></nav></section>
-</main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block></body></html>
+</main><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block><th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</body></html>

@@ -40,3 +40,5 @@ Support
 
 In-app support center: https://campos-personalizados.wzhub.pro/support/
 Email: contato@wzhub.pro
+
+Buyer files: Pro accepts 1 file per field, up to 10 MB per file, with 2 GB of storage. Ultra lets the merchant configure 1 to 5 files per field, up to 20 MB each, with 10 GB of storage. JPG, PNG and PDF are supported. Files remain available in the app for 90 days after the order. Previously uploaded files remain available for their retention period.

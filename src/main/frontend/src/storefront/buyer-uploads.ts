@@ -1,11 +1,16 @@
 import { appOrigin, type PersonalizationField } from "../shared/config";
 
 export const FILE_REFERENCE = /NCF-FILE:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+export function uploadValues(value: string): string[] { return value.split("\n").filter(part => FILE_REFERENCE.test(part)); }
+export function uploadId(value: string): string | undefined { return value.match(/NCF-FILE:([a-f0-9-]{36})$/)?.[1]; }
+export function uploadDisplay(value: string): string { return uploadValues(value).map(part => part.replace(/\s*—\s*NCF-FILE:.*$/, "")).join("; "); }
 type Storage = { getItem(key: string): Promise<string | null> | string | null; setItem(key: string, value: string): unknown };
+const fallbackMemory=new Map<string,string>();
 const fallbackStorage: Storage = {
-    getItem: key => { try { return sessionStorage.getItem(key); } catch { return null; } },
-    setItem: (key,value) => { try { sessionStorage.setItem(key,value); } catch { /* Session still lives in memory. */ } },
+    getItem: key => { try { return sessionStorage.getItem(key); } catch { return fallbackMemory.get(key) || null; } },
+    setItem: (key,value) => { fallbackMemory.set(key,value);try { sessionStorage.setItem(key,value); } catch { /* Session still lives in memory. */ } },
 };
+export function setUploadSession(store:number,token:string) { fallbackStorage.setItem(`ncf-upload-session-${store}`,token); }
 const pendingSessions=new Map<number,Promise<string>>();
 export function createBuyerUploads(store: number, product: number, storage: Storage = fallbackStorage) {
     let token: Promise<string> | null = null;
@@ -35,26 +40,28 @@ export function createBuyerUploads(store: number, product: number, storage: Stor
         return body;
     }
     return {
+        sessionToken: session,
         async ensure(value: string) {
-            const id=value.match(/NCF-FILE:(.*)$/)?.[1];
-            if(!id) return;
-            await result(await fetch(`${prefix}/${id}/cart`,{method:"POST",headers:{"X-Upload-Session":await session()}}));
+            for (const part of uploadValues(value)) {
+                await result(await fetch(`${prefix}/${uploadId(part)}/cart`,{method:"POST",headers:{"X-Upload-Session":await session()}}));
+            }
         },
         async restore(field: PersonalizationField): Promise<string> {
             const value = await storage.getItem(`ncf-upload-${store}-${product}-${field.id}`);
-            if (!value || !FILE_REFERENCE.test(value)) return "";
+            if (!value || !uploadValues(value).length) return "";
             try {
-                const id = value.match(/NCF-FILE:(.*)$/)![1];
-                await result(await fetch(`${prefix}/${id}/validate`, { method: "POST", headers: { "X-Upload-Session": await session() } }));
+                for (const part of uploadValues(value)) await result(await fetch(`${prefix}/${uploadId(part)}/validate`, { method: "POST", headers: { "X-Upload-Session": await session() } }));
                 return value;
             } catch { await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, "");return ""; }
         },
-        async upload(field: PersonalizationField, file: File, progress: (text: string) => void): Promise<string> {
-            if (!file.size || file.size > 20_000_000) throw new Error("Envie um arquivo de até 20 MB.");
+        async upload(field: PersonalizationField, file: File, progress: (text: string) => void, append = false): Promise<string> {
+            const maxBytes = field.maxFileBytes ?? 20_000_000;
+            if (!file.size || file.size > maxBytes) throw new Error(field.locale?.startsWith("es") ? `Envía un archivo de hasta ${maxBytes / 1_000_000} MB.` : `Envie um arquivo de até ${maxBytes / 1_000_000} MB.`);
             const request = crypto.randomUUID();
             const previous = await storage.getItem(`ncf-upload-${store}-${product}-${field.id}`);
-            const previousId = previous?.match(/NCF-FILE:(.*)$/)?.[1];
-            if(previousId) {
+            const previousId = previous ? uploadId(previous) : undefined;
+            if (append && uploadValues(previous || "").length >= (field.maxFiles ?? 1)) throw new Error(`Envie no máximo ${field.maxFiles ?? 1} arquivos.`);
+            if(previousId && !append) {
                 try {await result(await fetch(`${prefix}/${previousId}`, { method: "DELETE", headers: { "X-Upload-Session": await session() } }));}
                 catch(error) {if(!["upload.not.found","upload.expired","upload.not.temporary"].includes((error as {code?:string}).code || ""))throw error;}
                 await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, "");
@@ -75,15 +82,18 @@ export function createBuyerUploads(store: number, product: number, storage: Stor
                 });
             } else uploaded = await result(await fetch(prefix, { method: "POST", headers, body: data, credentials: "omit" }));
             await result(await fetch(`${prefix}/${uploaded.id}/validate`, { method: "POST", headers: { "X-Upload-Session": await session() } }));
-            const value = `${uploaded.name} (${uploaded.size} bytes) — ${appOrigin()}/admin/buyer-uploads/${uploaded.id}/download — ${uploaded.reference}`;
+            const single = `${uploaded.name} (${uploaded.size} bytes) — ${appOrigin()}/admin/buyer-uploads/${uploaded.id}/download — ${uploaded.reference}`;
+            const value = append && previous ? previous + "\n" + single : single;
             await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, value);
             progress(`Enviado: ${uploaded.name} (${uploaded.size} bytes). Disponível à loja por 90 dias após o pedido.`);
             return value;
         },
         async remove(field: PersonalizationField, value: string) {
-            const id = value.match(/NCF-FILE:(.*)$/)?.[1];
-            if (id) await result(await fetch(`${prefix}/${id}`, { method: "DELETE", headers: { "X-Upload-Session": await session() } }));
-            await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, "");
+            for (const part of uploadValues(value)) await result(await fetch(`${prefix}/${uploadId(part)}`, { method: "DELETE", headers: { "X-Upload-Session": await session() } }));
+            const previous = await storage.getItem(`ncf-upload-${store}-${product}-${field.id}`) || "";
+            const remaining = uploadValues(previous).filter(part => !uploadValues(value).some(removed => uploadId(removed) === uploadId(part))).join("\n");
+            await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, remaining);
+            return remaining;
         },
         async forget(field: PersonalizationField) { await storage.setItem(`ncf-upload-${store}-${product}-${field.id}`, ""); },
     };

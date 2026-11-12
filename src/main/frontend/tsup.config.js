@@ -33,6 +33,6 @@ const sdk = {
 
 export default defineConfig([sdk, {
   ...sdk,
-  entry: { "nuvemshop-patagonia": "src/storefront/patagonia-entry.ts", "buyer-upload-dom": "src/storefront/buyer-upload-dom-entry.ts" },
+  entry: { "nuvemshop-patagonia": "src/storefront/patagonia-entry.ts", "buyer-upload-dom": "src/storefront/buyer-upload-dom-entry.ts", "buyer-upload-widget": "src/storefront/buyer-upload-widget.ts" },
   format: ["iife"],
 }]);

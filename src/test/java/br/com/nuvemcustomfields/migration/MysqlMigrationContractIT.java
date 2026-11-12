@@ -102,6 +102,20 @@ class MysqlMigrationContractIT {
         });
     }
 
+    @Test void multipleFilesMigrationDefaultsOldFieldsToOneAndCleanupKeepsWarnings() {
+        isolatedDatabase(source -> {
+            var jdbc=new JdbcTemplate(source);flyway(source,"75").migrate();
+            jdbc.update("INSERT INTO personalization_rules(id,store_id,product_id) VALUES(900077,900077,123)");
+            jdbc.update("INSERT INTO personalization_fields(id,rule_id,label,field_type) VALUES(900077,900077,'Arte','FILE_UPLOAD')");
+            jdbc.update("INSERT INTO integration_logs(store_id,level,event_type,message) VALUES(900077,'INFO','storefront.sdk.rendered','routine'),(900077,'WARN','storefront.sdk.rendered','warning'),(900077,'ERROR','other.error','error')");
+            var latest=flyway(source,null);latest.migrate();
+            assertThat(jdbc.queryForObject("SELECT max_files FROM personalization_fields WHERE id=900077",Integer.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM integration_logs WHERE store_id=900077 AND level='INFO'",Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM integration_logs WHERE store_id=900077 AND level IN ('WARN','ERROR')",Integer.class)).isEqualTo(2);
+            assertThat(latest.migrate().migrationsExecuted).isZero();validateHibernateAndReadField(source,null);
+        });
+    }
+
     @Test void upgradesProductionV70AndKeepsBothManualOverrideAndHistoricalUploadLocation() {
         isolatedDatabase(source -> {
             var jdbc=new JdbcTemplate(source);
@@ -110,7 +124,8 @@ class MysqlMigrationContractIT {
             assertThat(flyway(source,"74").migrate().migrationsExecuted).isEqualTo(4);
             jdbc.update("INSERT INTO buyer_uploads(id,store_id,product_id,field_id,session_hash,request_id,size_bytes,state,created_at,expires_at,bucket,object_key) VALUES('legacy-aws',900004,123,456,'session','request',100,'TEMPORARY',NOW(),DATE_ADD(NOW(),INTERVAL 1 DAY),'original-bucket','original/key')");
             var latest=flyway(source,null);
-            assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+            int pending=latest.info().pending().length;
+            assertThat(latest.migrate().migrationsExecuted).isEqualTo(pending);
             assertThat(latest.validateWithResult().validationSuccessful).isTrue();
             assertThat(jdbc.queryForObject("SELECT manual_plan_override FROM stores WHERE store_id=900004",Boolean.class)).isTrue();
             assertThat(jdbc.queryForObject("SELECT buyer_upload_storage_provider FROM stores WHERE store_id=900004",String.class)).isNull();

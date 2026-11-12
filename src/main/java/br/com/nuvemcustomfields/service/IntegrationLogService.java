@@ -34,6 +34,12 @@ public class IntegrationLogService {
         return repository.findTop20ByStoreIdOrderByCreatedAtDesc(storeId);
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<IntegrationLog> recentImportant(Long storeId) {
+        return repository.findTop20ByStoreIdAndLevelInOrderByCreatedAtDesc(storeId,
+                java.util.List.of("WARN", "ERROR"));
+    }
+
     private void write(Long storeId, String level, String eventType, String message) {
         LOGGER.info("integration_log store_id={} level={} event_type={} message={}", storeId, level, eventType, message);
         IntegrationLog log = new IntegrationLog();

@@ -45,3 +45,30 @@ describe("buyer upload",()=>{
         expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 });
+it("keeps several files, validates each reference and removes only the selected file",async()=>{
+    const ids=[id,"00000000-0000-4000-8000-000000000002"];
+    const multi={...field,maxFiles:2,maxFileBytes:20_000_000};
+    const fetch=vi.mocked(globalThis.fetch);
+    fetch.mockImplementation(async(url,options)=>{
+        if(String(url).endsWith('/session'))return reply({token:"a".repeat(64)});
+        if(options?.body instanceof FormData) {
+            const index=String((options.body.get('file') as File).name).startsWith('b')?1:0;
+            return reply({id:ids[index],name:index?'b.png':'a.png',size:1,reference:`NCF-FILE:${ids[index]}`});
+        }
+        return reply({ready:true});
+    });
+    const client=createBuyerUploads(8,123,storage);
+    await client.upload(multi,new File(['a'],'a.png'),()=>{},true);
+    const value=await client.upload(multi,new File(['b'],'b.png'),()=>{},true);
+    expect(validate([multi],{[field.propertyName]:value})).toEqual([]);
+    await expect(client.upload(multi,new File(['c'],'c.png'),()=>{},true)).rejects.toThrow('máximo 2');
+    await client.ensure(value);
+    expect(fetch.mock.calls.filter(([url])=>String(url).endsWith('/cart'))).toHaveLength(2);
+    const remaining=await client.remove(multi,value.split('\n')[0]);
+    expect(remaining).toContain(ids[1]);expect(remaining).not.toContain(ids[0]);
+});
+it("applies the Pro byte limit before requesting a session",async()=>{
+    await expect(createBuyerUploads(9,123,storage).upload({...field,maxFileBytes:10_000_000},
+        {size:10_000_001} as File,()=>{})).rejects.toThrow('10 MB');
+    expect(fetch).not.toHaveBeenCalled();
+});

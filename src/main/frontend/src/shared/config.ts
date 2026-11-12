@@ -5,6 +5,9 @@ export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELEC
 /** Espelha br.com.nuvemcustomfields.dto.FieldResponse. */
 export type PersonalizationField = {
     id?: number;
+    maxFiles?: number;
+    locale?: string;
+    maxFileBytes?: number;
 	label: string;
 	fieldType: FieldType;
 	required: boolean;
@@ -92,6 +95,7 @@ function normalize(config: PersonalizationConfig): PersonalizationConfig {
 		enabled: true,
 		fields: (config.fields ?? []).filter((field) => !!field?.label).map(field => ({
             ...field,
+            locale: config.locale,
             imageOptions: (field.imageOptions ?? []).map(option => ({...option,
                 thumbnailUrl: new URL(option.thumbnailUrl, appOrigin()).href,
                 imageUrl: new URL(option.imageUrl, appOrigin()).href,

@@ -63,6 +63,8 @@
                 element.textContent = type.value === 'SELECT' ? element.dataset.selectText : element.dataset.text;
             });
             get('optionsText').closest('label').hidden = !['SELECT', 'CHECKBOX', 'FILE_UPLOAD'].includes(type.value);
+            const uploadCount=form.querySelector('.field-upload-count');
+            if(uploadCount) uploadCount.hidden=type.value !== 'FILE_UPLOAD';
             const uploadHelp=form.querySelector('.field-upload-help');
             if(uploadHelp) uploadHelp.hidden=type.value !== 'FILE_UPLOAD';
             const checkboxHelp = form.querySelector('.field-checkbox-help');
@@ -81,7 +83,7 @@
             wrapper.append(title);
             let input;
             if(type.value === 'FILE_UPLOAD') {
-                input=document.createElement('input');input.type='file';input.accept='.jpg,.jpeg,.png,.pdf';
+                input=document.createElement('input');input.type='file';input.multiple=Number(get('maxFiles')?.value || 1)>1;input.accept='.jpg,.jpeg,.png,.pdf';
                 wrapper.append(input);target.append(wrapper);return;
             }
             if (type.value === 'IMAGE_SELECT') {

@@ -60,7 +60,7 @@ Comportamento atual verificado no código: armazenamento é limitado a 2 GB no P
 - `BUYER_UPLOAD_S3_BUCKET`: bucket privado dedicado, obrigatório para armazenar.
 - `BUYER_UPLOAD_S3_REGION`: padrão `us-east-2`.
 - `BUYER_UPLOAD_S3_PREFIX`: padrão `production/buyer-files`.
-- `BUYER_UPLOAD_CLEANUP_DELAY_MS` / `BUYER_UPLOAD_RECONCILE_DELAY_MS`: 60.000 / 300.000 por padrão.
+- `BUYER_UPLOAD_CLEANUP_DELAY_MS` / `BUYER_UPLOAD_RECONCILE_DELAY_MS`: 3.600.000 (1 hora) / 300.000 por padrão.
 
 IAM precisa permitir gravar/ler/apagar objetos e versões, listar versões, ler versionamento e consultar bloqueio público do bucket. Exigir os quatro bloqueios de acesso público. Não usar ACL pública, política pública, hospedagem estática ou caminhos de execução para os objetos. O backend faz o download e não precisa de CORS no bucket.
 
