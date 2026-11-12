@@ -965,6 +965,12 @@ public class PaymentSubscriptionService {
         }
         paymentNotifications.paymentFailed(local, invoice);
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
+        boolean refunded = invoice!=null && ("refunded".equalsIgnoreCase(invoice.paymentStatus())
+                || "chargedBack".equalsIgnoreCase(invoice.paymentStatus()));
+        if (canceled(status) || (remote.cancellationEffectiveAt()!=null && !refunded)) {
+            local.setWebhookDowngradeAfter(null);
+            local.setWebhookDowngradeStatus(null);
+        }
         if (renewalFailures != null && renewalFailures.apply(local, store, remote, invoice, upgraded)) {
             if (!Instant.now().isBefore(local.getGraceUntil())) deactivate(local, store, source);
         } else if (local.getProvider() == PaymentProviderType.STRIPE && "incomplete_expired".equals(status)) {
@@ -1043,7 +1049,8 @@ public class PaymentSubscriptionService {
             deactivate(local, store, source);
         } else if (canceled(status)) {
             if (local.getProvider().isStripeOrCreem()) {
-                local.setNextPaymentAt(Instant.now()); deactivate(local, store, source);
+                local.setNextPaymentAt(Instant.now());
+                deactivate(local, store, source);
             }
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
             local.setCancellationPending(false);
@@ -1055,6 +1062,11 @@ public class PaymentSubscriptionService {
             local.setStatus(PaymentSubscriptionStatus.ERROR);
         } else if (!local.isAccessActive()) {
             local.setStatus(PaymentSubscriptionStatus.PENDING);
+        }
+        if (local.getWebhookDowngradeAfter()!=null && Instant.now().isBefore(local.getWebhookDowngradeAfter())
+                && local.isAccessActive() && local.getRenewalFailureDetectedAt()==null) {
+            if(local.getStatus()!=PaymentSubscriptionStatus.ACTIVE) local.setWebhookDowngradeStatus(local.getStatus());
+            local.setStatus(PaymentSubscriptionStatus.ACTIVE);
         }
         if (local.getProvider() == PaymentProviderType.EFI) {
             LOGGER.info("payments.efi.reconciled store_id={} provider_status={} charge_status={} local_status={} source={}",
@@ -1361,7 +1373,29 @@ public class PaymentSubscriptionService {
         }
     }
 
+    @Transactional
+    public void expireWebhookDowngrades() {
+        for(Long id:subscriptions.findExpiredWebhookDowngrades(Instant.now())) {
+            try {
+                Store store=stores.findActiveByStoreIdForUpdate(id).orElse(null);
+                if(store==null)continue;
+                var sub=subscriptions.findByStoreId(id).orElse(null);
+                if(sub==null || sub.getWebhookDowngradeAfter()==null || Instant.now().isBefore(sub.getWebhookDowngradeAfter()))continue;
+                try { if(hasText(sub.getProviderSubscriptionId())) sub=reconcile(id); }
+                catch(RuntimeException ex) { LOGGER.warn("payments.webhook_delay.reconcile_failed store_id={} type={}",id,ex.getClass().getSimpleName()); }
+                if(sub.getWebhookDowngradeAfter()!=null && !Instant.now().isBefore(sub.getWebhookDowngradeAfter())) {
+                    if(sub.getStatus()==PaymentSubscriptionStatus.ACTIVE)
+                        sub.setStatus(sub.getWebhookDowngradeStatus()==null ? PaymentSubscriptionStatus.PAST_DUE : sub.getWebhookDowngradeStatus());
+                    sub.setWebhookDowngradeAfter(null);
+                    deactivate(sub,store,"WEBHOOK_DELAY_EXPIRED");subscriptions.save(sub);
+                }
+            } catch(RuntimeException ex) { LOGGER.warn("payments.webhook_delay.expire_failed store_id={} type={}",id,ex.getClass().getSimpleName()); }
+        }
+    }
+
     private void activate(PaymentSubscription local, Store store, String source) {
+        local.setWebhookDowngradeAfter(null);
+        local.setWebhookDowngradeStatus(null);
         local.setAccessActive(true);
         if (store.isManualPlanOverride()) return;
         PlanType previous = store.getPlan();
@@ -1379,6 +1413,18 @@ public class PaymentSubscriptionService {
     }
 
     private void deactivate(PaymentSubscription local, Store store, String source) {
+        if (!"APP_UNINSTALLED".equals(source) && !canceled(local.getProviderStatus()) && store != null && !store.isManualPlanOverride() && !store.isCourtesyPremium()
+                && store.getEffectivePlan().isBillable() && (local.isAccessActive() || "PAYMENT_WEBHOOK".equals(source))) {
+            if (local.getWebhookDowngradeAfter()==null && "PAYMENT_WEBHOOK".equals(source)
+                    && (local.getGraceUntil()==null || Instant.now().isBefore(local.getGraceUntil())))
+                local.setWebhookDowngradeAfter(Instant.now().plus(java.time.Duration.ofHours(1)));
+            if (local.getWebhookDowngradeAfter()!=null && Instant.now().isBefore(local.getWebhookDowngradeAfter())) {
+                local.setAccessActive(true);
+                return;
+            }
+        }
+        local.setWebhookDowngradeAfter(null);
+        local.setWebhookDowngradeStatus(null);
         local.setAccessActive(false);
         if (store != null && store.getPlan().isBillable() && !store.isCourtesyPremium()
                 && !store.isManualPlanOverride()) {

@@ -39,7 +39,8 @@ public class RenewalFailurePolicy {
         if (Instant.now().isBefore(sub.getGraceUntil())) sub.setAccessActive(true);
         if (first && !emails.existsByProviderAndSubscriptionIdAndPaymentId(sub.getProvider(), remote.id(), sub.getRenewalFailurePaymentId())) {
             var notice = new RenewalFailureEmail(); notice.setStoreId(sub.getStoreId()); notice.setProvider(sub.getProvider());
-            notice.setSubscriptionId(remote.id()); notice.setPaymentId(sub.getRenewalFailurePaymentId()); emails.save(notice);
+            notice.setSubscriptionId(remote.id()); notice.setPaymentId(sub.getRenewalFailurePaymentId());
+            notice.setNextAttemptAt(Instant.now().plus(java.time.Duration.ofHours(1))); emails.save(notice);
         }
         return true;
     }

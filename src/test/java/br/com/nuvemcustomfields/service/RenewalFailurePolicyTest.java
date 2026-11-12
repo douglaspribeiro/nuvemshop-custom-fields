@@ -31,6 +31,9 @@ class RenewalFailurePolicyTest {
         assertThat(sub.getGraceUntil()).isEqualTo(deadline);
         assertThat(sub.getRenewalFailurePaymentId()).isEqualTo("charge");
         verify(queue,times(1)).save(any(RenewalFailureEmail.class));
+        var captured=org.mockito.ArgumentCaptor.forClass(RenewalFailureEmail.class);
+        verify(queue).save(captured.capture());
+        assertThat(captured.getValue().getNextAttemptAt()).isAfterOrEqualTo(sub.getRenewalFailureDetectedAt().plus(Duration.ofHours(1)));
     }
     @Test void aConfirmedPaymentClearsTheFailureAndGrace() {
         policy.apply(sub,store,remote,failed,false);

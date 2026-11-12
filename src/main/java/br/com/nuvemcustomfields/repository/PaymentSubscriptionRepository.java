@@ -12,6 +12,8 @@ import br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus;
 public interface PaymentSubscriptionRepository extends JpaRepository<PaymentSubscription, Long> {
     @org.springframework.data.jpa.repository.Query("select p.storeId from PaymentSubscription p, Store s where p.storeId=s.storeId and p.renewalFailureDetectedAt is not null and p.graceUntil <= :now and s.plan in :plans")
     List<Long> findExpiredRenewalGraceStoreIds(Instant now, Collection<br.com.nuvemcustomfields.entity.PlanType> plans);
+    @org.springframework.data.jpa.repository.Query("select p.storeId from PaymentSubscription p where p.webhookDowngradeAfter is not null and p.webhookDowngradeAfter <= :now")
+    List<Long> findExpiredWebhookDowngrades(Instant now);
     List<PaymentSubscription> findByWinbackRestorePendingTrue();
     Optional<PaymentSubscription> findByStoreId(Long storeId);
     List<PaymentSubscription> findByStoreIdIn(Collection<Long> storeIds);

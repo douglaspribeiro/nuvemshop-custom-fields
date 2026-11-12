@@ -80,3 +80,13 @@ A pedido explícito do usuário, foi usado Playwright com Chrome headless no Lin
 - Foram observados erros JavaScript `$ is not defined`; a origem não foi atribuída nesta execução e eles não equivalem à antiga mensagem do nosso bloqueio.
 
 Este teste confirma a ausência da antiga mensagem e a interação com o botão no navegador real. O aceite de avanço até pagamento continua pendente da escolha legítima da entrega pelo cliente/lojista; não afirmar que a compra foi concluída ou que todo o fluxo comercial foi validado.
+
+## Pedido #15103 e possibilidade de integração — 12/11/2026
+
+Consulta somente leitura à API da loja 959276: o pedido #15103 tem origem `form` (rascunho) e o item do produto 47290558 não possui propriedades de personalização. O texto “electrica” exibido na impressão está na observação da loja (`owner_note`), não na resposta do campo. A configuração atual do produto possui o campo obrigatório “¿Molido o en Grano?”.
+
+Para comparação, o pedido #15105, do mesmo produto e com origem `store`, registra a propriedade “¿Molido o en Grano?” com valor “Espresso”. Essa comparação demonstra o registro na API, mas não comprova que a impressão nativa da Nuvemshop mostre essa propriedade.
+
+A [documentação de pedidos rascunho](https://nuvemshop.dev/en-US/docs-api/resources/unstable/draft-order) descreve a criação por API com propriedades nos produtos. Uma possível evolução seria oferecer no aplicativo a criação de rascunhos com o preenchimento dos campos por item. A consulta rápida não confirmou como alterar propriedades em um rascunho criado no painel da Nuvemshop, nem se as propriedades aparecem na impressão; ambos exigem validação antes de prometer a solução.
+
+A integração exigiria avaliar as permissões `read_draft_orders` e `write_draft_orders` conforme as operações escolhidas. [A documentação de autenticação](https://nuvemshop.dev/en-US/docs-api/authentication) informa que mudanças de escopo exigem reinstalação pelas lojas. Em 05/11, a leitura de rascunhos da LAB Cafe retornou 403 por falta de `read_draft_orders`. Nenhuma permissão foi alterada, integração implementada ou pedido modificado nesta investigação.

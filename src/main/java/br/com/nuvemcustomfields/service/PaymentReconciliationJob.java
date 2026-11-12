@@ -59,6 +59,9 @@ public class PaymentReconciliationJob {
     @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")
     public void expireRenewalGrace() { service.expireRenewalGrace(); }
 
+    @Scheduled(fixedDelayString = "${payments.access-expiration-delay-ms:60000}")
+    public void expireWebhookDowngrades() { service.expireWebhookDowngrades(); }
+
     @Scheduled(fixedDelayString = "${payments.pending-expiration-delay-ms:60000}")
     public void expirePendingPayments() {
         for (PaymentProviderType provider : java.util.List.of(PaymentProviderType.EFI, PaymentProviderType.CREEM, PaymentProviderType.STRIPE)) {

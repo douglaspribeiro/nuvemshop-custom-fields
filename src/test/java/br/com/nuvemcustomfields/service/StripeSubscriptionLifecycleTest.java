@@ -55,11 +55,13 @@ class StripeSubscriptionLifecycleTest {
         assertThatThrownBy(() -> service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1")).hasMessageContaining("Pagamento Stripe divergente");
         assertThat(local.isAccessActive()).isFalse();
     }
-    @Test void canceledImmediatelyAndUnpaidRevokeExistingAccess() {
+    @Test void cancellationIsImmediateWhileUnpaidWebhooksWaitOneHour() {
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("canceled","price_1","9.99",null));
-        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        local.setWebhookDowngradeAfter(Instant.now().plusSeconds(1800));
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isFalse(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED); assertThat(local.getWebhookDowngradeAfter()).isNull();
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("unpaid","price_1","9.99",null));
-        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1)); service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
     @Test void scheduledCancellationKeepsConfirmedPaidPeriodEvenWhenPaidWebhookWasLate() {
         when(gateway.getSubscription("sub_1")).thenReturn(remote("scheduled_cancel","price_1","9.99",end));
@@ -67,11 +69,20 @@ class StripeSubscriptionLifecycleTest {
         assertThat(local.isAccessActive()).isTrue(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
         assertThat(local.getNextPaymentAt()).isEqualTo(end);
     }
-    @Test void fullRefundRevokesButPartialRefundPreservesAccess() {
+    @Test void scheduledCancellationClearsAWaitingDowngradeAndUpdatesStatusImmediately() {
+        active();local.setWebhookDowngradeAfter(Instant.now().plusSeconds(1800));
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("scheduled_cancel","price_1","9.99",end));
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.empty());
+        service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1");
+        assertThat(local.getWebhookDowngradeAfter()).isNull();assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
+        assertThat(local.isAccessActive()).isTrue();assertThat(local.getNextPaymentAt()).isEqualTo(end);
+    }
+    @Test void fullRefundWaitsOneHourAndPartialRefundPreservesAccess() {
         active(); when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","partialRefund")));
         service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isTrue();
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","refunded")));
-        service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1)); service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
     @Test void activeSubscriptionWithoutPaidInvoiceCannotGrantAccess() {
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.empty());
@@ -94,9 +105,12 @@ class StripeSubscriptionLifecycleTest {
         service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1");
         assertThat(local.isAccessActive()).isFalse(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PAST_DUE);
     }
-    @Test void fullRefundRevokesEvenWhenCancellationIsScheduledInTheFuture() {
+    @Test void fullRefundWaitsOneHourEvenWithFutureScheduledCancellation() {
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("active","price_1","9.99",end));
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("in_refund","refunded")));
+        service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1");
+        assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1));
         service.synchronizeFromSubscription(PaymentProviderType.STRIPE,"sub_1");
         assertThat(local.isAccessActive()).isFalse(); assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
     }

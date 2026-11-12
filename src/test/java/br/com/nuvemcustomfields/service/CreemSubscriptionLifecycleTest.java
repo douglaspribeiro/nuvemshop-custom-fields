@@ -55,11 +55,13 @@ class CreemSubscriptionLifecycleTest {
         assertThatThrownBy(() -> service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1")).hasMessageContaining("Pagamento Creem divergente");
         assertThat(local.isAccessActive()).isFalse();
     }
-    @Test void canceledImmediatelyAndUnpaidRevokeExistingAccess() {
+    @Test void cancellationIsImmediateWhileUnpaidWebhooksWaitOneHour() {
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("canceled","prod_1","9.99",null));
-        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        local.setWebhookDowngradeAfter(Instant.now().plusSeconds(1800));
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isFalse(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED); assertThat(local.getWebhookDowngradeAfter()).isNull();
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("unpaid","prod_1","9.99",null));
-        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1)); service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
     @Test void scheduledCancellationKeepsConfirmedPaidPeriodEvenWhenPaidWebhookWasLate() {
         when(gateway.getSubscription("sub_1")).thenReturn(remote("scheduled_cancel","prod_1","9.99",end));
@@ -67,11 +69,12 @@ class CreemSubscriptionLifecycleTest {
         assertThat(local.isAccessActive()).isTrue(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
         assertThat(local.getNextPaymentAt()).isEqualTo(end);
     }
-    @Test void fullRefundRevokesButPartialRefundPreservesAccess() {
+    @Test void fullRefundWaitsOneHourAndPartialRefundPreservesAccess() {
         active(); when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","partialRefund")));
         service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isTrue();
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","refunded")));
-        service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1)); service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
     @Test void upgradeCannotUseThePreviousPaidInvoiceToReleaseTheNewPlan() {
         active(); local.setLastPaymentId("tran_old"); local.requestUpgrade(PlanType.PREMIUM_PLUS,new BigDecimal("19.99"),"prod_2");

@@ -97,6 +97,73 @@ class PaymentSubscriptionServiceTest {
         assertThat(service.reactivationPlan(123L)).isEmpty();
     }
 
+    @Test void webhookDowngradeWaitsAnHourAndSuccessfulRenewalCancelsThePendingChange() {
+        var local=local();local.setAccessActive(true);local.setStatus(PaymentSubscriptionStatus.ACTIVE);
+        var store=store();store.setPlan(PlanType.PREMIUM);
+        var paused=new GatewaySubscription("sub-1","plan-1","ncf_123_ref","paused","BRL",new BigDecimal("19.99"),null);
+        when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(paused);
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));when(subscriptions.save(local)).thenReturn(local);
+        Instant before=Instant.now();service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO,"sub-1");
+        Instant deadline=local.getWebhookDowngradeAfter();
+        assertThat(deadline).isBetween(before.plusSeconds(3600),Instant.now().plusSeconds(3600));
+        assertThat(local.isAccessActive()).isTrue();assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO,"sub-1");
+        assertThat(local.getWebhookDowngradeAfter()).isEqualTo(deadline);verify(events,never()).save(any());
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));
+        service.reconcile(123L);
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);assertThat(local.getWebhookDowngradeAfter()).isEqualTo(deadline);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote());
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(new GatewayInvoice("invoice-1","sub-1","renewed","approved")));
+        service.synchronizeFromSubscription(PaymentProviderType.MERCADO_PAGO,"sub-1");
+        assertThat(local.getWebhookDowngradeAfter()).isNull();assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.ACTIVE);
+        assertThat(local.isAccessActive()).isTrue();assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);verify(events,never()).save(any());
+    }
+
+    @Test void expiredWebhookDelayRechecksAndDowngradesOnlyWhenRenewalHasNotSucceeded() {
+        var local=local();local.setAccessActive(true);local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1));
+        var store=store();store.setPlan(PlanType.PREMIUM);
+        when(subscriptions.findExpiredWebhookDowngrades(any())).thenReturn(java.util.List.of(123L));
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(subscriptions.save(local)).thenReturn(local);when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(new GatewaySubscription("sub-1","plan-1","ncf_123_ref","paused","BRL",new BigDecimal("19.99"),null));
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.empty());
+        service.expireWebhookDowngrades();
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);assertThat(local.isAccessActive()).isFalse();assertThat(local.getWebhookDowngradeAfter()).isNull();
+        verify(events).save(any(PlanEvent.class));
+    }
+
+    @Test void expiryRecheckKeepsThePlanWhenTheProviderConfirmsPayment() {
+        var local=local();local.setAccessActive(true);local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1));
+        var store=store();store.setPlan(PlanType.PREMIUM);
+        when(subscriptions.findExpiredWebhookDowngrades(any())).thenReturn(java.util.List.of(123L));
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(subscriptions.save(local)).thenReturn(local);when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote());
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(Optional.of(new GatewayInvoice("invoice-1","sub-1","renewed","approved")));
+        service.expireWebhookDowngrades();
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);assertThat(local.isAccessActive()).isTrue();assertThat(local.getWebhookDowngradeAfter()).isNull();
+        verify(events,never()).save(any());
+    }
+
+    @Test void expiryWithoutProviderResponseUsesTheLastRecordedStatus() {
+        var local=local();local.setStatus(PaymentSubscriptionStatus.ACTIVE);local.setAccessActive(true);
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1));local.setWebhookDowngradeStatus(PaymentSubscriptionStatus.PAUSED);
+        var store=store();store.setPlan(PlanType.PREMIUM);
+        when(subscriptions.findExpiredWebhookDowngrades(any())).thenReturn(java.util.List.of(123L));
+        when(stores.findActiveByStoreIdForUpdate(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.findByStoreId(123L)).thenReturn(Optional.of(local));when(subscriptions.save(local)).thenReturn(local);
+        when(router.require(PaymentProviderType.MERCADO_PAGO)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenThrow(new PaymentGatewayException("indisponível"));
+        service.expireWebhookDowngrades();
+        assertThat(store.getPlan()).isEqualTo(PlanType.FREE);assertThat(local.isAccessActive()).isFalse();
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PAUSED);assertThat(local.getWebhookDowngradeStatus()).isNull();
+    }
+
     @Test
     void activatesPlanOnlyAfterApprovedInvoice() {
         PaymentSubscription local = local();

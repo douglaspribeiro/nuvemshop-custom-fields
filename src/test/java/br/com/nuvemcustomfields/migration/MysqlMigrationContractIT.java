@@ -30,6 +30,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void delaysPreviouslyPendingRenewalEmailsWhenWebhookBufferIsInstalled() {
+        isolatedDatabase(source->{
+            var jdbc=new JdbcTemplate(source);flyway(source,"79").migrate();
+            jdbc.update("INSERT INTO renewal_failure_emails(store_id,provider,subscription_id,payment_id,state,created_at,next_attempt_at) VALUES(900080,'EFI','sub-80','payment-80','PENDING',NOW(6),NOW(6))");
+            jdbc.update("INSERT INTO renewal_failure_emails(store_id,provider,subscription_id,payment_id,state,created_at,next_attempt_at) VALUES(900080,'EFI','sub-80','payment-81','SENT',NOW(6),NOW(6))");
+            assertThat(flyway(source,"80").migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT TIMESTAMPDIFF(SECOND,created_at,next_attempt_at) FROM renewal_failure_emails WHERE payment_id='payment-80'",Long.class)).isEqualTo(3600L);
+            assertThat(jdbc.queryForObject("SELECT TIMESTAMPDIFF(SECOND,created_at,next_attempt_at) FROM renewal_failure_emails WHERE payment_id='payment-81'",Long.class)).isZero();
+            validateHibernateAndReadField(source,null);
+        });
+    }
     @Test void addsSuggestionResponsesWithoutLosingExistingRequestsAndCascadesErasure() {
         isolatedDatabase(source->{
             var jdbc=new JdbcTemplate(source);flyway(source,"78").migrate();

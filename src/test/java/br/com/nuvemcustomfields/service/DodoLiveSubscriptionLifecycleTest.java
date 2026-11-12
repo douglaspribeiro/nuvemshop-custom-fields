@@ -77,11 +77,13 @@ class DodoLiveSubscriptionLifecycleTest {
         service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1");
         assertThat(local.isAccessActive()).isTrue();
     }
-    @Test void canceledImmediatelyAndUnpaidRevokeExistingAccess() {
+    @Test void cancellationIsImmediateWhileUnpaidWebhooksWaitOneHour() {
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("cancelled","prod_1","9.99",null));
-        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        local.setWebhookDowngradeAfter(Instant.now().plusSeconds(1800));
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED); assertThat(local.getWebhookDowngradeAfter()).isNull();
         active(); when(gateway.getSubscription("sub_1")).thenReturn(remote("paused","prod_1","9.99",null));
-        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1)); service.synchronizeFromSubscriptionWithoutPayment(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
     @Test void scheduledCancellationKeepsConfirmedPaidPeriodEvenWhenPaidWebhookWasLate() {
         when(gateway.getSubscription("sub_1")).thenReturn(remote("scheduled_cancel","prod_1","9.99",end));
@@ -89,11 +91,12 @@ class DodoLiveSubscriptionLifecycleTest {
         assertThat(local.isAccessActive()).isTrue(); assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
         assertThat(local.getNextPaymentAt()).isEqualTo(end);
     }
-    @Test void fullRefundRevokesButPartialRefundPreservesAccess() {
+    @Test void fullRefundWaitsOneHourAndPartialRefundPreservesAccess() {
         active(); when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","partialRefund")));
         service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isTrue();
         when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(invoice("tran_1","refunded")));
-        service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse();
+        service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isTrue(); assertThat(local.getWebhookDowngradeAfter()).isNotNull();
+        local.setWebhookDowngradeAfter(Instant.now().minusSeconds(1)); service.synchronizeFromSubscription(PaymentProviderType.DODO,"sub_1"); assertThat(local.isAccessActive()).isFalse();
     }
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"failed", "expired"})

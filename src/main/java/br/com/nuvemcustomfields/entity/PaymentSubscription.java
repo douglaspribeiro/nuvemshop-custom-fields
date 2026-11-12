@@ -126,6 +126,14 @@ public class PaymentSubscription {
     private Instant lastSyncedAt;
     @Column(name = "pending_started_at")
     private Instant pendingStartedAt;
+    @Column(name = "webhook_downgrade_after")
+    private Instant webhookDowngradeAfter;
+    @Enumerated(EnumType.STRING) @Column(name = "webhook_downgrade_status", length = 30)
+    private PaymentSubscriptionStatus webhookDowngradeStatus;
+    public Instant getWebhookDowngradeAfter() { return webhookDowngradeAfter; }
+    public void setWebhookDowngradeAfter(Instant value) { webhookDowngradeAfter=value; }
+    public PaymentSubscriptionStatus getWebhookDowngradeStatus() { return webhookDowngradeStatus; }
+    public void setWebhookDowngradeStatus(PaymentSubscriptionStatus value) { webhookDowngradeStatus=value; }
     @Column(name = "last_error", length = 500)
     private String lastError;
     @Column(name = "technical_error", length = 500)
