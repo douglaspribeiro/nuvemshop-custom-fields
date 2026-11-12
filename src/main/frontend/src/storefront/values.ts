@@ -62,7 +62,7 @@ export function validate(
 			errors.push({ propertyName: key, label: field.label, message: text.number });
 			continue;
 		}
-		if ((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") && !field.options.includes(value)) {
+		if ((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") && !field.options.includes(value)) {
 			errors.push({ propertyName: key, label: field.label, message: text.select });
 			continue;
 		}

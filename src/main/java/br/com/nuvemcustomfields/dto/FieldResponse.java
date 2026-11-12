@@ -19,8 +19,14 @@ public record FieldResponse(
         Integer mobileImageColumns,
         Long id,
         int maxFiles,
-        long maxFileBytes
+        long maxFileBytes,
+        List<br.com.nuvemcustomfields.service.ColorOptions.Option> colorOptions
 ) {
+    public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
+            String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns,
+            Long id, int maxFiles, long maxFileBytes) {
+        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,id,maxFiles,maxFileBytes,List.of());
+    }
     public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
             String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns) {
         this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,null,1,10_000_000L);
@@ -50,7 +56,8 @@ public record FieldResponse(
                 field.getMobileImageColumns(),
                 field.getId(),
                 plan == br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA ? field.getMaxFiles() : 1,
-                br.com.nuvemcustomfields.service.BuyerUploadPolicy.maxFileBytes(plan)
+                br.com.nuvemcustomfields.service.BuyerUploadPolicy.maxFileBytes(plan),
+                field.getFieldType() == FieldType.COLOR_SELECT ? br.com.nuvemcustomfields.service.ColorOptions.parse(field.getOptionsText()) : List.of()
         );
     }
 

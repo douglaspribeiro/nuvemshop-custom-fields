@@ -221,6 +221,13 @@ describe("Patagonia transition", () => {
 		expect(document.body.textContent).toContain("Revisá el carrito");
 		expect(runtime.send).toHaveBeenCalledTimes(1);
 	});
+    it("selects a named color and preserves it in the Patagonia cart",async()=>{
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...configuration,fields:[{
+            ...configuration.fields[0],fieldType:'COLOR_SELECT',options:['Azul marinho','Branco'],colorOptions:[{label:'Azul marinho',color:'#123ABC'},{label:'Branco',color:'#FFFFFF'}]}]}));
+        await ready();click();expect(runtime.send).not.toHaveBeenCalled();
+        document.querySelector<HTMLButtonElement>('.ncf-color-options button')!.click();click();
+        expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{Nombre:'Azul marinho'}}]}});
+    });
     it("selects image options and carries their names through the Patagonia cart", async () => {
         const images = {...configuration,fields:[{label:"Capa",propertyName:"Capa",fieldType:"IMAGE_SELECT" as const,required:true,
             maxLength:100,placeholder:null,validationPattern:null,options:["Floral"],

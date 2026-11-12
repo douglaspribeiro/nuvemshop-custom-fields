@@ -29,6 +29,12 @@ public class FieldForm {
     private String validationPattern;
 
     private String optionsText;
+    @AssertTrue(message = "color.options.invalid")
+    public boolean isColorOptionsValid() {
+        if (fieldType != FieldType.COLOR_SELECT) return true;
+        try { br.com.nuvemcustomfields.service.ColorOptions.parse(optionsText); return true; }
+        catch (IllegalArgumentException error) { return false; }
+    }
     private String imageOptionsJson;
     private boolean showImageZoom = true;
     private Integer mobileImageColumns;
@@ -106,7 +112,7 @@ public class FieldForm {
 
     @AssertTrue(message = "Regex invalida")
     public boolean isValidationPatternValid() {
-        if (fieldType == FieldType.CHECKBOX || fieldType == FieldType.FILE_UPLOAD || validationPattern == null || validationPattern.isBlank()) {
+        if (fieldType == FieldType.COLOR_SELECT || fieldType == FieldType.CHECKBOX || fieldType == FieldType.FILE_UPLOAD || validationPattern == null || validationPattern.isBlank()) {
             return true;
         }
         try {

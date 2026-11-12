@@ -201,3 +201,14 @@ it.each(["pt-BR","es-MX"])("shows paused contact notice once in legacy (%s) with
     sdkNotice.textContent="SDK notice"; dom.window.document.body.append(sdkNotice);
     await vi.waitFor(()=>expect(dom.window.document.querySelector(".ncf-paused-notice")).toBeNull());
 });
+
+it("renders legacy named colors with native fallback and serializes the name",async()=>{
+    dom=new JSDOM(`<html lang="pt-BR"><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head><body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,{url:"https://store.test/productos/example",runScripts:"outside-only"});
+    Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,fields:[{
+        label:'Cor',propertyName:'Cor',fieldType:'COLOR_SELECT',required:true,options:['Azul marinho'],colorOptions:[{label:'Azul marinho',color:'#123ABC'}]}],style:{}})})});
+    Object.defineProperty(dom.window.document,'readyState',{value:'complete',configurable:true});dom.window.eval(source);
+    await vi.waitFor(()=>expect(dom.window.document.querySelector('.ncf-color-options button')).not.toBeNull());
+    const select=dom.window.document.querySelector<HTMLSelectElement>('select')!;expect(select.required).toBe(true);expect(select.checkValidity()).toBe(false);
+    dom.window.document.querySelector<HTMLButtonElement>('.ncf-color-options button')!.click();expect(select.value).toBe('Azul marinho');
+    expect(new dom.window.FormData(dom.window.document.querySelector('form')!).get('properties[Cor]')).toBe('Azul marinho');
+});

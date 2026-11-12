@@ -538,7 +538,7 @@
                     if(picker) { picker.setCustomValidity("Conclua o envio do arquivo antes de adicionar o produto.");picker.reportValidity();picker.setCustomValidity(""); }
                     return;
                 }
-                if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") {
+                if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") {
                     const invalid = input.value && !(field.options || []).includes(input.value);
                     input.setCustomValidity(invalid
                         ? (document.documentElement.lang.toLowerCase().startsWith("es")
@@ -907,7 +907,7 @@
             return host;
         }
         if (field.fieldType === "CHECKBOX" && (field.options || []).length) return renderCheckboxGroup(field);
-        const wrapper = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
+        const wrapper = document.createElement((field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") ? "div" : "label");
         wrapper.className = "ncf-field";
 
         const text = document.createElement("span");
@@ -929,6 +929,9 @@
             input.pattern = field.validationPattern;
         }
 
+        if(field.fieldType === "COLOR_SELECT") {
+            input.setAttribute('aria-label',field.label);wrapper.appendChild(renderColorChoices(field,input));
+        }
         if (field.fieldType === "IMAGE_SELECT") {
             input.setAttribute("aria-label",field.label);
             wrapper.appendChild(renderImageChoices(field,input));
@@ -940,6 +943,27 @@
             wrapper.prepend(input);
         } else wrapper.appendChild(input);
         return wrapper;
+    }
+
+    function renderColorChoices(field, select) {
+        const group=document.createElement('div');group.className='ncf-color-options';
+        group.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin:8px 0';
+        const buttons=[];
+        for(const option of field.colorOptions ?? []) {
+            if(!/^#[0-9a-f]{6}$/i.test(option.color))continue;
+            const button=document.createElement('button');button.type='button';button.dataset.value=option.label;
+            button.style.cssText='display:flex;align-items:center;gap:8px;min-height:44px;max-width:100%;overflow-wrap:anywhere;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;font:inherit;padding:8px 12px;cursor:pointer';
+            const chip=document.createElement('span');chip.setAttribute('aria-hidden','true');
+            chip.style.cssText='display:inline-block;width:28px;height:28px;flex-shrink:0;border:1px solid #777;border-radius:50%';chip.style.backgroundColor=option.color;
+            const name=document.createElement('span');name.textContent=option.label;button.append(chip,name);
+            button.addEventListener('click',()=>{select.value=option.label;select.dispatchEvent(new Event('change',{bubbles:true}));});
+            buttons.push(button);group.append(button);
+        }
+        const sync=()=>buttons.forEach(button=>{
+            const selected=button.dataset.value===select.value;button.setAttribute('aria-pressed',String(selected));
+            button.style.outline=selected?'2px solid currentColor':'';button.style.outlineOffset='2px';
+        });
+        select.addEventListener('change',sync);sync();return group;
     }
 
     function renderCheckboxGroup(field) {
@@ -977,7 +1001,7 @@
             return document.createElement("textarea");
         }
 
-        if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") {
+        if (field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") {
             const select = document.createElement("select");
             const empty = document.createElement("option");
             empty.value = "";

@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -728,12 +729,28 @@ public class AdminController {
     }
 
     private String imageConfigurationError(IllegalArgumentException error) {
+        if ("color.options.invalid".equals(error.getMessage())) return messages.get(error.getMessage());
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
         if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()) || "upload.files.invalid".equals(error.getMessage()) || "upload.multiple.ultra".equals(error.getMessage()))) {
             LOGGER.warn("admin.field.rejected code={}", error.getMessage());
             return messages.get(error.getMessage());
         }
         return messages.get("image.options.invalid");
+    }
+
+    @PostMapping("/admin/products/{productId}/fields/order")
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<?> reorderFields(@PathVariable Long productId,
+            @RequestBody List<Long> ids, HttpSession session, jakarta.servlet.http.HttpServletRequest request) {
+        if (!"field-order".equals(request.getHeader("X-NCF-Action")))
+            return org.springframework.http.ResponseEntity.badRequest().build();
+        Store store = adminStoreService.requireCurrentStore(session);
+        try {
+            personalizationAdminService.reorderFields(store.getStoreId(), productId, ids);
+            return org.springframework.http.ResponseEntity.ok(java.util.Map.of("saved", true));
+        } catch (IllegalArgumentException error) {
+            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("error", messages.get("fields.order.invalid")));
+        }
     }
 
     private void populateFieldsModel(Store store, Long productId, Model model, FieldForm fieldForm) {

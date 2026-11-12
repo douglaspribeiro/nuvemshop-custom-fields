@@ -343,4 +343,47 @@ class StoreTemplatesTest {
                 .content(json.writeValueAsString(Map.of("key",source.key(),"mode","APPEND","productIds",List.of(123)))))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test void namedColorsSurviveTemplatesReopenAndPublicResponse() throws Exception {
+        var color=new TemplateFieldDefinition("Cor da estampa",FieldType.COLOR_SELECT,true,100,null,null,
+                "[{\"label\":\" Azul marinho \",\"color\":\"#123abc\"},{\"label\":\"Branco\",\"color\":\"#ffffff\"}]",null,true,null);
+        var template=templates.create(store,"Cores",null,List.of(color,text("Nome")));
+        apply(template,123,StoreTemplateService.Mode.APPEND);
+        var reopened=admin.requireRuleWithFields(store,123L).getFields().getFirst();
+        var response=FieldResponse.from(reopened);
+        assertThat(response.options()).containsExactly("Azul marinho","Branco");
+        assertThat(response.colorOptions()).extracting(ColorOptions.Option::color).containsExactly("#123ABC","#FFFFFF");
+        assertThat(response.required()).isTrue();
+        assertThat(templates.saveProduct(store,123,"Reutilizar",null).fields().getFirst().colorOptions()).isEqualTo(response.colorOptions());
+        mvc.perform(get("/admin/products/123/fields").session(session)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("color-options-editor")));
+        mvc.perform(get("/admin/templates/review").session(session).param("key",template.key()).param("productId","123"))
+            .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("#123ABC")));
+        var reordered=color.toForm(0);reordered.setOptionsText("[{\"label\":\"Branco\",\"color\":\"#ffffff\"},{\"label\":\"Azul marinho\",\"color\":\"#123abc\"}]");
+        admin.updateField(store,123L,reopened.getId(),reordered);
+        assertThat(FieldResponse.from(admin.requireRuleWithFields(store,123L).getFields().getFirst()).options()).containsExactly("Branco","Azul marinho");
+        var batch=batches.review(store,template.key(),TemplateBatchService.Mode.APPEND,List.of(789L));
+        assertThat(batches.execute(store,batch.id(),789,true,false).items().getFirst().state()).isEqualTo("SUCCEEDED");
+        assertThat(admin.requireRuleWithFields(store,789L).getFields().getFirst().options()).containsExactly("Azul marinho","Branco");
+        var invalid=color.toForm(0);invalid.setOptionsText("[]");
+        assertThatThrownBy(()->admin.updateField(store,123L,reopened.getId(),invalid)).hasMessage("color.options.invalid");
+        assertThat(admin.requireRuleWithFields(store,123L).getFields().getFirst().options()).containsExactly("Branco","Azul marinho");
+    }
+    @Test void fieldOrderIsAtomicScopedAndRejectsStaleOrDuplicateSets() throws Exception {
+        var template=templates.create(store,"Ordem",null,List.of(text("Primeiro"),text("Segundo"),text("Terceiro")));
+        apply(template,123,StoreTemplateService.Mode.APPEND);apply(template,456,StoreTemplateService.Mode.APPEND);
+        var ids=admin.requireRuleWithFields(store,123L).getFields().stream().map(PersonalizationField::getId).toList();
+        var reversed=List.of(ids.get(2),ids.get(0),ids.get(1));
+        mvc.perform(post("/admin/products/123/fields/order").session(session).header("X-NCF-Action","field-order")
+                .contentType("application/json").content(json.writeValueAsString(reversed))).andExpect(status().isOk());
+        assertThat(admin.requireRuleWithFields(store,123L).getFields()).extracting(PersonalizationField::getLabel).containsExactly("Terceiro","Primeiro","Segundo");
+        assertThat(admin.requireRuleWithFields(store,456L).getFields()).extracting(PersonalizationField::getLabel).containsExactly("Primeiro","Segundo","Terceiro");
+        for(var invalid:List.of(List.of(ids.get(0)),List.of(ids.get(0),ids.get(0),ids.get(1)),List.of(1L,2L,3L))) {
+            assertThatThrownBy(()->admin.reorderFields(store,123L,invalid)).isInstanceOf(IllegalArgumentException.class);
+        }
+        long other=newStore(PlanType.PREMIUM_PLUS);
+        assertThatThrownBy(()->admin.reorderFields(other,123L,reversed)).isInstanceOf(IllegalArgumentException.class);
+        mvc.perform(post("/admin/products/123/fields/order").session(session).contentType("application/json").content(json.writeValueAsString(ids)))
+            .andExpect(status().isBadRequest());
+        assertThat(admin.requireRuleWithFields(store,123L).getFields()).extracting(PersonalizationField::getId).containsExactlyElementsOf(reversed);
+    }
 }

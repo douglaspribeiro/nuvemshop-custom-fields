@@ -387,3 +387,16 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .batch-fields { padding-left:20px; overflow-wrap:anywhere; }.batch-field-details { white-space:pre-wrap; font-size:.8rem; }
 #batch-history { display:flex; flex-wrap:wrap; gap:10px; }#batch-review-panel { margin:24px 0; }
 @media(max-width:650px) { .batch-comparison { grid-template-columns:1fr; } }
+
+/* NC-23: keep color names readable at narrow widths and with keyboard focus. */
+.color-option-row{display:flex;align-items:end;flex-wrap:wrap;gap:12px;padding:12px 0;border-bottom:1px solid #dde5e7}
+.color-option-row>label{flex:1 1 140px;min-width:0}
+.color-option-row input[type=color]{width:100%;max-width:100px;height:44px;padding:4px;cursor:pointer}
+[data-order-handle]{cursor:grab;touch-action:none;min-width:44px;min-height:44px}
+.field-order-actions{display:flex;gap:4px;flex-wrap:wrap}
+.field-order-actions button{min-width:36px;min-height:36px}
+.field-preview-colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.field-preview-colors button{display:flex;align-items:center;gap:8px;min-height:44px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px;padding:8px 12px;font:inherit}
+.color-swatch{display:inline-block;vertical-align:middle;width:28px;height:28px;border:1px solid #777;border-radius:50%;flex-shrink:0}
+.field-preview-colors button[aria-pressed=true]{outline:2px solid currentColor;outline-offset:2px}
+.color-options-editor [hidden]{display:none}

@@ -1,6 +1,6 @@
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 
-export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELECT" | "CHECKBOX" | "FILE_UPLOAD";
+export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELECT" | "COLOR_SELECT" | "CHECKBOX" | "FILE_UPLOAD";
 
 /** Espelha br.com.nuvemcustomfields.dto.FieldResponse. */
 export type PersonalizationField = {
@@ -16,6 +16,7 @@ export type PersonalizationField = {
 	validationPattern: string | null;
 	propertyName: string;
 	options: string[];
+	colorOptions?: {label: string; color: string}[];
 	imageOptions?: { label: string; thumbnailUrl: string; imageUrl: string }[];
 	showImageZoom?: boolean;
 	mobileImageColumns?: 2 | 3 | null;

@@ -7,7 +7,7 @@ afterEach(() => dom?.window.close());
 function boot(pattern = '') {
     dom = new JSDOM(`<form class="field-editor-form">
         <input name="label" value="Nome para gravar"><input type="checkbox" name="required" checked>
-        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>FILE_UPLOAD</option></select>
+        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>FILE_UPLOAD</option></select>
         <input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
         <input type="checkbox" name="showImageZoom" checked>
@@ -185,4 +185,12 @@ it('prefills upload formats without overwriting a merchant restriction',()=>{
     select('[name="fieldType"]','TEXT');
     select('[name="fieldType"]','FILE_UPLOAD');
     expect(input('optionsText').value).toBe('PNG');
+});
+
+it('previews named colors in configured order without submitting preview choices',()=>{
+    boot();input('optionsText').value=JSON.stringify([{label:'Branco',color:'#FFFFFF'},{label:'Azul marinho',color:'#123ABC'}]);
+    select('[name=fieldType]','COLOR_SELECT');
+    const buttons=dom.window.document.querySelectorAll<HTMLButtonElement>('.field-preview-colors button');
+    expect([...buttons].map(b=>b.textContent)).toEqual(['Branco','Azul marinho']);buttons[1].click();expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(buttons[1].name).toBe('');expect(input('optionsText').closest('label')!.hidden).toBe(true);
 });

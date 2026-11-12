@@ -1,3 +1,4 @@
+import { colorChoices } from './color-options';
 import { imageChoices } from "./image-options";
 import { buyerUploadControl } from "./buyer-upload-dom";
 import { createBuyerUploads } from "./buyer-uploads";
@@ -161,10 +162,10 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
                 checkboxGroups.set(key, boxes); controls.set(key, boxes[0]);
                 container!.append(group); return;
             }
-			const label = document.createElement(field.fieldType === "IMAGE_SELECT" ? "div" : "label");
+			const label = document.createElement((field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") ? "div" : "label");
 			label.textContent = field.label + ((field.required || field.fieldType === "SELECT") ? " *" : "");
 			label.style.cssText = "display:flex;flex-direction:column;gap:4px";
-			const input = document.createElement((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT") ? "select"
+			const input = document.createElement((field.fieldType === "SELECT" || field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") ? "select"
 				: field.fieldType === "TEXTAREA" ? "textarea" : "input");
 			input.id = `ncf-patagonia-${index}`;
 			input.name = `properties[${keyOf(field)}]`;
@@ -189,6 +190,9 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 			input.addEventListener("input", () => input.setCustomValidity(""));
 			input.addEventListener("change", () => input.setCustomValidity(""));
 			controls.set(keyOf(field), input);
+            if (field.fieldType === "COLOR_SELECT" && input instanceof HTMLSelectElement) {
+                input.setAttribute('aria-label',field.label);label.append(colorChoices(field,input));
+            }
             if (field.fieldType === "IMAGE_SELECT" && input instanceof HTMLSelectElement) {
                 input.setAttribute("aria-label",field.label);
                 label.append(imageChoices(field,input,config?.locale));

@@ -1,6 +1,6 @@
 (() => {
     'use strict';
-    const types = new Set(['TEXT', 'NUMBER', 'SELECT', 'TEXTAREA', 'IMAGE_SELECT', 'CHECKBOX', 'FILE_UPLOAD']);
+    const types = new Set(['TEXT', 'NUMBER', 'SELECT', 'TEXTAREA', 'IMAGE_SELECT', 'COLOR_SELECT', 'CHECKBOX', 'FILE_UPLOAD']);
     const started = new WeakMap();
     const row = target => target.closest('.field-editor-form');
     function track(name, element) {

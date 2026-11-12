@@ -150,6 +150,7 @@ public class PersonalizationField {
     }
 
     public List<String> options() {
+        if (fieldType == FieldType.COLOR_SELECT) return br.com.nuvemcustomfields.service.ColorOptions.parse(optionsText).stream().map(br.com.nuvemcustomfields.service.ColorOptions.Option::label).toList();
         if (fieldType == FieldType.IMAGE_SELECT) return imageOptions().stream().map(br.com.nuvemcustomfields.dto.ImageOption::label).toList();
         if (optionsText == null || optionsText.isBlank()) {
             return List.of();

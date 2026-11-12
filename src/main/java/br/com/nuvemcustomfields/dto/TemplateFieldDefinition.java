@@ -11,6 +11,7 @@ public record TemplateFieldDefinition(String label,FieldType fieldType,boolean r
             boolean showImageZoom,Integer mobileImageColumns) {
         this(label,fieldType,required,maxLength,placeholder,validationPattern,optionsText,imageOptionsJson,showImageZoom,mobileImageColumns,1);
     }
+    public java.util.List<br.com.nuvemcustomfields.service.ColorOptions.Option> colorOptions() {return fieldType==FieldType.COLOR_SELECT?br.com.nuvemcustomfields.service.ColorOptions.parse(optionsText):java.util.List.of();}
     public java.util.List<ImageOption> imageOptions() {return fieldType==FieldType.IMAGE_SELECT?br.com.nuvemcustomfields.service.ImageOptions.parse(imageOptionsJson):java.util.List.of();}
     public static TemplateFieldDefinition from(PersonalizationField field) {
         return new TemplateFieldDefinition(field.getLabel(),field.getFieldType(),field.isRequired(),field.getMaxLength(),

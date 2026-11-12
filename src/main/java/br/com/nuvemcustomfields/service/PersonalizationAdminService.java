@@ -184,6 +184,7 @@ public class PersonalizationAdminService {
     }
 
     void applyForm(PersonalizationField field, FieldForm form) {
+        if (!form.isColorOptionsValid()) throw new IllegalArgumentException("color.options.invalid");
         if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");
@@ -209,5 +210,21 @@ public class PersonalizationAdminService {
             field.setValidationPattern(null);
         }
         field.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        if (form.getFieldType() == FieldType.COLOR_SELECT) {
+            field.setOptionsText(ColorOptions.normalize(form.getOptionsText()));
+            field.setMaxLength(100); field.setValidationPattern(null); field.setPlaceholder(null);
+        }
+    }
+
+    @Transactional
+    public void reorderFields(Long storeId, Long productId, List<Long> ids) {
+        images.lockStore(storeId);
+        var current = requireRuleWithFields(storeId, productId).getFields();
+        var expected = current.stream().map(PersonalizationField::getId).collect(java.util.stream.Collectors.toSet());
+        if (ids == null || ids.size() != expected.size() || !expected.equals(new java.util.HashSet<>(ids)))
+            throw new IllegalArgumentException("fields.order.invalid");
+        for (var field : current) field.setSortOrder(ids.indexOf(field.getId()));
+        fieldRepository.saveAllAndFlush(current);
+        if (storefrontCache != null) storefrontCache.invalidateStoreAfterCommit(storeId);
     }
 }

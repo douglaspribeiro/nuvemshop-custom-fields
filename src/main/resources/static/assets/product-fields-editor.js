@@ -94,6 +94,17 @@
                 input.addEventListener('change',()=>{selected.textContent=Array.from(input.files || []).map(file=>file.name).join(', ');});
                 wrapper.append(input,help,selected);target.append(wrapper);return;
             }
+            if (type.value === 'COLOR_SELECT') {
+                const group=document.createElement('div'); group.className='field-preview-colors';
+                let options=[];try{options=JSON.parse(get('optionsText').value || '[]');}catch{}
+                if(Array.isArray(options)) options.forEach(option=>{
+                    const button=document.createElement('button');button.type='button';button.className='field-preview-choice';button.setAttribute('aria-pressed','false');
+                    const chip=document.createElement('span');chip.className='color-swatch';
+                    if(/^#[0-9a-f]{6}$/i.test(option.color))chip.style.backgroundColor=option.color;
+                    const name=document.createElement('span');name.textContent=option.label;button.append(chip,name);
+                    button.addEventListener('click',()=>group.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button))));group.append(button);
+                });target.append(title,group);return;
+            }
             if (type.value === 'IMAGE_SELECT') {
                 const gallery = document.createElement('div');
                 gallery.className = 'field-preview-images';

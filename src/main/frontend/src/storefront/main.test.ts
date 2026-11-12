@@ -332,6 +332,21 @@ describe("SDK storefront without a legacy script", () => {
         expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Capa:"Floral"});
     });
 
+    it("renders named SDK colors and sends only the selected name", async () => {
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,
+            fields:[{label:"Cor",propertyName:"Cor",fieldType:"COLOR_SELECT",required:true,maxLength:100,
+                placeholder:null,validationPattern:null,options:["Azul marinho"],colorOptions:[{label:"Azul marinho",color:"#123ABC"}]}],
+        })} as Response);
+        await boot();add();expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        const tree=render.mock.calls[render.mock.calls.length-1][1];expect(JSON.stringify(tree)).toContain("#123ABC");
+        function choice(node:Node):Node|undefined {
+            if(node.type==="button" && node.ariaLabel?.includes("Azul marinho"))return node;
+            for(const child of node.children ?? []){const result=choice(child);if(result)return result;}
+        }
+        choice(tree)!.onClick!();send.mockClear();add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Cor:"Azul marinho"});
+    });
+
     it("updates cart thumbnails without changing native cart properties", async () => {
         await boot();
         vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,

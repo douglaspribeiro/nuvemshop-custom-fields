@@ -41,10 +41,11 @@
             row.querySelector("[name=required]").checked=Boolean(definition.required);
             row.querySelector("[name=showImageZoom]").checked=definition.showImageZoom!==false;
             row.querySelector("[data-field-remove]").addEventListener("click",()=>{if(Number(row.querySelector(".image-options-editor").dataset.uploadingCount || 0))return;row.remove();renumber();});
-            row.querySelector("[data-field-up]").addEventListener("click",()=>{if(row.previousElementSibling)fields.insertBefore(row,row.previousElementSibling);renumber();});
-            row.querySelector("[data-field-down]").addEventListener("click",()=>{if(row.nextElementSibling)fields.insertBefore(row.nextElementSibling,row);renumber();});
-            fields.append(row);window.ncfInitFieldEditor(row);window.ncfInitOptionImages(row);renumber();
+            row.querySelector("[data-field-up]").addEventListener("click",event=>{if(row.previousElementSibling)fields.insertBefore(row,row.previousElementSibling);renumber();event.currentTarget.focus();});
+            row.querySelector("[data-field-down]").addEventListener("click",event=>{if(row.nextElementSibling)fields.insertBefore(row.nextElementSibling,row);renumber();event.currentTarget.focus();});
+            fields.append(row);window.ncfInitColorOptions?.(row);window.ncfInitFieldEditor(row);window.ncfInitOptionImages(row);renumber();
         }
+        window.ncfOrderable?.(fields,renumber);
         (model?.fields?.length?model.fields:[{}]).forEach(add);
         document.getElementById("template-add-field").addEventListener("click",()=>add());
         form.addEventListener("submit",async event=>{
