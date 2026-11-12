@@ -31,6 +31,20 @@
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <section class="panel" id="force-uninstall">
+        <h2>Forçar uninstall e bloquear loja</h2>
+        <p class="notice error" th:if="${store.accessBlockedAt != null}">Loja bloqueada permanentemente. Novas instalações deste ID serão recusadas.</p>
+        <form class="form" th:if="${store.accessBlockedAt == null}"
+              th:action="@{/backoffice/stores/{id}/force-uninstall(id=${store.storeId})}" method="post">
+            <p>Encerra o acesso ao aplicativo imediatamente e impede novas instalações pelo mesmo ID, inclusive após a exclusão dos dados da loja. Não há desbloqueio nesta tela.</p>
+            <p class="muted">O app poderá continuar listado no painel da Nuvemshop. Esta ação não cancela cobranças no gateway; use a ação de cancelamento da assinatura quando necessário.</p>
+            <input type="hidden" name="actionToken" th:value="${departureActionToken}">
+            <label>Digite o ID da loja para confirmar
+                <input type="text" name="confirmation" required autocomplete="off" th:placeholder="${store.storeId}">
+            </label>
+            <button class="button danger" type="submit">Forçar uninstall e bloquear permanentemente</button>
+        </form>
+    </section>
     <section class="card">
         <h2>Armazenamento dos arquivos enviados pelos compradores</h2>
         <p class="muted">Escolha onde salvar os novos uploads desta loja. Arquivos já enviados continuam no armazenamento original.</p>

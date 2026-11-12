@@ -97,7 +97,7 @@ public class WebhookLifecycleService {
             store.setBillingLastSyncedAt(Instant.now());
             store.setBillingLastError(null);
             storeRepository.save(store);
-            winback.enqueue(store);
+            if (store.getAccessBlockedAt() == null) winback.enqueue(store);
             integrationLogService.info(
                     storeId,
                     "webhook.app_uninstalled",

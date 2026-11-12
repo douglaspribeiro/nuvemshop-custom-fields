@@ -171,6 +171,12 @@ public class Store {
     @Column(name = "uninstalled_at")
     private Instant uninstalledAt;
 
+    @Column(name = "access_blocked_at")
+    private Instant accessBlockedAt;
+
+    public Instant getAccessBlockedAt() { return accessBlockedAt; }
+    public void setAccessBlockedAt(Instant at) { accessBlockedAt = at; }
+
     @Column(name = "erasure_requested_at")
     private Instant erasureRequestedAt;
 
@@ -403,7 +409,7 @@ public class Store {
     }
 
     public boolean isActive() {
-        return uninstalledAt == null && !isErasurePending();
+        return accessBlockedAt == null && uninstalledAt == null && !isErasurePending();
     }
 
     private String normalizeUpper(String value) {

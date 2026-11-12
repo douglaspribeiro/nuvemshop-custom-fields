@@ -30,6 +30,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void addsBatchOperationsAndPermanentBlocksFromV80() {
+        isolatedDatabase(source -> {
+            var jdbc = new JdbcTemplate(source);
+            flyway(source,"80").migrate();
+            assertThat(flyway(source,null).migrate().migrationsExecuted).isEqualTo(2);
+            jdbc.update("insert into store_access_blocks(store_id,blocked_at) values(900082,NOW(6))");
+            assertThat(jdbc.queryForObject("select count(*) from store_access_blocks where store_id=900082",Long.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("select count(*) from template_batches",Long.class)).isZero();
+            assertThat(jdbc.queryForObject("select count(*) from template_product_sources",Long.class)).isZero();
+            validateHibernateAndReadField(source,null);
+        });
+    }
     @Test void delaysPreviouslyPendingRenewalEmailsWhenWebhookBufferIsInstalled() {
         isolatedDatabase(source->{
             var jdbc=new JdbcTemplate(source);flyway(source,"79").migrate();
@@ -203,6 +215,8 @@ class MysqlMigrationContractIT {
     }
 
     private void validateHibernateAndReadField(DriverManagerDataSource source, Long imageField) {
+        // Old migration fixtures also validate the entity mappings of the current release.
+        flyway(source, null).migrate();
         var context = new GenericApplicationContext();
         context.registerBean(StorefrontCacheEntityListener.class);
         context.refresh();

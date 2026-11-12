@@ -70,6 +70,13 @@ class NuvemshopAuthServiceTest {
     }
 
     private void exchangeAndVerify(boolean pendingErasure) {
+        exchangeAndVerify(pendingErasure, false);
+    }
+
+    @Test void rejectsBlockedInstallationBeforeSavingOrRegisteringIntegrations() { exchangeAndVerify(true, true); }
+    @Test void rejectsBlockedIdentityEvenAfterItsStoreDataWasErased() { exchangeAndVerify(false, true); }
+
+    private void exchangeAndVerify(boolean pendingErasure, boolean blocked) {
         NuvemshopProperties properties = new NuvemshopProperties(
                 "client-123",
                 "secret",
@@ -99,6 +106,7 @@ class NuvemshopAuthServiceTest {
             existing.setDepartureCounted(true); existing.setBillingSuspended(true);
         }
         when(storeRepository.findByStoreIdForUpdate(987L)).thenReturn(pendingErasure?Optional.of(existing):Optional.empty());
+        when(storeRepository.isInstallationBlocked(987L)).thenReturn(blocked);
         when(storeRepository.save(any(Store.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(apiClient.getStoreProfile(any(Store.class))).thenReturn(new StoreProfile("Loja Teste", "MX", "MXN", "owner@example.com"));
 
@@ -128,6 +136,15 @@ class NuvemshopAuthServiceTest {
                 builder, mock(WinbackTrackingService.class)
         );
 
+        if (blocked) {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.exchangeCodeAndUpsertStore("oauth-code"))
+                    .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((org.springframework.web.server.ResponseStatusException) ex).getStatusCode().value()).isEqualTo(403));
+            org.mockito.Mockito.verify(storeRepository, org.mockito.Mockito.never()).save(any());
+            org.mockito.Mockito.verifyNoInteractions(apiClient, webhookRegistrationService, scriptInstallService, integrationLogService);
+            server.verify();
+            return;
+        }
         Store store = service.exchangeCodeAndUpsertStore("oauth-code");
 
         assertThat(store.getStoreId()).isEqualTo(987L);

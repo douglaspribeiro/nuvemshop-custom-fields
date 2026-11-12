@@ -27,8 +27,8 @@ class MerchantOverviewProgressTest {
         var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,s.getStoreId());
         String initial=mvc.perform(get("/admin").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(initial).contains("Comece pelo primeiro produto", "Novidades do app", "Templates reutilizáveis", "data-merchant-news");
-        assertThat(initial).contains("Em breve", "Edição em massa");
-        assertThat(initial).contains("/admin/suggestions?interest=bulk");
+        assertThat(initial).contains("Templates em lote");
+        assertThat(initial).doesNotContain("/admin/suggestions?interest=bulk");
         assertThat(initial).doesNotContain("/admin/suggestions?interest=uploads", "/admin/suggestions?interest=templates");
         assertThat(initial).doesNotContain("Em testes");
         for (String feature : java.util.List.of("uploads", "templates", "bulk")) {
@@ -45,9 +45,7 @@ class MerchantOverviewProgressTest {
         assertThat(html).doesNotContain("Comece pelo primeiro produto","hero-primary","Configure seu primeiro produto");
         assertThat(html).contains("Confira na loja","merchant-quicklinks","merchant-suggestion-callout");
         assertThat(html.indexOf("merchant-suggestion-callout")).isGreaterThan(html.indexOf("merchant-quicklinks"));
-        assertThat(html.indexOf("id=\"coming-soon\"")).isGreaterThan(html.indexOf("merchant-quicklinks"))
-                .isLessThan(html.indexOf("merchant-suggestion-callout"));
-        assertThat(html).contains("href=\"#coming-soon\"", "data-coming-soon-link");
+        assertThat(html).doesNotContain("data-coming-soon-link", "id=\"coming-soon\"");
         String nav=html.substring(html.indexOf("<nav"),html.indexOf("</nav>"));
         assertThat(nav).doesNotContain("/admin/suggestions");
         String form=mvc.perform(get("/admin/suggestions").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

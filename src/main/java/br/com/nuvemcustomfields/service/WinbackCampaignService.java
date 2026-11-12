@@ -65,6 +65,7 @@ public class WinbackCampaignService {
             throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: falta configurar AWS_SES_CONFIGURATION_SET com o nome do Configuration Set existente no SES.");
         if (!homolog.allows(storeId)) throw new WinbackPreparationException("Loja não autorizada para homologação.");
         var store = stores.findByStoreIdForUpdate(storeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (store.getAccessBlockedAt() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está bloqueada permanentemente.");
         if (store.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está ativa.");
         if (store.isErasurePending() && !authorizeErasureContact)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Confirme a autorização do contato manual para esta exclusão pendente.");
@@ -94,7 +95,7 @@ public class WinbackCampaignService {
         var event = outbox.findById(eventId).orElse(null);
         if (event == null || !homolog.allows(event.getStoreId())) return null;
         var store = stores.findByStoreIdForUpdate(event.getStoreId()).orElse(null);
-        if (store == null || store.isActive() || store.isErasurePending() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
+        if (store == null || store.getAccessBlockedAt() != null || store.isActive() || store.isErasurePending() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
         if (event.getPublishedAt() == null) return null;
         var campaign = campaigns.findByStoreIdAndUninstalledAt(store.getStoreId(), store.getUninstalledAt()).orElse(null);
         if (campaign == null || campaign.getReinstalledAt() != null || campaign.getOptedOutAt() != null) return null;
@@ -120,7 +121,7 @@ public class WinbackCampaignService {
         if (campaign == null || mail == null || store == null) return;
         if (!"SENDING".equals(mail.getStatus())) return;
         boolean featureDelivered = "FEATURE_DELIVERED".equals(mail.getStep());
-        if ((store.isErasurePending() && !authorizedPendingContact(store, mail)) || (!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
+        if (store.getAccessBlockedAt() != null || (store.isErasurePending() && !authorizedPendingContact(store, mail)) || (!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
                 || campaign.getReinstalledAt() != null)) || campaign.getOptedOutAt() != null
                 || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(storeId)
                 || (featureDelivered && !"ENTREGUE".equals(campaign.getFeatureStatus()))) {

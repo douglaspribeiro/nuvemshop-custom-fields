@@ -114,6 +114,11 @@ public class NuvemshopAuthService {
 
         LOGGER.info("nuvemshop.oauth.exchange.done store_id={} scope={}", token.storeId(), token.scope());
         Store store = storeRepository.findByStoreIdForUpdate(token.storeId()).orElseGet(Store::new);
+        if (storeRepository.isInstallationBlocked(token.storeId()) || store.getAccessBlockedAt() != null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Esta loja não está autorizada a utilizar o aplicativo.");
+        }
         boolean erasureCancelled = store.isErasurePending();
         store.setStoreId(token.storeId());
         store.setAccessToken(token.accessToken());

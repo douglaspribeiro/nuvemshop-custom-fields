@@ -173,6 +173,7 @@ public class BackofficeController {
         LOGGER.debug("backoffice.store.open store_id={}", storeId);
         model.addAttribute("store", storeRepository.findByStoreId(storeId).orElseThrow());
         model.addAttribute("storeEmailToken", BackofficeStoreEmailController.token(session));
+        model.addAttribute("departureActionToken", BackofficeStoreDepartureController.token(session));
         model.addAttribute("planTypes", PlanType.values());
         model.addAttribute("buyerStorageDefault", buyerFileStorageRouter.provider());
         model.addAttribute("buyerStorageEffective", buyerFileStorageRouter.forStore(storeId).provider());

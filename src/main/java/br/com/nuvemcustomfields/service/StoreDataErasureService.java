@@ -36,6 +36,8 @@ public class StoreDataErasureService {
         // separada de desinstalações confirmadas, antes de apagar o cadastro.
         departures.record(storeId, true);
         jdbcTemplate.update("delete from personalization_image_references where store_id=?",storeId);
+        jdbcTemplate.update("delete from template_batches where store_id=?",storeId);
+        jdbcTemplate.update("delete from template_product_sources where store_id=?",storeId);
         jdbcTemplate.update("delete from template_applications where store_id=?",storeId);
         jdbcTemplate.update("delete from store_templates where store_id=?",storeId);
         // A deletion worker retains only the opaque object id and deletion intent.

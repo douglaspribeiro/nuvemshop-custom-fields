@@ -19,6 +19,9 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     Optional<Store> findByStoreId(Long storeId);
 
+    @Query("select (count(b) > 0) from StoreAccessBlock b where b.storeId = :storeId")
+    boolean isInstallationBlocked(@Param("storeId") Long storeId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Store s where s.storeId = :storeId")
     Optional<Store> findByStoreIdForUpdate(Long storeId);
@@ -27,19 +30,19 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     boolean existsByStoreIdAndUninstalledAtIsNull(Long storeId);
 
-    @Query("select s from Store s where s.uninstalledAt is null and s.erasureRequestedAt is null")
+    @Query("select s from Store s where s.accessBlockedAt is null and s.uninstalledAt is null and s.erasureRequestedAt is null")
     List<Store> findAllActive();
 
-    @Query("select s from Store s where s.storeId = :storeId and s.uninstalledAt is null and s.erasureRequestedAt is null")
+    @Query("select s from Store s where s.storeId = :storeId and s.accessBlockedAt is null and s.uninstalledAt is null and s.erasureRequestedAt is null")
     Optional<Store> findActiveByStoreId(Long storeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from Store s where s.storeId = :storeId and s.uninstalledAt is null and s.erasureRequestedAt is null")
+    @Query("select s from Store s where s.storeId = :storeId and s.accessBlockedAt is null and s.uninstalledAt is null and s.erasureRequestedAt is null")
     Optional<Store> findActiveByStoreIdForUpdate(Long storeId);
     @Modifying
     @Transactional
     @Query(value = "update stores set last_admin_access_at = :accessAt where store_id = :storeId "
-            + "and uninstalled_at is null and erasure_requested_at is null "
+            + "and access_blocked_at is null and uninstalled_at is null and erasure_requested_at is null "
             + "and (last_admin_access_at is null or last_admin_access_at <= :cutoff)", nativeQuery = true)
     int recordAdminAccess(@Param("storeId") Long storeId, @Param("accessAt") Instant accessAt, @Param("cutoff") Instant cutoff);
 

@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class StoreTemplatesTest {
     @Autowired StoreTemplateService templates;
+    @Autowired TemplateBatchService batches;
     @Autowired StoreRepository stores;
     @Autowired PersonalizationAdminService admin;
     @Autowired PersonalizationFieldRepository fields;
@@ -43,6 +44,7 @@ class StoreTemplatesTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired MockMvc mvc;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean OrderPersonalizationCatalog fieldCatalog;
     @MockitoBean OptionImageStorage storage;
     @MockitoBean BuyerFileStorage buyerStorage;
     @MockitoBean NuvemshopApiClient api;
@@ -248,5 +250,97 @@ class StoreTemplatesTest {
         mvc.perform(get("/admin/templates").session(session)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Biblioteca de plantillas")));
         mvc.perform(post("/admin/templates").session(session).header("X-NCF-Action","template-write").contentType("application/json").content("{\"name\":\"\",\"fields\":[]}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("error").value(org.hamcrest.Matchers.containsString("Revisá")));
+    }
+
+    @Test void batchAppliesOnlySelectedProductsAndReplayDoesNotDuplicateFields() {
+        var source=model("Nome");
+        var batch=batches.review(store,source.key(),TemplateBatchService.Mode.APPEND,List.of(123L,124L));
+        assertThat(batch.items()).extracting(TemplateBatchService.Item::state).containsOnly("READY");
+        var result=batches.execute(store,batch.id(),123,true,false);
+        assertThat(result.items()).extracting(TemplateBatchService.Item::state).containsExactly("SUCCEEDED","READY");
+        batches.execute(store,batch.id(),123,true,false);
+        assertThat(product(123)).hasSize(1);assertThat(product(124)).isEmpty();
+        assertThat(batches.recent(store).getFirst().succeeded()).isEqualTo(1);
+    }
+    @Test void batchUpdateTracksIndividualApplicationsAndPreservesExtraFieldsWithExplicitLocalEditApproval() {
+        var source=model("Nome");apply(source,123,StoreTemplateService.Mode.APPEND);
+        var extra=templates.create(store,"Extra",null,List.of(text("Recado")));apply(extra,123,StoreTemplateService.Mode.APPEND);
+        // Reapply the original source via replacement to establish the source we are updating.
+        apply(source,123,StoreTemplateService.Mode.REPLACE);
+        var field=product(123).getFirst();field.setPlaceholder("Alterado localmente");fields.saveAndFlush(field);
+        var updated=templates.update(store,source.id(),source.revision(),"Modelo novo",null,List.of(text("Nome atualizado")));
+        var batch=batches.review(store,updated.key(),TemplateBatchService.Mode.UPDATE,List.of(123L));
+        assertThat(batch.items().getFirst().modified()).isTrue();
+        assertThat(batches.execute(store,batch.id(),123,true,false).items().getFirst().error()).isEqualTo("batch.modified.confirm");
+        assertThat(product(123).getFirst().getLabel()).isEqualTo("Nome");
+        assertThat(batches.execute(store,batch.id(),123,true,true).items().getFirst().state()).isEqualTo("SUCCEEDED");
+        assertThat(product(123)).extracting(PersonalizationField::getLabel).containsExactly("Nome atualizado");
+    }
+    @Test void batchUpdateKeepsFieldsAddedLocallyAndUnselectedProducts() {
+        var source=model("Nome");apply(source,123,StoreTemplateService.Mode.APPEND);apply(source,124,StoreTemplateService.Mode.APPEND);
+        var form=text("Recado").toForm(1);admin.addField(store,123L,form);
+        var updated=templates.update(store,source.id(),source.revision(),source.name(),null,List.of(text("Nome novo")));
+        var batch=batches.review(store,updated.key(),TemplateBatchService.Mode.UPDATE,List.of(123L));
+        assertThat(batch.items().getFirst().modified()).isTrue();
+        batches.execute(store,batch.id(),123,true,true);
+        assertThat(product(123)).extracting(PersonalizationField::getLabel).containsExactlyInAnyOrder("Recado","Nome novo");
+        assertThat(product(124)).extracting(PersonalizationField::getLabel).containsExactly("Nome");
+    }
+    @Test void batchRejectsStaleConfigurationAndTemplateAndHidesOtherStoresBatches() {
+        var source=model("Nome");var batch=batches.review(store,source.key(),TemplateBatchService.Mode.APPEND,List.of(123L));
+        templates.update(store,source.id(),source.revision(),source.name(),null,List.of(text("Outro")));
+        assertThat(batches.execute(store,batch.id(),123,true,false).items().getFirst().error()).isEqualTo("template.stale");
+        assertThat(product(123)).isEmpty();
+        long other=newStore(PlanType.PREMIUM_PLUS);
+        assertThatThrownBy(()->batches.get(other,batch.id())).hasMessage("batch.not.found");
+        assertThatThrownBy(()->batches.execute(other,batch.id(),123,true,false)).hasMessage("batch.not.found");
+    }
+    @Test void batchEnforcesCumulativeProductQuotaAndKeepsFailuresAtomic() {
+        var source=model("Nome");
+        var batch=batches.review(store,source.key(),TemplateBatchService.Mode.APPEND,List.of(123L,124L));
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.FREE);stores.saveAndFlush(owner);
+        batches.execute(store,batch.id(),123,true,false);
+        var result=batches.execute(store,batch.id(),124,true,false);
+        assertThat(result.items().getLast().state()).isEqualTo("FAILED");
+        assertThat(result.items().getLast().error()).isEqualTo("template.products.limit");
+        assertThat(product(124)).isEmpty();assertThat(product(123)).hasSize(1);
+        owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(owner);
+        assertThat(batches.execute(store,batch.id(),124,true,false).items().getLast().state()).isEqualTo("SUCCEEDED");
+        assertThat(product(124)).hasSize(1);
+    }
+    @Test void batchPreviewShowsCumulativeProductLimitsBeforeExecuting() {
+        var source=model("Nome");var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.FREE);stores.saveAndFlush(owner);
+        var batch=batches.review(store,source.key(),TemplateBatchService.Mode.APPEND,List.of(123L,124L));
+        assertThat(batch.items().getLast().state()).isEqualTo("BLOCKED");
+        assertThat(batch.items().getLast().error()).isEqualTo("template.products.limit");
+        assertThat(batch.items().getLast().after()).hasSize(1);
+        assertThat(rules.countByStoreId(store)).isZero();
+    }
+    @Test void batchFailureAfterWritingAFieldRollsBackTheEntireProductAndCanBeRetried() {
+        var original=model("Original");apply(original,123,StoreTemplateService.Mode.APPEND);
+        long originalId=product(123).getFirst().getId();
+        var replacement=templates.create(store,"Substituição",null,List.of(text("Primeiro"),text("Segundo")));
+        var batch=batches.review(store,replacement.key(),TemplateBatchService.Mode.REPLACE,List.of(123L));
+        doThrow(new IllegalStateException("test failure")).when(fieldCatalog).remember(argThat(f->"Segundo".equals(f.getLabel())));
+        assertThat(batches.execute(store,batch.id(),123,true,false).items().getFirst().state()).isEqualTo("FAILED");
+        assertThat(product(123)).extracting(PersonalizationField::getId).containsExactly(originalId);
+        reset(fieldCatalog);
+        assertThat(batches.execute(store,batch.id(),123,true,false).items().getFirst().state()).isEqualTo("SUCCEEDED");
+        assertThat(product(123)).extracting(PersonalizationField::getLabel).containsExactly("Primeiro","Segundo");
+    }
+    @Test void batchCatalogAndPageAreScopedAndLocalized() throws Exception {
+        when(api.listTemplateBatchProducts(any(),eq(1))).thenReturn(json.readTree("[{\"id\":123,\"name\":{\"pt\":\"Caderno\"},\"brand\":\"Marca\",\"categories\":[{\"id\":4,\"name\":{\"pt\":\"Papelaria\"}}]}]"));
+        var source=model("Nome");apply(source,123,StoreTemplateService.Mode.APPEND);
+        var products=batches.products(store);assertThat(products).hasSize(1);
+        assertThat(products.getFirst().configured()).isTrue();assertThat(products.getFirst().sourceKey()).isEqualTo(source.key());
+        assertThat(products.getFirst().categories()).containsEntry("4","Papelaria");
+        mvc.perform(get("/admin/templates/batch").session(session).param("key",source.key())).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Templates em lote")));
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setStoreCountryCode("AR");stores.saveAndFlush(owner);
+        mvc.perform(get("/admin/templates/batch").session(session).param("key",source.key())).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Plantillas en lote")));
+        mvc.perform(post("/admin/templates/batch/review").session(session).header("X-NCF-Action","wrong").contentType("application/json")
+                .content(json.writeValueAsString(Map.of("key",source.key(),"mode","APPEND","productIds",List.of(123)))))
+                .andExpect(status().isBadRequest());
     }
 }

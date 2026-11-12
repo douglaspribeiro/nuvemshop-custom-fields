@@ -8,14 +8,14 @@
 <section><h2 th:text="#{template.mine}"></h2><p th:if="${#lists.isEmpty(ownTemplates)}" th:text="#{template.empty}"></p>
 <div class="template-grid"><article class="panel template-card" th:each="template : ${ownTemplates}">
 <h3 th:text="${template.name}"></h3><p th:text="${template.description}"></p><ul><li th:each="field : ${template.fields}" th:text="${field.label}"></li></ul>
-<div class="row-actions"><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
+<div class="row-actions"><a class="button" th:href="@{/admin/templates/batch(key=${template.key})}" th:text="#{batch.title}"></a><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
 <a class="button" th:href="@{/admin/templates/{id}/edit(id=${template.id})}" th:text="#{editor.edit}"></a>
 <button class="button" type="button" data-template-copy th:attr="data-key=${template.key},data-name=${template.name}" th:text="#{template.duplicate}"></button>
 <button class="button" type="button" data-template-delete th:attr="data-id=${template.id},data-revision=${template.revision}" th:text="#{template.delete}"></button></div></article></div></section>
 <section><h2 th:text="#{template.initial}"></h2><p th:text="#{template.initial.help}"></p>
 <div class="template-grid"><article class="panel template-card" th:each="template : ${initialTemplates}">
 <h3 th:text="${template.name}"></h3><p th:text="${template.description}"></p><ul><li th:each="field : ${template.fields}" th:text="${field.label}"></li></ul>
-<div class="row-actions"><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
+<div class="row-actions"><a class="button" th:href="@{/admin/templates/batch(key=${template.key})}" th:text="#{batch.title}"></a><a class="button" th:href="@{/admin/templates/choose(key=${template.key})}" th:text="#{template.apply}"></a>
 <button class="button" type="button" data-template-copy th:attr="data-key=${template.key},data-name=${template.name}" th:text="#{template.duplicate}"></button></div></article></div></section>
 </main><div id="template-ui" hidden th:attr="data-copy-prompt=#{template.copy.prompt},data-copy-suffix=#{template.copy.suffix},data-delete-confirm=#{template.delete.confirm},data-failed=#{template.failed},data-saved=#{template.saved}"></div>
 <script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script><th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block><th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>

@@ -256,6 +256,10 @@ public class NuvemshopApiClient {
         if(product==null || product.path("id").asLong()!=productId)throw new IllegalArgumentException("template.product.invalid");
         return new ProductSummary(productId,localizedName(product.path("name"),"Produto"));
     }
+    public JsonNode listTemplateBatchProducts(Store store,int page) {
+        return restClient.get().uri(properties.apiBaseUrl()+"/v1/{store}/products?page={page}&per_page=100&fields=id,name,categories,brand",store.getStoreId(),page)
+                .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
+    }
 
     /** Pagina pedidos para a sincronizacao historica, sem manter dados pessoais no app. */
     public JsonNode listOrdersForSales(Store store, int page, int perPage, Instant createdMin,

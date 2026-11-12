@@ -377,3 +377,13 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-suggestion-updates { margin-top:16px; padding:14px; border-left:3px solid var(--merchant-green); background:#f5faf7; border-radius:0 8px 8px 0; }
 .merchant-suggestion-updates h4 { margin:0 0 12px; }
 .merchant-suggestion-history .merchant-suggestion-updates article { padding:10px 0; overflow-wrap:anywhere; }
+
+.batch-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:16px; }
+.batch-products { max-height:430px; overflow:auto; margin:18px 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+.batch-product { padding:12px; border:1px solid var(--merchant-line); border-radius:8px; align-items:start; }
+.batch-product small { display:block; margin-top:5px; }
+.batch-item { padding:20px 0; border-bottom:1px solid var(--merchant-line); }
+.batch-comparison { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.batch-fields { padding-left:20px; overflow-wrap:anywhere; }.batch-field-details { white-space:pre-wrap; font-size:.8rem; }
+#batch-history { display:flex; flex-wrap:wrap; gap:10px; }#batch-review-panel { margin:24px 0; }
+@media(max-width:650px) { .batch-comparison { grid-template-columns:1fr; } }

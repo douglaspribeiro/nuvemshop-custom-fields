@@ -102,6 +102,10 @@ public class StoreTemplateService {
     }
     @Transactional
     public int apply(long store,String key,long product,String productName,Mode mode,boolean confirmed,String requestId,String reviewToken) {
+        return applyReviewed(store,key,product,productName,mode,confirmed,requestId,reviewToken,null);
+    }
+    @Transactional
+    public int applyReviewed(long store,String key,long product,String productName,Mode mode,boolean confirmed,String requestId,String reviewToken,List<TemplateFieldDefinition> reviewedDefinitions) {
         var owner=lock(store);
         try {if(!UUID.fromString(requestId).toString().equals(requestId))throw error("template.request.invalid");}
         catch(IllegalArgumentException|NullPointerException e){throw error("template.request.invalid");}
@@ -117,7 +121,7 @@ public class StoreTemplateService {
         var rule=rules.findWithFieldsByStoreIdAndProductId(store,product).orElse(null);
         if(product<=0 || !Objects.equals(reviewToken,token(store,product,source,rule)))throw error("template.stale");
         if(mode==Mode.REPLACE && !confirmed)throw error("template.confirm");
-        var definitions=validate(source.fields());
+        var definitions=validate(reviewedDefinitions==null?source.fields():reviewedDefinitions);
         var current=rule==null?List.<PersonalizationField>of():ordered(rule);
         long count=definitions.size()+(mode==Mode.APPEND?current.size():0),limit=limits.fieldLimit(owner.getEffectivePlan());
         if(limit!=-1 && count>limit)throw error("template.fields.limit");
@@ -138,9 +142,30 @@ public class StoreTemplateService {
         }
         jdbc.update("insert into template_applications(store_id,request_id,source_key,product_id,apply_mode,review_token,field_count,created_at) values (?,?,?,?,?,?,?,?)",
                 store,requestId,key,product,mode.name(),reviewToken,definitions.size(),Timestamp.from(Instant.now()));
+        if (reviewedDefinitions == null) {
+            var managed = new ArrayList<>(definitions);
+            var prior = jdbc.queryForList("select source_key,template_json from template_product_sources where store_id=? and product_id=?", store, product);
+            if (mode == Mode.APPEND && !prior.isEmpty() && key.equals(prior.getFirst().get("source_key"))) {
+                try {
+                    var old = json.readValue((String) prior.getFirst().get("template_json"), new TypeReference<List<TemplateFieldDefinition>>() {});
+                    managed.addAll(0, old);
+                } catch (Exception ex) { throw error("template.fields.invalid"); }
+            }
+            if (prior.isEmpty()) jdbc.update("insert into template_product_sources(store_id,product_id,source_key,source_revision,template_json,configuration_json,updated_at) values(?,?,?,?,?,?,?)",
+                    store, product, key, source.revision(), write(managed), write(combined), Timestamp.from(Instant.now()));
+            else jdbc.update("update template_product_sources set source_key=?,source_revision=?,template_json=?,configuration_json=?,updated_at=? where store_id=? and product_id=?",
+                    key, source.revision(), write(managed), write(combined), Timestamp.from(Instant.now()), store, product);
+        }
         cache.invalidateStoreAfterCommit(store);return definitions.size();
     }
     public boolean uploadsAvailable(Store store) {return uploads.enabled(store.getStoreId()) && uploadRights.usage(store.getStoreId()).acceptsUploads();}
+    @Transactional
+    public void validateBatchResult(long store,long product,List<TemplateFieldDefinition> result) {
+        var owner=lock(store);var definitions=validate(result);
+        if(limits.fieldLimit(owner.getEffectivePlan())!=-1 && definitions.size()>limits.fieldLimit(owner.getEffectivePlan()))throw error("template.fields.limit");
+        if(rules.findWithFieldsByStoreIdAndProductId(store,product).isEmpty() && !limits.canAddProduct(owner))throw error("template.products.limit");
+        features(owner,definitions,product);validateImages(store,definitions);
+    }
     private List<TemplateFieldDefinition> validate(List<TemplateFieldDefinition> definitions) {
         if(definitions==null || definitions.isEmpty() || definitions.size()>100)throw error("template.fields.invalid");
         List<TemplateFieldDefinition> result=new ArrayList<>();
