@@ -43,6 +43,8 @@ class StoreDataErasureServiceIntegrationTest {
         );
         assertThat(jdbcTemplate.queryForObject(
                 "select show_image_zoom from personalization_fields where rule_id = ?", Boolean.class, ruleId)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select show_color_names from personalization_fields where rule_id = ?", Boolean.class, ruleId)).isTrue();
         jdbcTemplate.update(
                 "insert into integration_logs (store_id, level, event_type, message, created_at) values (?, ?, ?, ?, ?)",
                 STORE_ID, "INFO", "test", "test", now

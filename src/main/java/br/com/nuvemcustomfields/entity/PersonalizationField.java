@@ -62,6 +62,7 @@ public class PersonalizationField {
     @org.hibernate.annotations.ColumnDefault("true")
     private boolean showImageZoom = true;
     @Column(name = "show_color_names", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("true")
     private boolean showColorNames = true;
     public boolean isShowColorNames() { return showColorNames; }
     public void setShowColorNames(boolean value) { showColorNames = value; }
