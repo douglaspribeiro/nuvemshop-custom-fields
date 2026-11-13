@@ -26,7 +26,22 @@ O link público informado para escrever uma avaliação é `https://www.nuvemsho
 
 V83 cria `merchant_ratings` com ID, `store_id`, `displayed_at`, nota, comentário, `rated_at`, `dismissed_at` e `public_review_clicked_at`. Não se registra uma nota ao apenas mostrar ou fechar o card. Avaliações são apagadas pelo fluxo de exclusão definitiva da loja, como os demais dados internos.
 
+As avaliações podem ser consultadas no backoffice em `/backoffice/ratings`, com o mesmo estilo da tela de sugestões, filtros por nota e loja e as últimas 100 respostas. Há atalhos no suporte, nas sugestões e no detalhe da loja. A lista mostra nota, comentário, nome/ID da loja, plano atual, datas e clique no convite público.
+
 A tabela contém tanto convites quanto avaliações. Para consultar avaliações recebidas, filtre `rated_at IS NOT NULL`; registros sem nota permitem conferir o controle do intervalo e dispensas. Não há criação automática de chamado ou envio de e-mail.
+
+## Google Analytics
+
+Eventos enviados pelo administrador do lojista quando o GA estiver configurado:
+
+- `rate_box_view`: convite exibido após autorização do servidor.
+- `rate_box_star_selected`: seleção de uma nota; parâmetro `rating`.
+- `rate_box_submitted`: avaliação confirmada pelo servidor; `rating` e `has_comment`.
+- `rate_box_dismissed`: fechamento; `after_rating` distingue o agradecimento do convite sem resposta.
+- `rate_box_public_review_clicked`: clique para avaliar publicamente; não comprova publicação na Nuvemshop.
+- `rate_box_error`: falha; `operation` identifica a etapa, sem enviar mensagens de erro.
+
+Todos incluem `store_id`, `plan` e `app_area=merchant_admin`. Não enviamos comentários, nomes ou e-mails ao GA. O modo operador não exibe o Rate Box. Após publicar o backend, acompanhe os eventos em Tempo real; para analisar os parâmetros em relatórios personalizados, registre as dimensões correspondentes na propriedade GA4. Nenhuma alteração na propriedade do GA foi realizada por esta implementação.
 
 ## Validação e publicação
 

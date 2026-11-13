@@ -3,9 +3,10 @@ import {JSDOM} from 'jsdom';
 import {afterEach,expect,it,vi} from 'vitest';
 const source=readFileSync(new URL('../../../resources/static/assets/merchant-rate-box.js',import.meta.url),'utf8');
 let dom:JSDOM;
+let gtag:ReturnType<typeof vi.fn>;
 afterEach(()=>dom?.window.close());
-async function boot(eligible=true){
- dom=new JSDOM(`<section id="merchant-rate-box" hidden data-error="Falha" data-selected="Sua nota: {0} de 5"><button type="button" data-rate-dismiss>Fechar</button>
+async function boot(eligible=true,analytics=true){
+ dom=new JSDOM(`<section id="merchant-rate-box" hidden data-store-id="42" data-plan="PREMIUM_PLUS" data-error="Falha" data-selected="Sua nota: {0} de 5"><button type="button" data-rate-dismiss>Fechar</button>
  <form id="rate-box-form"><fieldset class="rate-box-stars">${[1,2,3,4,5].map(score=>`<label><input type="radio" required name="rating" value="${score}"><span>★</span></label>`).join('')}</fieldset>
  <p id="rate-box-selection"></p><div id="rate-box-feedback" hidden><textarea id="rate-box-comment" maxlength="2000"></textarea></div><button type="submit" id="rate-box-submit" hidden>Enviar</button><button type="button" data-rate-dismiss>Agora não</button></form>
  <div id="rate-box-thanks" hidden tabindex="-1"><div id="rate-box-public" hidden><a id="rate-box-public-link" target="_blank" rel="noopener noreferrer">Avaliar na Nuvemshop</a></div></div><p id="rate-box-error"></p></section>`,{runScripts:'outside-only',url:'https://app.test/admin',pretendToBeVisual:true});
@@ -15,7 +16,7 @@ async function boot(eligible=true){
   if(url.endsWith('/public-review'))return {ok:true,status:200,json:async()=>({recorded:true})};
   const {rating}=JSON.parse(options.body);return {ok:true,status:200,json:async()=>({rating,reviewUrl:rating===5?'https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7/rating':null})};
  });
- Object.assign(dom.window,{fetch});dom.window.eval(source);
+ gtag=vi.fn();Object.assign(dom.window,{fetch,gtag:analytics?gtag:undefined});dom.window.eval(source);
  await vi.waitFor(()=>expect(fetch).toHaveBeenCalledOnce());await Promise.resolve();await Promise.resolve();return fetch;
 }
 const element=(id:string)=>dom.window.document.getElementById(id)!;
@@ -60,4 +61,34 @@ it('preserves the typed feedback and allows retry after a failed save',async()=>
  await vi.waitFor(()=>expect(element('rate-box-error').textContent).toBe('Falha de rede'));
  expect((element('rate-box-comment') as HTMLTextAreaElement).value).toBe('Meu comentário');expect(element('rate-box-thanks').hidden).toBe(true);
  submit();await vi.waitFor(()=>expect(element('rate-box-thanks').hidden).toBe(false));
+});
+
+it('tracks one display and only confirmed submissions without sending the private comment',async()=>{
+ await boot();await vi.waitFor(()=>expect(element('merchant-rate-box').hidden).toBe(false));
+ expect(gtag).toHaveBeenCalledWith('event','rate_box_view',expect.objectContaining({store_id:'42',plan:'PREMIUM_PLUS'}));
+ dom.window.document.dispatchEvent(new dom.window.Event('visibilitychange'));
+ expect(gtag.mock.calls.filter(call=>call[1]==='rate_box_view')).toHaveLength(1);
+ select(3);(element('rate-box-comment') as HTMLTextAreaElement).value='Comentário privado de teste';submit();
+ await vi.waitFor(()=>expect(element('rate-box-thanks').hidden).toBe(false));submit();
+ expect(gtag.mock.calls.filter(call=>call[1]==='rate_box_submitted')).toHaveLength(1);
+ expect(gtag).toHaveBeenCalledWith('event','rate_box_submitted',expect.objectContaining({rating:3,has_comment:true}));
+ expect(JSON.stringify(gtag.mock.calls)).not.toContain('Comentário privado');
+});
+it('tracks dismissal and public review clicks as separate actions',async()=>{
+ await boot();await vi.waitFor(()=>expect(element('merchant-rate-box').hidden).toBe(false));select(5);submit();
+ await vi.waitFor(()=>expect(element('rate-box-public').hidden).toBe(false));
+ element('rate-box-public-link').dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,cancelable:true}));
+ expect(gtag).toHaveBeenCalledWith('event','rate_box_public_review_clicked',expect.objectContaining({rating:5}));
+ const close=dom.window.document.querySelector<HTMLButtonElement>('[data-rate-dismiss]')!;close.click();close.click();
+ expect(gtag.mock.calls.filter(call=>call[1]==='rate_box_dismissed')).toHaveLength(1);
+ expect(gtag).toHaveBeenCalledWith('event','rate_box_dismissed',expect.objectContaining({after_rating:true}));
+});
+it('does not count unsuccessful saves as ratings and works without analytics',async()=>{
+ const fetch=await boot();await vi.waitFor(()=>expect(element('merchant-rate-box').hidden).toBe(false));select(1);
+ fetch.mockRejectedValueOnce(new Error('offline'));submit();
+ await vi.waitFor(()=>expect(element('rate-box-error').textContent).toBe('offline'));
+ expect(gtag).toHaveBeenCalledWith('event','rate_box_error',expect.objectContaining({operation:'submit'}));
+ expect(gtag.mock.calls.some(call=>call[1]==='rate_box_submitted')).toBe(false);
+ dom.window.close();await boot(true,false);await vi.waitFor(()=>expect(element('merchant-rate-box').hidden).toBe(false));select(4);submit();
+ await vi.waitFor(()=>expect(element('rate-box-thanks').hidden).toBe(false));expect(gtag).not.toHaveBeenCalled();
 });

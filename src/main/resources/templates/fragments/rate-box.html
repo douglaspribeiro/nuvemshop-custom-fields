@@ -1,7 +1,7 @@
 <!doctype html><html xmlns:th="http://www.thymeleaf.org"><body>
 <th:block th:fragment="box">
 <section class="panel merchant-rate-box" id="merchant-rate-box" hidden aria-labelledby="rate-box-title"
-         th:attr="data-error=#{ratebox.error},data-selected=#{ratebox.selected}">
+         th:attr="data-store-id=${store.storeId},data-plan=${store.effectivePlan.name()},data-error=#{ratebox.error},data-selected=#{ratebox.selected}">
     <div class="merchant-rate-heading"><div><p class="eyebrow" th:text="#{ratebox.eyebrow}"></p><h2 id="rate-box-title" th:text="#{ratebox.title}"></h2></div>
         <button type="button" class="button small" data-rate-dismiss th:aria-label="#{ratebox.close}">×</button></div>
     <form id="rate-box-form">

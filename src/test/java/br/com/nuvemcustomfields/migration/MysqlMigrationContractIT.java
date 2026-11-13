@@ -107,7 +107,7 @@ class MysqlMigrationContractIT {
             assertThat(snapshot(jdbc)).isEqualTo(original);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM personalization_fields WHERE show_image_zoom=true", Integer.class)).isEqualTo(5);
             jdbc.update("UPDATE personalization_fields SET show_image_zoom=false WHERE id=?", imageField);
-            assertThatThrownBy(() -> validateHibernateAndReadField(source, null))
+            assertThatThrownBy(() -> validateHibernateAndReadField(source, null, false))
                     .hasStackTraceContaining("Schema-validation:");
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='personalization_fields' AND column_name='mobile_image_columns'", Integer.class)).isZero();
 
@@ -233,8 +233,12 @@ class MysqlMigrationContractIT {
     }
 
     private void validateHibernateAndReadField(DriverManagerDataSource source, Long imageField) {
-        // Old migration fixtures also validate the entity mappings of the current release.
-        flyway(source, null).migrate();
+        validateHibernateAndReadField(source, imageField, true);
+    }
+
+    private void validateHibernateAndReadField(DriverManagerDataSource source, Long imageField, boolean migrateLatest) {
+        // Preserve the intentionally incomplete schema when testing validation failures.
+        if (migrateLatest) flyway(source, null).migrate();
         var context = new GenericApplicationContext();
         context.registerBean(StorefrontCacheEntityListener.class);
         context.refresh();

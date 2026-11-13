@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Avaliações dos lojistas</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><th:block th:replace="~{fragments/local-time :: script}"></th:block></head>
+<body class="backoffice-page"><main class="backoffice-shell">
+<header class="backoffice-header"><div><h1>Avaliações dos lojistas</h1><p>Últimas 100 avaliações enviadas pelo Rate Box, conforme os filtros. Convites sem resposta não aparecem nesta lista.</p></div>
+    <nav class="row-actions"><a class="button" href="/backoffice/suggestions">Sugestões dos lojistas</a><a class="button" href="/backoffice/support">Voltar ao suporte</a></nav></header>
+<form class="form inline-form panel" action="/backoffice/ratings" method="get">
+    <label>Nota<select name="rating"><option value="">Todas as notas</option><option th:each="score:${#numbers.sequence(1,5)}" th:value="${score}" th:selected="${selectedRating == score}" th:text="${score + ' de 5 estrelas'}"></option></select></label>
+    <label>ID da loja<input type="number" name="storeId" min="1" th:value="${selectedStoreId}" placeholder="Todas as lojas"></label>
+    <div class="row-actions"><button class="button primary" type="submit">Filtrar</button><a class="button" href="/backoffice/ratings">Limpar filtros</a></div>
+</form>
+<section class="backoffice-directory">
+    <p class="panel" th:if="${#lists.isEmpty(ratings)}">Nenhuma avaliação enviada para os filtros selecionados.</p>
+    <article class="panel" th:each="r:${ratings}" th:id="${'rating-'+r.id}">
+        <h2><span aria-hidden="true" style="color:#956000" th:text="${r.stars()}"></span> <span th:text="${r.score + ' de 5 estrelas'}"></span></h2>
+        <p><a th:href="@{/backoffice/stores/{id}(id=${r.storeId})}" th:text="${r.storeName ?: 'Loja sem nome'}"></a> <span th:text="${'· Store ID ' + r.storeId}"></span>
+            <span th:if="${r.plan != null}" th:text="${'· Plano atual: ' + T(br.com.nuvemcustomfields.entity.PlanType).valueOf(r.plan).displayName}"></span></p>
+        <h3>Comentário do lojista</h3>
+        <p style="white-space:pre-wrap;overflow-wrap:anywhere" th:if="${!#strings.isEmpty(r.comment)}" th:text="${r.comment}"></p>
+        <p class="muted" th:if="${#strings.isEmpty(r.comment)}">Sem comentário.</p>
+        <p>Avaliação enviada em <time th:attr="data-local-time=${r.ratedAt}" data-time-format="datetime" th:text="${#temporals.format(r.ratedAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time></p>
+        <p class="muted">Convite exibido em <time th:attr="data-local-time=${r.displayedAt}" data-time-format="datetime" th:text="${#temporals.format(r.displayedAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time></p>
+        <p class="notice" th:if="${r.publicReviewClickedAt != null}">Clicou em avaliar publicamente em <time th:attr="data-local-time=${r.publicReviewClickedAt}" data-time-format="datetime" th:text="${#temporals.format(r.publicReviewClickedAt,'dd/MM/yyyy HH:mm','America/Sao_Paulo')}"></time>. Isso não confirma a publicação da avaliação na Nuvemshop.</p>
+        <p class="muted" th:if="${r.score == 5 and r.publicReviewClickedAt == null}">Ainda não clicou no convite para avaliar publicamente.</p>
+    </article>
+</section></main></body></html>
