@@ -1395,6 +1395,7 @@ public class PaymentSubscriptionService {
     }
 
     private void activate(PaymentSubscription local, Store store, String source) {
+        local.markPaidStartedAt(Instant.now());
         local.setWebhookDowngradeAfter(null);
         local.setWebhookDowngradeStatus(null);
         local.setAccessActive(true);

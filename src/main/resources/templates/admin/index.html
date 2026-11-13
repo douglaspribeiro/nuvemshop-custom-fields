@@ -19,6 +19,7 @@
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <th:block th:if="${!backofficeStoreMode and store.effectivePlan.billable and !store.manualPlanOverride and !store.courtesyPremium}"><th:block th:replace="~{fragments/rate-box :: box}"></th:block></th:block>
     <section class="panel notice warning" role="status" th:if="${billingAlert != null or (planPausedProductIds != null and !#sets.isEmpty(planPausedProductIds))}">
         <h2 th:text="#{merchant.status.title}">Atenção à sua assinatura e personalizações</h2>
         <p th:if="${billingAlert != null}" th:text="#{'merchant.status.' + ${billingAlert.kind}}">Verifique sua assinatura.</p>

@@ -54,6 +54,7 @@ public class StoreDataErasureService {
                 storeId
         );
         jdbcTemplate.update("delete from store_email_history where store_id = ?", storeId);
+        jdbcTemplate.update("delete from merchant_ratings where store_id = ?", storeId);
         jdbcTemplate.update("delete from support_tickets where store_id = ?", storeId);
         jdbcTemplate.update("delete from feature_requests where store_id = ?", storeId);
         jdbcTemplate.update(

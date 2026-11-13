@@ -1,0 +1,25 @@
+<!doctype html><html xmlns:th="http://www.thymeleaf.org"><body>
+<th:block th:fragment="box">
+<section class="panel merchant-rate-box" id="merchant-rate-box" hidden aria-labelledby="rate-box-title"
+         th:attr="data-error=#{ratebox.error},data-selected=#{ratebox.selected}">
+    <div class="merchant-rate-heading"><div><p class="eyebrow" th:text="#{ratebox.eyebrow}"></p><h2 id="rate-box-title" th:text="#{ratebox.title}"></h2></div>
+        <button type="button" class="button small" data-rate-dismiss th:aria-label="#{ratebox.close}">×</button></div>
+    <form id="rate-box-form">
+        <fieldset class="rate-box-stars"><legend th:text="#{ratebox.question}"></legend>
+            <label th:each="score : ${#numbers.sequence(1,5)}"><input type="radio" name="rating" th:value="${score}" required th:aria-label="#{ratebox.stars(${score})}"><span aria-hidden="true">★</span></label>
+        </fieldset>
+        <p class="rate-box-selection" id="rate-box-selection" role="status" aria-live="polite"></p>
+        <div id="rate-box-feedback" hidden><label for="rate-box-comment" th:text="#{ratebox.improve}"></label>
+            <p class="field-help" id="rate-box-comment-help" th:text="#{ratebox.comment.help}"></p>
+            <textarea id="rate-box-comment" name="comment" rows="3" maxlength="2000" aria-describedby="rate-box-comment-help"></textarea></div>
+        <div class="row-actions"><button type="submit" class="button primary" id="rate-box-submit" hidden th:text="#{ratebox.send}"></button>
+            <button type="button" class="button small" data-rate-dismiss th:text="#{ratebox.later}"></button></div>
+    </form>
+    <div id="rate-box-thanks" hidden tabindex="-1"><p th:text="#{ratebox.thanks}"></p>
+        <div id="rate-box-public" hidden><p th:text="#{ratebox.public.question}"></p>
+            <a class="button primary" id="rate-box-public-link" target="_blank" rel="noopener noreferrer" th:text="#{ratebox.public.action}"></a>
+            <small class="field-help" th:text="#{ratebox.public.help}"></small></div></div>
+    <p id="rate-box-error" role="alert"></p>
+</section>
+<script th:src="@{/assets/merchant-rate-box.js(v=${assetVersion})}" defer></script>
+</th:block></body></html>

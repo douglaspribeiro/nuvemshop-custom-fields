@@ -30,11 +30,29 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void addsRateBoxFromV82AndPreservesConservativePaidDates() {
+        isolatedDatabase(source->{
+            var jdbc=new JdbcTemplate(source);flyway(source,"82").migrate();
+            jdbc.update("INSERT INTO payment_subscriptions(store_id,provider,provider_environment,external_reference,plan,country_code,currency,amount_value,status,access_active,created_at,updated_at,current_period_start) VALUES(900083,'CREEM','PRODUCTION','rate-migration-1','PREMIUM_PLUS','BR','USD',10,'ACTIVE',true,'2026-10-01 00:00:00','2026-11-10 00:00:00','2026-11-01 00:00:00')");
+            jdbc.update("INSERT INTO payment_subscriptions(store_id,provider,provider_environment,external_reference,plan,country_code,currency,amount_value,status,access_active,created_at,updated_at) VALUES(900084,'CREEM','PRODUCTION','rate-migration-2','PREMIUM_PLUS','BR','USD',10,'ACTIVE',true,'2026-10-01 00:00:00','2026-11-10 00:00:00')");
+            jdbc.update("INSERT INTO plan_events(store_id,from_plan,to_plan,source,created_at) VALUES(900083,'FREE','PREMIUM_PLUS','PAYMENT_WEBHOOK','2026-10-02 00:00:00')");
+            jdbc.update("INSERT INTO plan_events(store_id,from_plan,to_plan,source,created_at) VALUES(900084,'FREE','PREMIUM_PLUS','PAYMENT_WEBHOOK','2026-10-02 00:00:00')");
+            assertThat(flyway(source,null).migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT paid_started_at FROM payment_subscriptions WHERE store_id=900083",java.sql.Timestamp.class).toLocalDateTime())
+                .isEqualTo(java.time.LocalDateTime.of(2026,11,1,0,0));
+            assertThat(jdbc.queryForObject("SELECT paid_started_at FROM payment_subscriptions WHERE store_id=900084",java.sql.Timestamp.class)).isNull();
+            jdbc.update("INSERT INTO merchant_ratings(id,store_id,displayed_at,rating,comment,rated_at) VALUES('00000000-0000-0000-0000-000000090083',900083,NOW(6),4,'Melhorar opções',NOW(6))");
+            assertThat(jdbc.queryForObject("SELECT rating FROM merchant_ratings WHERE store_id=900083",Integer.class)).isEqualTo(4);
+            assertThatThrownBy(()->jdbc.update("INSERT INTO merchant_ratings(id,store_id,displayed_at,rating) VALUES('00000000-0000-0000-0000-000000090084',900083,NOW(6),6)")).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            validateHibernateAndReadField(source,null);
+            assertThat(flyway(source,null).migrate().migrationsExecuted).isZero();
+        });
+    }
     @Test void addsBatchOperationsAndPermanentBlocksFromV80() {
         isolatedDatabase(source -> {
             var jdbc = new JdbcTemplate(source);
             flyway(source,"80").migrate();
-            assertThat(flyway(source,null).migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(flyway(source,"82").migrate().migrationsExecuted).isEqualTo(2);
             jdbc.update("insert into store_access_blocks(store_id,blocked_at) values(900082,NOW(6))");
             assertThat(jdbc.queryForObject("select count(*) from store_access_blocks where store_id=900082",Long.class)).isEqualTo(1);
             assertThat(jdbc.queryForObject("select count(*) from template_batches",Long.class)).isZero();

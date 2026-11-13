@@ -46,6 +46,9 @@ class CreemSubscriptionLifecycleTest {
         service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1");
         assertThat(local.isAccessActive()).isTrue(); assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
         assertThat(local.getCurrentPeriodEnd()).isEqualTo(end); verify(notifications).enqueue(eq(local),any());
+        Instant started=local.getPaidStartedAt();assertThat(started).isNotNull();
+        service.synchronizeFromSubscription(PaymentProviderType.CREEM,"sub_1");
+        assertThat(local.getPaidStartedAt()).isEqualTo(started);
     }
     @Test void mismatchedProductOrPaymentCurrencyCannotGrantAccess() {
         when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_foreign","9.99",null));

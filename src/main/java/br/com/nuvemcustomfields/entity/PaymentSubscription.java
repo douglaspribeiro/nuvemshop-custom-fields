@@ -91,6 +91,10 @@ public class PaymentSubscription {
     private String providerStatus;
     @Column(name = "access_active", nullable = false)
     private boolean accessActive;
+    @Column(name = "paid_started_at")
+    private Instant paidStartedAt;
+    public Instant getPaidStartedAt() { return paidStartedAt; }
+    public void markPaidStartedAt(Instant now) { if (paidStartedAt == null) { paidStartedAt = now; touch(); } }
     @Column(name = "next_payment_at")
     private Instant nextPaymentAt;
     @Column(name = "current_period_start")
@@ -170,7 +174,10 @@ public class PaymentSubscription {
     public PaymentProviderType getProvider() { return provider; }
     public void setProvider(PaymentProviderType value) { provider = value; }
     public String getProviderSubscriptionId() { return providerSubscriptionId; }
-    public void setProviderSubscriptionId(String value) { providerSubscriptionId = value; touch(); }
+    public void setProviderSubscriptionId(String value) {
+        if (!java.util.Objects.equals(providerSubscriptionId, value)) paidStartedAt = null;
+        providerSubscriptionId = value; touch();
+    }
     public String getProviderCheckoutId() { return providerCheckoutId; }
     public void setProviderCheckoutId(String value) { providerCheckoutId = value; touch(); }
     public String getProviderCustomerId() { return providerCustomerId; }
