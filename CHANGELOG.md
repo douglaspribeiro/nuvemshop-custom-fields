@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.66.0] - 2026-11-12
+
+### Features
+
+- collect merchant ratings with subscription eligibility and reminders (`91b67bf`)
+
 ## [1.65.0] - 2026-11-12
 
 ### Features
