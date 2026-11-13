@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.68.0] - 2026-11-12
+
+### Features
+
+- add backoffice ratings and rate box analytics; fix migration validation (`959e86e`)
+- show store storage usage in backoffice and clarify upload news (`1fd1f90`)
+
 ## [1.67.0] - 2026-11-12
 
 ### Features
