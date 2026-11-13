@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Backoffice — Uso de armazenamento</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"></head>
+<body><main class="shell">
+    <section class="page-header"><div><p class="eyebrow">Armazenamento da loja</p><h1 th:text="${store.storeName ?: 'Loja sem nome'}"></h1>
+        <p class="muted" th:text="${'Store ID ' + store.storeId}"></p></div>
+        <nav class="row-actions"><a class="button" th:href="@{/backoffice/stores/{id}/storage(id=${store.storeId})}">Atualizar uso</a>
+            <a class="button" th:href="@{/backoffice/stores/{id}(id=${store.storeId})}">Voltar à loja</a></nav></section>
+    <section class="panel"><h2>Uso de armazenamento</h2>
+        <dl class="metrics"><div><dt>Ocupado e reservado</dt><dd th:text="${usage.occupied}"></dd></div>
+            <div><dt>Limite atual</dt><dd th:text="${usage.hasQuota() ? usage.quota : 'Sem cota de uploads no plano atual'}"></dd></div>
+            <div><dt>Disponível</dt><dd th:text="${usage.available}"></dd></div>
+            <div><dt>Arquivos e uploads em andamento</dt><dd th:text="${usage.files}"></dd></div></dl>
+        <div th:if="${usage.hasQuota()}"><label for="storage-usage" th:text="${usage.formattedPercent + ' do limite utilizado'}"></label>
+            <progress id="storage-usage" max="100" th:value="${usage.progressPercent}" style="width:100%"></progress></div>
+        <p class="notice warning" th:if="${usage.hasQuota() and usage.occupiedBytes >= usage.quotaBytes}">A loja atingiu ou ultrapassou o limite de armazenamento.</p>
+        <p class="notice" th:if="${usage.pendingBytes > 0}" th:text="${usage.pending + ' aguardando exclusão. Esse espaço será liberado quando a remoção dos arquivos for concluída.'}"></p>
+        <p class="muted">Os valores seguem a contabilização de cota do aplicativo e incluem uploads em andamento e arquivos aguardando exclusão. Arquivos vencidos continuam ocupando espaço até serem removidos. Unidades decimais: 1 GB = 1.000 MB.</p>
+    </section>
+    <section class="panel"><h2>Distribuição do uso</h2>
+        <p th:if="${#lists.isEmpty(usage.states)}">Esta loja não possui arquivos ocupando espaço nem uploads em andamento.</p>
+        <div class="table-wrap" th:unless="${#lists.isEmpty(usage.states)}"><table><thead><tr><th>Situação</th><th>Quantidade</th><th>Espaço</th></tr></thead>
+            <tbody><tr th:each="state : ${usage.states}"><td th:text="${state.label}"></td><td th:text="${state.files}"></td><td th:text="${state.formattedBytes}"></td></tr></tbody></table></div>
+    </section>
+</main></body></html>

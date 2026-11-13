@@ -49,6 +49,7 @@
     </section>
     <section class="card">
         <h2>Armazenamento dos arquivos enviados pelos compradores</h2>
+        <p><a class="button" th:href="@{/backoffice/stores/{id}/storage(id=${store.storeId})}">Ver uso de armazenamento</a></p>
         <p class="muted">Escolha onde salvar os novos uploads desta loja. Arquivos já enviados continuam no armazenamento original.</p>
         <p>Padrão do sistema: <strong th:text="${buyerStorageDefault}">AWS_S3</strong> · Destino desta loja: <strong th:text="${buyerStorageEffective}">AWS_S3</strong></p>
         <form th:action="@{/backoffice/stores/{storeId}/buyer-upload-storage(storeId=${store.storeId})}" method="post">
