@@ -3,6 +3,18 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.65.0] - 2026-11-12
+
+### Features
+
+- add named color selections and drag ordering (NC-23) (`701f83e`)
+- NC 19 Alterações em lote (`adb12f3`)
+
+### Correções
+
+- notify Creem renewal failures and clarify merchant plan status (`bb068f5`)
+- delay transient webhook downgrades during renewal (`e8bc697`)
+
 ## [1.64.0] - 2026-11-12
 
 ### Features
