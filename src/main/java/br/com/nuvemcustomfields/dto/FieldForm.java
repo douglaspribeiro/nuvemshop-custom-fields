@@ -37,6 +37,9 @@ public class FieldForm {
     }
     private String imageOptionsJson;
     private boolean showImageZoom = true;
+    private boolean showColorNames = true;
+    public boolean isShowColorNames() { return showColorNames; }
+    public void setShowColorNames(boolean value) { showColorNames = value; }
     private Integer mobileImageColumns;
     @Min(1) @Max(5)
     private Integer maxFiles = 1;

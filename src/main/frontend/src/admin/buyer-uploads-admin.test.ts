@@ -10,8 +10,8 @@ let dom: JSDOM;
 afterEach(() => dom?.window.close());
 const file = (id: string, order = 300) => ({id, order_id: order, order_item_id: 301, original_name: `${id}.png`, state: "ORDERED", size_bytes: 20_000_000,
     order_created_at: "2026-01-01T10:00:00Z", expires_at: "2099-01-01T10:00:00Z"});
-function boot(initial = [file("a"), file("b")]) {
-    dom = new JSDOM(html, {url: "https://app.test/admin/buyer-uploads", runScripts: "outside-only"});
+function boot(initial = [file("a"), file("b")],query="") {
+    dom = new JSDOM(html, {url: "https://app.test/admin/buyer-uploads"+query, runScripts: "outside-only"});
     const doc = dom.window.document;
     doc.documentElement.lang = "pt";
     let files = initial;
@@ -119,4 +119,10 @@ it("never treats a loading error as an empty list", async () => {
     fetch.mockRejectedValueOnce(new Error("offline"));click(doc, "refresh");
     await vi.waitFor(() => expect(doc.getElementById("buyer-status")!.textContent).toContain("Não foi possível carregar"));
     expect(doc.querySelectorAll(".buyer-order")).toHaveLength(1);
+});
+
+it("keeps the selected order in requests from the Nuvemshop admin link",async()=>{
+ const {fetch}=boot([file("a")],"?orderId=300");
+ await vi.waitFor(()=>expect(fetch).toHaveBeenCalled());
+ expect(fetch.mock.calls[0][0]).toContain("orderId=300");
 });

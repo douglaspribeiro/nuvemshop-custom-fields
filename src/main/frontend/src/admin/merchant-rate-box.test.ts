@@ -13,7 +13,7 @@ async function boot(eligible=true){
   if(url.endsWith('/display'))return {ok:true,status:eligible?200:204,json:async()=>({id:'display-1'})};
   if(url.endsWith('/dismiss'))return {ok:true,status:200,json:async()=>({dismissed:true})};
   if(url.endsWith('/public-review'))return {ok:true,status:200,json:async()=>({recorded:true})};
-  const {rating}=JSON.parse(options.body);return {ok:true,status:200,json:async()=>({rating,reviewUrl:rating===5?'https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7#reviews-section':null})};
+  const {rating}=JSON.parse(options.body);return {ok:true,status:200,json:async()=>({rating,reviewUrl:rating===5?'https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7/rating':null})};
  });
  Object.assign(dom.window,{fetch});dom.window.eval(source);
  await vi.waitFor(()=>expect(fetch).toHaveBeenCalledOnce());await Promise.resolve();await Promise.resolve();return fetch;
@@ -36,7 +36,7 @@ it('records five stars before showing an optional external link and never publis
  expect(fetch).toHaveBeenCalledOnce();expect(element('rate-box-public').hidden).toBe(true);submit();
  await vi.waitFor(()=>expect(element('rate-box-public').hidden).toBe(false));
  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({rating:5,comment:null});
- const link=element('rate-box-public-link') as HTMLAnchorElement;expect(link.href).toContain('campos-personalizados7#reviews-section');expect(link.target).toBe('_blank');expect(link.rel).toContain('noopener');
+ const link=element('rate-box-public-link') as HTMLAnchorElement;expect(link.href).toContain('campos-personalizados7/rating');expect(link.target).toBe('_blank');expect(link.rel).toContain('noopener');
 });
 it('closes without requiring a rating and stays closed even when offline',async()=>{
  const fetch=await boot();await vi.waitFor(()=>expect(element('merchant-rate-box').hidden).toBe(false));fetch.mockRejectedValueOnce(new Error('offline'));

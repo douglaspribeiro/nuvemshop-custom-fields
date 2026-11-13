@@ -37,7 +37,7 @@ class MysqlMigrationContractIT {
             jdbc.update("INSERT INTO payment_subscriptions(store_id,provider,provider_environment,external_reference,plan,country_code,currency,amount_value,status,access_active,created_at,updated_at) VALUES(900084,'CREEM','PRODUCTION','rate-migration-2','PREMIUM_PLUS','BR','USD',10,'ACTIVE',true,'2026-10-01 00:00:00','2026-11-10 00:00:00')");
             jdbc.update("INSERT INTO plan_events(store_id,from_plan,to_plan,source,created_at) VALUES(900083,'FREE','PREMIUM_PLUS','PAYMENT_WEBHOOK','2026-10-02 00:00:00')");
             jdbc.update("INSERT INTO plan_events(store_id,from_plan,to_plan,source,created_at) VALUES(900084,'FREE','PREMIUM_PLUS','PAYMENT_WEBHOOK','2026-10-02 00:00:00')");
-            assertThat(flyway(source,null).migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(flyway(source,"83").migrate().migrationsExecuted).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT paid_started_at FROM payment_subscriptions WHERE store_id=900083",java.sql.Timestamp.class).toLocalDateTime())
                 .isEqualTo(java.time.LocalDateTime.of(2026,11,1,0,0));
             assertThat(jdbc.queryForObject("SELECT paid_started_at FROM payment_subscriptions WHERE store_id=900084",java.sql.Timestamp.class)).isNull();
@@ -271,6 +271,7 @@ class MysqlMigrationContractIT {
                 if (table.equals("personalization_fields")) {
                     values.remove("show_image_zoom");
                     values.remove("mobile_image_columns");
+                    values.remove("show_color_names");
                 }
                 return values;
             }).sorted(Comparator.comparing(Map::toString)).toList());

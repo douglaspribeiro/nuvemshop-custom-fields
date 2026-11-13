@@ -69,6 +69,23 @@ class BuyerUploadsTest {
         when(api.getOrder(any(),eq(300L))).thenReturn(json.readTree("{\"id\":300,\"created_at\":\""+platformTime+"\",\"products\":[{\"id\":"+item+",\"product_id\":123,\"properties\":{\"_ncf_file_"+field+"\":\""+file.reference()+"\"}}]}"));
         orders.order(store,300);
     }
+    @Test void adminLinkSelectsOneOrderAndDataRemainsScopedToTheAuthenticatedStore() throws Exception {
+        var file=upload();confirm(file,301);
+        mvc.perform(get("/nuvemshop/order-files").session(session).param("store",String.valueOf(store)).param("id","300"))
+                .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/admin/buyer-uploads?orderId=300"));
+        mvc.perform(get("/nuvemshop/order-files").session(session).param("store",String.valueOf(store+1)).param("id","300"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/admin/buyer-uploads/data").session(session).param("orderId","300"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.files[0].id").value(file.id())).andExpect(jsonPath("$.totalOrders").value(1));
+        mvc.perform(get("/admin/buyer-uploads/data").session(session).param("orderId","301"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.files").isEmpty());
+        var foreign=new MockHttpSession();foreign.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,store+1);
+        var other=new Store();other.setStoreId(store+1);other.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(other);
+        try {mvc.perform(get("/admin/buyer-uploads/data").session(foreign).param("orderId","300"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.files").isEmpty());}
+        finally {stores.delete(other);}
+        mvc.perform(get("/admin/buyer-uploads/data").session(session).param("orderId","-1")).andExpect(status().isBadRequest());
+    }
     @Test void refreshesOrderDetailsCachesRequestsAndFiltersByStatus() throws Exception {
         var file=upload();confirm(file,301);
         var order=(com.fasterxml.jackson.databind.node.ObjectNode)api.getOrder(stores.findByStoreId(store).orElseThrow(),300);

@@ -73,6 +73,6 @@ public class AuthController {
         Store store = authService.exchangeCodeAndUpsertStore(code);
         session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
         LOGGER.info("auth.callback.done session_id={} store_id={}", session.getId(), store.getStoreId());
-        return new RedirectView("/admin");
+        return new RedirectView(OrderFilesLinkController.afterAuthentication(session,store.getStoreId()));
     }
 }

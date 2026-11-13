@@ -20,3 +20,11 @@ it('keeps malicious names as text and ignores unsafe color styles',()=>{
     const select=document.createElement('select');const group=colorChoices({...field,colorOptions:[{label:'<img src=x onerror=alert(1)>',color:'#000000'},{label:'Invalid',color:'url(x)'}]},select);
     expect(group.querySelector('img')).toBeNull();expect(group.querySelectorAll('button')).toHaveLength(1);expect(group.textContent).toContain('<img');
 });
+it('hides only the visible name while keeping accessible labels and the selected name',()=>{
+    const select=document.createElement('select');field.options.forEach(name=>select.append(new Option(name,name)));
+    const group=colorChoices({...field,showColorNames:false},select),button=group.querySelector('button')!;
+    expect(button.textContent).toBe('');expect(button.getAttribute('aria-label')).toBe('Azul marinho');
+    expect(button.style.flexDirection).toBe('column');expect(button.style.alignItems).toBe('center');
+    button.click();expect(select.value).toBe('Azul marinho');
+    expect(toCartProperties([field],{Cor:select.value})).toEqual({Cor:'Azul marinho'});
+});

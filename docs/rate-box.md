@@ -20,7 +20,7 @@ O convite fica na visão geral (`/admin`), em um card que acompanha o visual do 
 5. Fechar ou escolher **Agora não** dispensa o convite sem exigir nota. O fechamento continua funcionando sem rede; a data de exibição já está persistida.
 6. O servidor revalida a elegibilidade ao salvar e recusa edição de uma avaliação concluída. Repetir exatamente a mesma requisição apenas confirma o resultado já salvo.
 
-O link público verificado é `https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7#reviews-section`, que abre a seção de avaliações. Não foi confirmado um atalho público para abrir diretamente o formulário de comentário; a etapa pública depende da sessão e das regras da Nuvemshop.
+O link público informado para escrever uma avaliação é `https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7/rating`. A etapa pública depende da sessão e das regras da Nuvemshop.
 
 ## Persistência
 

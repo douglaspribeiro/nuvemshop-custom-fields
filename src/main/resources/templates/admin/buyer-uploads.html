@@ -5,6 +5,7 @@
 <body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('buyer-uploads')}"></th:block>
 <main class="shell buyer-file-manager">
     <section class="page-header"><div><h1 th:text="#{buyer.files.title}"></h1><p th:text="#{buyer.files.intro}"></p></div><a class="button" href="/admin/billing" th:text="#{buyer.files.plans}"></a></section>
+    <p class="notice" th:if="${selectedOrderId != null}"><span th:text="#{buyer.files.selectedOrder}"></span> <a href="/admin/buyer-uploads" th:text="#{buyer.files.allOrders}"></a></p>
     <section class="panel">
         <dl class="buyer-storage"><div><dt th:text="#{buyer.files.occupied}"></dt><dd id="buyer-occupied">—</dd></div><div><dt th:text="#{buyer.files.available}"></dt><dd id="buyer-available">—</dd></div><div><dt th:text="#{buyer.files.quota}"></dt><dd id="buyer-quota">—</dd></div></dl>
         <p id="buyer-warning" class="notice warning" hidden></p><p id="buyer-pending" class="notice" hidden></p><p id="buyer-disabled" th:text="#{buyer.files.disabled}" hidden></p>

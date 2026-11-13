@@ -40,6 +40,7 @@
             }
             row.querySelector("[name=required]").checked=Boolean(definition.required);
             row.querySelector("[name=showImageZoom]").checked=definition.showImageZoom!==false;
+            if(row.querySelector("[name=showColorNames]"))row.querySelector("[name=showColorNames]").checked=definition.showColorNames!==false;
             row.querySelector("[data-field-remove]").addEventListener("click",()=>{if(Number(row.querySelector(".image-options-editor").dataset.uploadingCount || 0))return;row.remove();renumber();});
             row.querySelector("[data-field-up]").addEventListener("click",event=>{if(row.previousElementSibling)fields.insertBefore(row,row.previousElementSibling);renumber();event.currentTarget.focus();});
             row.querySelector("[data-field-down]").addEventListener("click",event=>{if(row.nextElementSibling)fields.insertBefore(row.nextElementSibling,row);renumber();event.currentTarget.focus();});
@@ -56,7 +57,7 @@
                 const input=name=>row.querySelector(`[name=${name}]`);
                 return {label:input("label").value,fieldType:input("fieldType").value,required:input("required").checked,maxLength:Number(input("maxLength").value),maxFiles:Number(input("maxFiles").value || 1),
                     placeholder:input("placeholder").value,validationPattern:input("validationPattern").value,optionsText:input("optionsText").value,
-                    imageOptionsJson:input("imageOptionsJson").value,showImageZoom:input("showImageZoom").checked,mobileImageColumns:input("mobileImageColumns").value?Number(input("mobileImageColumns").value):null};
+                    imageOptionsJson:input("imageOptionsJson").value,showImageZoom:input("showImageZoom").checked,showColorNames:input("showColorNames")?.checked ?? true,mobileImageColumns:input("mobileImageColumns").value?Number(input("mobileImageColumns").value):null};
             });
             const button=form.querySelector("button[type=submit]");button.disabled=true;
             try{const saved=await post(model?`/admin/templates/${model.id}`:"/admin/templates",{name:get("templateName").value,description:get("templateDescription").value,revision:model?.revision,fields:definitions});location.assign(`/admin/templates/${saved.id}/edit`);}

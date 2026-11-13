@@ -12,7 +12,9 @@ public class BuyerUploadPageController {
     private final br.com.nuvemcustomfields.i18n.Messages messages;
     public BuyerUploadPageController(AdminStoreService stores,br.com.nuvemcustomfields.i18n.Messages messages){this.stores=stores;this.messages=messages;}
     @GetMapping("/admin/buyer-uploads")
-    public String page(HttpSession session,Model model){model.addAttribute("store",stores.requireCurrentStore(session));
+    public String page(HttpSession session,Model model,@org.springframework.web.bind.annotation.RequestParam(required=false) Long orderId){
+        if(orderId!=null && orderId<=0)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
+        model.addAttribute("selectedOrderId",orderId);model.addAttribute("store",stores.requireCurrentStore(session));
         var ui=new java.util.LinkedHashMap<String,String>();
         for(String key:java.util.List.of(
                 "title","intro","retention","quotaNote","occupied","available",

@@ -1,9 +1,11 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<section th:fragment="colors" class="color-options-editor" hidden
+<section th:fragment="colors(showNames)" class="color-options-editor" hidden
          th:attr="data-name=#{color.option.name},data-color=#{color.option.color},data-add=#{color.option.add},data-remove=#{image.option.remove},data-up=#{image.option.up},data-down=#{image.option.down},data-drag=#{fields.order.drag},data-invalid=#{color.options.invalid}">
     <p class="field-help" th:text="#{color.options.help}"></p>
+    <input type="hidden" name="_showColorNames" value="on">
+    <label class="checkbox"><input type="checkbox" name="showColorNames" value="true" th:checked="${showNames}"><span th:text="#{color.names.show}"></span></label>
     <div class="color-options-rows"></div>
     <button class="button small color-option-add" type="button" th:text="#{color.option.add}"></button>
     <p class="color-options-status" role="status" aria-live="polite"></p>

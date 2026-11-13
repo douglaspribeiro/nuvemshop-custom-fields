@@ -10,6 +10,7 @@
         return new Intl.NumberFormat(document.documentElement.lang || "pt", {maximumFractionDigits: 2}).format(value) + " " + units[unit];
     };
     const date = value => value ? new Date(value).toLocaleDateString(document.documentElement.lang || "pt") : "—";
+    const orderId=new URLSearchParams(location.search).get("orderId");
     const selected = new Map();
     let files = [], page = 1, pages = 1, busy = false, loading = false, generation = 0, refreshTimer, review = [];
     const available = file => file.state === "ORDERED" && new Date(file.expires_at) > new Date();
@@ -111,6 +112,7 @@
         clearTimeout(refreshTimer);const current = ++generation;loading = true;updateSelection();
         if (!quiet) show(t("loading"));
         const query = new URLSearchParams({page: String(page), sort: get("sort").value, orderStatus: get("order-status").value});
+        if(orderId)query.set("orderId",orderId);
         if (get("before").value) query.set("before", new Date(`${get("before").value}T23:59:59.999`).toISOString());
         try {
             const response = await fetch(`/admin/buyer-uploads/data?${query}`, {headers: {Accept: "application/json"}, credentials: "same-origin"});

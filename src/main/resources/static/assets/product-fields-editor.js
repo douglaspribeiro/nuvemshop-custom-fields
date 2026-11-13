@@ -101,7 +101,7 @@
                     const button=document.createElement('button');button.type='button';button.className='field-preview-choice';button.setAttribute('aria-pressed','false');
                     const chip=document.createElement('span');chip.className='color-swatch';
                     if(/^#[0-9a-f]{6}$/i.test(option.color))chip.style.backgroundColor=option.color;
-                    const name=document.createElement('span');name.textContent=option.label;button.append(chip,name);
+                    const name=document.createElement('span');name.textContent=option.label;button.setAttribute('aria-label',option.label);button.title=option.label;button.append(chip);if(get('showColorNames')?.checked ?? true)button.append(name);
                     button.addEventListener('click',()=>group.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button))));group.append(button);
                 });target.append(title,group);return;
             }

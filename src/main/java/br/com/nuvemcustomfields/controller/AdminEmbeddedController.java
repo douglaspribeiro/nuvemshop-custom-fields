@@ -43,7 +43,7 @@ public class AdminEmbeddedController {
         Object storeId = session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
         if (storeId instanceof Long id && storeRepository.findActiveByStoreId(id).isPresent()) {
             LOGGER.debug("admin.embedded.session_present store_id={}", id);
-            return "redirect:/admin";
+            return "redirect:"+OrderFilesLinkController.afterAuthentication(session,id);
         }
         LOGGER.debug("admin.embedded.open session_id={}", session.getId());
         model.addAttribute("nuvemshopClientId", properties.clientId());
@@ -63,7 +63,7 @@ public class AdminEmbeddedController {
                     .map(store -> {
                         session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, store.getStoreId());
                         LOGGER.info("admin.nexo.session.created session_id={} store_id={}", session.getId(), store.getStoreId());
-                        return ResponseEntity.ok(Map.<String, Object>of("redirect", "/admin"));
+                        return ResponseEntity.ok(Map.<String, Object>of("redirect", OrderFilesLinkController.afterAuthentication(session,store.getStoreId())));
                     })
                     .orElseGet(() -> {
                         LOGGER.warn("admin.nexo.session.store_not_found store_id={}", storeId);

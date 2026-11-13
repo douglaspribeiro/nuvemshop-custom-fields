@@ -152,11 +152,16 @@ public class BuyerUploadService {
     public void remove(long storeId,String token,String id) { authenticate(storeId,token);ledger.removeTemporary(storeId,id,token); }
     public record FilePage(List<Map<String,Object>> files, int page, int pages, long totalOrders, long pendingBytes) {}
     public FilePage orders(long storeId,int page,String sort,Instant before,String orderStatus) {
+        return orders(storeId,page,sort,before,orderStatus,null);
+    }
+    public FilePage orders(long storeId,int page,String sort,Instant before,String orderStatus,Long orderId) {
+        if(orderId!=null && orderId<=0)throw rejected("upload.selection.invalid");
         if (page<1 || !Set.of("oldest","newest","largest").contains(sort) || !Set.of("all","open","closed","cancelled","unknown").contains(orderStatus)) throw rejected("upload.selection.invalid");
         String filter="store_id=? and order_id is not null and state in ('ORDERED','DELETING')";
         List<Object> args=new ArrayList<>();args.add(storeId);
         if("unknown".equals(orderStatus)) filter+=" and (order_status is null or order_status='')";
         else if(!"all".equals(orderStatus)){filter+=" and order_status=?";args.add(orderStatus);}
+        if(orderId!=null){filter+=" and order_id=?";args.add(orderId);}
         if(before!=null){filter+=" and order_created_at<=?";args.add(ts(before));}
         long count=jdbc.queryForObject("select count(distinct order_id) from buyer_uploads where "+filter,Long.class,args.toArray());
         int pages=Math.max(1,(int)((count+19)/20));page=Math.min(page,pages);

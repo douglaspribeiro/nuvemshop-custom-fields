@@ -102,12 +102,16 @@ function input(
     if (field.fieldType === "COLOR_SELECT") {
         const children: NubeComponent[]=[<Text color={color}>{label}</Text>,
             <Row gap={10} style={{flexWrap:"wrap"}}>{(field.colorOptions ?? []).filter(option=>/^#[0-9a-f]{6}$/i.test(option.color)).map(option=>
-                <Column gap={4} style={{padding:"8px",border:"1px solid #c8d3d8",borderRadius:"8px",maxWidth:"100%"}}>
-                    <Row style={{backgroundColor:option.color,width:"28px",height:"28px",border:"1px solid #777",borderRadius:"50%"}} />
-                    <Button variant={option.label===selected?"primary":"secondary"}
-                        ariaLabel={`${label}: ${option.label}${option.label===selected?" ✓":""}`}
-                        onClick={()=>onValueChange(key,option.label)}>{option.label===selected?`✓ ${option.label}`:option.label}</Button>
-                </Column>)}</Row>];
+                <Button variant="transparent"
+                    style={{padding:"10px",border:"1px solid #c8d3d8",borderRadius:"8px",maxWidth:"100%",
+                        outline:option.label===selected?"2px solid currentColor":"none",outlineOffset:"2px",color:"inherit"}}
+                    ariaLabel={`${label}: ${option.label}${option.label===selected?" ✓":""}`}
+                    onClick={()=>onValueChange(key,option.label)}>
+                    <Column gap={8} alignItems="center" style={{width:"100%",textAlign:"center"}}>
+                        {[<Row style={{backgroundColor:option.color,width:"28px",height:"28px",flexShrink:0,border:"1px solid #777",borderRadius:"50%"}} />,
+                            ...(field.showColorNames!==false?[<Text color={color}>{option.label}</Text>]:[])]}
+                    </Column>
+                </Button>)}</Row>];
         if(!field.required)children.push(<Button variant="link" onClick={()=>onValueChange(key,"")}>{locale?.startsWith("es")?"Borrar selección":"Limpar seleção"}</Button>);
         return <Column gap={8}>{children}</Column>;
     }

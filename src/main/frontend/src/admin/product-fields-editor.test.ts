@@ -194,3 +194,10 @@ it('previews named colors in configured order without submitting preview choices
     expect([...buttons].map(b=>b.textContent)).toEqual(['Branco','Azul marinho']);buttons[1].click();expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
     expect(buttons[1].name).toBe('');expect(input('optionsText').closest('label')!.hidden).toBe(true);
 });
+it('can hide color names in the preview while keeping an accessible choice',()=>{
+    boot();const checkbox=dom.window.document.createElement('input');checkbox.type='checkbox';checkbox.name='showColorNames';checkbox.checked=false;
+    input('optionsText').closest('form')!.append(checkbox);
+    input('optionsText').value=JSON.stringify([{label:'Azul',color:'#123ABC'}]);select('[name=fieldType]','COLOR_SELECT');
+    const choice=dom.window.document.querySelector<HTMLButtonElement>('.field-preview-colors button')!;
+    expect(choice.textContent).toBe('');expect(choice.getAttribute('aria-label')).toBe('Azul');
+});

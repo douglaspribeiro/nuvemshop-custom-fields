@@ -192,6 +192,7 @@ public class PersonalizationAdminService {
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);
         field.setShowImageZoom(form.isShowImageZoom());
+        field.setShowColorNames(form.isShowColorNames());
         field.setMaxFiles(form.getFieldType() == FieldType.FILE_UPLOAD ? form.getMaxFiles() : 1);
         field.setMobileImageColumns(form.getFieldType() == FieldType.IMAGE_SELECT ? form.getMobileImageColumns() : null);
         field.setImageOptionsJson(form.getFieldType() == FieldType.IMAGE_SELECT

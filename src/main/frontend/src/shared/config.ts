@@ -19,6 +19,7 @@ export type PersonalizationField = {
 	colorOptions?: {label: string; color: string}[];
 	imageOptions?: { label: string; thumbnailUrl: string; imageUrl: string }[];
 	showImageZoom?: boolean;
+	showColorNames?: boolean;
 	mobileImageColumns?: 2 | 3 | null;
 };
 

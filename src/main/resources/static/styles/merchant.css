@@ -398,7 +398,7 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .field-order-actions{display:flex;gap:4px;flex-wrap:wrap}
 .field-order-actions button{min-width:36px;min-height:36px}
 .field-preview-colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-.field-preview-colors button{display:flex;align-items:center;gap:8px;min-height:44px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px;padding:8px 12px;font:inherit}
+.product-field-page .field-preview-colors .field-preview-choice{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;min-height:44px;padding:10px;font:inherit;text-align:center}
 .color-swatch{display:inline-block;vertical-align:middle;width:28px;height:28px;border:1px solid #777;border-radius:50%;flex-shrink:0}
 .field-preview-colors button[aria-pressed=true]{outline:2px solid currentColor;outline-offset:2px}
 .color-options-editor [hidden]{display:none}

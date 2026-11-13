@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MerchantRateBoxService {
-    public static final String REVIEW_URL="https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7#reviews-section";
+    public static final String REVIEW_URL="https://www.nuvemshop.com.br/loja-aplicativos-nuvem/campos-personalizados7/rating";
     private final StoreRepository stores;
     private final PaymentSubscriptionRepository subscriptions;
     private final MerchantRatingRepository ratings;

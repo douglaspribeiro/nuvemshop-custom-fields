@@ -73,11 +73,9 @@
                 Este produto ainda nao tem campos.
             </div>
 
-            <p class="field-help" th:text="#{fields.order.help}"></p>
-            <div class="row-actions"><button type="button" class="button" id="save-field-order" th:text="#{fields.order.save}"></button><span id="field-order-status" role="status" aria-live="polite"></span></div>
-            <div class="field-list" th:attr="data-order-url=@{/admin/products/{productId}/fields/order(productId=${rule.productId})},data-saved=#{fields.order.saved},data-failed=#{fields.order.invalid}">
+            <div class="field-list">
                 <details class="field-item" th:id="${'configured-field-' + field.id}" th:each="field, position : ${rule.fields}" th:open="${position.first or (editedFieldId != null and editedFieldId == field.id)}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
-                    <summary class="field-summary"><span class="field-order-actions"><button type="button" data-order-handle th:aria-label="#{fields.order.drag}">⠿</button><button type="button" data-order-up th:aria-label="#{image.option.up}">↑</button><button type="button" data-order-down th:aria-label="#{image.option.down}">↓</button></span><span><strong th:text="${draft.label}"></strong><small th:text="#{'field.type.' + ${draft.fieldType}}"></small></span><span class="field-edit-label" th:text="#{editor.edit}"></span></summary>
+                    <summary class="field-summary"><span><strong th:text="${draft.label}"></strong><small th:text="#{'field.type.' + ${draft.fieldType}}"></small></span><span class="field-edit-label" th:text="#{editor.edit}"></span></summary>
                     <form class="form field-editor-form image-options-form"
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
                           method="post">
@@ -154,7 +152,7 @@
                             <input class="field-position" th:value="${draft.sortOrder == null ? 1 : draft.sortOrder + 1}" type="number" min="1" step="1" required>
                         </label>
                 </details>
-                        <th:block th:replace="~{fragments/field-editor :: colors}"></th:block>
+                        <th:block th:replace="~{fragments/field-editor :: colors(${draft.showColorNames})}"></th:block>
                 <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
                         <div class="row-actions">
                             <button class="button primary small" type="submit" th:text="#{common.save}">Salvar</button>
@@ -242,7 +240,7 @@
                     <input class="field-position" th:value="${fieldForm.sortOrder == null ? 1 : fieldForm.sortOrder + 1}" type="number" min="1" step="1" required>
                 </label>
                 </details>
-                <th:block th:replace="~{fragments/field-editor :: colors}"></th:block>
+                <th:block th:replace="~{fragments/field-editor :: colors(${fieldForm.showColorNames})}"></th:block>
                 <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
                 <button class="button primary" type="submit" th:text="#{admin.fields.create}">Criar campo</button>
             </form>
