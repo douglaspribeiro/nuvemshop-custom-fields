@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.67.0] - 2026-11-12
+
+### Features
+
+- refine color choices and link order files from Nuvemshop admin (`ed878b6`)
+
+### Correções
+
+- teste quebrado (`646b81f`)
+
 ## [1.66.0] - 2026-11-12
 
 ### Features
