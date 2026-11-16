@@ -67,7 +67,9 @@ public class DiscordPaymentWebhookClient {
                     + (notification.getChargeId() == null ? "Sem cobrança (ajuste zerado)" : notification.getChargeId())
                     + footer;
         }
-        return "✅ **Pagamento confirmado**\n" + store
+        String title = notification.getEventType() == PaymentNotificationOutbox.EventType.RENEWAL
+                ? "🔁 **Renovação confirmada**\n" : "✅ **Pagamento confirmado**\n";
+        return title + store
                 + "📦 **Plano:** " + plan + "\n"
                 + "💰 **Valor:** " + amount + "\n"
                 + "💳 **Gateway:** " + notification.getProvider() + " · **Cobrança:** " + notification.getPaymentId()

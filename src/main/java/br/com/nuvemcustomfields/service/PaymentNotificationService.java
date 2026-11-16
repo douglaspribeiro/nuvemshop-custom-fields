@@ -50,8 +50,12 @@ public class PaymentNotificationService {
             if (subscription.getAnalyticsFirstPaymentId() == null) subscription.setAnalyticsFirstPaymentId(invoice.paymentId());
             return;
         }
+        boolean renewal = subscription.getAnalyticsFirstPaymentId() != null
+                && !invoice.paymentId().equals(subscription.getAnalyticsFirstPaymentId());
         if (analytics != null) analytics.payment(subscription, invoice);
+        if (subscription.getAnalyticsFirstPaymentId() == null) subscription.setAnalyticsFirstPaymentId(invoice.paymentId());
         PaymentNotificationOutbox notification = new PaymentNotificationOutbox();
+        if (renewal) notification.setEventType(PaymentNotificationOutbox.EventType.RENEWAL);
         notification.setProvider(subscription.getProvider());
         notification.setPaymentId(invoice.paymentId());
         notification.setStoreId(subscription.getStoreId());

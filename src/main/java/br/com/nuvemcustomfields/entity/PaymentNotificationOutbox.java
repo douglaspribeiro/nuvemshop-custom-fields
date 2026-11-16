@@ -17,7 +17,7 @@ import java.time.Instant;
 @Table(name = "payment_notification_outbox", uniqueConstraints =
         @UniqueConstraint(name = "uk_payment_notification_provider_payment", columnNames = {"provider", "payment_id"}))
 public class PaymentNotificationOutbox {
-    public enum EventType { PAYMENT, UPGRADE }
+    public enum EventType { PAYMENT, RENEWAL, UPGRADE }
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=20)
     private EventType eventType=EventType.PAYMENT;
     @Column(length=255) private String storeName;

@@ -102,10 +102,37 @@ class PaymentNotificationServiceTest {
                 .containsExactly("tran_first", "tran_renewal");
         assertThat(saved.getAllValues().getFirst().getAmountValue()).isEqualByComparingTo("6.50");
         assertThat(saved.getAllValues().getLast().getAmountValue()).isEqualByComparingTo("19.99");
+        assertThat(saved.getAllValues()).extracting(PaymentNotificationOutbox::getEventType)
+                .containsExactly(PaymentNotificationOutbox.EventType.PAYMENT, PaymentNotificationOutbox.EventType.RENEWAL);
         assertThat(saved.getAllValues()).allSatisfy(n -> {
             assertThat(n.getProvider()).isEqualTo(PaymentProviderType.CREEM);
             assertThat(n.getCurrency()).isEqualTo("USD");
         });
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PaymentProviderType.class, names = {"EFI", "CREEM", "DODO"})
+    void identifiesRenewalFromRecordedFirstPaymentEvenWithoutNotificationHistory(PaymentProviderType provider) {
+        var subscription = creemSubscription();
+        subscription.setProvider(provider);
+        subscription.setAnalyticsFirstPaymentId("first-payment");
+        service.enqueue(subscription, new GatewayInvoice("renewal-payment", "sub_1", "renewal-payment", "paid"));
+
+        var saved = ArgumentCaptor.forClass(PaymentNotificationOutbox.class);
+        verify(outbox).save(saved.capture());
+        assertThat(saved.getValue().getEventType()).isEqualTo(PaymentNotificationOutbox.EventType.RENEWAL);
+        assertThat(subscription.getAnalyticsFirstPaymentId()).isEqualTo("first-payment");
+    }
+
+    @Test
+    void firstPaymentAlreadyRecordedByAnalyticsRemainsAnInitialPayment() {
+        var subscription = creemSubscription();
+        subscription.setAnalyticsFirstPaymentId("first-payment");
+        service.enqueue(subscription, new GatewayInvoice("first-payment", "sub_1", "first-payment", "paid"));
+
+        var saved = ArgumentCaptor.forClass(PaymentNotificationOutbox.class);
+        verify(outbox).save(saved.capture());
+        assertThat(saved.getValue().getEventType()).isEqualTo(PaymentNotificationOutbox.EventType.PAYMENT);
     }
 
     @Test

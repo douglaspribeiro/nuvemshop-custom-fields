@@ -46,6 +46,14 @@ class DiscordPaymentWebhookClientTest {
         assertThat(client.content(n)).contains("\\*\\*Minha\\*\\* loja · **ID:** 7744400");
         verifyNoInteractions(stores);
     }
+    @Test void renewalIsExplicitAndKeepsPaymentDetailsAndMrr() {
+        var n = notification(); n.setPlan(PlanType.PREMIUM_ULTRA);
+        n.setEventType(PaymentNotificationOutbox.EventType.RENEWAL);
+        assertThat(client.content(n)).startsWith("🔁 **Renovação confirmada**\n")
+                .contains("**Loja:** Minha loja", "**Plano:** Ultra", "**Valor:** R$", "8,97",
+                        "**Gateway:** EFI", "**Cobrança:** payment-1")
+                .endsWith("📈 **MRR total estimado:** R$ 419,53 + USD 15.98/mês");
+    }
     @Test void missingStoreNameIsExplicit() {
         when(stores.findByStoreId(7744400L)).thenReturn(Optional.empty());
         var n = notification(); n.setPlan(PlanType.PREMIUM_PLUS);
