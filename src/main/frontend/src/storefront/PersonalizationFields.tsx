@@ -1,6 +1,7 @@
 import { Checkbox, Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent } from "@tiendanube/nube-sdk-types";
 import { styled } from "@tiendanube/nube-sdk-ui";
+import { messages } from "../shared/i18n";
 import type { PersonalizationField } from "../shared/config";
 import { type FieldError, type FieldValue, type ValueMap, keyOf } from "./values";
 
@@ -91,8 +92,15 @@ function input(
             const children: NubeComponent[] = [<Text color={color}>{label}</Text>,
                 ...options.map((option, index) => <Checkbox key={`${name}__option_${index}`} name={`${name}__option_${index}`} label={option}
                     checked={choices.includes(option)} style={{label: labelStyle}}
-                    onChange={event => onValueChange(key, options.filter(candidate => candidate === option
-                        ? event.value : choices.includes(candidate)))} />)];
+                    onChange={event => {
+                        if (event.value && !choices.includes(option) && field.maxSelections != null && choices.length >= field.maxSelections) {
+                            onValueChange(key, [...choices]); return;
+                        }
+                        onValueChange(key, options.filter(candidate => candidate === option ? event.value : choices.includes(candidate)));
+                    }} />),
+                ...((field.minSelections != null || field.maxSelections != null)
+                    ? [<Text color={color}>{messages(locale).selectionCount(choices.length, field.maxSelections)}</Text>,
+                        ...(field.minSelections ? [<Text color={color}>{messages(locale).minSelections(field.minSelections)}</Text>] : [])] : [])];
             return <Column gap={8}>{children}</Column>;
         }
         return <Checkbox key={name} name={name} label={label} checked={Boolean(selected)}

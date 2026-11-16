@@ -21,12 +21,14 @@ public record FieldResponse(
         int maxFiles,
         long maxFileBytes,
         List<br.com.nuvemcustomfields.service.ColorOptions.Option> colorOptions,
-        boolean showColorNames
+        boolean showColorNames,
+        Integer minSelections,
+        Integer maxSelections
 ) {
     public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
             String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns,
             Long id, int maxFiles, long maxFileBytes) {
-        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,id,maxFiles,maxFileBytes,List.of(),true);
+        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,id,maxFiles,maxFileBytes,List.of(),true,null,null);
     }
     public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
             String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns) {
@@ -59,7 +61,9 @@ public record FieldResponse(
                 plan == br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA ? field.getMaxFiles() : 1,
                 br.com.nuvemcustomfields.service.BuyerUploadPolicy.maxFileBytes(plan),
                 field.getFieldType() == FieldType.COLOR_SELECT ? br.com.nuvemcustomfields.service.ColorOptions.parse(field.getOptionsText()) : List.of(),
-                field.isShowColorNames()
+                field.isShowColorNames(),
+                field.getMinSelections(),
+                field.getMaxSelections()
         );
     }
 

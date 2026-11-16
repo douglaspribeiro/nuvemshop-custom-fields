@@ -69,6 +69,15 @@ public class PersonalizationField {
 
     @Column(name = "mobile_image_columns")
     private Integer mobileImageColumns;
+    @Column(name = "min_selections")
+    private Integer minSelections;
+    @Column(name = "max_selections")
+    private Integer maxSelections;
+    public Integer getMinSelections() { return minSelections; }
+    public void setMinSelections(Integer value) { minSelections = value; }
+    public Integer getMaxSelections() { return maxSelections; }
+    public void setMaxSelections(Integer value) { maxSelections = value; }
+
     @org.hibernate.annotations.ColumnDefault("1")
     @jakarta.persistence.Column(name = "max_files", nullable = false)
     private Integer maxFiles = 1;

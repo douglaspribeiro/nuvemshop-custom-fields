@@ -33,8 +33,13 @@ export function validate(
             const choices = Array.isArray(raw) ? raw : [];
             if ((raw != null && raw !== "" && !Array.isArray(raw)) || choices.some(choice => !field.options.includes(choice))) {
                 errors.push({ propertyName: key, label: field.label, message: text.select });
-            } else if (field.required && choices.length === 0) {
-                errors.push({ propertyName: key, label: field.label, message: text.required });
+            } else {
+                const count = new Set(choices).size;
+                const minimum = Math.max(field.required ? 1 : 0, field.minSelections ?? 0);
+                if (count < minimum) errors.push({ propertyName: key, label: field.label,
+                    message: field.minSelections ? text.minSelections(minimum) : text.required });
+                else if (field.maxSelections != null && count > field.maxSelections)
+                    errors.push({ propertyName: key, label: field.label, message: text.maxSelections(field.maxSelections) });
             }
             continue;
         }

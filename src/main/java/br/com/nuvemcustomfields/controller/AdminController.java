@@ -650,7 +650,7 @@ public class AdminController {
         LOGGER.info("admin.fields.add store_id={} product_id={} label={}", store.getStoreId(), productId, fieldForm.getLabel());
         if (bindingResult.hasErrors()) {
             LOGGER.warn("admin.fields.add.validation_error store_id={} product_id={}", store.getStoreId(), productId);
-            model.addAttribute("error", messages.get("flash.field.invalid"));
+            model.addAttribute("error", messages.get(fieldForm.isCheckboxSelectionsValid() ? "flash.field.invalid" : "checkbox.selections.invalid"));
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
@@ -689,7 +689,7 @@ public class AdminController {
             populateFieldsModel(store, productId, model, new FieldForm());
             model.addAttribute("editedFieldId", fieldId);
             model.addAttribute("editedFieldForm", fieldForm);
-            model.addAttribute("error", messages.get("flash.field.invalid"));
+            model.addAttribute("error", messages.get(fieldForm.isCheckboxSelectionsValid() ? "flash.field.invalid" : "checkbox.selections.invalid"));
             return "admin/fields";
         }
         try { personalizationAdminService.updateField(store.getStoreId(), productId, fieldId, fieldForm); }
@@ -729,7 +729,7 @@ public class AdminController {
     }
 
     private String imageConfigurationError(IllegalArgumentException error) {
-        if ("color.options.invalid".equals(error.getMessage())) return messages.get(error.getMessage());
+        if ("color.options.invalid".equals(error.getMessage()) || "checkbox.selections.invalid".equals(error.getMessage())) return messages.get(error.getMessage());
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
         if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()) || "upload.files.invalid".equals(error.getMessage()) || "upload.multiple.ultra".equals(error.getMessage()))) {
             LOGGER.warn("admin.field.rejected code={}", error.getMessage());

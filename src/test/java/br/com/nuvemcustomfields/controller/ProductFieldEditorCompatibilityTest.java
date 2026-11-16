@@ -53,6 +53,32 @@ class ProductFieldEditorCompatibilityTest {
         assertThat(saved.getFirst().isRequired()).isTrue();
         assertThat(saved.getFirst().getSortOrder()).isEqualTo(3);
     }
+    @Test void checkboxSelectionLimitsPersistReloadAndClearOnTypeChange() throws Exception {
+        long storeId=990088789L, productId=129L;
+        var store=new Store();store.setStoreId(storeId);store.setStoreCountryCode("BR");store.setPlan(PlanType.PREMIUM_PLUS);
+        stores.saveAndFlush(store);admin.ensureRule(storeId,productId,"Buquê");
+        var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,storeId);
+        String path="/admin/products/"+productId+"/fields";
+        mvc.perform(post(path).session(session).param("label","Flores").param("fieldType","CHECKBOX")
+                .param("optionsText","1\n2\n3").param("minSelections","2").param("maxSelections","2"))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush();entityManager.clear();
+        var field=admin.requireRuleWithFields(storeId,productId).getFields().getFirst();
+        assertThat(field.getMinSelections()).isEqualTo(2);assertThat(field.getMaxSelections()).isEqualTo(2);
+        String html=mvc.perform(get(path).session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("name=\"minSelections\"", "name=\"maxSelections\"", "Mínimo de seleções", "Máximo de seleções");
+        mvc.perform(post(path+"/"+field.getId()).session(session).param("label","Flores").param("fieldType","CHECKBOX")
+                .param("optionsText","1\n2\n3").param("minSelections","3").param("maxSelections","2"))
+                .andExpect(status().isOk());
+        entityManager.flush();entityManager.clear();
+        field=admin.requireRuleWithFields(storeId,productId).getFields().getFirst();
+        assertThat(field.getMinSelections()).isEqualTo(2);
+        mvc.perform(post(path+"/"+field.getId()).session(session).param("label","Flores").param("fieldType","TEXT"))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush();entityManager.clear();
+        field=admin.requireRuleWithFields(storeId,productId).getFields().getFirst();
+        assertThat(field.getMinSelections()).isNull();assertThat(field.getMaxSelections()).isNull();
+    }
     @Test void selectPromptIsSavedAndListsRequireAChoiceIncludingExistingOptionalFields() throws Exception {
         long storeId = 990088780L, productId = 124L;
         var store = new Store(); store.setStoreId(storeId); store.setStoreCountryCode("BR"); store.setPlan(PlanType.PREMIUM_PLUS);

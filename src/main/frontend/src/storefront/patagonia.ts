@@ -155,10 +155,19 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
                     const box = document.createElement("input"); box.type = "checkbox"; box.value = option;
                     box.checked = Array.isArray(selected) && selected.includes(option);
                     box.style.cssText = "width:20px;height:20px;min-height:20px;flex-shrink:0;accent-color:currentColor";
-                    box.addEventListener("change", () => controls.get(key)?.setCustomValidity(""));
+                    box.addEventListener("change", () => { controls.get(key)?.setCustomValidity(""); syncChoices(); });
                     const text = document.createElement("span"); text.textContent = option;
                     label.append(box, text); group.append(label); return box;
                 });
+                const counter = document.createElement("small"); counter.setAttribute("aria-live", "polite");
+                if (field.minSelections != null || field.maxSelections != null) group.append(counter);
+                function syncChoices() {
+                    const count = boxes.filter(box => box.checked).length;
+                    counter.textContent = messages(config?.locale).selectionCount(count, field.maxSelections)
+                        + (field.minSelections ? " · " + messages(config?.locale).minSelections(field.minSelections) : "");
+                    boxes.forEach(box => { box.disabled = !box.checked && field.maxSelections != null && count >= field.maxSelections; });
+                }
+                syncChoices();
                 checkboxGroups.set(key, boxes); controls.set(key, boxes[0]);
                 container!.append(group); return;
             }

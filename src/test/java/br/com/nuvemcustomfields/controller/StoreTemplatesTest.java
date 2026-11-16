@@ -68,6 +68,20 @@ class StoreTemplatesTest {
         return templates.apply(store,model.key(),product,"Caderno",mode,true,UUID.randomUUID().toString(),preview.reviewToken());
     }
     List<PersonalizationField> product(long id) {return fields.findWithRuleByStoreId(store).stream().filter(f->f.getRule().getProductId()==id).toList();}
+    @Test void checkboxLimitsSurviveTemplateApplicationAndSavingTheProductAsATemplate() {
+        var form=new FieldForm();form.setLabel("Flores");form.setFieldType(FieldType.CHECKBOX);
+        form.setOptionsText("1\n2\n3");form.setMinSelections(2);form.setMaxSelections(2);
+        var definition=TemplateFieldDefinition.from(form);
+        var model=templates.create(store,"Buquê","",List.of(definition));
+        assertThat(apply(model,123,StoreTemplateService.Mode.REPLACE)).isEqualTo(1);
+        var field=product(123).getFirst();
+        assertThat(field.getMinSelections()).isEqualTo(2);assertThat(field.getMaxSelections()).isEqualTo(2);
+        var copied=templates.saveProduct(store,123,"Cópia do buquê",null);
+        assertThat(copied.fields()).containsExactly(definition);
+        form.setMinSelections(3);form.setMaxSelections(2);
+        assertThatThrownBy(()->templates.create(store,"Inválido","",List.of(TemplateFieldDefinition.from(form))))
+                .isInstanceOf(StoreTemplateService.Invalid.class);
+    }
     @Test void catalogHasOnlyThreeModelsAndOldIdentifierIsRejectedWithoutDeletingProducts() throws Exception {
         assertThat(catalog.listTemplates()).extracting(NicheTemplate::id).containsExactly("camiseta","caneca","convite");
         var own=model("Nome antigo");apply(own,123,StoreTemplateService.Mode.APPEND);

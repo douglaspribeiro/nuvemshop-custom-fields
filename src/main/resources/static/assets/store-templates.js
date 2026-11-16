@@ -31,9 +31,9 @@
         function renumber(){[...fields.children].forEach((row,index)=>row.querySelector("[data-template-heading]").textContent=`${ui.field} ${index+1}`);}
         function add(definition={}) {
             const row=document.getElementById("template-field-row").content.firstElementChild.cloneNode(true);
-            for(const name of ["label","fieldType","maxLength","maxFiles","placeholder","validationPattern","optionsText","imageOptionsJson","mobileImageColumns"]) {
+            for(const name of ["label","fieldType","maxLength","maxFiles","minSelections","maxSelections","placeholder","validationPattern","optionsText","imageOptionsJson","mobileImageColumns"]) {
                 const input=row.querySelector(`[name=${name}]`);let value=definition[name];
-                if(value!=null) {
+                if(value!=null && input) {
                     if(name==="fieldType" && ![...input.options].some(option=>option.value===value))input.append(new Option(ui.unsupported,value));
                     input.value=String(value);
                 }
@@ -56,6 +56,8 @@
             const definitions=[...fields.children].map(row=>{
                 const input=name=>row.querySelector(`[name=${name}]`);
                 return {label:input("label").value,fieldType:input("fieldType").value,required:input("required").checked,maxLength:Number(input("maxLength").value),maxFiles:Number(input("maxFiles").value || 1),
+                    minSelections:input("minSelections")?.value ? Number(input("minSelections").value) : null,
+                    maxSelections:input("maxSelections")?.value ? Number(input("maxSelections").value) : null,
                     placeholder:input("placeholder").value,validationPattern:input("validationPattern").value,optionsText:input("optionsText").value,
                     imageOptionsJson:input("imageOptionsJson").value,showImageZoom:input("showImageZoom").checked,showColorNames:input("showColorNames")?.checked ?? true,mobileImageColumns:input("mobileImageColumns").value?Number(input("mobileImageColumns").value):null};
             });

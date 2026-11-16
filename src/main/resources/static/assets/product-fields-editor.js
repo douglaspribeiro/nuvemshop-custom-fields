@@ -68,6 +68,10 @@
             if(uploadCount) uploadCount.hidden=type.value !== 'FILE_UPLOAD';
             const uploadHelp=form.querySelector('.field-upload-help');
             if(uploadHelp) uploadHelp.hidden=type.value !== 'FILE_UPLOAD';
+            form.querySelectorAll('.field-checkbox-limits').forEach(element => {
+                element.hidden = type.value !== 'CHECKBOX';
+                element.querySelectorAll('input').forEach(input => { input.disabled = type.value !== 'CHECKBOX'; });
+            });
             const checkboxHelp = form.querySelector('.field-checkbox-help');
             if (checkboxHelp) checkboxHelp.hidden = type.value !== 'CHECKBOX';
             form.querySelector('.field-validation').hidden = !text;
@@ -75,7 +79,20 @@
             custom.disabled = !text;
             syncFormat();
         }
+        function validateSelections() {
+            const min = get('minSelections'), max = get('maxSelections');
+            if (!min || !max) return;
+            const options = new Set(get('optionsText').value.split(/\r?\n/).map(v => v.trim()).filter(Boolean)).size;
+            const minimum = min.value === '' ? null : Number(min.value);
+            const maximum = max.value === '' ? null : Number(max.value);
+            const invalid = type.value === 'CHECKBOX' && (minimum != null || maximum != null) &&
+                (!options || minimum != null && (!Number.isInteger(minimum) || minimum < 0 || minimum > options)
+                    || maximum != null && (!Number.isInteger(maximum) || maximum < 1 || maximum > options)
+                    || minimum != null && maximum != null && minimum > maximum);
+            min.setCustomValidity(invalid ? min.dataset.invalid : '');
+        }
         function render() {
+            validateSelections();
             target.replaceChildren();
             const wrapper = document.createElement('label');
             const title = document.createElement('span');
@@ -154,6 +171,18 @@
                         const caption = document.createElement('span'); caption.textContent = option;
                         choice.append(box, caption); group.append(choice);
                     });
+                    const counter = document.createElement('small'); counter.setAttribute('aria-live', 'polite');
+                    const minimum = get('minSelections'), maximum = get('maxSelections');
+                    if (minimum?.value || maximum?.value) group.append(counter);
+                    const sync = () => {
+                        const boxes = [...group.querySelectorAll('input[type=checkbox]')];
+                        const count = boxes.filter(box => box.checked).length;
+                        const max = maximum?.value ? Number(maximum.value) : null;
+                        counter.textContent = (max != null ? minimum.dataset.counter : minimum?.dataset.count || '{0}')
+                            .replace('{0}', String(count)).replace('{1}', String(max));
+                        boxes.forEach(box => { box.disabled = !box.checked && max != null && count >= max; });
+                    };
+                    group.addEventListener('change', sync); sync();
                     target.append(group); return;
                 }
                 input = document.createElement('input'); input.type = 'checkbox';
@@ -186,7 +215,7 @@
         form.addEventListener('input', event => { if (!preview.contains(event.target)) render(); });
         form.addEventListener('change', event => { if (!preview.contains(event.target)) { visibility(); render(); } });
         form.addEventListener('submit', event => {
-            validatePattern();
+            validatePattern(); validateSelections();
             if (!custom.disabled && !custom.checkValidity()) { event.preventDefault(); advanced.open = true; custom.reportValidity(); }
         });
         visibility(); render();

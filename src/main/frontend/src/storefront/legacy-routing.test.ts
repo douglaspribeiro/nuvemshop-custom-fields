@@ -212,3 +212,21 @@ it("renders legacy named colors with native fallback and serializes the name",as
     dom.window.document.querySelector<HTMLButtonElement>('.ncf-color-options button')!.click();expect(select.value).toBe('Azul marinho');
     expect(new dom.window.FormData(dom.window.document.querySelector('form')!).get('properties[Cor]')).toBe('Azul marinho');
 });
+
+it('requires exactly seven legacy choices, limits additional choices and restores them after deselection',async()=>{
+    dom=new JSDOM(`<html lang="pt-BR"><head><script src="https://app.test/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
+        {url:'https://store.test/productos/example',runScripts:'outside-only'});
+    Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,
+        fields:[{label:'Flores',fieldType:'CHECKBOX',required:false,minSelections:7,maxSelections:7,
+            options:Array.from({length:40},(_,i)=>String(i+1))}],style:{}})})});
+    Object.defineProperty(dom.window.document,'readyState',{value:'complete',configurable:true});dom.window.eval(source);
+    const boxes=()=>[...dom.window.document.querySelectorAll<HTMLInputElement>('.ncf-field input[type=checkbox]')];
+    await vi.waitFor(()=>expect(boxes()).toHaveLength(40));
+    const form=dom.window.document.querySelector('form')!;
+    const submit=()=>{const e=new dom.window.Event('submit',{cancelable:true});form.dispatchEvent(e);return e;};
+    for(let i=0;i<6;i++)boxes()[i].click();expect(submit().defaultPrevented).toBe(true);
+    boxes()[6].click();expect(boxes()[7].disabled).toBe(true);expect(submit().defaultPrevented).toBe(false);
+    expect(new dom.window.FormData(form).get('properties[Flores]')).toBe('1, 2, 3, 4, 5, 6, 7');
+    boxes()[0].click();expect(boxes()[7].disabled).toBe(false);expect(submit().defaultPrevented).toBe(true);
+});

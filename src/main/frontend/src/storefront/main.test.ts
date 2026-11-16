@@ -288,6 +288,22 @@ describe("SDK storefront without a legacy script", () => {
         expect(checks().map(box=>box.checked)).toEqual([false,false,false]);
     });
 
+    it('requires exactly seven SDK choices and preserves them in the cart', async () => {
+        const options=Array.from({length:40},(_,i)=>String(i+1));
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,locale:'pt-BR',
+            fields:[{label:'Flores',fieldType:'CHECKBOX',required:false,options,minSelections:7,maxSelections:7}]})} as Response);
+        await boot();
+        type Check={type?:string;children?:Check[];checked?:boolean;onChange?:(e:{value:boolean})=>void};
+        const collect=(node:Check):Check[]=>node.type==='check'?[node]:(Array.isArray(node.children)?node.children:[]).flatMap(collect);
+        const checks=()=>collect(render.mock.calls[render.mock.calls.length-1][1]);
+        for(let i=0;i<6;i++)checks()[i].onChange!({value:true});
+        add();expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        checks()[6].onChange!({value:true});checks()[7].onChange!({value:true});
+        expect(checks().filter(box=>box.checked)).toHaveLength(7);
+        send.mockClear();add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Flores:'1, 2, 3, 4, 5, 6, 7'});
+    });
+
 	it("blocks a native add with an empty required field", async () => {
 		await boot();
 		add();

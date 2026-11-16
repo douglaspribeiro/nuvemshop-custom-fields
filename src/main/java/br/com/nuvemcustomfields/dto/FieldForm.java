@@ -29,6 +29,24 @@ public class FieldForm {
     private String validationPattern;
 
     private String optionsText;
+    private Integer minSelections;
+    private Integer maxSelections;
+    public Integer getMinSelections() { return minSelections; }
+    public void setMinSelections(Integer value) { minSelections = value; }
+    public Integer getMaxSelections() { return maxSelections; }
+    public void setMaxSelections(Integer value) { maxSelections = value; }
+
+    @AssertTrue(message = "checkbox.selections.invalid")
+    public boolean isCheckboxSelectionsValid() {
+        if (fieldType != FieldType.CHECKBOX) return true;
+        if (minSelections == null && maxSelections == null) return true;
+        long count = optionsText == null ? 0 : optionsText.lines().map(String::strip)
+                .filter(value -> !value.isBlank()).distinct().count();
+        return count > 0 && (minSelections == null || minSelections >= 0 && minSelections <= count)
+                && (maxSelections == null || maxSelections >= 1 && maxSelections <= count)
+                && (minSelections == null || maxSelections == null || minSelections <= maxSelections);
+    }
+
     @AssertTrue(message = "color.options.invalid")
     public boolean isColorOptionsValid() {
         if (fieldType != FieldType.COLOR_SELECT) return true;

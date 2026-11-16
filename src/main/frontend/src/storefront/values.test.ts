@@ -101,3 +101,19 @@ it('validates checkbox groups and serializes every choice in configured order', 
     expect(toCartProperties([group], {Nome:['Azul','Azul, claro','Azul']})).toEqual({Nome:'Azul, claro, Azul'});
     expect(toCartProperties([group], {Nome:[]})).toEqual({});
 });
+
+// Numeric choices are distinct flowers; repeated values cannot satisfy the minimum.
+it.each(['pt-BR','es-AR'])('enforces exact selection count and rejects duplicates/unknowns (%s)', locale => {
+    const flowers=field({fieldType:'CHECKBOX',options:Array.from({length:40},(_,i)=>String(i+1)),minSelections:7,maxSelections:7});
+    const chosen=flowers.options.slice(0,7);
+    expect(validate([flowers],{},locale)).toHaveLength(1);
+    expect(validate([flowers],{Nome:chosen.slice(0,6)},locale)[0].message).toContain('7');
+    expect(validate([flowers],{Nome:chosen},locale)).toEqual([]);
+    expect(validate([flowers],{Nome:flowers.options.slice(0,8)},locale)[0].message).toContain('7');
+    expect(validate([flowers],{Nome:Array(7).fill('1')},locale)).toHaveLength(1);
+    expect(validate([flowers],{Nome:[...chosen,'999']},locale)).toHaveLength(1);
+    expect(toCartProperties([flowers],{Nome:chosen})).toEqual({Nome:'1, 2, 3, 4, 5, 6, 7'});
+    expect(validate([{...flowers,minSelections:null}],{},locale)).toEqual([]);
+    expect(validate([{...flowers,maxSelections:null}],{Nome:flowers.options.slice(0,8)},locale)).toEqual([]);
+    expect(validate([{...flowers,minSelections:0,required:true}],{},locale)).toHaveLength(1);
+});

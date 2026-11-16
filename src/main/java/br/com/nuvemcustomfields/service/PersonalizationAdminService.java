@@ -184,10 +184,13 @@ public class PersonalizationAdminService {
     }
 
     void applyForm(PersonalizationField field, FieldForm form) {
+        if (!form.isCheckboxSelectionsValid()) throw new IllegalArgumentException("checkbox.selections.invalid");
         if (!form.isColorOptionsValid()) throw new IllegalArgumentException("color.options.invalid");
         if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");
+        field.setMinSelections(form.getFieldType() == FieldType.CHECKBOX ? form.getMinSelections() : null);
+        field.setMaxSelections(form.getFieldType() == FieldType.CHECKBOX ? form.getMaxSelections() : null);
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);

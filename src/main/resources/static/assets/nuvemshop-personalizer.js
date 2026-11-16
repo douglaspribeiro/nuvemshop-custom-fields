@@ -985,13 +985,22 @@
             box.addEventListener("change", sync);
             label.append(box, text); group.append(label); return box;
         });
+        const counter = document.createElement("small"); counter.setAttribute("aria-live", "polite");
+        if (field.minSelections != null || field.maxSelections != null) group.append(counter);
         function sync() {
             const selected = boxes.filter(box => box.checked).map(box => box.value);
             aggregate.value = selected.join(", "); aggregate.disabled = !selected.length;
             const invalid = selected.some(option => !options.includes(option));
             const spanish = document.documentElement.lang.toLowerCase().startsWith("es");
+            const minimum = Math.max(field.required ? 1 : 0, field.minSelections || 0);
             boxes[0].setCustomValidity(invalid ? (spanish ? "Seleccioná una opción válida." : "Selecione uma opção válida.")
-                : field.required && !selected.length ? (spanish ? "Elegí al menos una opción." : "Escolha pelo menos uma opção.") : "");
+                : selected.length < minimum ? (spanish ? `Seleccioná al menos ${minimum} opciones.` : `Selecione pelo menos ${minimum} opções.`)
+                : field.maxSelections != null && selected.length > field.maxSelections
+                    ? (spanish ? `Seleccioná como máximo ${field.maxSelections} opciones.` : `Selecione no máximo ${field.maxSelections} opções.`) : "");
+            counter.textContent = (field.maxSelections != null ? `${selected.length} de ${field.maxSelections}` : String(selected.length))
+                + (spanish ? " seleccionadas" : " selecionadas")
+                + (field.minSelections ? (spanish ? ` · Seleccioná al menos ${minimum} opciones.` : ` · Selecione pelo menos ${minimum} opções.`) : "");
+            boxes.forEach(box => { box.disabled = !box.checked && field.maxSelections != null && selected.length >= field.maxSelections; });
         }
         sync(); return group;
     }

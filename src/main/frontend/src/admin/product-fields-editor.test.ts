@@ -10,6 +10,8 @@ function boot(pattern = '') {
         <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>FILE_UPLOAD</option></select>
         <input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
+        <label class="field-checkbox-limits" hidden><input name="minSelections" type="number" min="0" data-invalid="Limites inválidos" data-counter="{0} de {1} selecionadas" data-count="{0} selecionadas"></label>
+        <label class="field-checkbox-limits" hidden><input name="maxSelections" type="number" min="1"></label>
         <input type="checkbox" name="showImageZoom" checked>
         <select name="mobileImageColumns"><option value="">Automático</option><option value="2">2</option><option value="3">3</option></select>
         <input type="hidden" name="validationPattern">
@@ -200,4 +202,18 @@ it('can hide color names in the preview while keeping an accessible choice',()=>
     input('optionsText').value=JSON.stringify([{label:'Azul',color:'#123ABC'}]);select('[name=fieldType]','COLOR_SELECT');
     const choice=dom.window.document.querySelector<HTMLButtonElement>('.field-preview-colors button')!;
     expect(choice.textContent).toBe('');expect(choice.getAttribute('aria-label')).toBe('Azul');
+});
+
+it('shows optional checkbox limits, rejects invalid ranges and previews a bounded selection',()=>{
+    boot();expect(input('minSelections').disabled).toBe(true);
+    input('optionsText').value='1\n2\n3';input('minSelections').value='2';input('maxSelections').value='2';
+    select('[name=fieldType]','CHECKBOX');
+    expect(input('minSelections').disabled).toBe(false);expect(input('minSelections').checkValidity()).toBe(true);
+    const boxes=[...dom.window.document.querySelectorAll<HTMLInputElement>('.field-preview-checkbox-group input')];
+    boxes[0].click();boxes[1].click();expect(boxes[2].disabled).toBe(true);
+    expect(dom.window.document.querySelector('.field-preview-checkbox-group small')?.textContent).toBe('2 de 2 selecionadas');
+    input('minSelections').value='3';input('minSelections').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+    expect(input('minSelections').validationMessage).toBe('Limites inválidos');
+    select('[name=fieldType]','TEXT');expect(input('minSelections').disabled).toBe(true);
+    expect(input('minSelections').validationMessage).toBe('');
 });

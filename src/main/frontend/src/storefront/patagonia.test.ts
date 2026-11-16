@@ -99,6 +99,19 @@ describe("Patagonia transition", () => {
         else expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{}}]}});
     });
 
+    it('requires exactly seven flowers and allows changing choices at the maximum',async()=>{
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...configuration,fields:[{
+            ...configuration.fields[0],fieldType:'CHECKBOX',required:false,
+            options:Array.from({length:40},(_,i)=>String(i+1)),minSelections:7,maxSelections:7}]}));
+        const boxes=()=>[...document.querySelectorAll<HTMLInputElement>('#ncf-patagonia-fields input[type=checkbox]')];
+        await vi.waitFor(()=>expect(boxes()).toHaveLength(40));
+        for(let i=0;i<6;i++)boxes()[i].click();
+        click();expect(runtime.send).not.toHaveBeenCalled();
+        boxes()[6].click();expect(boxes()[7].disabled).toBe(true);
+        boxes()[0].click();expect(boxes()[7].disabled).toBe(false);boxes()[7].click();
+        click();expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{Nombre:'2, 3, 4, 5, 6, 7, 8'}}]}});
+    });
+
 	it("renders outside the SDK slot and blocks native add when required values are absent", async () => {
 		const nativeAdd = vi.fn();
 		button().addEventListener("click", nativeAdd);

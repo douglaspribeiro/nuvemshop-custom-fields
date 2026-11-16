@@ -108,6 +108,9 @@
                     <small class="field-help" th:text="#{editor.placeholder.help}" th:attr="data-text=#{editor.placeholder.help},data-select-text=#{editor.select.prompt.help}"></small>
                             <input name="placeholder" th:value="${draft.placeholder}" maxlength="150">
                         </label>
+                        <label class="field-checkbox-limits" hidden><span th:text="#{checkbox.min.selections}"></span><input name="minSelections" th:attr="data-counter=#{checkbox.selection.counter},data-count=#{checkbox.selection.count},data-invalid=#{checkbox.selections.invalid}" type="number" min="0" th:value="${draft.minSelections}" th:placeholder="#{checkbox.selections.unlimited}"></label>
+                        <label class="field-checkbox-limits" hidden><span th:text="#{checkbox.max.selections}"></span><input name="maxSelections" type="number" min="1" th:value="${draft.maxSelections}" th:placeholder="#{checkbox.selections.unlimited}"></label>
+                        <small class="field-help field-checkbox-limits" hidden th:text="#{checkbox.selections.help}"></small>
                         <input type="hidden" name="validationPattern" th:value="${draft.validationPattern}">
                         <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
                         <label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" th:value="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? draft.maxFiles : 1}" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
@@ -197,6 +200,9 @@
                     <small class="field-help" th:text="#{editor.placeholder.help}" th:attr="data-text=#{editor.placeholder.help},data-select-text=#{editor.select.prompt.help}"></small>
                     <input th:field="*{placeholder}" maxlength="150">
                 </label>
+                <label class="field-checkbox-limits" hidden><span th:text="#{checkbox.min.selections}"></span><input name="minSelections" th:attr="data-counter=#{checkbox.selection.counter},data-count=#{checkbox.selection.count},data-invalid=#{checkbox.selections.invalid}" type="number" min="0" th:value="${fieldForm.minSelections}" th:placeholder="#{checkbox.selections.unlimited}"></label>
+                <label class="field-checkbox-limits" hidden><span th:text="#{checkbox.max.selections}"></span><input name="maxSelections" type="number" min="1" th:value="${fieldForm.maxSelections}" th:placeholder="#{checkbox.selections.unlimited}"></label>
+                <small class="field-help field-checkbox-limits" hidden th:text="#{checkbox.selections.help}"></small>
                 <input type="hidden" th:field="*{validationPattern}">
                 <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
                 <label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
