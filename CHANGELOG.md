@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.69.0.1] - 2026-11-17
+
+### Outros
+
+- Melhora layout das opções com quantidade e permite configurar colunas (`90571fb`)
+
 ## [1.69.0] - 2026-11-16
 
 ### Features
