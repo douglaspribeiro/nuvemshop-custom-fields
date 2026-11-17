@@ -91,19 +91,97 @@ public abstract class DodoGateway implements PaymentGateway {
         if (!local.getCurrency().equals(text(resolved, "currency")) || local.getAmountValue().compareTo(money(resolved, amountField)) != 0)
             throw new IllegalArgumentException("O preço regional fixo do Dodo difere do catálogo. Confira país, moeda e valor; conversão automática não substitui um preço fixo.");
     }
-    @Override public GatewayCheckout createCheckout(Store store, PlanType plan, String reference, String returnUrl) {
-        if (!planAvailable(store, plan)) throw new IllegalArgumentException("Loja ou plano não autorizado para Dodo.");
-        // A catalog entry is validated when it is bound or changed. Revalidating
-        // its displayed amount here makes a completed checkout depend on Dodo's
-        // localized/base-price representation again. The signed webhook plus the
-        // bound product and external reference are the authoritative confirmation.
+    public Optional<JsonNode> discountByCode(String code) {
+        if (code == null || !code.matches("[A-Z0-9_-]{3,36}")) throw new IllegalArgumentException("Código de cupom Dodo inválido.");
+        try { return Optional.of(get("/discounts/code/" + code)); }
+        catch (PaymentGatewayException ex) {
+            if (ex.getCause() instanceof RestClientResponseException http && http.getStatusCode().value() == 404)
+                return Optional.empty();
+            throw ex;
+        }
+    }
+
+    /** Called only by an authenticated backoffice save. Metadata prevents taking over another discount. */
+    public JsonNode synchronizeDiscount(UpgradeCoupon coupon, List<String> productIds) {
+        if (!operational() || productIds.isEmpty() || coupon.getEnvironment()!=environment()
+                || coupon.getProvider()!=PaymentProviderType.DODO || coupon.getPurpose()!=UpgradeCoupon.Purpose.FIRST_PAYMENT)
+            throw new IllegalArgumentException("Configure o Dodo, o ambiente e os produtos do plano antes de ativar o cupom.");
+        return synchronizeManagedDiscount(coupon.getCode(),coupon.getDiscountPercent().movePointRight(2).intValueExact(),
+                coupon.getStartsAt(),coupon.getEndsAt(),coupon.getMaxUses(),Map.of("ncf_coupon_id",coupon.getId().toString()),productIds);
+    }
+
+    public JsonNode synchronizeWinbackDiscount(WinbackCoupon coupon,List<String> productIds) {
+        if (!operational() || productIds.isEmpty() || coupon.getProvider()!=provider() || coupon.getProviderEnvironment()!=environment())
+            throw new IllegalArgumentException("Reconquista Dodo indisponível neste ambiente.");
+        return synchronizeManagedDiscount(coupon.getCode(),5000,null,coupon.getExpiresAt(),1,
+                Map.of("ncf_winback_coupon",coupon.getCode(),"ncf_winback_campaign",coupon.getCampaignId()),productIds);
+    }
+
+    private JsonNode synchronizeManagedDiscount(String code,int amount,Instant starts,Instant expires,Integer limit,
+            Map<String,String> owner,List<String> productIds) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("amount",amount); body.put("code",code); body.put("subscription_cycles",1);
+        body.put("per_customer_usage_limit",null); body.put("customer_eligibility","any");
+        body.put("preserve_on_plan_change",false); body.put("restricted_to",productIds); body.put("metadata",owner);
+        body.put("starts_at",starts==null?null:starts.toString()); body.put("expires_at",expires==null?null:expires.toString());
+        body.put("usage_limit",limit);
+        var existing=discountByCode(code);
+        if (existing.isPresent()) {
+            var remote=existing.get();
+            if (!"percentage".equals(text(remote,"type")) || owner.entrySet().stream()
+                    .anyMatch(entry->!entry.getValue().equals(text(remote.path("metadata"),entry.getKey()))))
+                throw new IllegalArgumentException("Este código já existe no Dodo e não pertence a este cupom do aplicativo.");
+            return request(client.patch().uri(baseUrl+"/discounts/"+safeId(required(remote,"discount_id")))
+                    .contentType(MediaType.APPLICATION_JSON).body(body));
+        }
+        body.put("type","percentage");
+        return request(client.post().uri(baseUrl+"/discounts").contentType(MediaType.APPLICATION_JSON).body(body));
+    }
+
+    private Map<String, Object> checkoutBody(Store store, PlanType plan, String couponCode) {
         var price = requirePrice(store, plan);
-        var data = request(client.post().uri(baseUrl + "/checkouts").contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("product_cart", List.of(Map.of("product_id", price.getProviderPriceId(), "quantity", 1)),
-                        "billing_currency", price.getCurrency(), "return_url", returnUrl,
-                        "feature_flags", Map.of("allow_currency_selection", false, "allow_discount_code", false, "allow_customer_editing_country", false),
-                        "billing_address", Map.of("country", store.getStoreCountryCode()),
-                        "metadata", Map.of("external_reference", reference, "store_id", store.getStoreId().toString(), "plan", plan.name()))));
+        var body = new LinkedHashMap<String, Object>();
+        body.put("product_cart", List.of(Map.of("product_id", price.getProviderPriceId(), "quantity", 1)));
+        body.put("billing_currency", price.getCurrency());
+        body.put("billing_address", Map.of("country", store.getStoreCountryCode()));
+        body.put("feature_flags", Map.of("allow_currency_selection", false, "allow_discount_code", false,
+                "allow_customer_editing_country", false));
+        if (couponCode != null) body.put("discount_codes", List.of(couponCode));
+        return body;
+    }
+
+    public BigDecimal previewFirstAmount(Store store, PlanType plan, String code) {
+        if (!planAvailable(store, plan)) throw new IllegalArgumentException("Plano Dodo indisponível.");
+        // Use the gateway's own regional-price calculation, including zero-decimal currencies.
+        BigDecimal baseline = previewAmount(store, plan, null);
+        if (baseline.compareTo(amount(store, plan)) != 0)
+            throw new PaymentGatewayException("O preço do Dodo mudou. Confira o catálogo antes de aplicar o cupom.");
+        BigDecimal first = previewAmount(store, plan, code);
+        if (first.signum() <= 0 || first.compareTo(baseline) >= 0)
+            throw new IllegalArgumentException("O Dodo não confirmou um desconto válido para a primeira mensalidade.");
+        return first;
+    }
+
+    private BigDecimal previewAmount(Store store, PlanType plan, String code) {
+        JsonNode data = request(client.post().uri(baseUrl + "/checkouts/preview").contentType(MediaType.APPLICATION_JSON)
+                .body(checkoutBody(store, plan, code)));
+        JsonNode cart = data.path("product_cart");
+        if (!cart.isArray() || cart.size() != 1 || !priceId(store, plan).equals(text(cart.get(0), "product_id"))
+                || !currency(store).equals(text(cart.get(0), "currency")) || cart.get(0).path("quantity").asInt() != 1
+                || !cart.get(0).path("is_subscription").asBoolean())
+            throw new PaymentGatewayException("Prévia Dodo divergente do produto ou da moeda escolhida.");
+        return money(cart.get(0), "discounted_price");
+    }
+
+    @Override public GatewayCheckout createCheckout(Store store, PlanType plan, String reference, String returnUrl) {
+        return createCheckout(store, plan, reference, returnUrl, null);
+    }
+    public GatewayCheckout createCheckout(Store store, PlanType plan, String reference, String returnUrl, String couponCode) {
+        if (!planAvailable(store, plan)) throw new IllegalArgumentException("Loja ou plano não autorizado para Dodo.");
+        var body = checkoutBody(store, plan, couponCode);
+        body.put("return_url", returnUrl);
+        body.put("metadata", Map.of("external_reference", reference, "store_id", store.getStoreId().toString(), "plan", plan.name()));
+        var data = request(client.post().uri(baseUrl + "/checkouts").contentType(MediaType.APPLICATION_JSON).body(body));
         var uri = URI.create(required(data, "checkout_url"));
         if (!"https".equals(uri.getScheme()) || !(environment() == PaymentEnvironment.SANDBOX ? "test.checkout.dodopayments.com" : "checkout.dodopayments.com").equals(uri.getHost()) || uri.getUserInfo() != null)
             throw new PaymentGatewayException("Endereço de checkout Dodo inválido.");

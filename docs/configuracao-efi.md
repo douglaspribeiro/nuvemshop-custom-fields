@@ -150,7 +150,7 @@ cupom antes de preencher o cartão. O resumo mostra o valor integral, o desconto
 a primeira mensalidade e o valor normal a partir da segunda cobrança. Um código
 inválido precisa ser corrigido ou limpo antes de confirmar o pagamento.
 
-No backoffice, em **Pagamentos → Cupons Efí**, escolha a finalidade
+No backoffice, em **Pagamentos → Cupons Efí e Dodo**, escolha a finalidade
 **Primeira mensalidade**, o plano, o percentual, o ambiente, a validade e o limite
 total de utilizações. O percentual deve ser menor que 100% e preservar uma cobrança
 positiva. Não é necessário publicar um cupom na Efí: o aplicativo valida o código
@@ -184,3 +184,5 @@ primeira mensalidade cadastrados manualmente.
 
 A validação local usa respostas simuladas da Efí. Uma compra real em produção e a
 conferência da próxima cobrança na Efí são etapas separadas do deploy.
+
+O fluxo Dodo e a separação por gateway estão em [Cupons na primeira mensalidade](cupons-primeira-mensalidade.md).

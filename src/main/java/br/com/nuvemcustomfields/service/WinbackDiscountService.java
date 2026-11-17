@@ -58,7 +58,7 @@ public class WinbackDiscountService {
                 || campaign.getOptedOutAt() != null || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(store.getStoreId())
                 || hasPaidHistory(store.getStoreId())) return Optional.empty();
         var previous = coupons.findByStoreId(store.getStoreId());
-        if (previous.isPresent()) return previous.filter(c -> c.getCampaignId().equals(campaign.getId())
+        if (previous.isPresent()) return previous.filter(c -> c.getProvider()==PaymentProviderType.EFI && c.getCampaignId().equals(campaign.getId())
                 && c.getUsedAt() == null && c.getExpiresAt().isAfter(Instant.now()));
         return Optional.of(coupons.saveAndFlush(new WinbackCoupon(store.getStoreId(), campaign.getId())));
     }
@@ -97,7 +97,7 @@ public class WinbackDiscountService {
     }
 
     private boolean eligible(WinbackCoupon coupon, Store store) {
-        if (!available(store) || !store.isActive() || coupon.getUsedAt() != null
+        if (coupon.getProvider()!=PaymentProviderType.EFI || !available(store) || !store.isActive() || coupon.getUsedAt() != null
                 || coupon.getExpiresAt().isBefore(Instant.now()) || hasPaidHistory(store.getStoreId())) return false;
         var c = campaigns.findById(coupon.getCampaignId()).orElse(null);
         return c != null && c.getReinstalledAt() != null && !c.isPaidBeforeDeparture()
@@ -148,7 +148,7 @@ public class WinbackDiscountService {
             if (use.isPresent()) return Optional.of(use.get());
         }
         return coupons.findById(local.getWinbackCouponCode()).filter(c ->
-                local.getStoreId().equals(c.getStoreId()) && local.getExternalReference().equals(c.getExternalReference()))
+                c.getProvider()==PaymentProviderType.EFI && local.getStoreId().equals(c.getStoreId()) && local.getExternalReference().equals(c.getExternalReference()))
                 .map(c -> c);
     }
 

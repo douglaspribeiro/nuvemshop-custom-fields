@@ -98,3 +98,12 @@ A consulta de quantidade na fila também é horária
 (`AWS_SES_EVENTS_ATTRIBUTES_DELAY_MS=3600000`) e exige `sqs:GetQueueAttributes`.
 A seção de e-mails do Grafana mostra volume, falhas, estado e última leitura.
 Os logs agora usam `ses.events.*`, pois o consumidor não é exclusivo do winback.
+
+
+## Reconquista com cupom Dodo
+
+Após a resposta elegível, o aplicativo persiste um código único e cria ou recupera
+o desconto nativo de 50% por uma mensalidade antes de preparar o e-mail da oferta.
+Falhas deixam o e-mail aguardando e são retomadas com o mesmo código.
+As condições, liberação de produção e resgate estão em
+[Cupons na primeira mensalidade](cupons-primeira-mensalidade.md#reconquista-por-e-mail).

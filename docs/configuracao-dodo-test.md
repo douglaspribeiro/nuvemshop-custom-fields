@@ -101,3 +101,8 @@ Os IDs das seis regras regionais e a resposta de preços conferida estão em
 [integracoes/dodo-test-catalog.json](integracoes/dodo-test-catalog.json).
 Esses produtos permitem iniciar assinaturas pelo checkout; nenhuma assinatura
 foi contratada para cliente ou loja durante o cadastro do catálogo.
+
+## Cupons na primeira mensalidade
+
+O backoffice cria e sincroniza descontos nativos com um ciclo, separados por ambiente.
+Veja o fluxo e as condições em [Cupons na primeira mensalidade](cupons-primeira-mensalidade.md).

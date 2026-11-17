@@ -14,6 +14,9 @@ public class WinbackFollowupPublisher {
     private final WinbackEmailRepository emails;
     private final WinbackCampaignService campaigns;
     private final boolean enabled;
+    private DodoWinbackService dodoWinback;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDodoWinback(DodoWinbackService service) { dodoWinback=service; }
     public WinbackFollowupPublisher(WinbackEmailRepository emails, WinbackCampaignService campaigns,
             @Value("${winback.mail-enabled:false}") boolean enabled) {
         this.emails = emails; this.campaigns = campaigns; this.enabled = enabled;
@@ -23,6 +26,7 @@ public class WinbackFollowupPublisher {
         if (!enabled) return;
         for (var mail : emails.findByStatusOrderByCreatedAtAsc("PREPARED", PageRequest.of(0, 10))) {
             try {
+                if (dodoWinback!=null && !dodoWinback.prepareForEmail(mail.getId())) continue;
                 String id = campaigns.prepareFollowup(mail.getId());
                 if (id != null) campaigns.send(id);
             } catch (Exception ex) {

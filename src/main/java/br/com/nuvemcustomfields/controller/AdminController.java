@@ -286,6 +286,8 @@ public class AdminController {
             if (paymentSubscriptionService.provider(store).orElse(null) == PaymentProviderType.EFI) {
                 return "redirect:/admin/billing/pay?plan=" + plan.name();
             }
+            if (paymentSubscriptionService.provider(store).map(PaymentProviderType::isDodo).orElse(false))
+                return "redirect:/admin/billing/pay/dodo?plan="+plan.name();
             return "redirect:" + paymentSubscriptionService.startCheckout(store.getStoreId(), plan);
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.checkout.failed store_id={} plan={} message={}", store.getStoreId(), plan, ex.getMessage());

@@ -167,4 +167,49 @@ class DodoLiveCheckoutServiceTest {
         verify(gateway,never()).cancelImmediately(anyString());
     }
 
+    private DodoCouponService couponService() {
+        var coupons=mock(DodoCouponService.class);service.setCoupons(coupons);
+        when(stores.findByStoreId(42L)).thenReturn(Optional.of(store));
+        var definition=new UpgradeCoupon();definition.setCode("FIRST30");definition.setDiscountPercent(new BigDecimal("30"));
+        definition.setTargetPlan(PlanType.PREMIUM);
+        var quote=new DodoCouponService.Quote(7L,definition,"dsc_first",PlanType.PREMIUM,PaymentEnvironment.PRODUCTION,
+                "USD",new BigDecimal("6.99"),new BigDecimal("9.99"));
+        when(coupons.quote(store,PlanType.PREMIUM,"FIRST30")).thenReturn(quote);
+        when(coupons.reservedCode(anyString())).thenReturn("FIRST30");return coupons;
+    }
+    @Test void couponReservationCommitsBeforeCreatingCheckoutAndRetriesReuseTheSameUrl() {
+        var coupons=couponService();
+        when(gateway.createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString(),eq("FIRST30"))).thenAnswer(i->{
+            verify(coupons).reserve(any(),eq(store),anyString());verify(manager).commit(any());
+            return new GatewayCheckout(null,"cks_first","https://checkout.dodopayments.com/cks_first","pending");
+        });
+        String url=service.start(42L,PlanType.PREMIUM,"FIRST30",new BigDecimal("6.99"),new BigDecimal("9.99"));
+        assertThat(url).isEqualTo("https://checkout.dodopayments.com/cks_first");
+        assertThat(service.start(42L,PlanType.PREMIUM,"FIRST30",new BigDecimal("6.99"),new BigDecimal("9.99"))).isEqualTo(url);
+        verify(gateway,times(1)).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString(),eq("FIRST30"));
+        verify(coupons,times(1)).reserve(any(),eq(store),anyString());
+        assertThatThrownBy(()->service.start(42L,PlanType.PREMIUM,"OTHER30",BigDecimal.ONE,BigDecimal.TEN))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("checkout aberto");
+    }
+    @Test void changedQuotedAmountDoesNotReserveACouponOrCreateACheckout() {
+        var coupons=couponService();
+        assertThatThrownBy(()->service.start(42L,PlanType.PREMIUM,"FIRST30",BigDecimal.ONE,new BigDecimal("9.99")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("mudou");
+        assertThat(local).isNull();verify(coupons,never()).reserve(any(),any(),anyString());
+        verify(gateway,never()).createCheckout(any(),any(),anyString(),anyString(),anyString());
+    }
+    @Test void uncertainDiscountedCheckoutKeepsReservationAndBlocksAnotherCreation() {
+        var coupons=couponService();
+        when(gateway.createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString(),eq("FIRST30")))
+                .thenThrow(new PaymentGatewayException("timeout"));
+        assertThatThrownBy(()->service.start(42L,PlanType.PREMIUM,"FIRST30",new BigDecimal("6.99"),new BigDecimal("9.99")))
+                .isInstanceOf(PaymentGatewayException.class);
+        assertThat(attempt.getStatus()).isEqualTo(PaymentAttemptStatus.UNKNOWN);
+        when(attempts.findFirstByStoreIdAndStatusInOrderByCreatedAtDesc(eq(42L),any())).thenReturn(Optional.of(attempt));
+        assertThatThrownBy(()->service.start(42L,PlanType.PREMIUM,"FIRST30",new BigDecimal("6.99"),new BigDecimal("9.99")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("conciliada");
+        verify(gateway,times(1)).createCheckout(eq(store),eq(PlanType.PREMIUM),anyString(),anyString(),eq("FIRST30"));
+        verify(coupons,times(1)).reserve(any(),eq(store),anyString());
+    }
+
 }

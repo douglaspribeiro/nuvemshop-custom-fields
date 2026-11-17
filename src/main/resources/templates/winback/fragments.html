@@ -3,7 +3,7 @@
 <aside th:fragment="coupon" class="winback-coupon" th:if="${coupon != null}" aria-labelledby="coupon-title">
     <h2 id="coupon-title" th:text="#{winback.coupon.title}"></h2>
     <p class="winback-coupon-code" th:text="${coupon.code}"></p>
-    <p th:text="#{winback.coupon.terms}"></p>
+    <p th:text="${coupon.provider.isDodo()} ? #{winback.coupon.terms.dodo} : #{winback.coupon.terms}"></p>
     <p><span th:text="#{winback.coupon.valid}"></span> <span th:attr="data-local-time=${coupon.expiresAt}" data-time-format="date"
         th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>.</p>
     <a class="button" th:href="@{/install}" th:text="#{winback.coupon.action}"></a>

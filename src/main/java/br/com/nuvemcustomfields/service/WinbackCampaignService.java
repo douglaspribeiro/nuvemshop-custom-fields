@@ -31,6 +31,11 @@ public class WinbackCampaignService {
     private final WinbackDiscountService discounts;
     private final WinbackCouponRepository coupons;
     private final BrandedEmailTemplate design;
+    private DodoWinbackService dodoWinback;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDodoWinback(DodoWinbackService service) { dodoWinback=service; }
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.context.MessageSource messageSource;
     private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     public WinbackCampaignService(StoreRepository stores, WinbackOutboxRepository outbox,
             WinbackCampaignRepository campaigns, WinbackEmailRepository emails, JavaMailSender sender,
@@ -128,7 +133,7 @@ public class WinbackCampaignService {
                 || (featureDelivered && !"ENTREGUE".equals(campaign.getFeatureStatus()))) {
             mail.status("CANCELLED"); return;
         }
-        boolean spanish = !"BR".equalsIgnoreCase(store.getStoreCountryCode());
+        boolean spanish = br.com.nuvemcustomfields.i18n.StoreLocale.ES.equals(br.com.nuvemcustomfields.i18n.StoreLocale.forCountry(store.getStoreCountryCode()));
         String link = baseUrl + "/winback/" + mail.getId();
         String question = spanish ? "¿Qué podemos mejorar para tu tienda?" : "O que podemos melhorar para sua loja?";
         String text = spanish
@@ -139,7 +144,8 @@ public class WinbackCampaignService {
                 : "Para deixar de receber estas mensagens, abra o link e escolha não receber novas comunicações.";
         if ("FOLLOWUP".equals(mail.getStep())) {
             var coupon = coupons.findByCampaignId(campaignId).filter(c -> c.getUsedAt() == null
-                    && c.getExpiresAt().isAfter(Instant.now()) && discounts.available(store)).orElse(null);
+                    && c.getExpiresAt().isAfter(Instant.now()) && (c.getProvider().isDodo()
+                        ? dodoWinback!=null && dodoWinback.readyForOffer(c,store) : discounts.available(store))).orElse(null);
             String context = switch (campaign.getReason() == null ? "" : campaign.getReason()) {
                 case "PRICE" -> "Queremos ajudar você a voltar com um custo menor no primeiro mês.";
                 case "CONFIGURATION" -> "Recebemos sua dificuldade de configuração e nossa equipe pode ajudar com essa etapa.";
@@ -156,6 +162,12 @@ public class WinbackCampaignService {
                 question = "Recibimos tu respuesta";
                 text = "Gracias por contarnos el motivo. Nuestro equipo evaluará tu comentario y cómo ayudarte.";
                 cta = "Ver respuesta";
+            }
+            if (coupon!=null && coupon.getProvider().isDodo()) {
+                var locale=br.com.nuvemcustomfields.i18n.StoreLocale.forCountry(store.getStoreCountryCode());
+                question=messageSource.getMessage("winback.offer.dodo.title",null,locale);
+                text=messageSource.getMessage("winback.offer.dodo.body",new Object[]{coupon.getCode()},locale);
+                cta=messageSource.getMessage("winback.offer.dodo.action",null,locale);
             }
         } else if (featureDelivered) {
             question = spanish ? "La funcionalidad que pediste ya está disponible" : "A funcionalidade que você pediu está disponível";
@@ -214,6 +226,7 @@ public class WinbackCampaignService {
         if (owner.isErasurePending()) return;
         var store = stores.findByStoreId(storeId).orElseThrow();
         discounts.issue(campaign, store);
+        if (dodoWinback!=null) dodoWinback.issue(campaign,store);
         if (emails.findByCampaignIdAndStep(campaign.getId(), "FOLLOWUP").isEmpty())
             emails.save(new WinbackEmail(campaign.getId(), "FOLLOWUP"));
     }
@@ -233,6 +246,14 @@ public class WinbackCampaignService {
             return null;
         }
         if (mail == null || !"PREPARED".equals(mail.getStatus())) return null;
+        var campaign=campaigns.findById(campaignId).orElse(null);
+        if ("FOLLOWUP".equals(mail.getStep())) {
+            if (store.isActive() || store.getAccessBlockedAt()!=null || campaign==null || campaign.getReinstalledAt()!=null
+                    || campaign.getOptedOutAt()!=null || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(storeId)) {
+                mail.status("CANCELLED");return null;
+            }
+            if (dodoWinback!=null && dodoWinback.requiresConfirmation(campaign,store)) return null;
+        }
         mail.status("SENDING");
         return mail.getId();
     }
@@ -247,10 +268,11 @@ public class WinbackCampaignService {
         var mail = publicEmail(emailId);
         var campaign = campaigns.findById(mail.getCampaignId()).orElseThrow();
         var store = stores.findByStoreId(campaign.getStoreId()).orElse(null);
-        if (store == null || campaign.getOptedOutAt() != null || !discounts.available(store)
-                || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(store.getStoreId())) return null;
+        if (store == null || campaign.getOptedOutAt() != null || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(store.getStoreId())) return null;
         return coupons.findByCampaignId(mail.getCampaignId())
-                .filter(c -> c.getUsedAt() == null && c.getExpiresAt().isAfter(Instant.now())).orElse(null);
+                .filter(c -> c.getUsedAt() == null && c.getExpiresAt().isAfter(Instant.now())
+                        && (c.getProvider().isDodo() ? dodoWinback!=null && dodoWinback.readyForOffer(c,store) : discounts.available(store)))
+                .orElse(null);
     }
 
     @Transactional

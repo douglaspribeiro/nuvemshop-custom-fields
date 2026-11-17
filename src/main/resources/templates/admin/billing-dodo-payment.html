@@ -1,0 +1,36 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title th:text="#{dodo.coupon.page.title}"></title>
+<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+<link rel="stylesheet" th:href="@{/styles/checkout.css(v=${assetVersion})}"></head>
+<body class="payment-page"><main class="shell narrow">
+<a class="payment-back" th:href="@{/admin/billing}" th:text="#{dodo.coupon.back}"></a>
+<section class="panel payment-panel">
+<p class="eyebrow">Campos Personalizados · Dodo Payments</p>
+<h1 th:text="#{dodo.coupon.page.title}"></h1>
+<p><span th:text="#{dodo.coupon.plan}"></span> <strong th:text="#{'plan.'+${plan}}"></strong></p>
+<p class="notice error" th:if="${error}" th:text="${error}" role="alert"></p>
+<th:block th:if="${pending == true}">
+<p class="notice" th:text="#{dodo.coupon.pending}"></p>
+<a class="button primary" th:if="${resumeUrl != null}" th:href="${resumeUrl}" th:text="#{dodo.coupon.resume}"></a>
+<a th:if="${resumeUrl == null}" th:href="@{/support/}" th:text="#{dodo.coupon.support}"></a>
+</th:block>
+<th:block th:if="${pending != true}">
+<form class="form payment-coupon-form" method="get" th:action="@{/admin/billing/pay/dodo}">
+<input type="hidden" name="plan" th:value="${plan}">
+<label for="dodo-coupon"><span th:text="#{checkout.coupon.label}"></span><input id="dodo-coupon" name="couponCode" maxlength="36" autocomplete="off" spellcheck="false" th:value="${enteredCouponCode}" th:placeholder="#{checkout.coupon.placeholder}"></label>
+<button class="button" type="submit" th:text="#{checkout.coupon.apply}"></button>
+<a th:if="${enteredCouponCode != null}" th:href="@{/admin/billing/pay/dodo(plan=${plan})}" th:text="#{checkout.coupon.clear}"></a>
+</form>
+<p class="notice error" th:if="${couponError != null}" th:text="${couponError}" role="alert"></p>
+<p class="notice" th:if="${quote.discounted()}" th:text="#{checkout.coupon.applied(${quote.code()})}" role="status"></p>
+<dl><div class="payment-summary-line"><dt th:text="#{dodo.coupon.first}"></dt><dd th:text="${firstPrice}"></dd></div>
+<div class="payment-summary-line"><dt th:text="#{dodo.coupon.next}"></dt><dd th:text="${regularPrice}"></dd></div></dl>
+<p class="payment-fieldset-hint" th:text="#{dodo.coupon.taxes}"></p>
+<form class="form" method="post" th:action="@{/admin/billing/pay/dodo}">
+<input type="hidden" name="plan" th:value="${plan}"><input type="hidden" name="couponCode" th:value="${quote.code()}">
+<input type="hidden" name="quotedFirstAmount" th:value="${quote.first}"><input type="hidden" name="quotedRegularAmount" th:value="${quote.regular}">
+<button class="button primary" type="submit" th:disabled="${couponError != null}" th:text="#{dodo.coupon.continue}"></button>
+</form>
+</th:block></section></main></body></html>

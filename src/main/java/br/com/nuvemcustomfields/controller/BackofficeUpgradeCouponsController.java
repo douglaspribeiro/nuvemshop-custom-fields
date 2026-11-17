@@ -19,6 +19,8 @@ import java.util.UUID;
 public class BackofficeUpgradeCouponsController {
     public static final String TOKEN_KEY="upgradeCouponActionToken";
     private final UpgradeCouponService coupons;
+    @org.springframework.beans.factory.annotation.Autowired
+    private br.com.nuvemcustomfields.service.DodoCouponService dodoCoupons;
     public BackofficeUpgradeCouponsController(UpgradeCouponService coupons){this.coupons=coupons;}
     @GetMapping("/backoffice/payments/coupons")
     public String list(Model model,HttpSession session,HttpServletResponse response){
@@ -30,6 +32,7 @@ public class BackofficeUpgradeCouponsController {
         model.addAttribute("couponNames",catalog.stream().collect(java.util.stream.Collectors.toMap(UpgradeCoupon::getId,UpgradeCoupon::getCode)));
         model.addAttribute("environments",PaymentEnvironment.values());
         model.addAttribute("couponPurposes", UpgradeCoupon.Purpose.values());
+        model.addAttribute("couponProviders", new PaymentProviderType[]{PaymentProviderType.EFI,PaymentProviderType.DODO});
         model.addAttribute("couponPlans",new PlanType[]{PlanType.PREMIUM,PlanType.PREMIUM_PLUS,PlanType.PREMIUM_ULTRA});
         return "backoffice/upgrade-coupons";
     }
@@ -39,12 +42,16 @@ public class BackofficeUpgradeCouponsController {
             @RequestParam(defaultValue="false") boolean enabled,@RequestParam(defaultValue="") String startsAt,
             @RequestParam(defaultValue="") String endsAt,@RequestParam(required=false) Integer maxUses,
             @RequestParam(defaultValue="1") int maxUsesPerStore,
-            @RequestParam(defaultValue="UPGRADE") UpgradeCoupon.Purpose purpose,HttpSession session,RedirectAttributes flash){
+            @RequestParam(defaultValue="UPGRADE") UpgradeCoupon.Purpose purpose,
+            @RequestParam(defaultValue="EFI") PaymentProviderType provider,HttpSession session,RedirectAttributes flash){
         validate(session,actionToken);
         try{
-            coupons.save(id,code,discountPercent,environment,targetPlan,enabled,date(startsAt),date(endsAt),maxUses,maxUsesPerStore,purpose);
+            var saved=coupons.save(id,code,discountPercent,environment,targetPlan,provider==PaymentProviderType.DODO?false:enabled,
+                    date(startsAt),date(endsAt),maxUses,maxUsesPerStore,purpose,provider);
+            if (provider==PaymentProviderType.DODO) dodoCoupons.synchronize(saved,enabled);
             flash.addFlashAttribute("message","Cupom salvo. O desconto vale somente na finalidade escolhida; as mensalidades seguintes mantêm o valor integral.");
         }catch(IllegalArgumentException ex){flash.addFlashAttribute("error",ex.getMessage());}
+        catch(br.com.nuvemcustomfields.payment.PaymentGatewayException ex){flash.addFlashAttribute("error","O Dodo não confirmou a sincronização. O cupom ficou desativado; confira a conexão e salve novamente.");}
         catch(org.springframework.dao.DataIntegrityViolationException ex){flash.addFlashAttribute("error","Já existe um cupom com este código. Atualize a lista.");}
         return "redirect:/backoffice/payments/coupons";
     }

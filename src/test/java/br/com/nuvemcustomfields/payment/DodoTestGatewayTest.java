@@ -98,4 +98,89 @@ class DodoTestGatewayTest {
         assertThat(subscription.payerPhone()).isEqualTo("+57 300 1234567");
         var invoice=gateway.getInvoice("pay_test");assertThat(invoice.approved()).isTrue();assertThat(invoice.amountPaid()).isEqualByComparingTo("1.10");server.verify();
     }
+    private UpgradeCoupon firstCoupon() {
+        var c=new UpgradeCoupon(); org.springframework.test.util.ReflectionTestUtils.setField(c,"id",7L);
+        c.setProvider(PaymentProviderType.DODO);c.setPurpose(UpgradeCoupon.Purpose.FIRST_PAYMENT);
+        c.setEnvironment(PaymentEnvironment.SANDBOX);c.setTargetPlan(PlanType.PREMIUM);
+        c.setCode("FIRST30");c.setDiscountPercent(new BigDecimal("30"));return c;
+    }
+    private String nativeDiscount(long owner) {
+        return "{\"discount_id\":\"dsc_first\",\"type\":\"percentage\",\"code\":\"FIRST30\",\"metadata\":{\"ncf_coupon_id\":\""+owner+"\"}}";
+    }
+    @Test void synchronizesOwnedNativeDiscountForExactlyOneCycle() {
+        server.expect(requestTo("https://test.dodopayments.com/discounts/code/FIRST30"))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
+        server.expect(requestTo("https://test.dodopayments.com/discounts")).andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.amount").value(3000)).andExpect(jsonPath("$.subscription_cycles").value(1))
+                .andExpect(jsonPath("$.per_customer_usage_limit").doesNotExist()).andExpect(jsonPath("$.customer_eligibility").value("any"))
+                .andExpect(jsonPath("$.restricted_to[0]").value("pdt_test"))
+                .andExpect(jsonPath("$.metadata.ncf_coupon_id").value("7"))
+                .andRespond(withSuccess(nativeDiscount(7),MediaType.APPLICATION_JSON));
+        assertThat(gateway.synchronizeDiscount(firstCoupon(),List.of("pdt_test")).path("discount_id").asText()).isEqualTo("dsc_first");
+        server.verify();
+    }
+    @Test void neverOverwritesAnUnrelatedNativeCoupon() {
+        server.expect(requestTo("https://test.dodopayments.com/discounts/code/FIRST30"))
+                .andRespond(withSuccess(nativeDiscount(99),MediaType.APPLICATION_JSON));
+        assertThatThrownBy(()->gateway.synchronizeDiscount(firstCoupon(),List.of("pdt_test")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("não pertence");server.verify();
+    }
+    @Test void nativePreviewDeterminesDiscountedRegionalPriceBeforeCheckoutCreation() {
+        when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX,"CO",PlanType.PREMIUM)).thenReturn(Optional.of(price()));
+        String full="{\"product_cart\":[{\"product_id\":\"pdt_test\",\"currency\":\"USD\",\"discounted_price\":100,\"is_subscription\":true,\"quantity\":1}]}";
+        server.expect(requestTo("https://test.dodopayments.com/checkouts/preview")).andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.discount_codes").doesNotExist()).andRespond(withSuccess(full,MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://test.dodopayments.com/checkouts/preview"))
+                .andExpect(jsonPath("$.discount_codes[0]").value("FIRST30"))
+                .andExpect(jsonPath("$.feature_flags.allow_discount_code").value(false))
+                .andRespond(withSuccess(full.replace("100,","70,"),MediaType.APPLICATION_JSON));
+        assertThat(gateway.previewFirstAmount(store(42,"CO"),PlanType.PREMIUM,"FIRST30")).isEqualByComparingTo("0.70");server.verify();
+    }
+    @Test void changedRegionalPriceIsRejectedBeforeTakingPayment() {
+        when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX,"CO",PlanType.PREMIUM)).thenReturn(Optional.of(price()));
+        server.expect(requestTo("https://test.dodopayments.com/checkouts/preview"))
+                .andRespond(withSuccess("{\"product_cart\":[{\"product_id\":\"pdt_test\",\"currency\":\"USD\",\"discounted_price\":200,\"is_subscription\":true,\"quantity\":1}]}",MediaType.APPLICATION_JSON));
+        assertThatThrownBy(()->gateway.previewFirstAmount(store(42,"CO"),PlanType.PREMIUM,"FIRST30"))
+                .isInstanceOf(PaymentGatewayException.class).hasMessageContaining("preço");server.verify();
+    }
+    @Test void checkoutAppliesOnlyTheServerValidatedCoupon() {
+        when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX,"CO",PlanType.PREMIUM)).thenReturn(Optional.of(price()));
+        server.expect(requestTo("https://test.dodopayments.com/checkouts")).andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.discount_codes.length()").value(1))
+                .andExpect(jsonPath("$.discount_codes[0]").value("FIRST30"))
+                .andExpect(jsonPath("$.feature_flags.allow_discount_code").value(false))
+                .andRespond(withSuccess("{\"session_id\":\"cks_first\",\"checkout_url\":\"https://test.checkout.dodopayments.com/cks_first\",\"status\":\"pending\"}",MediaType.APPLICATION_JSON));
+        assertThat(gateway.createCheckout(store(42,"CO"),PlanType.PREMIUM,"ncf_ref","https://app.test/return","FIRST30").checkoutResourceId()).isEqualTo("cks_first");server.verify();
+    }
+
+    @Test void automaticWinbackCreatesOneNativeFiftyPercentDiscountBoundToTheCampaign() {
+        var coupon=new WinbackCoupon(42L,"campaign_winback");coupon.useDodo(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX);
+        server.expect(requestTo("https://test.dodopayments.com/discounts/code/"+coupon.getCode()))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo("https://test.dodopayments.com/discounts")).andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.code").value(coupon.getCode())).andExpect(jsonPath("$.amount").value(5000))
+                .andExpect(jsonPath("$.subscription_cycles").value(1)).andExpect(jsonPath("$.usage_limit").value(1))
+                .andExpect(jsonPath("$.metadata.ncf_winback_coupon").value(coupon.getCode()))
+                .andExpect(jsonPath("$.metadata.ncf_winback_campaign").value(coupon.getCampaignId()))
+                .andExpect(jsonPath("$.expires_at").value(coupon.getExpiresAt().toString()))
+                .andRespond(withSuccess("{\"discount_id\":\"dsc_winback\"}",MediaType.APPLICATION_JSON));
+        assertThat(gateway.synchronizeWinbackDiscount(coupon,List.of("pdt_test")).path("discount_id").asText()).isEqualTo("dsc_winback");server.verify();
+    }
+    @Test void retryAfterLostNativeCreationReusesOwnedCodeInsteadOfCreatingAnother() {
+        var coupon=new WinbackCoupon(42L,"campaign_winback");coupon.useDodo(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX);
+        String remote="{\"discount_id\":\"dsc_winback\",\"type\":\"percentage\",\"metadata\":{\"ncf_winback_coupon\":\""+coupon.getCode()+"\",\"ncf_winback_campaign\":\""+coupon.getCampaignId()+"\"}}";
+        server.expect(requestTo("https://test.dodopayments.com/discounts/code/"+coupon.getCode())).andRespond(withSuccess(remote,MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://test.dodopayments.com/discounts/dsc_winback")).andExpect(method(HttpMethod.PATCH))
+                .andExpect(jsonPath("$.code").value(coupon.getCode())).andExpect(jsonPath("$.subscription_cycles").value(1))
+                .andRespond(withSuccess(remote,MediaType.APPLICATION_JSON));
+        assertThat(gateway.synchronizeWinbackDiscount(coupon,List.of("pdt_test")).path("discount_id").asText()).isEqualTo("dsc_winback");server.verify();
+    }
+    @Test void winbackCannotTakeOverAnotherCampaignsNativeCoupon() {
+        var coupon=new WinbackCoupon(42L,"campaign_winback");coupon.useDodo(PaymentProviderType.DODO_TEST,PaymentEnvironment.SANDBOX);
+        String remote="{\"discount_id\":\"dsc_winback\",\"type\":\"percentage\",\"metadata\":{\"ncf_winback_coupon\":\""+coupon.getCode()+"\",\"ncf_winback_campaign\":\"another_campaign\"}}";
+        server.expect(requestTo("https://test.dodopayments.com/discounts/code/"+coupon.getCode())).andRespond(withSuccess(remote,MediaType.APPLICATION_JSON));
+        assertThatThrownBy(()->gateway.synchronizeWinbackDiscount(coupon,List.of("pdt_test")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("não pertence");server.verify();
+    }
+
 }

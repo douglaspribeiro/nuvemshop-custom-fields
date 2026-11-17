@@ -30,6 +30,35 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void addsDodoWinbackIntentWithoutChangingExistingEfiCoupons() {
+        isolatedDatabase(source -> {
+            var jdbc=new JdbcTemplate(source);flyway(source,"88").migrate();
+            jdbc.update("INSERT INTO stores(store_id,access_token,plan) VALUES(900089,'test','FREE')");
+            jdbc.update("INSERT INTO winback_campaigns(id,store_id,uninstalled_at) VALUES('winback-migration',900089,NOW())");
+            jdbc.update("INSERT INTO winback_coupons(code,store_id,campaign_id,created_at,expires_at) VALUES('VOLTE50-LEGACY',900089,'winback-migration',NOW(),DATE_ADD(NOW(),INTERVAL 30 DAY))");
+            assertThat(flyway(source,"89").migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT provider FROM winback_coupons WHERE store_id=900089",String.class)).isEqualTo("EFI");
+            assertThat(jdbc.queryForObject("SELECT native_sync_attempts FROM winback_coupons WHERE store_id=900089",Integer.class)).isZero();
+            jdbc.update("UPDATE winback_coupons SET provider='DODO_TEST',provider_environment='SANDBOX',native_discount_id='dsc_first',native_confirmed_at=NOW(),native_sync_attempts=1 WHERE store_id=900089");
+            assertThat(jdbc.queryForObject("SELECT native_discount_id FROM winback_coupons WHERE store_id=900089",String.class)).isEqualTo("dsc_first");
+            assertThat(flyway(source,"89").validateWithResult().validationSuccessful).isTrue();validateHibernateAndReadField(source,null);
+        });
+    }
+
+    @Test void addsDodoCouponsWithoutChangingExistingEfiDefinitions() {
+        isolatedDatabase(source -> {
+            var jdbc=new JdbcTemplate(source);flyway(source,"87").migrate();
+            jdbc.update("INSERT INTO upgrade_coupons(code,discount_percent,environment,target_plan,enabled,max_uses_per_store,used_count,purpose,created_at,updated_at) VALUES('EFI_FIRST30',30,'SANDBOX','PREMIUM',true,1,0,'FIRST_PAYMENT',NOW(),NOW())");
+            assertThat(flyway(source,"88").migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT provider FROM upgrade_coupons WHERE code='EFI_FIRST30'",String.class)).isEqualTo("EFI");
+            assertThat(jdbc.queryForObject("SELECT native_discount_id FROM upgrade_coupons WHERE code='EFI_FIRST30'",String.class)).isNull();
+            jdbc.update("INSERT INTO upgrade_coupons(code,discount_percent,environment,target_plan,enabled,max_uses_per_store,used_count,purpose,provider,native_discount_id,created_at,updated_at) VALUES('DODO_FIRST30',30,'SANDBOX','PREMIUM',true,1,0,'FIRST_PAYMENT','DODO','dsc_first',NOW(),NOW())");
+            assertThat(jdbc.queryForObject("SELECT provider FROM upgrade_coupons WHERE code='DODO_FIRST30'",String.class)).isEqualTo("DODO");
+            assertThat(flyway(source,"88").validateWithResult().validationSuccessful).isTrue();
+            validateHibernateAndReadField(source,null);
+        });
+    }
+
     @Test void addsFirstPaymentCouponsWithoutReclassifyingUpgradeHistory() {
         isolatedDatabase(source -> {
             var jdbc = new JdbcTemplate(source); flyway(source, "86").migrate();

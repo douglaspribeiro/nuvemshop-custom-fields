@@ -15,6 +15,9 @@ public class UpgradeCouponUse implements EfiFirstPaymentDiscountUse {
     @Column(nullable=false) private Instant createdAt=Instant.now();
     @Column(unique=true, length=64) private String paymentReference;
     @Column(length=36) private String couponCode;
+    @Column(length=120) private String nativeDiscountId;
+    public String getNativeDiscountId() { return nativeDiscountId; }
+    public void setNativeDiscountId(String id) { nativeDiscountId = id; }
     @Column(length=120) private String subscriptionId;
     @Column(length=120) private String firstPaymentId;
     @Column(precision=12, scale=2) private java.math.BigDecimal regularAmount;

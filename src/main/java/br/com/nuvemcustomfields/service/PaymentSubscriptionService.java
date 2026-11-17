@@ -56,6 +56,9 @@ public class PaymentSubscriptionService {
     private PaymentCatalogPriceRepository catalog;
     @Autowired
     public void setPaymentCatalog(PaymentCatalogPriceRepository catalog) { this.catalog = catalog; }
+    private DodoCouponService dodoCoupons;
+    @Autowired(required=false)
+    public void setDodoCoupons(DodoCouponService service) { dodoCoupons=service; }
     private DodoLiveCheckoutService dodoLiveCheckout;
     @Autowired(required = false)
     public void setDodoLiveCheckout(DodoLiveCheckoutService service) { this.dodoLiveCheckout = service; }
@@ -464,6 +467,16 @@ public class PaymentSubscriptionService {
             throw new PaymentGatewayException("A alteração precisa ser confirmada pelo provedor. Seu acesso atual foi preservado.", ex);
         }
         return true;
+    }
+
+    public String startDodoCheckout(Long storeId, PlanType plan, String code, BigDecimal first, BigDecimal regular) {
+        Store store=stores.findByStoreId(storeId).orElseThrow();
+        var provider=router.requireForStore(store).provider();
+        if (provider==PaymentProviderType.DODO && dodoLiveCheckout!=null)
+            return dodoLiveCheckout.start(storeId,plan,code,first,regular);
+        if (provider==PaymentProviderType.DODO_TEST && dodoTestCheckout!=null)
+            return dodoTestCheckout.start(storeId,plan,code,first,regular);
+        throw new IllegalArgumentException("O gateway da loja mudou. Reabra os planos antes de pagar.");
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
@@ -976,6 +989,7 @@ public class PaymentSubscriptionService {
             }
         }
         stores.findByStoreIdForUpdate(local.getStoreId());
+        if (dodoCoupons!=null && local.getProvider().isDodo()) dodoCoupons.confirm(local,remote,invoice);
         Store store = stores.findByStoreId(local.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja da assinatura nao encontrada."));
         if (upgraded) {

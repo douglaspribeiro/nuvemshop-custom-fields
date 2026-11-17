@@ -84,4 +84,22 @@ class DodoRegionalGatewayTest {
         }
     }
     private record AutoCloseGateway(DodoGateway gateway) implements AutoCloseable { public void close() { gateway.close(); } }
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void couponPreviewKeepsZeroDecimalRegionalCurrencyInSandboxAndLive(boolean live) {
+        try (var ignored=new AutoCloseGateway(gateway(live))) {
+            var gateway=ignored.gateway;String base=live?"https://live.dodopayments.com":"https://test.dodopayments.com";
+            var price=price(gateway,"CL","CLP","4199");
+            when(catalog.findByProviderAndEnvironmentAndCountryCodeIgnoreCaseAndPlan(gateway.provider(),gateway.environment(),"CL",PlanType.PREMIUM))
+                    .thenReturn(Optional.of(price));
+            var store=new Store();store.setStoreId(42L);store.setStoreCountryCode("CL");
+            String preview="{\"product_cart\":[{\"product_id\":\"pdt_regional\",\"currency\":\"CLP\",\"discounted_price\":4199,\"quantity\":1,\"is_subscription\":true}]}";
+            server.expect(requestTo(base+"/checkouts/preview")).andExpect(jsonPath("$.billing_currency").value("CLP"))
+                    .andRespond(withSuccess(preview,MediaType.APPLICATION_JSON));
+            server.expect(requestTo(base+"/checkouts/preview")).andExpect(jsonPath("$.discount_codes[0]").value("FIRST30"))
+                    .andRespond(withSuccess(preview.replace("4199","2939"),MediaType.APPLICATION_JSON));
+            assertThat(gateway.previewFirstAmount(store,PlanType.PREMIUM,"FIRST30")).isEqualByComparingTo("2939");
+            server.verify();
+        }
+    }
+
 }

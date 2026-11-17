@@ -129,4 +129,21 @@ class DodoTestSubscriptionLifecycleTest {
         return new GatewaySubscription("sub_1",null,"ncf_ref",status,"USD",new BigDecimal(amount),end,"cust_1",product,Instant.now(),end,cancellation);
     }
     GatewayInvoice invoice(String id,String status) { return new GatewayInvoice(id,"sub_1",id,status,"USD",new BigDecimal("9.99")); }
+    @Test void verifiedDiscountedPaymentReachesCouponLedgerWhileRecurringAmountStaysRegular() {
+        var coupons=mock(DodoCouponService.class);service.setDodoCoupons(coupons);
+        var discounted=new GatewayInvoice("discounted","sub_1","discounted","paid","USD",new BigDecimal("6.99"));
+        when(gateway.getLatestInvoice("sub_1")).thenReturn(Optional.of(discounted));
+        service.synchronizeFromSubscription(PaymentProviderType.DODO_TEST,"sub_1");
+        verify(coupons).confirm(eq(local),any(),eq(discounted));
+        assertThat(local.getAmountValue()).isEqualByComparingTo("9.99");
+        verify(notifications).enqueue(local,discounted);
+    }
+    @Test void mismatchedProductCannotConsumeACoupon() {
+        var coupons=mock(DodoCouponService.class);service.setDodoCoupons(coupons);
+        when(gateway.getSubscription("sub_1")).thenReturn(remote("active","prod_foreign","9.99",null));
+        assertThatThrownBy(()->service.synchronizeFromSubscription(PaymentProviderType.DODO_TEST,"sub_1"))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(coupons);
+    }
+
 }

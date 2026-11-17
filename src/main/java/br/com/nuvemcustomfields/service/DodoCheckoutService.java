@@ -23,6 +23,9 @@ public abstract class DodoCheckoutService {
     private final NuvemshopProperties properties;
     private final TransactionTemplate transaction;
     private org.springframework.beans.factory.ObjectProvider<PaymentSubscriptionService> subscriptionService;
+    private DodoCouponService coupons;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCoupons(DodoCouponService coupons) { this.coupons=coupons; }
 
     @org.springframework.beans.factory.annotation.Autowired
     public void setSubscriptionService(org.springframework.beans.factory.ObjectProvider<PaymentSubscriptionService> service) {
@@ -37,12 +40,42 @@ public abstract class DodoCheckoutService {
         transaction = new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
-    public String start(Long storeId, PlanType plan) {
+    public String start(Long storeId, PlanType plan) { return start(storeId,plan,null,null,null); }
+    public String start(Long storeId, PlanType plan, String couponCode, java.math.BigDecimal quotedFirst, java.math.BigDecimal quotedRegular) {
+        String normalized=couponCode==null || couponCode.isBlank()?null:couponCode.strip().toUpperCase(Locale.ROOT);
+        // An existing hosted checkout cannot safely be replaced with another discount.
+        PaymentSubscription pending=subscriptions.findByStoreId(storeId).orElse(null);
+        if (coupons!=null && pending!=null && pending.getStatus()==PaymentSubscriptionStatus.PENDING) {
+            var owner=stores.findByStoreId(storeId).orElseThrow();
+            if (!owner.isActive() || owner.isErasurePending() || owner.getAccessBlockedAt()!=null
+                    || router.requireForStore(owner).provider()!=gateway.provider() || !gateway.planAvailable(owner,plan))
+                throw new IllegalArgumentException("O checkout anterior não está disponível para esta loja.");
+        }
+        if (coupons!=null && pending!=null && pending.getStatus()==PaymentSubscriptionStatus.PENDING) {
+            String reserved=coupons.reservedCode(pending.getExternalReference());
+            if (reserved!=null || normalized!=null) {
+                if (pending.getPlan()!=plan || pending.getProvider()!=gateway.provider()
+                        || !Objects.equals(reserved,normalized))
+                    throw new IllegalArgumentException("Já existe um checkout aberto. Retome o pagamento anterior antes de alterar o plano ou o cupom.");
+                if (pending.getCheckoutUrl()!=null && !pending.getCheckoutUrl().isBlank()) return pending.getCheckoutUrl();
+            }
+        }
+        DodoCouponService.Quote quote=null;
+        if (normalized!=null) {
+            if (coupons==null) throw new IllegalArgumentException("Cupom Dodo indisponível.");
+            Store candidate=stores.findByStoreId(storeId).orElseThrow();
+            quote=coupons.quote(candidate,plan,normalized);
+            if (quotedFirst==null || quotedRegular==null || quote.first().compareTo(quotedFirst)!=0 || quote.regular().compareTo(quotedRegular)!=0)
+                throw new IllegalArgumentException("O preço ou o cupom mudou. Confira o resumo antes de pagar.");
+        }
+        final DodoCouponService.Quote promotion=quote;
         if (subscriptionService != null) subscriptionService.getObject().preparePendingCheckout(storeId, plan);
-        Reservation reservation = transaction.execute(status -> reserve(storeId, plan));
+        Reservation reservation = transaction.execute(status -> reserve(storeId, plan,promotion,normalized));
         if (reservation.checkoutUrl() != null) return reservation.checkoutUrl();
         try {
-            GatewayCheckout checkout = gateway.createCheckout(reservation.store(), plan, reservation.reference(), properties.appBaseUrl() + "/admin/billing/return");
+            GatewayCheckout checkout = promotion==null
+                    ? gateway.createCheckout(reservation.store(),plan,reservation.reference(),properties.appBaseUrl()+"/admin/billing/return")
+                    : gateway.createCheckout(reservation.store(),plan,reservation.reference(),properties.appBaseUrl()+"/admin/billing/return",promotion.code());
             return transaction.execute(status -> {
                 PaymentSubscription local = current(storeId, reservation.reference());
                 if (local.getProviderCheckoutId() != null && !local.getProviderCheckoutId().equals(checkout.checkoutResourceId()))
@@ -74,7 +107,7 @@ public abstract class DodoCheckoutService {
             throw ex;
         }
     }
-    private Reservation reserve(Long storeId, PlanType plan) {
+    private Reservation reserve(Long storeId, PlanType plan,DodoCouponService.Quote promotion,String code) {
         Store store = stores.findActiveByStoreIdForUpdate(storeId).orElseThrow(() -> new IllegalArgumentException("Loja ativa não encontrada."));
         if (router.requireForStore(store).provider() != gateway.provider() || !gateway.planAvailable(store, plan))
             throw new IllegalArgumentException("Plano Dodo indisponível para esta loja.");
@@ -86,6 +119,8 @@ public abstract class DodoCheckoutService {
                 EnumSet.of(PaymentAttemptStatus.CREATING, PaymentAttemptStatus.UNKNOWN)).isPresent())
             throw new IllegalArgumentException("A tentativa anterior ainda precisa ser conciliada. Contate o suporte.");
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING) {
+            if (coupons!=null && !Objects.equals(coupons.reservedCode(local.getExternalReference()),code))
+                throw new IllegalArgumentException("Já existe um checkout aberto com outro cupom. Retome o pagamento anterior.");
             if (local.getPlan() == plan && local.getProvider() == gateway.provider()
                     && local.getProviderEnvironment() == gateway.environment()
                     && local.getCheckoutUrl() != null && !local.getCheckoutUrl().isBlank())
@@ -109,6 +144,7 @@ public abstract class DodoCheckoutService {
         local.setCancellationEffectiveAt(null); local.setCancellationPending(false); local.clearUpgrade();
         local.applyWinbackCoupon(null, null, null); local.captureAnalytics(); local.setAnalyticsFirstPaymentId(null);
         subscriptions.saveAndFlush(local);
+        if (promotion!=null) coupons.reserve(promotion,store,reference);
         PaymentAttempt attempt = new PaymentAttempt(); attempt.setStoreId(storeId);
         attempt.setProvider(gateway.provider()); attempt.setEnvironment(gateway.environment());
         attempt.setCountryCode(store.getStoreCountryCode()); attempt.setPlan(plan); attempt.setCurrency(local.getCurrency());

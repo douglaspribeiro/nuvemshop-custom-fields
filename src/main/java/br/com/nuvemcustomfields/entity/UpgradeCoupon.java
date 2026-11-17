@@ -17,6 +17,13 @@ public class UpgradeCoupon {
     private Purpose purpose = Purpose.UPGRADE;
     public Purpose getPurpose() { return purpose; }
     public void setPurpose(Purpose value) { purpose = value; }
+    @Enumerated(EnumType.STRING) @Column(nullable=false, length=30)
+    private PaymentProviderType provider = PaymentProviderType.EFI;
+    @Column(length=120) private String nativeDiscountId;
+    public PaymentProviderType getProvider() { return provider; }
+    public void setProvider(PaymentProviderType value) { provider = value; }
+    public String getNativeDiscountId() { return nativeDiscountId; }
+    public void setNativeDiscountId(String value) { nativeDiscountId = value; }
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @Column(nullable=false, unique=true, length=36) private String code;
     @Column(nullable=false, precision=5, scale=2) private BigDecimal discountPercent;
