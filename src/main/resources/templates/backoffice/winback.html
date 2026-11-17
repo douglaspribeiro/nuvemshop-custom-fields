@@ -40,7 +40,7 @@
             <td th:text="${row.has('Click') ? 'Sim' : 'Sem evento'}"></td>
             <td th:text="${row.campaign.reinstalledAt != null ? 'Sim' : 'Não'}"></td>
             <td th:text="${row.coupon != null ? row.coupon.statusLabel : 'Sem cupom'}"></td>
-            <td th:text="${row.campaign.optedOutAt != null ? 'Interrompida' : 'Disponível'}"></td>
+            <td th:text="${row.campaign.optedOutAt != null ? 'Interrompida' : (row.store != null and row.store.erasurePending ? 'E-mail inicial disponível' : 'Disponível')}"></td>
             <td><a class="button small" th:href="@{/backoffice/winback/{id}(id=${row.campaign.id})}">Detalhes</a></td>
         </tr></tbody></table></div>
         <div class="actions"><a class="button" th:if="${page.hasPrevious()}" th:href="@{/backoffice/winback(page=${page.number - 1},q=${query},stage=${stage},from=${fromDate},to=${toDate})}">Anterior</a>

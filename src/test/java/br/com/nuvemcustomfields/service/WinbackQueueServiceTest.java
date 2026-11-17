@@ -73,6 +73,31 @@ class WinbackQueueServiceTest {
     }
 
     @Test
+    void pendingErasureStillQueuesAndPublishesTheInitialFeedbackOnce() {
+        store.setErasureRequestedAt(Instant.now());
+        stores.saveAndFlush(store);
+        queue.enqueue(store);
+        queue.enqueue(store);
+        var event = outbox.findAll().getFirst();
+        queue.publish(event.getId(), ID);
+        queue.publish(event.getId(), ID);
+        assertThat(outbox.findAll()).hasSize(1);
+        assertThat(event.getPublishedAt()).isNotNull();
+        verify(sqs, times(1)).sendMessage(any(SendMessageRequest.class));
+    }
+
+    @Test
+    void erasureRequestAfterEnqueueDoesNotCancelTheInitialFeedback() {
+        queue.enqueue(store);
+        var event = outbox.findAll().getFirst();
+        store.setErasureRequestedAt(Instant.now());
+        stores.saveAndFlush(store);
+        queue.publish(event.getId(), ID);
+        assertThat(event.getPublishedAt()).isNotNull();
+        verify(sqs).sendMessage(any(SendMessageRequest.class));
+    }
+
+    @Test
     void sqsFailureRetainsEventForRetryWithoutBreakingWebhookTransaction() {
         queue.enqueue(store);
         var event = outbox.findAll().getFirst();

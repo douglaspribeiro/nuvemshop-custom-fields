@@ -85,7 +85,8 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: "25"
-          distribution: "temurin"
+          distribution: "corretto"
+          check-latest: true
           cache: "maven"
 
       # Gate antes do bump: "clean test" cobre compilacao de main, de test e a suite.

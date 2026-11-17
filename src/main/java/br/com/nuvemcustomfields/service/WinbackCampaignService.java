@@ -68,7 +68,6 @@ public class WinbackCampaignService {
             throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: a configuração SMTP do SES está incompleta. Confira AWS_SES_SMTP_HOST, AWS_SES_SMTP_PORT, AWS_SES_SMTP_USERNAME, AWS_SES_SMTP_PASSWORD e AWS_SES_FROM_EMAIL.");
         if (!StringUtils.hasText(ses.configurationSet()))
             throw new WinbackPreparationException("O e-mail de reconquista não foi enviado: falta configurar AWS_SES_CONFIGURATION_SET com o nome do Configuration Set existente no SES.");
-        if (!homolog.allows(storeId)) throw new WinbackPreparationException("Loja não autorizada para homologação.");
         var store = stores.findByStoreIdForUpdate(storeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (store.getAccessBlockedAt() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está bloqueada permanentemente.");
         if (store.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "A loja está ativa.");
@@ -100,7 +99,7 @@ public class WinbackCampaignService {
         var event = outbox.findById(eventId).orElse(null);
         if (event == null) return null;
         var store = stores.findByStoreIdForUpdate(event.getStoreId()).orElse(null);
-        if (store == null || store.getAccessBlockedAt() != null || store.isActive() || store.isErasurePending() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
+        if (store == null || store.getAccessBlockedAt() != null || store.isActive() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
         if (event.getPublishedAt() == null) return null;
         var campaign = campaigns.findByStoreIdAndUninstalledAt(store.getStoreId(), store.getUninstalledAt()).orElse(null);
         if (campaign == null || campaign.getReinstalledAt() != null || campaign.getOptedOutAt() != null) return null;
@@ -109,6 +108,7 @@ public class WinbackCampaignService {
         var existing = emails.findByCampaignIdAndStep(campaign.getId(), "FEEDBACK");
         if (existing.isPresent()) return null;
         var mail = new WinbackEmail(campaign.getId(), "FEEDBACK");
+        mail.authorizeErasureContact(store.isErasurePending() ? store.getErasureRequestedAt() : null);
         mail.status("SENDING");
         return emails.saveAndFlush(mail).getId();
     }
@@ -127,12 +127,16 @@ public class WinbackCampaignService {
         if (!"FEEDBACK".equals(mail.getStep()) && !homolog.allows(storeId)) return;
         if (!"SENDING".equals(mail.getStatus())) return;
         boolean featureDelivered = "FEATURE_DELIVERED".equals(mail.getStep());
-        if (store.getAccessBlockedAt() != null || (store.isErasurePending() && !authorizedPendingContact(store, mail)) || (!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
+        boolean initialFeedback = "FEEDBACK".equals(mail.getStep());
+        if (store.getAccessBlockedAt() != null || (store.isErasurePending() && !initialFeedback) || (!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
                 || campaign.getReinstalledAt() != null)) || campaign.getOptedOutAt() != null
                 || campaigns.existsByStoreIdAndOptedOutAtIsNotNull(storeId)
                 || (featureDelivered && !"ENTREGUE".equals(campaign.getFeatureStatus()))) {
             mail.status("CANCELLED"); return;
         }
+        // The initial feedback remains allowed if redact arrived after the sending claim.
+        if (initialFeedback && store.isErasurePending())
+            mail.authorizeErasureContact(store.getErasureRequestedAt());
         boolean spanish = br.com.nuvemcustomfields.i18n.StoreLocale.ES.equals(br.com.nuvemcustomfields.i18n.StoreLocale.forCountry(store.getStoreCountryCode()));
         String link = baseUrl + "/winback/" + mail.getId();
         String question = spanish ? "¿Qué podemos mejorar para tu tienda?" : "O que podemos melhorar para sua loja?";
@@ -222,7 +226,7 @@ public class WinbackCampaignService {
         if (("CONFIGURATION".equals(reason) || "MISSING_FEATURE".equals(reason)) && value.isBlank())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conte a dificuldade ou a funcionalidade que precisa.");
         campaign.respond(reason, value);
-        // A autorização manual cobre somente este pedido de feedback, não ofertas/follow-ups.
+        // O contato durante exclusao pendente cobre somente o feedback inicial, nao ofertas/follow-ups.
         if (owner.isErasurePending()) return;
         var store = stores.findByStoreId(storeId).orElseThrow();
         discounts.issue(campaign, store);

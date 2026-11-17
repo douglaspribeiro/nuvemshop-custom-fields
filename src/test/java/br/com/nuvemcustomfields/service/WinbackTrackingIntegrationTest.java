@@ -67,23 +67,26 @@ class WinbackTrackingIntegrationTest {
     }
 
     @Test
-    void manualFeedbackClaimsOnlyOnceAndPendingErasureCancelsSending() throws Exception {
-        String id = service.prepareManual(STORE_ID);
+    void initialFeedbackClaimsOnlyOnceAndSurvivesAPendingErasureRequest() throws Exception {
+        String id = service.prepare(event.getId());
         assertThat(id).isNotNull();
         assertThat(service.prepareManual(STORE_ID)).isNull();
         erasureRequests.receive(STORE_ID,Instant.now());
         service.send(id);
-        assertThat(emails.findById(id).orElseThrow().getStatus()).isEqualTo("CANCELLED");
-        verify(sender,never()).send(any(MimeMessage.class));
+        assertThat(emails.findById(id).orElseThrow().getStatus()).isEqualTo("SENT");
+        assertThat(emails.findById(id).orElseThrow().getErasureContactRequestAt()).isEqualTo(store.getErasureRequestedAt());
+        verify(sender).send(any(MimeMessage.class));
+        mvc.perform(get("/winback/" + id)).andExpect(status().isOk());
         assertThatThrownBy(()->service.prepareManual(STORE_ID)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
     }
 
     @Test
-    void pendingErasureAllowsExplicitManualFeedbackButNeverAutomaticFollowups() throws Exception {
+    void pendingErasureAllowsAutomaticInitialFeedbackButNeverAutomaticFollowups() throws Exception {
         erasureRequests.receive(STORE_ID,Instant.now());
-        assertThat(service.prepare(event.getId())).isNull();
         assertThatThrownBy(()->service.prepareManual(STORE_ID)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
-        String id=service.prepareManual(STORE_ID,true); service.send(id);
+        String id=service.prepare(event.getId()); service.send(id);
+        assertThat(service.prepare(event.getId())).isNull();
+        mvc.perform(get("/winback/" + id)).andExpect(status().isOk());
         var mail=emails.findById(id).orElseThrow();
         assertThat(mail.getErasureContactRequestAt()).isEqualTo(store.getErasureRequestedAt());
         assertThat(mail.getStatus()).isEqualTo("SENT");
@@ -92,6 +95,38 @@ class WinbackTrackingIntegrationTest {
         assertThat(emails.findByCampaignIdAndStep(campaign.getId(),"FOLLOWUP")).isEmpty();
         assertThat(service.prepareManual(STORE_ID,true)).isNull();
         verify(sender,times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void pendingErasureStillRespectsOptOut() {
+        erasureRequests.receive(STORE_ID, Instant.now());
+        campaign.optOut();
+        campaigns.saveAndFlush(campaign);
+        assertThat(service.prepare(event.getId())).isNull();
+        verifyNoInteractions(sender);
+    }
+
+    @Test
+    void actualDataDeletionAfterClaimStillPreventsSending() throws Exception {
+        erasureRequests.receive(STORE_ID, Instant.now());
+        String id = service.prepare(event.getId());
+        assertThat(id).isNotNull();
+        erasure.erase(STORE_ID);
+        em.flush(); em.clear();
+        service.send(id);
+        assertThat(emails.findById(id)).isEmpty();
+        verifyNoInteractions(sender);
+    }
+
+    @Test
+    void pendingErasureStatusExplainsTheInitialContactInBackoffice() throws Exception {
+        erasureRequests.receive(STORE_ID, Instant.now());
+        var session = new MockHttpSession();
+        session.setAttribute(BackofficeSessionInterceptor.SESSION_KEY, true);
+        mvc.perform(get("/backoffice/winback").session(session))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("E-mail inicial disponível")));
+        mvc.perform(get("/backoffice/winback/" + campaign.getId()).session(session))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("As demais etapas permanecem suspensas")));
     }
 
     @Test

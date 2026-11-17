@@ -39,7 +39,7 @@ public class WinbackQueueService {
 
     @Transactional
     public void enqueue(Store store) {
-        if (store.getUninstalledAt() == null || store.isErasurePending()) return;
+        if (store.getUninstalledAt() == null) return;
         tracking.record(store);
         if (!properties.enabled()) return;
         // Chamado sob o lock da loja, na mesma transação do webhook.
@@ -54,7 +54,7 @@ public class WinbackQueueService {
         Store store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         WinbackOutbox event = outbox.findForUpdate(id).orElse(null);
         if (event == null || event.getPublishedAt() != null || event.getNextAttemptAt().isAfter(Instant.now())) return;
-        if (store == null || store.isActive() || store.isErasurePending() || !store.getUninstalledAt().equals(event.getUninstalledAt())) {
+        if (store == null || store.isActive() || !store.getUninstalledAt().equals(event.getUninstalledAt())) {
             outbox.delete(event);
             return;
         }

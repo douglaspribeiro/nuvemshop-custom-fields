@@ -62,9 +62,12 @@ mensagens: SQS distribui cada mensagem para um consumidor.
 5. Manter `WINBACK_ENABLED=true` e `WINBACK_MAIL_ENABLED=true` no deploy.
    `AWS_SES_EVENTS_ENABLED=true` ativa o consumidor SES.
 
-A espera de 15 minutos permite cancelar o contato se a loja reinstalar. Opt-out,
-exclusão pendente, bloqueio permanente, ausência de e-mail e duplicidade continuam
-impedindo o envio. A fila persiste o evento antes de acessar a AWS; o webhook não
+A espera de 15 minutos permite cancelar o contato se a loja reinstalar. A exclusão
+de dados pendente não bloqueia o e-mail inicial de feedback: o envio registra o
+pedido de exclusão vigente para permitir a resposta pelo link, inclusive quando
+o pedido chega depois da preparação. Ofertas e follow-ups permanecem suspensos
+nessa condição. Opt-out, bloqueio permanente, ausência de e-mail, duplicidade e
+exclusão definitiva dos dados continuam impedindo o envio. A fila persiste o evento antes de acessar a AWS; o webhook não
 espera o envio do e-mail.
 
 Mantenha `WINBACK_DISCOUNT_ENABLED=false` e
@@ -74,8 +77,11 @@ Mantenha `WINBACK_DISCOUNT_ENABLED=false` e
 
 O e-mail inicial de feedback exige `WINBACK_MAIL_ENABLED=true`, SMTP completo e
 `AWS_SES_CONFIGURATION_SET` preenchido com um Configuration Set existente no SES.
-As variáveis `WINBACK_DISCOUNT_ENABLED` e `WINBACK_DISCOUNT_ALLOW_PRODUCTION`
-controlam os descontos e não bloqueiam esse e-mail.
+O e-mail inicial manual, assim como o automático, não depende da lista de
+homologação. Para exclusão pendente, a tela manual mantém a confirmação de
+autorização do contato. As variáveis `WINBACK_DISCOUNT_ENABLED` e
+`WINBACK_DISCOUNT_ALLOW_PRODUCTION` controlam os descontos e não bloqueiam esse
+e-mail.
 
 O backoffice informa qual requisito falta antes de preparar a tentativa. Lojas
 com exclusão pendente exigem a confirmação de autorização do contato manual.

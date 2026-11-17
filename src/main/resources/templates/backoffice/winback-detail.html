@@ -14,6 +14,7 @@
         <p>Motivo: <span th:text="${detail.campaign.reasonLabel}"></span></p>
         <p th:if="${detail.campaign.response != null}" th:text="${detail.campaign.response}"></p>
         <p th:if="${detail.campaign.optedOutAt != null}">Novas comunicações interrompidas.</p>
+        <p th:if="${detail.store != null and detail.store.erasurePending and detail.campaign.optedOutAt == null}">Exclusão de dados pendente: o e-mail inicial de reconquista pode ser enviado. As demais etapas permanecem suspensas.</p>
         <p>Histórico anterior: <span th:text="${detail.campaign.paidBeforeDeparture ? 'Já teve pagamento confirmado; incentivo sujeito a análise' : 'Sem pagamento confirmado no histórico retido'}"></span></p>
         <p th:if="${detail.campaign.convertedAt != null}">Pagamento com cupom confirmado em
             <span th:attr="data-local-time=${detail.campaign.convertedAt}" data-time-format="datetime" th:text="${#temporals.format(detail.campaign.convertedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span>.</p>

@@ -8,6 +8,8 @@ import br.com.nuvemcustomfields.repository.WinbackOutboxRepository;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -35,13 +37,18 @@ class AutomaticWinbackIntegrationTest {
     @Autowired WebhookLifecycleService webhooks;
     @Autowired WinbackQueuePublisher publisher;
     @Autowired WinbackCampaignConsumer consumer;
+    @Autowired WinbackCampaignService campaigns;
+    @Autowired StoreErasureRequestService erasureRequests;
     @MockBean(name = "winbackSqsClient") SqsClient sqs;
     @MockBean JavaMailSender smtp;
 
-    @Test void uninstallWebhookQueuesAndSendsOneFeedbackWithoutHomologationAccess() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void uninstallWebhookQueuesAndSendsOneFeedbackWithoutHomologationAccess(boolean pendingErasure) throws Exception {
         var store = new Store(); store.setStoreId(990077660L); store.setStoreName("Loja");
         store.setStoreCountryCode("BR"); store.setStoreEmail("merchant@example.test"); store.setAccessToken("test");
         stores.saveAndFlush(store);
+        if (pendingErasure) erasureRequests.receive(store.getStoreId(), java.time.Instant.now());
         var mail = new MimeMessage(Session.getInstance(new Properties()));
         when(smtp.createMimeMessage()).thenReturn(mail);
         webhooks.handle(new WebhookPayload(store.getStoreId(), "app/uninstalled", null));
@@ -61,7 +68,23 @@ class AutomaticWinbackIntegrationTest {
         verify(smtp, times(1)).send(mail);
         assertThat(emails.findAll()).hasSize(1);
         assertThat(emails.findAll().getFirst().getStatus()).isEqualTo("SENT");
+        if (pendingErasure) assertThat(emails.findAll().getFirst().getErasureContactRequestAt()).isEqualTo(store.getErasureRequestedAt());
         assertThat(mail.getSubject()).contains("melhorar");
         verify(sqs, times(2)).deleteMessage(any(DeleteMessageRequest.class));
+    }
+
+    @Test void initialManualFeedbackAlsoWorksOutsideHomologationWithAuthorizedPendingContact() throws Exception {
+        var store = new Store(); store.setStoreId(990077661L); store.setStoreName("Loja");
+        store.setStoreCountryCode("BR"); store.setStoreEmail("merchant@example.test");
+        stores.saveAndFlush(store);
+        erasureRequests.receive(store.getStoreId(), java.time.Instant.now());
+        var mail = new MimeMessage(Session.getInstance(new Properties()));
+        when(smtp.createMimeMessage()).thenReturn(mail);
+        String id = campaigns.prepareManual(store.getStoreId(), true);
+        assertThat(id).isNotNull();
+        campaigns.send(id);
+        assertThat(campaigns.prepareManual(store.getStoreId(), true)).isNull();
+        assertThat(emails.findById(id).orElseThrow().getStatus()).isEqualTo("SENT");
+        verify(smtp, times(1)).send(mail);
     }
 }
