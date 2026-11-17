@@ -7,6 +7,14 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
+    },
+    {
+      "name": "DS_LOKI",
+      "label": "Loki",
+      "description": "Logs estruturados do Nginx",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
     }
   ],
   "annotations": {
@@ -604,6 +612,436 @@
       ]
     },
     {
+      "id": 52,
+      "title": "Todos os endpoints HTTP · lentidão e chamadas da última hora",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 53,
+      "title": "HTTP · requests/s na última hora",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 8,
+        "h": 4
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h]))",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "options": {
+        "graphMode": "none",
+        "colorMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "description": "Inclui endpoints administrativos, públicos, suporte e webhooks da aplicação. Exclui health-check e coleta de métricas; é diferente do contador de scripts."
+    },
+    {
+      "id": 54,
+      "title": "Nginx · chamadas ≥ 1 s na última hora",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 33,
+        "w": 8,
+        "h": 4
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | request_time >= 1 [1h])) or (sum(count_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` [1h])) * 0)",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "graphMode": "none",
+        "colorMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "description": "Tempo total no Nginx, que inclui transferência e espera pelo backend. Zero somente quando existem logs no período; ausência de logs permanece sem dados."
+    },
+    {
+      "id": 55,
+      "title": "HTTP · erros 5xx na última hora",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 16,
+        "y": 33,
+        "w": 8,
+        "h": 4
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(http_server_requests_seconds_count{job=\"app-custom-fields\",status=~\"5..\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) or (sum(increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) * 0)",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "options": {
+        "graphMode": "none",
+        "colorMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "description": "Erros 5xx de todos os endpoints HTTP. Ausência de coleta não é convertida em zero."
+    },
+    {
+      "id": 56,
+      "title": "Aplicação · endpoints mais lentos e volume · 1 h",
+      "type": "table",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 24,
+        "h": 9
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Média (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chamadas estimadas"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "1000 * sum by (method,uri) (increase(http_server_requests_seconds_sum{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) / (sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0)",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "expr": "sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "description": "Tempo médio medido dentro do Spring por método e rota normalizada, com volume estimado da última hora. Poucas chamadas podem gerar médias altas sem comprovar lentidão recorrente. Os contadores tratam reinícios; não há histogramas por endpoint publicados, portanto não se inventa P95 da aplicação.",
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "Value #A": 2,
+              "Value #B": 3
+            },
+            "renameByName": {
+              "method": "Método",
+              "uri": "Endpoint",
+              "Value #A": "Média (ms)",
+              "Value #B": "Chamadas estimadas"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Média (ms)",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "title": "Nginx · P95 por endpoint · 1 h",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 12,
+        "h": 9
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "1000 * topk(20,quantile_over_time(0.95,{container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | unwrap request_time | __error__=\"\" [1h]) by(method,endpoint))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "description": "95% das chamadas do endpoint terminam até este tempo. Medido nos logs do Nginx; inclui transferência do cliente e backend. IDs e trechos longos são agrupados para evitar uma linha por arquivo/loja.",
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "method": "Método",
+              "endpoint": "Endpoint",
+              "Value": "Valor"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Valor",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "title": "Nginx · espera média pelo backend · 1 h",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 46,
+        "w": 12,
+        "h": 9
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "1000 * topk(20,avg_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | upstream_response_time!=\"-\" | unwrap upstream_response_time | __error__=\"\" [1h]) by(method,endpoint))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "description": "Tempo médio de resposta do upstream. Comparar com o tempo total do Nginx ajuda a separar processamento do backend e transferência. Valores com múltiplas tentativas ou sem upstream não são convertidos em zero.",
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "method": "Método",
+              "endpoint": "Endpoint",
+              "Value": "Valor"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Valor",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "title": "Nginx · chamadas demoradas (≥ 1 s) · 1 h",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 55,
+        "w": 24,
+        "h": 8
+      },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "{container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | request_time >= 1 | line_format `{{.time}} {{.method}} {{.endpoint}} status={{.status}} total_s={{.request_time}} backend_s={{.upstream_response_time}}` | keep method,endpoint,status",
+          "refId": "A",
+          "queryType": "range",
+          "maxLines": 100
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false
+      },
+      "description": "Exemplos reais acima de 1 segundo, com tempo total e tempo do backend. Não exibe IP, query string, referer ou user-agent. Vazio significa nenhuma ocorrência encontrada nos logs disponíveis, não erro da aplicação."
+    },
+    {
       "datasource": "${DS_PROMETHEUS}",
       "fieldConfig": {
         "defaults": {
@@ -616,7 +1054,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 63,
         "w": 12,
         "h": 8
       },
@@ -683,7 +1121,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 32,
+        "y": 63,
         "w": 12,
         "h": 8
       },
@@ -734,7 +1172,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 71,
         "w": 24,
         "h": 10
       },
@@ -806,7 +1244,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 50,
+        "y": 81,
         "w": 24,
         "h": 8
       },
@@ -865,7 +1303,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 58,
+        "y": 89,
         "w": 12,
         "h": 8
       },
@@ -904,7 +1342,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 58,
+        "y": 89,
         "w": 12,
         "h": 8
       },
@@ -936,7 +1374,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 66,
+        "y": 97,
         "w": 8,
         "h": 5
       },
@@ -990,7 +1428,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 8,
-        "y": 66,
+        "y": 97,
         "w": 8,
         "h": 5
       },
@@ -1044,7 +1482,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 16,
-        "y": 66,
+        "y": 97,
         "w": 8,
         "h": 5
       },
@@ -1113,7 +1551,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 102,
         "w": 24,
         "h": 5
       },
@@ -1168,7 +1606,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 107,
         "w": 24,
         "h": 1
       },
@@ -1181,7 +1619,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 77,
+        "y": 108,
         "w": 6,
         "h": 5
       },
@@ -1235,7 +1673,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 6,
-        "y": 77,
+        "y": 108,
         "w": 6,
         "h": 5
       },
@@ -1295,7 +1733,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 12,
-        "y": 77,
+        "y": 108,
         "w": 6,
         "h": 5
       },
@@ -1360,7 +1798,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 18,
-        "y": 77,
+        "y": 108,
         "w": 6,
         "h": 5
       },
@@ -1432,7 +1870,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 82,
+        "y": 113,
         "w": 16,
         "h": 8
       },
@@ -1513,7 +1951,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 16,
-        "y": 82,
+        "y": 113,
         "w": 8,
         "h": 8
       },
@@ -1615,7 +2053,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 90,
+        "y": 121,
         "w": 24,
         "h": 1
       },
@@ -1628,7 +2066,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 91,
+        "y": 122,
         "w": 6,
         "h": 5
       },
@@ -1681,7 +2119,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 6,
-        "y": 91,
+        "y": 122,
         "w": 6,
         "h": 5
       },
@@ -1734,7 +2172,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 12,
-        "y": 91,
+        "y": 122,
         "w": 6,
         "h": 5
       },
@@ -1787,7 +2225,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 18,
-        "y": 91,
+        "y": 122,
         "w": 6,
         "h": 5
       },
@@ -1848,7 +2286,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 127,
         "w": 16,
         "h": 8
       },
@@ -1889,7 +2327,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 16,
-        "y": 96,
+        "y": 127,
         "w": 8,
         "h": 8
       },
@@ -1942,7 +2380,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 135,
         "w": 24,
         "h": 7
       },

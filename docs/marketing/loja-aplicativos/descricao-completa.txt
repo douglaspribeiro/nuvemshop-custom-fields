@@ -1,8 +1,8 @@
 Seu próximo pedido personalizado começa com os detalhes certos
 
-Qual nome gravar? Qual estampa usar? Onde está a arte do cliente? Receba essas informações na página do produto, junto à compra, e reduza as mensagens para completar cada encomenda.
+Receba nomes, escolhas e artes na página do produto, junto à compra, e reduza as mensagens para completar cada encomenda.
 
-Com o Campos Personalizados, seu cliente escolhe e você encontra as respostas no item do pedido na Nuvemshop. Mais clareza para produzir, menos informações espalhadas em conversas.
+Com o Campos Personalizados, as respostas ficam no item do pedido na Nuvemshop. Mais clareza para produzir, menos conversas para completar a encomenda.
 
 Ideal para presentes, papelaria, camisetas, lembrancinhas e produtos sob encomenda.
 
@@ -10,22 +10,22 @@ Funcionalidades para sua loja
 
 - Texto curto, texto longo e números para nomes, dedicatórias e instruções.
 - Listas de opções e imagens da loja para escolher capas, estampas e modelos.
-- Arquivos do comprador (Beta): receba fotos, logotipos e artes em JPG, PNG ou PDF. Pro: 1 arquivo de até 10 MB por campo e 2 GB de armazenamento. Ultra: até 5 arquivos por campo, de até 20 MB cada, e 10 GB. Download no app por 90 dias após o pedido.
+- Arquivos do comprador (Beta) nos planos Pro e Ultra: receba fotos, logotipos e artes em JPG, PNG ou PDF, com download no aplicativo.
 - Campos obrigatórios e limites de caracteres para orientar o preenchimento.
-- Configuração por produto, com os detalhes associados ao item no carrinho, checkout e pedido.
+- Detalhes por item no carrinho, checkout e pedido.
 - Consulta de pedidos personalizados recentes no aplicativo.
-- Exportação CSV dos pedidos personalizados entre os últimos 50 pedidos da loja.
+- Exportação CSV de pedidos personalizados recentes.
 
 Planos mensais no Brasil
 
-- Free: gratuito, com 1 produto e 1 campo.
-- Essencial: R$ 19,99/mês.
-- Pro: R$ 29,99/mês.
-- Ultra: R$ 59,90/mês.
+- Free — comece grátis: receba o nome ou a mensagem do cliente junto ao pedido e experimente a personalização na sua loja antes de escolher um plano pago.
+- Essencial — R$ 19,99/mês: organize as escolhas do cliente e os detalhes de cada encomenda.
+- Pro — R$ 29,99/mês: amplie a personalização e receba também artes e arquivos do comprador (Beta).
+- Ultra — R$ 59,90/mês: para operações que precisam de mais liberdade para personalizar o catálogo.
 
 Compare os recursos e limites: https://campos-personalizados.wzhub.pro/precos/?country=BR
 
-Comece grátis com 1 produto e 1 campo. Seus próximos pedidos podem chegar com os detalhes que você precisa.
+Instale grátis e prepare seu primeiro produto personalizado.
 
 Suporte: https://campos-personalizados.wzhub.pro/support/
 contato@wzhub.pro
