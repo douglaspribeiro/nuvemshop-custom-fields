@@ -63,15 +63,15 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 106 · STORE · 15/11/2026 20:59:14**
 
 > Olá! Estou montando uma loja na Nuvemshop e gostaria de utilizar o campo Checkbox para personalização de buquês.
-> 
+>
 > Preciso disponibilizar mais de 40 opções de flores, identificadas por números.
-> 
+>
 > Gostaria de saber:
-> 
+>
 > 1. É possível limitar a quantidade máxima de opções que o cliente pode selecionar em um checkbox? Por exemplo, permitir selecionar no máximo 7 flores?
 > 2. Caso não seja possível nativamente, existe alguma configuração ou código personalizado para implementar esse limite?
 > 3. É possível tornar obrigatório selecionar exatamente 7 opções?
-> 
+>
 > Obrigada!
 
 
@@ -95,9 +95,9 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 105 · SUPPORT · 14/11/2026 12:19:44**
 
 > Boa tarde,
-> 
+>
 > Oque você precisa é a caixa de marcação, a possibilidade de colocar uma foto e um nome para a opção? Seria isso?
-> 
+>
 > Consigo realizar isso sim, vou fazer uns testes aqui e acho que na terça consigo te enviar esta primeira versão.
 
 
@@ -174,13 +174,13 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 97 · SUPPORT · 10/11/2026 22:09:19**
 
 > Hola, equipo de LAB Café:
-> 
+>
 > Gracias por avisarnos. Volví a probar el carrito de su tienda y no pude reproducir el bloqueo. Pude agregar productos distintos y varias unidades del mismo café con diferentes moliendas.
-> 
+>
 > Por ejemplo, agregué tres unidades de Peawberry con molienda V60 y dos de Espírito Santo con molienda Italiana. En las capturas adjuntas se ve que las cantidades y las moliendas quedaron asociadas correctamente a cada ítem, tanto en el carrito como en el resumen del checkout.
-> 
+>
 > Si vuelve a pasar, ¿nos pueden contar qué productos y cantidades intentaron agregar y en qué paso se trabó? Si aparece algún mensaje de error, una captura de ese momento también nos ayudaría a repetir los mismos pasos.
-> 
+>
 > Saludos,
 > Soporte de Campos Personalizados
 
@@ -260,9 +260,9 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 73 · SUPPORT · 05/11/2026 12:29:53**
 
 > He implementado una solución temporal para evitar que tus clientes tengan problemas al finalizar sus compras, mientras continúo trabajando en una solución definitiva para los pedidos creados manualmente con campos personalizados.
-> 
+>
 > Una vez que Tiendanube termine de procesar esta actualización, los pedidos deberían poder completarse sin bloqueos por los campos obligatorios.
-> 
+>
 > Voy a seguir trabajando para resolver este inconveniente de forma definitiva y asegurar que todo funcione correctamente. Te mantendré al tanto de cualquier novedad.
 
 ### SUP-27
@@ -291,12 +291,12 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 70 · SUPPORT · 05/11/2026 10:19:49**
 
 > Hola, equipo de LAB Cafe. Revisamos el problema y estamos trabajando en dos ajustes:
-> 
+>
 > • Mostrar los campos personalizados dentro de la compra rápida, para que el cliente pueda completarlos sin entrar a la página del producto.
 > • Resolver el bloqueo en las órdenes creadas manualmente por ustedes.
-> 
+>
 > Para verificar este segundo caso, ¿nos podrían compartir el enlace que recibe el cliente de una orden afectada? Si prefieren, puede ser una orden de prueba.
-> 
+>
 > El ajuste de compra rápida está preparado, pero todavía falta publicarlo y comprobar su funcionamiento en la tienda. Les confirmaremos cuando esté disponible.
 
 ### SUP-28
@@ -313,7 +313,7 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 
 **Mensagem 69 · STORE · 05/11/2026 08:59:38**
 
-> Tambien anula la posibilidad de que la gente cargue el producto al carro sin ingresar al mismo 
+> Tambien anula la posibilidad de que la gente cargue el producto al carro sin ingresar al mismo
 > necesito solucionar esto
 
 ### SUP-25
@@ -336,7 +336,7 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 63 · SUPPORT · 03/11/2026 16:00:46**
 
 > 1. Si creás el pedido manualmente y le enviás al cliente el enlace de pago, ese enlace no permite completar los campos de personalización de la app. Para que el cliente seleccione las opciones y queden asociadas al producto, enviale el enlace del producto antes de realizar la compra.
-> 
+>
 > 2. Tenés razón: al agregar directamente desde la compra rápida, el cliente no pasa por los campos. Ya desarrollamos una mejora para que los productos con personalización dirijan al cliente a la página del producto. Está pendiente de publicación y validación; mientras tanto, es necesario ingresar al producto para completar las opciones. Los productos sin campos podrán mantener la compra rápida habitual.
 
 ### SUP-20
@@ -378,11 +378,11 @@ Todos os horários abaixo estão em Brasília. Os textos foram preservados como 
 **Mensagem 45 · SUPPORT · 20/10/2026 19:53:36**
 
 > ¡Hola! Gracias por escribirnos.
-> 
+>
 > ¿Podés enviarnos el enlace de uno de los kits donde querés agregar el campo personalizado y contarnos si lo creaste desde Tiendanube o mediante otra aplicación?
-> 
+>
 > También necesitamos saber si el kit no aparece en la lista de productos de nuestra app o si pudiste configurar el campo, pero no se muestra en la tienda.
-> 
+>
 > Con esa información podemos revisar tu caso e indicarte cómo seguir.
 
 ## Solicitações — descrição integral
@@ -436,7 +436,7 @@ Sem atualizações registradas.
 **Descrição:**
 
 > Gostaria de indicar uma sugestão de melhoria aos campos personalizados, onde fosse possível indicar os valores das variações. Não sei se esta condição já está disponível, mas se este for o caso, que ficasse mais visível e fácil de encontrar.
-> 
+>
 > Desde já agradeço!
 
 **Histórico de atualizações:**
@@ -456,7 +456,7 @@ Sem atualizações registradas.
 **Descrição:**
 
 > Seria melhor criar os campos e depois escolher em quais produtos eles ficarão disponíveis. Pra mim, o campo dos produtos são os mesmos e tenho que preencher um por um no formato atual, o que não faz sentido.
-> 
+>
 > Permitir que o cliente também envie arquivos na extensão pdf.
 
 **Histórico de atualizações:**
