@@ -68,6 +68,22 @@ class StoreTemplatesTest {
         return templates.apply(store,model.key(),product,"Caderno",mode,true,UUID.randomUUID().toString(),preview.reviewToken());
     }
     List<PersonalizationField> product(long id) {return fields.findWithRuleByStoreId(store).stream().filter(f->f.getRule().getProductId()==id).toList();}
+    @Test void quantityOptionsRespectPlanOnCreationAndApplicationAndSurviveBatchCopying() {
+        var form=new FieldForm();form.setLabel("Flores");form.setFieldType(FieldType.QUANTITY_SELECT);
+        form.setOptionsText("Rosa\nMargarida");form.setMinSelections(7);form.setMaxSelections(7);
+        var model=templates.create(store,"Buquê com quantidades","",List.of(TemplateFieldDefinition.from(form)));
+        assertThat(apply(model,123,StoreTemplateService.Mode.REPLACE)).isEqualTo(1);
+        assertThat(product(123).getFirst().getFieldType()).isEqualTo(FieldType.QUANTITY_SELECT);
+        assertThat(templates.saveProduct(store,123,"Cópia",null).fields()).isEqualTo(model.fields());
+        var batch=batches.review(store,model.key(),TemplateBatchService.Mode.REPLACE,List.of(124L));
+        var owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM);stores.saveAndFlush(owner);
+        assertThatThrownBy(()->templates.create(store,"Bloqueado","",model.fields())).isInstanceOf(StoreTemplateService.Invalid.class);
+        assertThatThrownBy(()->apply(model,125,StoreTemplateService.Mode.REPLACE)).isInstanceOf(StoreTemplateService.Invalid.class);
+        batches.execute(store,batch.id(),124L,true,false);
+        assertThat(product(124)).isEmpty();
+        owner=stores.findByStoreId(store).orElseThrow();owner.setPlan(PlanType.PREMIUM_ULTRA);stores.saveAndFlush(owner);
+        assertThat(apply(model,125,StoreTemplateService.Mode.REPLACE)).isEqualTo(1);
+    }
     @Test void checkboxLimitsSurviveTemplateApplicationAndSavingTheProductAsATemplate() {
         var form=new FieldForm();form.setLabel("Flores");form.setFieldType(FieldType.CHECKBOX);
         form.setOptionsText("1\n2\n3");form.setMinSelections(2);form.setMaxSelections(2);

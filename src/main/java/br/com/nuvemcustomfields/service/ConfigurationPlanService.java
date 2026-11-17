@@ -30,7 +30,8 @@ public class ConfigurationPlanService {
             rule.recordPlanEligibility(decision.evidence().get(rule.getProductId()));
             // A manually disabled rule is never enabled or newly paused by NC-04.
             if (!rule.isEnabled()) continue;
-            if (store.getEffectivePlan().isBillable() && !rule.isPlanPaused()) continue;
+            if (store.getEffectivePlan().isBillable() && !rule.isPlanPaused()
+                    && ConfigurationPlanPolicy.supportsQuantity(rule, store.getEffectivePlan())) continue;
             boolean pause = !decision.allowedProducts().contains(rule.getProductId());
             if (pause != rule.isPlanPaused()) {
                 if (pause && !rule.getFields().isEmpty()) newlyPaused.add(rule.getProductId());

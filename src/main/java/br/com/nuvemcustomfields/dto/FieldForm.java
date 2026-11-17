@@ -38,12 +38,13 @@ public class FieldForm {
 
     @AssertTrue(message = "checkbox.selections.invalid")
     public boolean isCheckboxSelectionsValid() {
-        if (fieldType != FieldType.CHECKBOX) return true;
-        if (minSelections == null && maxSelections == null) return true;
+        if (fieldType != FieldType.CHECKBOX && fieldType != FieldType.QUANTITY_SELECT) return true;
+        if (fieldType == FieldType.CHECKBOX && minSelections == null && maxSelections == null) return true;
         long count = optionsText == null ? 0 : optionsText.lines().map(String::strip)
                 .filter(value -> !value.isBlank()).distinct().count();
-        return count > 0 && (minSelections == null || minSelections >= 0 && minSelections <= count)
-                && (maxSelections == null || maxSelections >= 1 && maxSelections <= count)
+        boolean quantities = fieldType == FieldType.QUANTITY_SELECT;
+        return count > 0 && (minSelections == null || minSelections >= 0 && (quantities || minSelections <= count))
+                && (maxSelections == null || maxSelections >= 1 && (quantities || maxSelections <= count))
                 && (minSelections == null || maxSelections == null || minSelections <= maxSelections);
     }
 
@@ -133,7 +134,7 @@ public class FieldForm {
 
     @AssertTrue(message = "Regex invalida")
     public boolean isValidationPatternValid() {
-        if (fieldType == FieldType.COLOR_SELECT || fieldType == FieldType.CHECKBOX || fieldType == FieldType.FILE_UPLOAD || validationPattern == null || validationPattern.isBlank()) {
+        if (fieldType == FieldType.COLOR_SELECT || fieldType == FieldType.CHECKBOX || fieldType == FieldType.QUANTITY_SELECT || fieldType == FieldType.FILE_UPLOAD || validationPattern == null || validationPattern.isBlank()) {
             return true;
         }
         try {

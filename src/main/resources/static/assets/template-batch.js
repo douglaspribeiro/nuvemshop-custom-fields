@@ -40,6 +40,7 @@
    if(field.placeholder)lines.push(t('example',field.placeholder));
    if(field.validationPattern)lines.push(t('validation',field.validationPattern));
    if(field.optionsText)lines.push(t('options',field.fieldType==='COLOR_SELECT'?JSON.parse(field.optionsText).map(o=>o.label+' ('+o.color+')').join(', '):field.optionsText));
+   if(field.fieldType==='QUANTITY_SELECT'){if(field.minSelections!=null)lines.push(t('minUnits',field.minSelections));if(field.maxSelections!=null)lines.push(t('maxUnits',field.maxSelections));}
    if(field.fieldType==='FILE_UPLOAD')lines.push(t('maxFiles',field.maxFiles||1));
    if(field.fieldType==='IMAGE_SELECT'){
     try{lines.push(t('options',JSON.parse(field.imageOptionsJson||'[]').map(o=>o.label).join(', ')));}catch{}

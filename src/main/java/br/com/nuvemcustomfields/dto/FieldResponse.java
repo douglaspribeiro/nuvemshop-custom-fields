@@ -50,7 +50,7 @@ public record FieldResponse(
                 field.getValidationPattern(),
                 field.getFieldType() == FieldType.FILE_UPLOAD ? "_ncf_file_" + field.getId() : propertyName(field.getLabel()),
                 field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(ImageOption::label).toList()
-                        : field.getFieldType() == FieldType.CHECKBOX ? field.options().stream().distinct().toList() : field.options(),
+                        : (field.getFieldType() == FieldType.CHECKBOX || field.getFieldType() == FieldType.QUANTITY_SELECT) ? field.options().stream().distinct().toList() : field.options(),
                 field.getFieldType() == FieldType.IMAGE_SELECT ? images.stream().map(option -> {
                     String url = "/public/stores/" + field.getRule().getStoreId() + "/images/" + option.id();
                     return new ImageOptionResponse(option.label(), url + "?size=thumbnail", url);

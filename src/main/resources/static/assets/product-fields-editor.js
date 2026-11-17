@@ -63,15 +63,17 @@
             placeholderLabel.querySelectorAll('[data-select-text]').forEach(element => {
                 element.textContent = type.value === 'SELECT' ? element.dataset.selectText : element.dataset.text;
             });
-            get('optionsText').closest('label').hidden = !['SELECT', 'CHECKBOX', 'FILE_UPLOAD'].includes(type.value);
+            get('optionsText').closest('label').hidden = !['SELECT', 'CHECKBOX', 'QUANTITY_SELECT', 'FILE_UPLOAD'].includes(type.value);
             const uploadCount=form.querySelector('.field-upload-count');
             if(uploadCount) uploadCount.hidden=type.value !== 'FILE_UPLOAD';
             const uploadHelp=form.querySelector('.field-upload-help');
             if(uploadHelp) uploadHelp.hidden=type.value !== 'FILE_UPLOAD';
             form.querySelectorAll('.field-checkbox-limits').forEach(element => {
-                element.hidden = type.value !== 'CHECKBOX';
-                element.querySelectorAll('input').forEach(input => { input.disabled = type.value !== 'CHECKBOX'; });
+                element.hidden = !['CHECKBOX','QUANTITY_SELECT'].includes(type.value);
+                element.querySelectorAll('[data-quantity-text]').forEach(text => {text.textContent=type.value === 'QUANTITY_SELECT' ? text.dataset.quantityText : text.dataset.checkboxText;});
+                element.querySelectorAll('input').forEach(input => { input.disabled = !['CHECKBOX','QUANTITY_SELECT'].includes(type.value); });
             });
+            form.querySelectorAll('.field-quantity-help').forEach(help => {help.hidden=type.value !== 'QUANTITY_SELECT';});
             const checkboxHelp = form.querySelector('.field-checkbox-help');
             if (checkboxHelp) checkboxHelp.hidden = type.value !== 'CHECKBOX';
             form.querySelector('.field-validation').hidden = !text;
@@ -85,11 +87,12 @@
             const options = new Set(get('optionsText').value.split(/\r?\n/).map(v => v.trim()).filter(Boolean)).size;
             const minimum = min.value === '' ? null : Number(min.value);
             const maximum = max.value === '' ? null : Number(max.value);
-            const invalid = type.value === 'CHECKBOX' && (minimum != null || maximum != null) &&
-                (!options || minimum != null && (!Number.isInteger(minimum) || minimum < 0 || minimum > options)
-                    || maximum != null && (!Number.isInteger(maximum) || maximum < 1 || maximum > options)
+            const quantities = type.value === 'QUANTITY_SELECT';
+            const invalid = ['CHECKBOX','QUANTITY_SELECT'].includes(type.value) && (quantities || minimum != null || maximum != null) &&
+                (!options || minimum != null && (!Number.isInteger(minimum) || minimum < 0 || !quantities && minimum > options)
+                    || maximum != null && (!Number.isInteger(maximum) || maximum < 1 || !quantities && maximum > options)
                     || minimum != null && maximum != null && minimum > maximum);
-            min.setCustomValidity(invalid ? min.dataset.invalid : '');
+            min.setCustomValidity(invalid ? (quantities ? min.dataset.quantityInvalid : min.dataset.invalid) : '');
         }
         function render() {
             validateSelections();
@@ -158,6 +161,25 @@
                     gallery.append(card);
                 });
                 target.append(title, gallery); return;
+            }
+            if (type.value === 'QUANTITY_SELECT') {
+                const group=document.createElement('fieldset');group.className='field-preview-quantities';
+                const legend=document.createElement('legend');legend.textContent=title.textContent;group.append(legend);
+                const options=[...new Set(get('optionsText').value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean))];
+                const minimum=get('minSelections'),maximum=get('maxSelections');
+                const inputs=options.map(option=>{
+                    const row=document.createElement('label'),text=document.createElement('span'),quantity=document.createElement('input');
+                    row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px';
+                    text.textContent=option;quantity.type='number';quantity.step='any';quantity.value='0';
+                    quantity.style.width='90px';quantity.setAttribute('aria-label',option);
+                    // Preview inputs have no native constraints: examples must not block saving the definition.
+                    row.append(text,quantity);group.append(row);return quantity;
+                });
+                const counter=document.createElement('small');counter.setAttribute('aria-live','polite');group.append(counter);
+                const sync=()=>{const total=inputs.reduce((sum,input)=>sum+(Number.isSafeInteger(input.valueAsNumber)&&input.valueAsNumber>=0?input.valueAsNumber:0),0);
+                    counter.textContent=(maximum?.value ? minimum.dataset.unitCounter : minimum?.dataset.unitCount || '{0}')
+                        .replace('{0}',String(total)).replace('{1}',maximum?.value || '');};
+                group.addEventListener('input',sync);sync();target.append(group);return;
             }
             if (type.value === 'CHECKBOX') {
                 const options = [...new Set(get('optionsText').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean))];

@@ -7,6 +7,10 @@ export type Lang = "pt" | "es";
 
 type Dictionary = {
     personalizationPaused: string;
+    quantityInvalid: string;
+    quantityMin: (min: number) => string;
+    quantityMax: (max: number) => string;
+    quantityCount: (count: number, max?: number | null) => string;
     minSelections: (min: number) => string;
     maxSelections: (max: number) => string;
     selectionCount: (count: number, max?: number | null) => string;
@@ -19,6 +23,10 @@ type Dictionary = {
 };
 
 const PT: Dictionary = {
+    quantityInvalid: "Informe quantidades inteiras a partir de zero nas opções disponíveis.",
+    quantityMin: min => `Escolha pelo menos ${min} unidades no total.`,
+    quantityMax: max => `Escolha no máximo ${max} unidades no total.`,
+    quantityCount: (count, max) => max != null ? `${count} de ${max} unidades` : `${count} unidades`,
     minSelections: min => `Selecione pelo menos ${min} opções.`,
     maxSelections: max => `Selecione no máximo ${max} opções.`,
     selectionCount: (count, max) => max != null ? `${count} de ${max} selecionadas` : `${count} selecionadas`,
@@ -32,6 +40,10 @@ const PT: Dictionary = {
 };
 
 const ES: Dictionary = {
+    quantityInvalid: "Ingresá cantidades enteras desde cero en las opciones disponibles.",
+    quantityMin: min => `Elegí al menos ${min} unidades en total.`,
+    quantityMax: max => `Elegí como máximo ${max} unidades en total.`,
+    quantityCount: (count, max) => max != null ? `${count} de ${max} unidades` : `${count} unidades`,
     minSelections: min => `Seleccioná al menos ${min} opciones.`,
     maxSelections: max => `Seleccioná como máximo ${max} opciones.`,
     selectionCount: (count, max) => max != null ? `${count} de ${max} seleccionadas` : `${count} seleccionadas`,

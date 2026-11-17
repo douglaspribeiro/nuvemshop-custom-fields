@@ -2,7 +2,8 @@ import type { PersonalizationField } from "../shared/config";
 import { messages } from "../shared/i18n";
 import { uploadReferences, uploadValues, uploadDisplay } from "./buyer-uploads";
 
-export type FieldValue = string | string[];
+import { type QuantityMap, quantityError, quantityText } from "./quantity-options";
+export type FieldValue = string | string[] | QuantityMap;
 export type ValueMap = Record<string, FieldValue>;
 
 export type FieldError = { propertyName: string; label: string; message: string };
@@ -29,6 +30,11 @@ export function validate(
             continue;
         }
 
+        if (field.fieldType === "QUANTITY_SELECT") {
+            const error = quantityError(field, raw, locale);
+            if (error) errors.push({ propertyName: key, label: field.label, message: error });
+            continue;
+        }
         if (field.fieldType === "CHECKBOX" && field.options.length) {
             const choices = Array.isArray(raw) ? raw : [];
             if ((raw != null && raw !== "" && !Array.isArray(raw)) || choices.some(choice => !field.options.includes(choice))) {
@@ -119,7 +125,10 @@ export function toCartProperties(
 		const key = keyOf(field);
 		const raw = values[key];
 		const value = typeof raw === "string" ? raw.trim() : "";
-        if (field.fieldType === "CHECKBOX" && field.options.length) {
+        if (field.fieldType === "QUANTITY_SELECT") {
+            const answer = quantityText(field, raw);
+            if (answer) properties[key] = answer;
+        } else if (field.fieldType === "CHECKBOX" && field.options.length) {
             const choices = Array.isArray(raw) ? raw : [];
             const selected = [...new Set(field.options)].filter(option => choices.includes(option));
             if (selected.length) properties[key] = selected.join(", ");

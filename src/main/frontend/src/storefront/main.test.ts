@@ -288,6 +288,21 @@ describe("SDK storefront without a legacy script", () => {
         expect(checks().map(box=>box.checked)).toEqual([false,false,false]);
     });
 
+    it('adds a bouquet with repeated flower quantities and resets after success',async()=>{
+        vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,locale:'pt-BR',fields:[{
+            label:'Flores',fieldType:'QUANTITY_SELECT',required:false,options:['Rosa','Margarida'],minSelections:7,maxSelections:7}]})} as Response);
+        await boot();
+        type Q={type?:string;name?:string;children?:Q[];label?:string;value?:number;onChange?:(e:{value:string})=>void};
+        const nodes=(node:Q):Q[]=>node.type==='numberfield'&&node.name?.includes('__quantity_')?[node]:(Array.isArray(node.children)?node.children:[]).flatMap(nodes);
+        const quantities=()=>nodes(render.mock.calls[render.mock.calls.length-1][1]);
+        quantities()[0].onChange!({value:'3'});quantities()[1].onChange!({value:'3'});
+        add();expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
+        quantities()[1].onChange!({value:'4'});send.mockClear();add();
+        expect(send.mock.calls[1][1]().cart.items[0].properties).toEqual({Flores:'Rosa × 3; Margarida × 4'});
+        success({Flores:'Rosa × 3; Margarida × 4'});
+        expect(quantities().map(input=>input.value)).toEqual([0,0]);
+    });
+
     it('requires exactly seven SDK choices and preserves them in the cart', async () => {
         const options=Array.from({length:40},(_,i)=>String(i+1));
         vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,locale:'pt-BR',

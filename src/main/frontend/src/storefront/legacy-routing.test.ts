@@ -230,3 +230,20 @@ it('requires exactly seven legacy choices, limits additional choices and restore
     expect(new dom.window.FormData(form).get('properties[Flores]')).toBe('1, 2, 3, 4, 5, 6, 7');
     boxes()[0].click();expect(boxes()[7].disabled).toBe(false);expect(submit().defaultPrevented).toBe(true);
 });
+
+it('validates and submits legacy quantities with one human-readable property',async()=>{
+    dom=new JSDOM(`<html lang="pt-BR"><head><script src="https://app.test/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" data-product-id="456"><button type="submit">Comprar</button></form></body></html>`,
+        {url:'https://store.test/productos/example',runScripts:'outside-only'});
+    Object.assign(dom.window,{fetch:vi.fn().mockResolvedValue({ok:true,json:async()=>({enabled:true,fields:[{
+        label:'Flores',fieldType:'QUANTITY_SELECT',required:false,minSelections:7,maxSelections:7,options:['Rosa','Margarida']}],style:{}})})});
+    Object.defineProperty(dom.window.document,'readyState',{value:'complete',configurable:true});dom.window.eval(source);
+    const inputs=()=>[...dom.window.document.querySelectorAll<HTMLInputElement>('.ncf-field input[type=number]')];
+    await vi.waitFor(()=>expect(inputs()).toHaveLength(2));
+    const form=dom.window.document.querySelector('form')!;
+    const set=(i:number,value:string)=>{inputs()[i].value=value;inputs()[i].dispatchEvent(new dom.window.Event('input',{bubbles:true}));};
+    const submit=()=>{const event=new dom.window.Event('submit',{cancelable:true});form.dispatchEvent(event);return event.defaultPrevented;};
+    set(0,'3');set(1,'3');expect(submit()).toBe(true);set(1,'4');expect(submit()).toBe(false);
+    expect(new dom.window.FormData(form).getAll('properties[Flores]')).toEqual(['Rosa × 3; Margarida × 4']);
+    set(1,'5');expect(submit()).toBe(true);set(1,'-1');expect(submit()).toBe(true);set(1,'4.5');expect(submit()).toBe(true);
+});

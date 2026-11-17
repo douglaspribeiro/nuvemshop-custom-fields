@@ -53,6 +53,34 @@ class ProductFieldEditorCompatibilityTest {
         assertThat(saved.getFirst().isRequired()).isTrue();
         assertThat(saved.getFirst().getSortOrder()).isEqualTo(3);
     }
+    @Test void quantityOptionsPersistOnlyForProAndUltraAndRejectDowngradedEdits() throws Exception {
+        long nextId=990088800L;
+        for (var plan : new PlanType[]{PlanType.FREE,PlanType.PREMIUM,PlanType.PREMIUM_PLUS,PlanType.PREMIUM_ULTRA}) {
+            long id=nextId++;var store=new Store();store.setStoreId(id);store.setStoreCountryCode("BR");store.setPlan(plan);
+            stores.saveAndFlush(store);admin.ensureRule(id,130L,"Buquê");
+            var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,id);
+            var response=mvc.perform(post("/admin/products/130/fields").session(session).param("label","Flores")
+                    .param("fieldType","QUANTITY_SELECT").param("optionsText","Rosa\nMargarida")
+                    .param("minSelections","7").param("maxSelections","7")).andReturn().getResponse();
+            if (!plan.supportsQuantityOptions()) {
+                assertThat(response.getStatus()).isEqualTo(200);
+                assertThat(response.getContentAsString()).contains("disponíveis nos planos Pro e Ultra");
+                assertThat(admin.requireRuleWithFields(id,130L).getFields()).isEmpty();
+                continue;
+            }
+            assertThat(response.getStatus()).isEqualTo(302);entityManager.flush();entityManager.clear();
+            var field=admin.requireRuleWithFields(id,130L).getFields().getFirst();
+            assertThat(field.getFieldType()).isEqualTo(FieldType.QUANTITY_SELECT);
+            assertThat(field.getMinSelections()).isEqualTo(7);assertThat(field.getMaxSelections()).isEqualTo(7);
+            var html=mvc.perform(get("/admin/products/130/fields").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(html).contains("QUANTITY_SELECT","Opções com quantidade");
+            var persisted=stores.findByStoreId(id).orElseThrow();persisted.setPlan(PlanType.PREMIUM);stores.saveAndFlush(persisted);
+            var form=new FieldForm();form.setLabel("Alterada");form.setFieldType(FieldType.QUANTITY_SELECT);form.setOptionsText("Rosa");
+            org.assertj.core.api.Assertions.assertThatIllegalArgumentException().isThrownBy(()->admin.updateField(id,130L,field.getId(),form))
+                    .withMessage("quantity.plan.unavailable");
+            assertThat(field.getOptionsText()).isEqualTo("Rosa\nMargarida");
+        }
+    }
     @Test void checkboxSelectionLimitsPersistReloadAndClearOnTypeChange() throws Exception {
         long storeId=990088789L, productId=129L;
         var store=new Store();store.setStoreId(storeId);store.setStoreCountryCode("BR");store.setPlan(PlanType.PREMIUM_PLUS);

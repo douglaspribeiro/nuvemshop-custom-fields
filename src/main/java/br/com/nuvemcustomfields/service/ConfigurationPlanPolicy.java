@@ -21,6 +21,7 @@ public class ConfigurationPlanPolicy {
         // NC-04 restores its own pauses only into capacity left by those configurations.
         if (store.getEffectivePlan().isBillable()) rules.stream()
                 .filter(r -> r.isEnabled() && !r.isPlanPaused() && !r.getFields().isEmpty())
+                .filter(r -> supportsQuantity(r, store.getEffectivePlan()))
                 .forEach(r -> allowed.add(r.getProductId()));
         long images = rules.stream().filter(r -> allowed.contains(r.getProductId()))
                 .filter(r -> r.getFields().stream().anyMatch(f -> f.getFieldType() == FieldType.IMAGE_SELECT)).count();
@@ -47,7 +48,13 @@ public class ConfigurationPlanPolicy {
         return new Decision(Set.copyOf(allowed), Map.copyOf(evidence));
     }
 
+    public static boolean supportsQuantity(PersonalizationRule rule, PlanType plan) {
+        return rule.getFields().stream().noneMatch(f -> f.getFieldType() == FieldType.QUANTITY_SELECT)
+                || plan != null && plan.supportsQuantityOptions();
+    }
+
     private boolean fits(PersonalizationRule rule, PlanAsset plan) {
+        if (!supportsQuantity(rule, plan.getPlanType())) return false;
         if (rule.getFields().isEmpty()) return false;
         if (plan.getFieldLimit() >= 0 && rule.getFields().size() > plan.getFieldLimit()) return false;
         return rule.getFields().stream().filter(f -> f.getFieldType() == FieldType.IMAGE_SELECT)

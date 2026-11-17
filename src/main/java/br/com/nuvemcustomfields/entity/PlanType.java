@@ -33,6 +33,8 @@ public enum PlanType {
         return billable;
     }
 
+    public boolean supportsQuantityOptions() { return this == PREMIUM_PLUS || this == PREMIUM_ULTRA; }
+
     public boolean hasPrioritySupport() {
         return this == PREMIUM_ULTRA;
     }

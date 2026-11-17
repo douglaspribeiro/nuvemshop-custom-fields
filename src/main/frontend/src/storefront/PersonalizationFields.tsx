@@ -1,6 +1,7 @@
-import { Checkbox, Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
+import { Checkbox, NumberField, Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent } from "@tiendanube/nube-sdk-types";
 import { styled } from "@tiendanube/nube-sdk-ui";
+import { quantityMap, quantityTotal } from "./quantity-options";
 import { messages } from "../shared/i18n";
 import type { PersonalizationField } from "../shared/config";
 import { type FieldError, type FieldValue, type ValueMap, keyOf } from "./values";
@@ -21,6 +22,11 @@ function mobileImageGrid(columns: 2 | 3) {
         }
     `;
 }
+const QuantityGrid = styled(Column)`
+    display:grid;grid-template-columns:minmax(0,1fr);gap:10px;
+    & > * {min-width:0;}
+    @media(min-width:700px){grid-template-columns:repeat(2,minmax(0,1fr));}
+`;
 const TwoColumnImageGrid = mobileImageGrid(2);
 const ThreeColumnImageGrid = mobileImageGrid(3);
 
@@ -85,6 +91,20 @@ function input(
     };
 	const labelStyle = color ? { color } : undefined;
 
+    if (field.fieldType === "QUANTITY_SELECT") {
+        const quantities = quantityMap(selected) ?? {}, total = quantityTotal(quantities);
+        const children: NubeComponent[] = [<Text color={color}>{label}</Text>,
+            <QuantityGrid gap={10}>{[...new Set(field.options)].map((option, index) => <NumberField key={`${name}__quantity_${index}`}
+                name={`${name}__quantity_${index}`} label={option} value={Object.prototype.hasOwnProperty.call(quantities, option) ? quantities[option] : 0}
+                min={0} step={1} max={field.maxSelections ?? Number.MAX_SAFE_INTEGER}
+                style={{ label: {...labelStyle, overflowWrap:"anywhere"}, container:{padding:"12px",border:"1px solid #ddd",borderRadius:"8px"} }} onChange={event => {
+                    onValueChange(key, Object.fromEntries([...new Set(field.options)].map(candidate => [candidate,
+                        candidate === option ? Number(event.value ?? 0) : Object.prototype.hasOwnProperty.call(quantities, candidate) ? quantities[candidate] : 0])));
+                }} />)}</QuantityGrid>,
+            <Text color={color}>{messages(locale).quantityCount(total, field.maxSelections)}</Text>];
+        if (field.minSelections) children.push(<Text color={color}>{messages(locale).quantityMin(field.minSelections)}</Text>);
+        return <Column gap={8}>{children}</Column>;
+    }
     if (field.fieldType === "CHECKBOX") {
         if (field.options.length) {
             const choices = Array.isArray(selected) ? selected : [];
@@ -96,7 +116,7 @@ function input(
                         if (event.value && !choices.includes(option) && field.maxSelections != null && choices.length >= field.maxSelections) {
                             onValueChange(key, [...choices]); return;
                         }
-                        onValueChange(key, options.filter(candidate => candidate === option ? event.value : choices.includes(candidate)));
+                        onValueChange(key, options.filter(candidate => candidate === option ? Number(event.value ?? 0) : choices.includes(candidate)));
                     }} />),
                 ...((field.minSelections != null || field.maxSelections != null)
                     ? [<Text color={color}>{messages(locale).selectionCount(choices.length, field.maxSelections)}</Text>,

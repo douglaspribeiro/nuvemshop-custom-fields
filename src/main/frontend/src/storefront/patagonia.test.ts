@@ -99,6 +99,16 @@ describe("Patagonia transition", () => {
         else expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{}}]}});
     });
 
+    it('validates quantity composition before sending the Patagonia cart item',async()=>{
+        dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...configuration,fields:[{...configuration.fields[0],
+            fieldType:'QUANTITY_SELECT',options:['Rosa','Margarida'],required:false,minSelections:7,maxSelections:7}]}));
+        const inputs=()=>[...document.querySelectorAll<HTMLInputElement>('#ncf-patagonia-fields input[data-quantity-option]')];
+        await vi.waitFor(()=>expect(inputs()).toHaveLength(2));
+        const set=(i:number,value:string)=>{inputs()[i].value=value;inputs()[i].dispatchEvent(new Event('input',{bubbles:true}));};
+        set(0,'3');set(1,'3');click();expect(runtime.send).not.toHaveBeenCalled();
+        set(1,'4');click();expect(vi.mocked(runtime.send).mock.calls[0][2]()).toMatchObject({cart:{items:[{properties:{Nombre:'Rosa × 3; Margarida × 4'}}]}});
+    });
+
     it('requires exactly seven flowers and allows changing choices at the maximum',async()=>{
         dispose=startPatagonia(runtime,vi.fn().mockResolvedValue({...configuration,fields:[{
             ...configuration.fields[0],fieldType:'CHECKBOX',required:false,

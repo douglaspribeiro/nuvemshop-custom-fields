@@ -45,6 +45,20 @@ class ConfigurationPlanIntegrationTest {
     }
     long notices(Store s) { return emails.findAll().stream().filter(e -> e.getStoreId().equals(s.getStoreId())).count(); }
 
+    @Test void quantityConfigurationPausesWithoutDataLossAndResumesWhenProReturns() {
+        var s=store();s.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(s);
+        var r=rule(s,10,1);var f=r.getFields().getFirst();
+        f.setFieldType(FieldType.QUANTITY_SELECT);f.setOptionsText("Rosa\nMargarida");f.setMinSelections(7);f.setMaxSelections(7);fields.saveAndFlush(f);
+        assertThat(visible(s,10)).isTrue();
+        s.setPlan(PlanType.PREMIUM);stores.saveAndFlush(s);
+        assertThat(visible(s,10)).isFalse();
+        assertThat(storefront.getFields(s.getStoreId(),10L,"/test",new MockHttpServletRequest()).paused()).isTrue();
+        service.reconcile(s.getStoreId());assertThat(r.isPlanPaused()).isTrue();
+        assertThat(fields.findById(f.getId()).orElseThrow().getMaxSelections()).isEqualTo(7);
+        s.setPlan(PlanType.FREE);stores.saveAndFlush(s);service.reconcile(s.getStoreId());assertThat(r.isPlanPaused()).isTrue();
+        s.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(s);service.reconcile(s.getStoreId());
+        assertThat(r.isPlanPaused()).isFalse();assertThat(visible(s,10)).isTrue();
+    }
     @Test void freeKeepsOldestWholeEligibleRuleAndPersistsEvidenceWithoutDeletingFields() {
         var s=store(); var complex=rule(s, 10, 2); var kept=rule(s, 20, 1); var extra=rule(s, 30, 1);
         service.reconcile(s.getStoreId()); em.flush();

@@ -18,6 +18,8 @@ export interface StorefrontRuntime {
 	send(source: string, event: string, update: () => unknown): void;
 }
 
+import { quantityOptionsControl } from "./quantity-options-dom";
+
 const SOURCE = "campos-personalizados-patagonia";
 const SLOT = '[data-nubesdk-slot="before_product_detail_add_to_cart"]';
 const BUY = '[data-component="product.add-to-cart"], [data-component="wallet.buy-now"]';
@@ -38,10 +40,12 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
     let verifyingUploads=false;
 	const controls = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();
     const checkboxGroups = new Map<string, HTMLInputElement[]>();
+    const quantityGroups = new Map<string, ReturnType<typeof quantityOptionsControl>>();
     function readValues(): ValueMap {
         return Object.fromEntries([...controls].map(([key, input]) => {
             const group = checkboxGroups.get(key);
-            return [key, group ? group.filter(box => box.checked).map(box => box.value)
+            const quantities = quantityGroups.get(key);
+            return [key, quantities ? quantities.read() : group ? group.filter(box => box.checked).map(box => box.value)
                 : input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? input.value : "") : input.value];
         }));
     }
@@ -77,6 +81,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		scope = null;
 		controls.clear();
         checkboxGroups.clear();
+        quantityGroups.clear();
 		config = null;
 		variantId = null;
 	}
@@ -120,6 +125,7 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
 		const previous = readValues();
 		controls.clear();
         checkboxGroups.clear();
+        quantityGroups.clear();
 		container = document.createElement("div");
 		container.id = "ncf-patagonia-fields";
 		container.className = "ncf-personalization";
@@ -142,6 +148,12 @@ export function startPatagonia(runtime: StorefrontRuntime, load = fetchConfig,
             if (field.fieldType === "FILE_UPLOAD") {
                 const upload=buyerUploadControl(runtime.getState().store.id,productId!,field);
                 controls.set(key,upload.value); container!.append(upload.wrapper); return;
+            }
+            if (field.fieldType === "QUANTITY_SELECT") {
+                const control = quantityOptionsControl(field, config?.locale, previous[key]);
+                quantityGroups.set(key, control);
+                if (control.validation) controls.set(key, control.validation);
+                container!.append(control.wrapper); return;
             }
             if (field.fieldType === "CHECKBOX" && field.options.length) {
                 const group = document.createElement("fieldset");

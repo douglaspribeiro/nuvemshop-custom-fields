@@ -83,6 +83,8 @@ public class PlanLimitService {
     }
 
     public List<PersonalizationField> storefrontFields(Store store, List<PersonalizationField> fields) {
+        if (!store.getEffectivePlan().supportsQuantityOptions()
+                && fields.stream().anyMatch(f -> f.getFieldType() == FieldType.QUANTITY_SELECT)) return List.of();
         var allowed = fields.isEmpty() ? null : allowedProducts(store);
         if (allowed != null) {
             if (!allowed.contains(fields.getFirst().getRule().getProductId())) return List.of();

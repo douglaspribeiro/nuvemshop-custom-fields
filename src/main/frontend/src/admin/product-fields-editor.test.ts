@@ -7,10 +7,10 @@ afterEach(() => dom?.window.close());
 function boot(pattern = '') {
     dom = new JSDOM(`<form class="field-editor-form">
         <input name="label" value="Nome para gravar"><input type="checkbox" name="required" checked>
-        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>FILE_UPLOAD</option></select>
+        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>QUANTITY_SELECT</option><option>FILE_UPLOAD</option></select>
         <input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
-        <label class="field-checkbox-limits" hidden><input name="minSelections" type="number" min="0" data-invalid="Limites inválidos" data-counter="{0} de {1} selecionadas" data-count="{0} selecionadas"></label>
+        <label class="field-checkbox-limits" hidden><input name="minSelections" type="number" min="0" data-invalid="Limites inválidos" data-quantity-invalid="Limites de unidades inválidos" data-unit-counter="{0} de {1} unidades" data-unit-count="{0} unidades" data-counter="{0} de {1} selecionadas" data-count="{0} selecionadas"></label>
         <label class="field-checkbox-limits" hidden><input name="maxSelections" type="number" min="1"></label>
         <input type="checkbox" name="showImageZoom" checked>
         <select name="mobileImageColumns"><option value="">Automático</option><option value="2">2</option><option value="3">3</option></select>
@@ -216,4 +216,15 @@ it('shows optional checkbox limits, rejects invalid ranges and previews a bounde
     expect(input('minSelections').validationMessage).toBe('Limites inválidos');
     select('[name=fieldType]','TEXT');expect(input('minSelections').disabled).toBe(true);
     expect(input('minSelections').validationMessage).toBe('');
+});
+
+it('previews option quantities and accepts a total larger than the count of distinct options',()=>{
+    boot();input('optionsText').value='Rosa\nMargarida';input('minSelections').value='7';input('maxSelections').value='7';
+    select('[name=fieldType]','QUANTITY_SELECT');expect(input('minSelections').checkValidity()).toBe(true);
+    const inputs=[...dom.window.document.querySelectorAll<HTMLInputElement>('.field-preview-quantities input')];
+    inputs[0].value='3';inputs[1].value='4';inputs[1].dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+    expect(dom.window.document.querySelector('.field-preview-quantities small')?.textContent).toBe('7 de 7 unidades');
+    input('minSelections').value='8';input('minSelections').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+    expect(input('minSelections').validationMessage).toBe('Limites de unidades inválidos');
+    select('[name=fieldType]','CHECKBOX');expect(input('minSelections').validationMessage).toBe('Limites inválidos');
 });

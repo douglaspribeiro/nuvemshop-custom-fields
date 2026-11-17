@@ -544,8 +544,10 @@
                         ? (document.documentElement.lang.toLowerCase().startsWith("es")
                             ? "Seleccioná una opción válida." : "Selecione uma opção válida.") : "");
                 }
-                const validationInput = field.fieldType === "CHECKBOX" && (field.options || []).length
-                    ? input.closest(".ncf-field").querySelector("input[type=checkbox]") : input;
+                const validationInput = field.fieldType === "QUANTITY_SELECT"
+                    ? input.closest(".ncf-field").querySelector("input[type=number]")
+                    : field.fieldType === "CHECKBOX" && (field.options || []).length
+                        ? input.closest(".ncf-field").querySelector("input[type=checkbox]") : input;
                 if (!validationInput.checkValidity()) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
@@ -906,6 +908,7 @@
             }
             return host;
         }
+        if (field.fieldType === "QUANTITY_SELECT") return renderQuantityGroup(field);
         if (field.fieldType === "CHECKBOX" && (field.options || []).length) return renderCheckboxGroup(field);
         const wrapper = document.createElement((field.fieldType === "IMAGE_SELECT" || field.fieldType === "COLOR_SELECT") ? "div" : "label");
         wrapper.className = "ncf-field";
@@ -964,6 +967,54 @@
             button.style.outline=selected?'2px solid currentColor':'';button.style.outlineOffset='2px';
         });
         select.addEventListener('change',sync);sync();return group;
+    }
+
+    function renderQuantityGroup(field) {
+        const spanish = document.documentElement.lang.toLowerCase().startsWith("es");
+        const group=document.createElement("fieldset");group.className="ncf-field ncf-quantity-options";
+        group.style.cssText="border:0;padding:0;margin:0 0 12px;min-width:0;color:inherit";
+        const legend=document.createElement("legend");legend.textContent=field.label;legend.className="ncf-label";group.append(legend);
+        const aggregate=document.createElement("input");aggregate.type="hidden";
+        aggregate.name="properties["+(field.propertyName||field.label)+"]";group.append(aggregate);
+        const style=document.createElement("style");style.textContent='.ncf-quantity-options{font:inherit;color:inherit}.ncf-quantity-list{display:grid;grid-template-columns:1fr;gap:10px;margin:10px 0}.ncf-quantity-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:12px;border:1px solid #ddd;border-color:color-mix(in srgb,currentColor 18%,transparent);border-radius:8px}.ncf-quantity-name{min-width:0;overflow-wrap:anywhere;line-height:1.4}.ncf-quantity-stepper{display:flex;align-items:center;flex-shrink:0;min-width:124px;border:1px solid #ccc;border-color:color-mix(in srgb,currentColor 28%,transparent);border-radius:6px;overflow:hidden}.ncf-quantity-stepper button{appearance:none;display:flex;align-items:center;justify-content:center;min-width:36px;width:36px;min-height:40px;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;font-size:20px;cursor:pointer}.ncf-quantity-stepper button:disabled{opacity:.35;cursor:default}.ncf-quantity-stepper input{appearance:textfield;-moz-appearance:textfield;box-sizing:border-box;width:52px;min-width:0;min-height:40px;margin:0;padding:4px;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:center}.ncf-quantity-stepper input::-webkit-inner-spin-button,.ncf-quantity-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ncf-quantity-stepper :focus-visible{outline:2px solid currentColor;outline-offset:-3px}.ncf-quantity-counter{display:block;font-size:.9em;line-height:1.5;opacity:.85}@media(min-width:700px){.ncf-quantity-list{grid-template-columns:repeat(2,minmax(0,1fr))}}';group.append(style);
+        const list=document.createElement("div");list.className="ncf-quantity-list";group.append(list);
+        const options=[...new Set(field.options || [])];
+        const inputs=options.map(option=>{
+            const label=document.createElement("div");label.className="ncf-quantity-row";
+            const text=document.createElement("span");text.className="ncf-quantity-name";text.textContent=option;
+            const input=document.createElement("input");input.type="number";input.min="0";input.step="1";input.value="0";
+            input.max=String(field.maxSelections==null?Number.MAX_SAFE_INTEGER:field.maxSelections);
+            input.setAttribute("aria-label",option);input.dataset.quantityOption=option;
+            const stepper=document.createElement("div");stepper.className="ncf-quantity-stepper";
+            const minus=document.createElement("button"),plus=document.createElement("button");minus.type=plus.type="button";
+            minus.textContent="−";plus.textContent="+";
+            minus.setAttribute("aria-label",(spanish?"Disminuir ":"Diminuir ")+option);
+            plus.setAttribute("aria-label",(spanish?"Aumentar ":"Aumentar ")+option);
+            minus.addEventListener("click",()=>{input.value=String(Math.max(0,(Number(input.value)||0)-1));sync();});
+            plus.addEventListener("click",()=>{input.value=String(Math.max(0,(Number(input.value)||0))+1);sync();});
+            stepper.append(minus,input,plus);
+            input.addEventListener("input",sync);input.addEventListener("change",sync);
+            label.append(text,stepper);list.append(label);return input;
+        });
+        const counter=document.createElement("small");counter.className="ncf-quantity-counter";counter.setAttribute("aria-live","polite");group.append(counter);
+        function sync() {
+            const values=inputs.map(input=>input.value===""&&!input.validity.badInput?0:input.valueAsNumber);
+            const valid=values.every(value=>Number.isSafeInteger(value)&&value>=0);
+            const total=values.reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>=0?value:0),0);
+            const min=Math.max(field.required?1:0,field.minSelections||0);
+            const error=!valid||!Number.isSafeInteger(total)?(spanish?"Ingresá cantidades enteras desde cero.":"Informe quantidades inteiras a partir de zero.")
+                :total<min?(spanish?`Elegí al menos ${min} unidades en total.`:`Escolha pelo menos ${min} unidades no total.`)
+                :field.maxSelections!=null&&total>field.maxSelections?(spanish?`Elegí como máximo ${field.maxSelections} unidades en total.`:`Escolha no máximo ${field.maxSelections} unidades no total.`):"";
+            inputs.forEach(input=>{const buttons=input.parentElement.querySelectorAll("button");
+                buttons[0].disabled=!(input.valueAsNumber>0);
+                buttons[1].disabled=field.maxSelections!=null&&total>=field.maxSelections;});
+            inputs[0]?.setCustomValidity(error);
+            aggregate.value=options.flatMap((option,index)=>Number.isSafeInteger(values[index])&&values[index]>0?[`${option} × ${values[index]}`]:[]).join("; ");
+            aggregate.disabled=!aggregate.value;
+            counter.textContent=(field.maxSelections!=null?`${total} de ${field.maxSelections}`:String(total))+" unidades"
+                +(field.minSelections?(spanish?` · Elegí al menos ${min} unidades en total.`:` · Escolha pelo menos ${min} unidades no total.`):"");
+        }
+        sync();return group;
     }
 
     function renderCheckboxGroup(field) {

@@ -1,6 +1,6 @@
 import type { NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
 
-export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELECT" | "COLOR_SELECT" | "CHECKBOX" | "FILE_UPLOAD";
+export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELECT" | "COLOR_SELECT" | "CHECKBOX" | "QUANTITY_SELECT" | "FILE_UPLOAD";
 
 /** Espelha br.com.nuvemcustomfields.dto.FieldResponse. */
 export type PersonalizationField = {

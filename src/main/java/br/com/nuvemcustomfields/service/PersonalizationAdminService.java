@@ -170,6 +170,9 @@ public class PersonalizationAdminService {
     }
 
     private void validateImagePlan(Long storeId, Long productId, FieldForm form) {
+        if (form.getFieldType() == FieldType.QUANTITY_SELECT
+                && !stores.findByStoreId(storeId).orElseThrow().getEffectivePlan().supportsQuantityOptions())
+            throw new IllegalArgumentException("quantity.plan.unavailable");
         if (form.getFieldType() == FieldType.FILE_UPLOAD) {
             if (form.getMaxFiles() < 1 || form.getMaxFiles() > 5) throw new IllegalArgumentException("upload.files.invalid");
             if (form.getMaxFiles() > 1 && stores.findByStoreId(storeId).orElseThrow().getEffectivePlan() != br.com.nuvemcustomfields.entity.PlanType.PREMIUM_ULTRA)
@@ -184,13 +187,14 @@ public class PersonalizationAdminService {
     }
 
     void applyForm(PersonalizationField field, FieldForm form) {
-        if (!form.isCheckboxSelectionsValid()) throw new IllegalArgumentException("checkbox.selections.invalid");
+        if (!form.isCheckboxSelectionsValid()) throw new IllegalArgumentException(
+                form.getFieldType() == FieldType.QUANTITY_SELECT ? "quantity.limits.invalid" : "checkbox.selections.invalid");
         if (!form.isColorOptionsValid()) throw new IllegalArgumentException("color.options.invalid");
         if (!form.isMobileImageColumnsValid()) throw new IllegalArgumentException("image.mobile.columns.invalid");
         if (form.getFieldType() == FieldType.IMAGE_SELECT && !form.isImageOptionsValid())
             throw new IllegalArgumentException("image.options.invalid");
-        field.setMinSelections(form.getFieldType() == FieldType.CHECKBOX ? form.getMinSelections() : null);
-        field.setMaxSelections(form.getFieldType() == FieldType.CHECKBOX ? form.getMaxSelections() : null);
+        field.setMinSelections((form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT) ? form.getMinSelections() : null);
+        field.setMaxSelections((form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT) ? form.getMaxSelections() : null);
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);
@@ -200,9 +204,9 @@ public class PersonalizationAdminService {
         field.setMobileImageColumns(form.getFieldType() == FieldType.IMAGE_SELECT ? form.getMobileImageColumns() : null);
         field.setImageOptionsJson(form.getFieldType() == FieldType.IMAGE_SELECT
                 ? ImageOptions.serialize(ImageOptions.parse(form.getImageOptionsJson())) : null);
-        field.setMaxLength((form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.IMAGE_SELECT) ? 100 : form.getMaxLength());
-        field.setPlaceholder(form.getFieldType() == FieldType.CHECKBOX || form.getPlaceholder() == null || form.getPlaceholder().isBlank() ? null : form.getPlaceholder().strip());
-        field.setValidationPattern(form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.IMAGE_SELECT || form.getValidationPattern() == null || form.getValidationPattern().isBlank()
+        field.setMaxLength((form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT || form.getFieldType() == FieldType.IMAGE_SELECT) ? 100 : form.getMaxLength());
+        field.setPlaceholder(form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT || form.getPlaceholder() == null || form.getPlaceholder().isBlank() ? null : form.getPlaceholder().strip());
+        field.setValidationPattern(form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT || form.getFieldType() == FieldType.IMAGE_SELECT || form.getValidationPattern() == null || form.getValidationPattern().isBlank()
                 ? null
                 : form.getValidationPattern().strip());
         field.setOptionsText(form.getOptionsText() == null || form.getOptionsText().isBlank()
