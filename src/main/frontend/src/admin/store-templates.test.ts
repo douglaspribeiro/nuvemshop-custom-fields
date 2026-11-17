@@ -11,7 +11,7 @@ function boot(markup:string,model:unknown=null) {
     Object.assign(dom.window,{fetch,ncfTemplateEditor:{template:model},ncfInitFieldEditor:vi.fn(),ncfInitOptionImages:vi.fn()});
     dom.window.eval(source);return fetch;
 }
-const row=`<section><h2 data-template-heading></h2><input name="label" required><select name="fieldType"><option>TEXT</option><option>CHECKBOX</option></select><input name="required" type="checkbox"><input name="maxLength" value="100"><input name="maxFiles" value="1"><input name="minSelections" type="number"><input name="maxSelections" type="number"><input name="placeholder"><input name="validationPattern"><textarea name="optionsText"></textarea><input name="imageOptionsJson"><input name="showImageZoom" type="checkbox"><select name="mobileImageColumns"><option value=""></option></select><section class="image-options-editor" data-uploading-count="0"></section><button type="button" data-field-remove>Remover</button><button type="button" data-field-up>Subir</button><button type="button" data-field-down>Descer</button></section>`;
+const row=`<section><h2 data-template-heading></h2><input name="label" required><select name="fieldType"><option>TEXT</option><option>CHECKBOX</option></select><input name="required" type="checkbox"><input name="maxLength" value="100"><input name="maxFiles" value="1"><input name="minSelections" type="number"><input name="maxSelections" type="number"><select name="quantityColumns"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select><input name="placeholder"><input name="validationPattern"><textarea name="optionsText"></textarea><input name="imageOptionsJson"><input name="showImageZoom" type="checkbox"><select name="mobileImageColumns"><option value=""></option></select><section class="image-options-editor" data-uploading-count="0"></section><button type="button" data-field-remove>Remover</button><button type="button" data-field-up>Subir</button><button type="button" data-field-down>Descer</button></section>`;
 const editor=`<form id="template-editor"><input name="templateName" required><textarea name="templateDescription"></textarea><div id="template-fields"></div><button type="button" id="template-add-field">Adicionar</button><button type="submit">Salvar</button></form><template id="template-field-row">${row}</template>`;
 it("reuses field/image editors, preserves order and sends definitions without buyer values",async()=>{
     const fetch=boot(editor,{id:3,name:"Modelo",revision:2,fields:[{label:"Primeiro",fieldType:"TEXT",maxLength:40,required:true},{label:"Segundo",fieldType:"CHECKBOX",maxLength:100,optionsText:"A\nB",minSelections:0,maxSelections:2,buyerValue:"nunca copiar"}]});
@@ -51,4 +51,11 @@ it("never deletes a template when confirmation is declined",()=>{
     const fetch=boot(`<button data-template-delete data-id="3" data-revision="2">Excluir</button>`);
     dom.window.confirm=vi.fn(()=>false);dom.window.document.querySelector<HTMLButtonElement>("button")!.click();
     expect(fetch).not.toHaveBeenCalled();
+});
+
+it('preserves quantity columns when loading and saving a template',async()=>{
+    const fetch=boot(editor,{name:'Flores',revision:1,fields:[{label:'Flores',fieldType:'QUANTITY_SELECT',optionsText:'Rosa\nMargarida',quantityColumns:3,minSelections:7,maxSelections:7,maxLength:100}]});
+    dom.window.document.getElementById('template-editor')!.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));
+    await vi.waitFor(()=>expect(fetch).toHaveBeenCalledOnce());
+    expect(JSON.parse(fetch.mock.calls[0][1].body).fields[0]).toMatchObject({quantityColumns:3,minSelections:7,maxSelections:7});
 });

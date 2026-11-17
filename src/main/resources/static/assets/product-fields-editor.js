@@ -73,6 +73,7 @@
                 element.querySelectorAll('[data-quantity-text]').forEach(text => {text.textContent=type.value === 'QUANTITY_SELECT' ? text.dataset.quantityText : text.dataset.checkboxText;});
                 element.querySelectorAll('input').forEach(input => { input.disabled = !['CHECKBOX','QUANTITY_SELECT'].includes(type.value); });
             });
+            form.querySelectorAll('.field-quantity-layout').forEach(element=>{element.hidden=type.value!=='QUANTITY_SELECT';element.querySelectorAll('select').forEach(input=>{input.disabled=type.value!=='QUANTITY_SELECT';});});
             form.querySelectorAll('.field-quantity-help').forEach(help => {help.hidden=type.value !== 'QUANTITY_SELECT';});
             const checkboxHelp = form.querySelector('.field-checkbox-help');
             if (checkboxHelp) checkboxHelp.hidden = type.value !== 'CHECKBOX';
@@ -167,13 +168,20 @@
                 const legend=document.createElement('legend');legend.textContent=title.textContent;group.append(legend);
                 const options=[...new Set(get('optionsText').value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean))];
                 const minimum=get('minSelections'),maximum=get('maxSelections');
+                const list=document.createElement('div');list.className='field-preview-quantity-list';list.style.setProperty('--quantity-columns',get('quantityColumns')?.value || '1');group.append(list);
                 const inputs=options.map(option=>{
                     const row=document.createElement('label'),text=document.createElement('span'),quantity=document.createElement('input');
-                    row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px';
+                    row.className='field-preview-quantity-row';
                     text.textContent=option;quantity.type='number';quantity.step='any';quantity.value='0';
-                    quantity.style.width='90px';quantity.setAttribute('aria-label',option);
+                    quantity.setAttribute('aria-label',option);
+                    const controls=document.createElement('span');controls.className='field-preview-quantity-controls';
+                    const minus=document.createElement('button'),plus=document.createElement('button');minus.type=plus.type='button';minus.textContent='−';plus.textContent='+';
+                    minus.setAttribute('aria-label','− '+option);plus.setAttribute('aria-label','+ '+option);
+                    minus.addEventListener('click',()=>{quantity.value=String(Math.max(0,(Number(quantity.value)||0)-1));sync();});
+                    plus.addEventListener('click',()=>{quantity.value=String((Number(quantity.value)||0)+1);sync();});
+                    controls.append(minus,quantity,plus);
                     // Preview inputs have no native constraints: examples must not block saving the definition.
-                    row.append(text,quantity);group.append(row);return quantity;
+                    row.append(text,controls);list.append(row);return quantity;
                 });
                 const counter=document.createElement('small');counter.setAttribute('aria-live','polite');group.append(counter);
                 const sync=()=>{const total=inputs.reduce((sum,input)=>sum+(Number.isSafeInteger(input.valueAsNumber)&&input.valueAsNumber>=0?input.valueAsNumber:0),0);

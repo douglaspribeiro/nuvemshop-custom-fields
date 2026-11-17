@@ -29,3 +29,7 @@ export function quantityText(field: PersonalizationField, raw: unknown): string 
         && Number.isSafeInteger(map[option]) && map[option] > 0)
         .map(option => `${option} × ${map![option]}`).join("; ");
 }
+
+export function quantityColumns(field: PersonalizationField): 1 | 2 | 3 {
+    return field.quantityColumns === 2 || field.quantityColumns === 3 ? field.quantityColumns : 1;
+}

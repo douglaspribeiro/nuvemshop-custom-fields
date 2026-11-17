@@ -6,6 +6,7 @@ export type FieldType = "TEXT" | "NUMBER" | "SELECT" | "TEXTAREA" | "IMAGE_SELEC
 export type PersonalizationField = {
     id?: number;
     maxFiles?: number;
+    quantityColumns?: 1 | 2 | 3 | null;
     minSelections?: number | null;
     maxSelections?: number | null;
     locale?: string;

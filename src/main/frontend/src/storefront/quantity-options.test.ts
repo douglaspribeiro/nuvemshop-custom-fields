@@ -1,3 +1,4 @@
+import { quantityColumns } from './quantity-options';
 import { expect, it } from "vitest";
 import type { PersonalizationField } from "../shared/config";
 import { validate, toCartProperties } from "./values";
@@ -23,4 +24,11 @@ it('preserves option names that coincide with object prototype keys',()=>{
     const raw=JSON.parse('{"__proto__":3,"constructor":4}');
     expect(validate([f],{Flores:raw})).toEqual([]);
     expect(toCartProperties([f],{Flores:raw})).toEqual({Flores:'__proto__ × 3; constructor × 4'});
+});
+
+it('defaults to a list and accepts only the supported column counts',()=>{
+    expect(quantityColumns(flowers)).toBe(1);
+    expect(quantityColumns({...flowers,quantityColumns:2})).toBe(2);
+    expect(quantityColumns({...flowers,quantityColumns:3})).toBe(3);
+    expect(quantityColumns({...flowers,quantityColumns:9 as never})).toBe(1);
 });

@@ -233,6 +233,7 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .product-field-page .field-plan-attention { order:-1; background:#fff9eb; border-color:#e5bd63; box-shadow:0 3px 12px #b3871820; }
 .product-field-page .field-plan-attention h2 { font-size:1.1rem; }
 .product-field-page .field-item, .product-field-page .field-create-panel { scroll-margin-top:24px; }
+.product-field-page .field-template-save-panel { margin-top:24px; }
 .product-field-page .field-help { display:block; margin:0; font-size:.8rem; font-weight:400; line-height:1.55; color:var(--merchant-muted); }
 .product-field-page label { gap:7px; min-width:0; }
 .product-field-page .field-editor-form { gap:20px; }
@@ -419,3 +420,13 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .merchant-rate-box .row-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
 #rate-box-thanks:focus{outline:2px solid #176a50;outline-offset:5px}
 @media(max-width:480px){.merchant-rate-box .row-actions .button,#rate-box-public-link{width:100%;box-sizing:border-box;text-align:center}.merchant-rate-heading h2{font-size:1.1rem}}
+
+.field-preview-quantities {border:0;padding:0;margin:0;min-width:0;}
+.field-preview-quantity-list {display:grid;grid-template-columns:repeat(var(--quantity-columns,1),minmax(0,1fr));column-gap:24px;}
+.field-preview-quantity-row {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--merchant-line);min-width:0;}
+.field-preview-quantity-row > span:first-child {min-width:0;overflow-wrap:anywhere;}
+.field-preview-quantity-controls {display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.field-preview-quantity-controls button {width:34px;height:34px;min-width:34px;padding:0;border-radius:50%;border:1px solid var(--merchant-muted);color:var(--merchant-ink);background:var(--merchant-surface,#fff);box-shadow:none;}
+.field-preview-quantity-controls input {width:30px;min-width:30px;padding:0;border:0;background:transparent;text-align:center;appearance:textfield;-moz-appearance:textfield;box-shadow:none;}
+.field-preview-quantity-controls input::-webkit-inner-spin-button {appearance:none;}
+@media(max-width:699px){.field-preview-quantity-list{grid-template-columns:minmax(0,1fr);}}

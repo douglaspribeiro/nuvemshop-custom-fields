@@ -730,7 +730,7 @@ public class AdminController {
 
     private String imageConfigurationError(IllegalArgumentException error) {
         if ("color.options.invalid".equals(error.getMessage()) || "checkbox.selections.invalid".equals(error.getMessage())
-                || "quantity.plan.unavailable".equals(error.getMessage()) || "quantity.limits.invalid".equals(error.getMessage())) return messages.get(error.getMessage());
+                || "quantity.plan.unavailable".equals(error.getMessage()) || "quantity.limits.invalid".equals(error.getMessage()) || "quantity.columns.invalid".equals(error.getMessage())) return messages.get(error.getMessage());
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());
         if (("upload.unavailable".equals(error.getMessage()) || "upload.formats.invalid".equals(error.getMessage()) || "upload.files.invalid".equals(error.getMessage()) || "upload.multiple.ultra".equals(error.getMessage()))) {
             LOGGER.warn("admin.field.rejected code={}", error.getMessage());

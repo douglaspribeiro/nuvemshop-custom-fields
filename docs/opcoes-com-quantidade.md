@@ -10,4 +10,6 @@ SDK, Patagonia e legado enviam uma propriedade legível, por exemplo: `Flores: R
 
 O servidor impede criar, editar ou aplicar esse tipo em planos inferiores ao Pro. No downgrade, a configuração do produto fica pausada, sem excluir os campos; volta a ser elegível ao retornar ao Pro/Ultra. As demais configurações seguem as regras existentes.
 
-Reutiliza as colunas opcionais da migração V85; não precisa de outra migração. Publicação dos bundles e validação em loja real são etapas posteriores à implementação local.
+A apresentação padrão é uma lista com controles redondos e cores do tema da loja. O lojista pode escolher até três colunas; no celular, as opções ficam em uma coluna. A escolha é preservada em templates e snapshots, e configurações anteriores usam uma coluna.
+
+Os limites usam a migração V85 e a quantidade de colunas usa a V86. A atualização exige publicar o backend e os scripts de vitrine alterados; o commit local não publica essas alterações.

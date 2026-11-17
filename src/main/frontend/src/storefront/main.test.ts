@@ -292,9 +292,13 @@ describe("SDK storefront without a legacy script", () => {
         vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({...DISABLED,enabled:true,locale:'pt-BR',fields:[{
             label:'Flores',fieldType:'QUANTITY_SELECT',required:false,options:['Rosa','Margarida'],minSelections:7,maxSelections:7}]})} as Response);
         await boot();
-        type Q={type?:string;name?:string;children?:Q[];label?:string;value?:number;onChange?:(e:{value:string})=>void};
+        type Q={type?:string;name?:string;styled?:string;style?:{incrementButton?:{backgroundColor?:string;color?:string;borderRadius?:string}};children?:Q[];label?:string;value?:number;onChange?:(e:{value:string})=>void};
         const nodes=(node:Q):Q[]=>node.type==='numberfield'&&node.name?.includes('__quantity_')?[node]:(Array.isArray(node.children)?node.children:[]).flatMap(nodes);
         const quantities=()=>nodes(render.mock.calls[render.mock.calls.length-1][1]);
+        expect(quantities()[0].style?.incrementButton).toMatchObject({backgroundColor:'var(--main-background, #ffffff)',color:'var(--main-foreground, #333333)',borderRadius:'50%'});
+        const styles=(node:Q):string[]=>[node.styled??'',...(Array.isArray(node.children)?node.children:[]).flatMap(styles)];
+        // The live NubeSDK renderer rejects universal selectors and aborts the complete product slot.
+        expect(styles(render.mock.calls[render.mock.calls.length-1][1]).join('')).not.toContain('*');
         quantities()[0].onChange!({value:'3'});quantities()[1].onChange!({value:'3'});
         add();expect(send.mock.calls[0][1]().eventPayload.proceed).toBe(false);
         quantities()[1].onChange!({value:'4'});send.mockClear();add();

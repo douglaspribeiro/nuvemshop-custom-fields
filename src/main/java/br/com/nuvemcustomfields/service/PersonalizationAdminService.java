@@ -195,6 +195,9 @@ public class PersonalizationAdminService {
             throw new IllegalArgumentException("image.options.invalid");
         field.setMinSelections((form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT) ? form.getMinSelections() : null);
         field.setMaxSelections((form.getFieldType() == FieldType.CHECKBOX || form.getFieldType() == FieldType.QUANTITY_SELECT) ? form.getMaxSelections() : null);
+        if (form.getQuantityColumns() < 1 || form.getQuantityColumns() > 3)
+            throw new IllegalArgumentException("quantity.columns.invalid");
+        field.setQuantityColumns(form.getFieldType() == FieldType.QUANTITY_SELECT ? form.getQuantityColumns() : 1);
         field.setLabel(form.getLabel().strip());
         field.setFieldType(form.getFieldType());
         field.setRequired(form.isRequired() || form.getFieldType() == FieldType.SELECT);

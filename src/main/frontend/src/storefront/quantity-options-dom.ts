@@ -1,6 +1,6 @@
 import type { PersonalizationField } from "../shared/config";
 import { messages } from "../shared/i18n";
-import { type QuantityMap, quantityMap, quantityError, quantityText, quantityTotal } from "./quantity-options";
+import { type QuantityMap, quantityMap, quantityError, quantityText, quantityTotal, quantityColumns } from "./quantity-options";
 
 export function quantityOptionsControl(field: PersonalizationField, locale?: string | null, initial?: unknown) {
     const wrapper = document.createElement("fieldset");
@@ -11,7 +11,11 @@ export function quantityOptionsControl(field: PersonalizationField, locale?: str
     const aggregate = document.createElement("input"); aggregate.type = "hidden";
     aggregate.name = `properties[${field.propertyName || field.label}]`; wrapper.append(aggregate);
     const previous = quantityMap(initial) ?? {};
-    const list=document.createElement("div");list.className="ncf-quantity-list";wrapper.append(list);
+    const hint = document.createElement("small");hint.className="ncf-quantity-help";
+    hint.textContent=messages(locale).quantityRange(Math.max(field.required?1:0,field.minSelections??0),field.maxSelections);
+    if(hint.textContent)wrapper.append(hint);
+    const list=document.createElement("div");list.className="ncf-quantity-list";
+    list.style.setProperty("--ncf-quantity-columns",String(quantityColumns(field)));wrapper.append(list);
     const inputs = [...new Set(field.options)].map(option => {
         const label = document.createElement("div"); label.className="ncf-quantity-row";
         const caption = document.createElement("span"); caption.className="ncf-quantity-name";caption.textContent = option;
@@ -42,10 +46,9 @@ export function quantityOptionsControl(field: PersonalizationField, locale?: str
             buttons[1].disabled=field.maxSelections!=null && quantityTotal(values)>=field.maxSelections;
         });
         inputs[0]?.setCustomValidity(quantityError(field, values, locale) ?? "");
-        counter.textContent = messages(locale).quantityCount(quantityTotal(values), field.maxSelections)
-            + (field.minSelections ? " · " + messages(locale).quantityMin(field.minSelections) : "");
+        counter.textContent = messages(locale).quantityCount(quantityTotal(values), field.maxSelections);
     }
     sync(); return { wrapper, aggregate, validation: inputs[0], read };
 }
 
-const QUANTITY_STYLES='.ncf-quantity-options{font:inherit;color:inherit}.ncf-quantity-list{display:grid;grid-template-columns:1fr;gap:10px;margin:10px 0}.ncf-quantity-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:12px;border:1px solid #ddd;border-color:color-mix(in srgb,currentColor 18%,transparent);border-radius:8px}.ncf-quantity-name{min-width:0;overflow-wrap:anywhere;line-height:1.4}.ncf-quantity-stepper{display:flex;align-items:center;flex-shrink:0;min-width:124px;border:1px solid #ccc;border-color:color-mix(in srgb,currentColor 28%,transparent);border-radius:6px;overflow:hidden}.ncf-quantity-stepper button{appearance:none;display:flex;align-items:center;justify-content:center;min-width:36px;width:36px;min-height:40px;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;font-size:20px;cursor:pointer}.ncf-quantity-stepper button:disabled{opacity:.35;cursor:default}.ncf-quantity-stepper input{appearance:textfield;-moz-appearance:textfield;box-sizing:border-box;width:52px;min-width:0;min-height:40px;margin:0;padding:4px;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:center}.ncf-quantity-stepper input::-webkit-inner-spin-button,.ncf-quantity-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ncf-quantity-stepper :focus-visible{outline:2px solid currentColor;outline-offset:-3px}.ncf-quantity-counter{display:block;font-size:.9em;line-height:1.5;opacity:.85}@media(min-width:700px){.ncf-quantity-list{grid-template-columns:repeat(2,minmax(0,1fr))}}';
+const QUANTITY_STYLES='.ncf-quantity-options{font:inherit;color:inherit}.ncf-quantity-list{display:grid;grid-template-columns:minmax(0,1fr);column-gap:24px;row-gap:0;margin:8px 0}.ncf-quantity-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:10px 0;border:0;border-bottom:1px solid #ddd;border-bottom-color:color-mix(in srgb,currentColor 16%,transparent)}.ncf-quantity-name{min-width:0;overflow-wrap:anywhere;line-height:1.4;font-size:14px}.ncf-quantity-stepper{display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;width:110px;min-width:110px;border:0;background:transparent}.ncf-quantity-stepper button{appearance:none;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:34px;min-width:34px;height:34px;min-height:34px;padding:0;border:1px solid currentColor;border-radius:50%;background:var(--main-background,transparent);color:var(--main-foreground,inherit);font:inherit;font-size:18px;line-height:1;box-shadow:none;cursor:pointer}.ncf-quantity-stepper button:disabled{opacity:.35;cursor:default}.ncf-quantity-stepper input{appearance:textfield;-moz-appearance:textfield;box-sizing:border-box;width:30px;min-width:30px;min-height:34px;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--main-foreground,inherit);font:inherit;font-size:14px;text-align:center;box-shadow:none}.ncf-quantity-stepper input::-webkit-inner-spin-button,.ncf-quantity-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ncf-quantity-stepper :focus-visible{outline:2px solid currentColor;outline-offset:2px}.ncf-quantity-counter,.ncf-quantity-help{display:block;font-size:13px;line-height:1.5;opacity:.85}@media(min-width:700px){.ncf-quantity-list{grid-template-columns:repeat(var(--ncf-quantity-columns,1),minmax(0,1fr))}}';

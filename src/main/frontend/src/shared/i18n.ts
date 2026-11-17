@@ -11,6 +11,7 @@ type Dictionary = {
     quantityMin: (min: number) => string;
     quantityMax: (max: number) => string;
     quantityCount: (count: number, max?: number | null) => string;
+    quantityRange: (min: number, max?: number | null) => string;
     minSelections: (min: number) => string;
     maxSelections: (max: number) => string;
     selectionCount: (count: number, max?: number | null) => string;
@@ -23,6 +24,7 @@ type Dictionary = {
 };
 
 const PT: Dictionary = {
+    quantityRange: (min,max) => max != null ? (min === max ? `Escolha ${max} unidades.` : min > 0 ? `Escolha de ${min} a ${max} unidades.` : `Escolha até ${max} unidades.`) : min > 0 ? `Escolha pelo menos ${min} unidades.` : "",
     quantityInvalid: "Informe quantidades inteiras a partir de zero nas opções disponíveis.",
     quantityMin: min => `Escolha pelo menos ${min} unidades no total.`,
     quantityMax: max => `Escolha no máximo ${max} unidades no total.`,
@@ -40,6 +42,7 @@ const PT: Dictionary = {
 };
 
 const ES: Dictionary = {
+    quantityRange: (min,max) => max != null ? (min === max ? `Elegí ${max} unidades.` : min > 0 ? `Elegí de ${min} a ${max} unidades.` : `Elegí hasta ${max} unidades.`) : min > 0 ? `Elegí al menos ${min} unidades.` : "",
     quantityInvalid: "Ingresá cantidades enteras desde cero en las opciones disponibles.",
     quantityMin: min => `Elegí al menos ${min} unidades en total.`,
     quantityMax: max => `Elegí como máximo ${max} unidades en total.`,

@@ -8,7 +8,7 @@ function boot(pattern = '') {
     dom = new JSDOM(`<form class="field-editor-form">
         <input name="label" value="Nome para gravar"><input type="checkbox" name="required" checked>
         <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>QUANTITY_SELECT</option><option>FILE_UPLOAD</option></select>
-        <input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
+        <label class="field-quantity-layout" hidden><select name="quantityColumns"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label><input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
         <label class="field-checkbox-limits" hidden><input name="minSelections" type="number" min="0" data-invalid="Limites inválidos" data-quantity-invalid="Limites de unidades inválidos" data-unit-counter="{0} de {1} unidades" data-unit-count="{0} unidades" data-counter="{0} de {1} selecionadas" data-count="{0} selecionadas"></label>
         <label class="field-checkbox-limits" hidden><input name="maxSelections" type="number" min="1"></label>
@@ -227,4 +227,12 @@ it('previews option quantities and accepts a total larger than the count of dist
     input('minSelections').value='8';input('minSelections').dispatchEvent(new dom.window.Event('input',{bubbles:true}));
     expect(input('minSelections').validationMessage).toBe('Limites de unidades inválidos');
     select('[name=fieldType]','CHECKBOX');expect(input('minSelections').validationMessage).toBe('Limites inválidos');
+});
+
+it('previews the saved quantity layout and hides the column control for other types',()=>{
+    boot();input('optionsText').value='Rosa\nMargarida';
+    select('[name=fieldType]','QUANTITY_SELECT');select('[name=quantityColumns]','3');
+    expect(dom.window.document.querySelector<HTMLElement>('.field-preview-quantity-list')?.style.getPropertyValue('--quantity-columns')).toBe('3');
+    expect(input('quantityColumns').disabled).toBe(false);
+    select('[name=fieldType]','TEXT');expect(input('quantityColumns').disabled).toBe(true);
 });

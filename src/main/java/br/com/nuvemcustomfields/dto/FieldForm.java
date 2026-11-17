@@ -31,6 +31,12 @@ public class FieldForm {
     private String optionsText;
     private Integer minSelections;
     private Integer maxSelections;
+    @Min(value = 1, message = "quantity.columns.invalid")
+    @Max(value = 3, message = "quantity.columns.invalid")
+    private Integer quantityColumns = 1;
+    public Integer getQuantityColumns() { return quantityColumns == null ? 1 : quantityColumns; }
+    public void setQuantityColumns(Integer value) { quantityColumns = value == null ? 1 : value; }
+
     public Integer getMinSelections() { return minSelections; }
     public void setMinSelections(Integer value) { minSelections = value; }
     public Integer getMaxSelections() { return maxSelections; }

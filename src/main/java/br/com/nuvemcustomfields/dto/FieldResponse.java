@@ -23,12 +23,13 @@ public record FieldResponse(
         List<br.com.nuvemcustomfields.service.ColorOptions.Option> colorOptions,
         boolean showColorNames,
         Integer minSelections,
-        Integer maxSelections
+        Integer maxSelections,
+        Integer quantityColumns
 ) {
     public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
             String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns,
             Long id, int maxFiles, long maxFileBytes) {
-        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,id,maxFiles,maxFileBytes,List.of(),true,null,null);
+        this(label,type,required,maxLength,placeholder,pattern,property,options,images,zoom,columns,id,maxFiles,maxFileBytes,List.of(),true,null,null,1);
     }
     public FieldResponse(String label, FieldType type, boolean required, Integer maxLength, String placeholder,
             String pattern, String property, List<String> options, List<ImageOptionResponse> images, boolean zoom, Integer columns) {
@@ -63,7 +64,8 @@ public record FieldResponse(
                 field.getFieldType() == FieldType.COLOR_SELECT ? br.com.nuvemcustomfields.service.ColorOptions.parse(field.getOptionsText()) : List.of(),
                 field.isShowColorNames(),
                 field.getMinSelections(),
-                field.getMaxSelections()
+                field.getMaxSelections(),
+                field.getQuantityColumns()
         );
     }
 

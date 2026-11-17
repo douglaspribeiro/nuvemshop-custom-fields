@@ -61,7 +61,7 @@ class ProductFieldEditorCompatibilityTest {
             var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,id);
             var response=mvc.perform(post("/admin/products/130/fields").session(session).param("label","Flores")
                     .param("fieldType","QUANTITY_SELECT").param("optionsText","Rosa\nMargarida")
-                    .param("minSelections","7").param("maxSelections","7")).andReturn().getResponse();
+                    .param("minSelections","7").param("maxSelections","7").param("quantityColumns","3")).andReturn().getResponse();
             if (!plan.supportsQuantityOptions()) {
                 assertThat(response.getStatus()).isEqualTo(200);
                 assertThat(response.getContentAsString()).contains("disponíveis nos planos Pro e Ultra");
@@ -71,6 +71,8 @@ class ProductFieldEditorCompatibilityTest {
             assertThat(response.getStatus()).isEqualTo(302);entityManager.flush();entityManager.clear();
             var field=admin.requireRuleWithFields(id,130L).getFields().getFirst();
             assertThat(field.getFieldType()).isEqualTo(FieldType.QUANTITY_SELECT);
+            assertThat(field.getQuantityColumns()).isEqualTo(3);
+            assertThat(br.com.nuvemcustomfields.dto.FieldResponse.from(field).quantityColumns()).isEqualTo(3);
             assertThat(field.getMinSelections()).isEqualTo(7);assertThat(field.getMaxSelections()).isEqualTo(7);
             var html=mvc.perform(get("/admin/products/130/fields").session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertThat(html).contains("QUANTITY_SELECT","Opções com quantidade");

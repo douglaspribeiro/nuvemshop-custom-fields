@@ -113,7 +113,8 @@
                         <small class="field-help field-checkbox-limits" hidden th:attr="data-checkbox-text=#{checkbox.selections.help},data-quantity-text=#{quantity.help}" th:text="#{checkbox.selections.help}"></small>
                         <input type="hidden" name="validationPattern" th:value="${draft.validationPattern}">
                         <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
-                        <small class="field-help field-quantity-help" hidden th:text="#{quantity.plan.help}"></small>
+                        <label class="field-quantity-layout" hidden><span th:text="#{quantity.columns}"></span><select name="quantityColumns"><option value="1" th:selected="${draft.quantityColumns == 1}" th:text="#{quantity.columns.1}"></option><option value="2" th:selected="${draft.quantityColumns == 2}" th:text="#{quantity.columns.2}"></option><option value="3" th:selected="${draft.quantityColumns == 3}" th:text="#{quantity.columns.3}"></option></select><small class="field-help" th:text="#{quantity.columns.help}"></small></label>
+<small class="field-help field-quantity-help" hidden th:text="#{quantity.plan.help}"></small>
 <label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" th:value="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? draft.maxFiles : 1}" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
                         <label>
                             <span th:text="#{admin.fields.options}">Opcoes do select</span>
@@ -206,7 +207,8 @@
                 <small class="field-help field-checkbox-limits" hidden th:attr="data-checkbox-text=#{checkbox.selections.help},data-quantity-text=#{quantity.help}" th:text="#{checkbox.selections.help}"></small>
                 <input type="hidden" th:field="*{validationPattern}">
                 <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
-                <small class="field-help field-quantity-help" hidden th:text="#{quantity.plan.help}"></small>
+                <label class="field-quantity-layout" hidden><span th:text="#{quantity.columns}"></span><select name="quantityColumns"><option value="1" th:selected="${fieldForm.quantityColumns == 1}" th:text="#{quantity.columns.1}"></option><option value="2" th:selected="${fieldForm.quantityColumns == 2}" th:text="#{quantity.columns.2}"></option><option value="3" th:selected="${fieldForm.quantityColumns == 3}" th:text="#{quantity.columns.3}"></option></select><small class="field-help" th:text="#{quantity.columns.help}"></small></label>
+<small class="field-help field-quantity-help" hidden th:text="#{quantity.plan.help}"></small>
 <label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
                 <label>
                     <span th:text="#{admin.fields.options}">Opcoes do select</span>
@@ -263,7 +265,7 @@
         </div>
         <a class="button primary" th:href="@{/admin/billing}" th:text="#{merchant.fields.upgrade.cta}">Aumentar limite</a>
     </section>
-    <section class="panel">
+    <section class="panel field-template-save-panel">
         <h2 th:text="#{template.save.product}">Salvar como template</h2>
         <p class="muted" th:text="#{template.save.product.help}"></p>
         <button type="button" class="button" data-save-product-template th:attr="data-product-id=${rule.productId},data-name=${rule.productName}" th:text="#{template.save.product}"></button>

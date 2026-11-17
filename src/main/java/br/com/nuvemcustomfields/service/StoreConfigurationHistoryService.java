@@ -91,7 +91,7 @@ public class StoreConfigurationHistoryService {
                                 .thenComparing(PersonalizationField::getId)).map(field ->
                                 new Field(field.getId(), field.getLabel(), field.getFieldType(), field.isRequired(),
                                         field.getMaxLength(), field.getPlaceholder(), field.getValidationPattern(),
-                                        field.getOptionsText(), field.getImageOptionsJson(), field.getSortOrder(), field.isShowImageZoom(), field.getMobileImageColumns(), field.getMaxFiles(), field.isShowColorNames(), field.getMinSelections(), field.getMaxSelections())).toList())).toList();
+                                        field.getOptionsText(), field.getImageOptionsJson(), field.getSortOrder(), field.isShowImageZoom(), field.getMobileImageColumns(), field.getMaxFiles(), field.isShowColorNames(), field.getMinSelections(), field.getMaxSelections(), field.getQuantityColumns())).toList())).toList();
         var recentLogs = logs.findTop20ByStoreIdOrderByCreatedAtDesc(store.getStoreId()).stream()
                 .map(log -> new Log(log.getCreatedAt(), log.getLevel(), log.getEventType(), log.getMessage())).toList();
         return new Configuration(store.getEffectivePlan(), store.isBillingSuspended(), store.getScope(),
@@ -105,11 +105,12 @@ public class StoreConfigurationHistoryService {
     public record Product(Long productId, String productName, boolean enabled, Instant createdAt, List<Field> fields) { }
     public record Field(Long id, String label, FieldType fieldType, boolean required, Integer maxLength,
             String placeholder, String validationPattern, String optionsText, String imageOptionsJson, Integer sortOrder,
-            Boolean showImageZoom, Integer mobileImageColumns, Integer maxFiles, Boolean showColorNames, Integer minSelections, Integer maxSelections) {
+            Boolean showImageZoom, Integer mobileImageColumns, Integer maxFiles, Boolean showColorNames, Integer minSelections, Integer maxSelections, Integer quantityColumns) {
         public Field {
             if (showImageZoom == null) showImageZoom = true;
             if (showColorNames == null) showColorNames = true;
             if (maxFiles == null) maxFiles = 1;
+            if (quantityColumns == null) quantityColumns = 1;
         }
         public List<String> imageLabels() {
             return ImageOptions.parse(imageOptionsJson).stream().map(br.com.nuvemcustomfields.dto.ImageOption::label).toList();

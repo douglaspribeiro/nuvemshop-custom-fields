@@ -70,7 +70,7 @@ class StoreTemplatesTest {
     List<PersonalizationField> product(long id) {return fields.findWithRuleByStoreId(store).stream().filter(f->f.getRule().getProductId()==id).toList();}
     @Test void quantityOptionsRespectPlanOnCreationAndApplicationAndSurviveBatchCopying() {
         var form=new FieldForm();form.setLabel("Flores");form.setFieldType(FieldType.QUANTITY_SELECT);
-        form.setOptionsText("Rosa\nMargarida");form.setMinSelections(7);form.setMaxSelections(7);
+        form.setQuantityColumns(3);form.setOptionsText("Rosa\nMargarida");form.setMinSelections(7);form.setMaxSelections(7);
         var model=templates.create(store,"Buquê com quantidades","",List.of(TemplateFieldDefinition.from(form)));
         assertThat(apply(model,123,StoreTemplateService.Mode.REPLACE)).isEqualTo(1);
         assertThat(product(123).getFirst().getFieldType()).isEqualTo(FieldType.QUANTITY_SELECT);

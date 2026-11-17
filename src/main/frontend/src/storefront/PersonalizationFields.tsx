@@ -1,7 +1,7 @@
 import { Checkbox, NumberField, Button, Column, Field, Image, Link, Row, Select, Text, Textarea } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent } from "@tiendanube/nube-sdk-types";
 import { styled } from "@tiendanube/nube-sdk-ui";
-import { quantityMap, quantityTotal } from "./quantity-options";
+import { quantityMap, quantityTotal, quantityColumns } from "./quantity-options";
 import { messages } from "../shared/i18n";
 import type { PersonalizationField } from "../shared/config";
 import { type FieldError, type FieldValue, type ValueMap, keyOf } from "./values";
@@ -22,11 +22,19 @@ function mobileImageGrid(columns: 2 | 3) {
         }
     `;
 }
-const QuantityGrid = styled(Column)`
-    display:grid;grid-template-columns:minmax(0,1fr);gap:10px;
-    & > * {min-width:0;}
-    @media(min-width:700px){grid-template-columns:repeat(2,minmax(0,1fr));}
-`;
+function quantityGrid(columns: 1 | 2 | 3) {
+    return styled(Column)`
+        display:grid;grid-template-columns:minmax(0,1fr);column-gap:24px;row-gap:0;
+        @media(min-width:700px){grid-template-columns:repeat(auto-fit,minmax(min(100%,max(170px,calc((100% - ${(columns - 1) * 24}px) / ${columns}))),1fr));}
+    `;
+}
+const QuantityGrids = {1:quantityGrid(1),2:quantityGrid(2),3:quantityGrid(3)};
+const quantityInk = "var(--main-foreground, #333333)";
+const quantitySurface = "var(--main-background, #ffffff)";
+const quantityButtonStyle = {
+    backgroundColor:quantitySurface,color:quantityInk,border:"1px solid currentColor",borderRadius:"50%",
+    width:"34px",height:"34px",minWidth:"34px",minHeight:"34px",padding:"0",fontSize:"18px",lineHeight:"1",boxShadow:"none",
+};
 const TwoColumnImageGrid = mobileImageGrid(2);
 const ThreeColumnImageGrid = mobileImageGrid(3);
 
@@ -93,17 +101,28 @@ function input(
 
     if (field.fieldType === "QUANTITY_SELECT") {
         const quantities = quantityMap(selected) ?? {}, total = quantityTotal(quantities);
-        const children: NubeComponent[] = [<Text color={color}>{label}</Text>,
-            <QuantityGrid gap={10}>{[...new Set(field.options)].map((option, index) => <NumberField key={`${name}__quantity_${index}`}
-                name={`${name}__quantity_${index}`} label={option} value={Object.prototype.hasOwnProperty.call(quantities, option) ? quantities[option] : 0}
-                min={0} step={1} max={field.maxSelections ?? Number.MAX_SAFE_INTEGER}
-                style={{ label: {...labelStyle, overflowWrap:"anywhere"}, container:{padding:"12px",border:"1px solid #ddd",borderRadius:"8px"} }} onChange={event => {
+        const Grid = QuantityGrids[quantityColumns(field)];
+        const hint = messages(locale).quantityRange(Math.max(field.required ? 1 : 0, field.minSelections ?? 0),field.maxSelections);
+        const children: NubeComponent[] = [<Text color={color}>{label}</Text>];
+        if (hint) children.push(<Text color={color} style={{fontSize:"13px",opacity:"0.8"}}>{hint}</Text>);
+        children.push(<Grid>{[...new Set(field.options)].map((option, index) => {
+            const value = Object.prototype.hasOwnProperty.call(quantities, option) ? quantities[option] : 0;
+            // Native max stops only increments beyond the remaining total; existing values can still be reduced.
+            const remaining = field.maxSelections == null ? Number.MAX_SAFE_INTEGER : Math.max(value, value + field.maxSelections - total);
+            return <NumberField key={`${name}__quantity_${index}`} name={`${name}__quantity_${index}`} label={option}
+                value={value} min={0} step={1} max={remaining}
+                style={{
+                    container:{minWidth:"0",padding:"10px 0",border:"0",borderBottom:"1px solid color-mix(in srgb, var(--main-foreground, #333333) 16%, transparent)",borderRadius:"0",display:"flex",flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:"12px",backgroundColor:"transparent"},
+                    label:{...labelStyle,color:color || quantityInk,fontSize:"14px",lineHeight:"1.4",overflowWrap:"anywhere",minWidth:"0",margin:"0",flex:"1"},
+                    wrapper:{display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",width:"110px",minWidth:"110px",flexShrink:"0",padding:"0",border:"0",backgroundColor:"transparent"},
+                    input:{color:quantityInk,backgroundColor:"transparent",border:"0",width:"30px",minWidth:"30px",maxWidth:"30px",padding:"0",fontSize:"14px",textAlign:"center",boxShadow:"none"},
+                    incrementButton:quantityButtonStyle,decrementButton:quantityButtonStyle,
+                }} onChange={event => {
                     onValueChange(key, Object.fromEntries([...new Set(field.options)].map(candidate => [candidate,
                         candidate === option ? Number(event.value ?? 0) : Object.prototype.hasOwnProperty.call(quantities, candidate) ? quantities[candidate] : 0])));
-                }} />)}</QuantityGrid>,
-            <Text color={color}>{messages(locale).quantityCount(total, field.maxSelections)}</Text>];
-        if (field.minSelections) children.push(<Text color={color}>{messages(locale).quantityMin(field.minSelections)}</Text>);
-        return <Column gap={8}>{children}</Column>;
+                }} />;
+        })}</Grid>,<Text color={color} style={{fontSize:"13px",opacity:"0.85"}}>{messages(locale).quantityCount(total, field.maxSelections)}</Text>);
+        return <Column gap={6}>{children}</Column>;
     }
     if (field.fieldType === "CHECKBOX") {
         if (field.options.length) {

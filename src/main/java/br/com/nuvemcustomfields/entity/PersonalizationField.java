@@ -73,6 +73,12 @@ public class PersonalizationField {
     private Integer minSelections;
     @Column(name = "max_selections")
     private Integer maxSelections;
+    @Column(name = "quantity_columns", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("1")
+    private Integer quantityColumns = 1;
+    public Integer getQuantityColumns() { return quantityColumns == null ? 1 : quantityColumns; }
+    public void setQuantityColumns(Integer value) { quantityColumns = value == null ? 1 : value; }
+
     public Integer getMinSelections() { return minSelections; }
     public void setMinSelections(Integer value) { minSelections = value; }
     public Integer getMaxSelections() { return maxSelections; }
