@@ -3,6 +3,23 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.69.0] - 2026-11-16
+
+### Features
+
+- add option quantities for Pro and Ultra plans (`a6515e2`)
+- add minimum and maximum checkbox selections (`097ad98`)
+
+### Correções
+
+- teste quebrado (`9ab24c5`)
+- show hourly average requests per second in Grafana (`63cde79`)
+- identify subscription renewals in Discord notifications (`f7e5b02`)
+
+### Documentação
+
+- update listing, support tracking and endpoint dashboards (`19fcfce`)
+
 ## [1.68.0] - 2026-11-12
 
 ### Features
