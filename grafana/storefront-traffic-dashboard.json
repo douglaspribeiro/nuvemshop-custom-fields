@@ -526,9 +526,9 @@
     {
       "id": 10,
       "type": "stat",
-      "title": "Saúde da coleta · principal",
+      "title": "Requests/s · última hora",
       "datasource": "${DS_PROMETHEUS}",
-      "description": "1 = última coleta bem-sucedida; 0 = coleta falhou. Ausência de dados não comprova tráfego zero. Não mede diretamente disponibilidade pública.",
+      "description": "Média de requisições por segundo na última hora, somando todos os tipos do contador de tráfego da vitrine e checkout (inclui scripts). Não inclui telas administrativas. Janela fixa de 1h; ausência de coleta não é convertida em tráfego zero.",
       "gridPos": {
         "x": 12,
         "y": 28,
@@ -537,8 +537,8 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
-          "decimals": 0
+          "unit": "reqps",
+          "decimals": 2
         },
         "overrides": []
       },
@@ -555,12 +555,14 @@
       },
       "targets": [
         {
-          "expr": "max(up{job=\"app-custom-fields\"})",
+          "expr": "sum(rate(ncf_storefront_http_requests_total{job=\"app-custom-fields\"}[1h]))",
           "instant": true,
           "range": false,
           "refId": "A"
         }
-      ]
+      ],
+      "timeFrom": "1h",
+      "hideTimeOverride": true
     },
     {
       "id": 11,
