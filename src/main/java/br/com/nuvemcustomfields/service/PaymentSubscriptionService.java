@@ -185,6 +185,12 @@ public class PaymentSubscriptionService {
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)
     public void payWithEfi(Long storeId, PlanType plan, EfiGateway.EfiPayer payer, String paymentToken, String couponCode) {
+        payWithEfi(storeId, plan, payer, paymentToken, couponCode, null, null);
+    }
+
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public void payWithEfi(Long storeId, PlanType plan, EfiGateway.EfiPayer payer, String paymentToken, String couponCode,
+            BigDecimal quotedFirstAmount, BigDecimal quotedRegularAmount) {
         if (plan == null || !plan.isBillable()) throw new IllegalArgumentException("Selecione um plano pago.");
         if (payer == null || !validPayer(payer) || paymentToken == null || !paymentToken.matches("[a-zA-Z0-9]{20,120}")) {
             throw new IllegalArgumentException("Confira os dados do pagador e do cartão.");
@@ -225,6 +231,11 @@ public class PaymentSubscriptionService {
                 throw new PaymentGatewayException("A assinatura anterior precisa ser conciliada antes de uma nova cobrança.");
         }
         if (local != null && local.isAccessActive()) throw new IllegalArgumentException("A loja já possui uma assinatura ativa.");
+        if (quotedFirstAmount != null || quotedRegularAmount != null) {
+            var preview = hasText(couponCode) ? efiQuote(store, plan, couponCode)
+                    : new WinbackDiscountService.Quote(null, efi.amount(plan), efi.amount(plan));
+            validateEfiQuote(preview, quotedFirstAmount, quotedRegularAmount);
+        }
         if (local != null && local.getStatus() == PaymentSubscriptionStatus.PENDING
                 && local.getProvider() != PaymentProviderType.EFI
                 && hasText(local.getProviderSubscriptionId())) {
@@ -258,6 +269,7 @@ public class PaymentSubscriptionService {
                 ? new WinbackDiscountService.Quote(null, efi.amount(plan), efi.amount(plan))
                 : winbackDiscounts.reserve(store, plan, couponCode, reference);
         if (winbackDiscounts == null && hasText(couponCode)) throw new IllegalArgumentException("Cupom indisponível.");
+        validateEfiQuote(quote, quotedFirstAmount, quotedRegularAmount);
         local.applyWinbackCoupon(quote.code(), quote.discounted() ? quote.regularAmount() : null,
                 quote.discounted() ? quote.firstAmount() : null);
         local.setProvider(PaymentProviderType.EFI);
@@ -334,6 +346,12 @@ public class PaymentSubscriptionService {
             subscriptions.save(local);
             throw ex;
         }
+    }
+
+    private static void validateEfiQuote(WinbackDiscountService.Quote quote, BigDecimal first, BigDecimal regular) {
+        if ((first != null || regular != null) && (first == null || regular == null
+                || first.compareTo(quote.firstAmount()) != 0 || regular.compareTo(quote.regularAmount()) != 0))
+            throw new IllegalArgumentException("O preço ou o cupom mudou. Confira os valores antes de pagar novamente.");
     }
 
     private static boolean validPayer(EfiGateway.EfiPayer payer) {
@@ -1350,6 +1368,12 @@ public class PaymentSubscriptionService {
     public WinbackDiscountService.Quote efiQuote(Store store, PlanType plan) {
         return winbackDiscounts == null ? new WinbackDiscountService.Quote(null, efi.amount(plan), efi.amount(plan))
                 : winbackDiscounts.quote(store, plan);
+    }
+
+    public WinbackDiscountService.Quote efiQuote(Store store, PlanType plan, String couponCode) {
+        if (couponCode == null || couponCode.isBlank()) return efiQuote(store, plan);
+        if (winbackDiscounts == null) throw new IllegalArgumentException("Cupom indisponível.");
+        return winbackDiscounts.quote(store, plan, couponCode);
     }
 
     @Transactional

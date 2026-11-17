@@ -613,7 +613,7 @@
     },
     {
       "id": 52,
-      "title": "Todos os endpoints HTTP · lentidão e chamadas da última hora",
+      "title": "Endpoints HTTP · lentidão acima de 500 ms · última hora",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -668,7 +668,7 @@
     },
     {
       "id": 54,
-      "title": "Nginx · chamadas ≥ 1 s na última hora",
+      "title": "Nginx · chamadas > 500 ms na última hora",
       "type": "stat",
       "datasource": {
         "type": "loki",
@@ -691,7 +691,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | request_time >= 1 [1h])) or (sum(count_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` [1h])) * 0)",
+          "expr": "sum(count_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | request_time > 0.5 [1h])) or (sum(count_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` [1h])) * 0)",
           "refId": "A",
           "queryType": "instant"
         }
@@ -707,7 +707,7 @@
           "values": false
         }
       },
-      "description": "Tempo total no Nginx, que inclui transferência e espera pelo backend. Zero somente quando existem logs no período; ausência de logs permanece sem dados."
+      "description": "Exibe somente chamadas com tempo total estritamente acima de 500 ms no Nginx. Tempo total no Nginx, que inclui transferência e espera pelo backend. Zero somente quando existem logs no período; ausência de logs permanece sem dados."
     },
     {
       "id": 55,
@@ -753,7 +753,7 @@
     },
     {
       "id": 56,
-      "title": "Aplicação · endpoints mais lentos e volume · 1 h",
+      "title": "Aplicação · endpoints com média > 500 ms e volume · 1 h",
       "type": "table",
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
@@ -806,21 +806,21 @@
       },
       "targets": [
         {
-          "expr": "1000 * sum by (method,uri) (increase(http_server_requests_seconds_sum{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) / (sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0)",
+          "expr": "(1000 * sum by (method,uri) (increase(http_server_requests_seconds_sum{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) / (sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0)) > 500",
           "refId": "A",
           "instant": true,
           "range": false,
           "format": "table"
         },
         {
-          "expr": "sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0",
+          "expr": "(sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0) and on (method, uri) ((1000 * sum by (method,uri) (increase(http_server_requests_seconds_sum{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) / (sum by (method,uri) (increase(http_server_requests_seconds_count{job=\"app-custom-fields\",uri!~\"/actuator.*|/__deploy/.*|/support/health-check\"}[1h])) > 0)) > 500)",
           "refId": "B",
           "instant": true,
           "range": false,
           "format": "table"
         }
       ],
-      "description": "Tempo médio medido dentro do Spring por método e rota normalizada, com volume estimado da última hora. Poucas chamadas podem gerar médias altas sem comprovar lentidão recorrente. Os contadores tratam reinícios; não há histogramas por endpoint publicados, portanto não se inventa P95 da aplicação.",
+      "description": "Exibe somente endpoints cuja média na última hora é estritamente superior a 500 ms; o volume corresponde aos mesmos endpoints. Tempo médio medido dentro do Spring por método e rota normalizada, com volume estimado da última hora. Poucas chamadas podem gerar médias altas sem comprovar lentidão recorrente. Os contadores tratam reinícios; não há histogramas por endpoint publicados, portanto não se inventa P95 da aplicação.",
       "options": {
         "cellHeight": "sm",
         "showHeader": true
@@ -865,7 +865,7 @@
     },
     {
       "id": 57,
-      "title": "Nginx · P95 por endpoint · 1 h",
+      "title": "Nginx · P95 por endpoint > 500 ms · 1 h",
       "type": "table",
       "datasource": {
         "type": "loki",
@@ -888,12 +888,12 @@
       },
       "targets": [
         {
-          "expr": "1000 * topk(20,quantile_over_time(0.95,{container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | unwrap request_time | __error__=\"\" [1h]) by(method,endpoint))",
+          "expr": "(1000 * topk(20,quantile_over_time(0.95,{container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | unwrap request_time | __error__=\"\" [1h]) by(method,endpoint))) > 500",
           "refId": "A",
           "queryType": "instant"
         }
       ],
-      "description": "95% das chamadas do endpoint terminam até este tempo. Medido nos logs do Nginx; inclui transferência do cliente e backend. IDs e trechos longos são agrupados para evitar uma linha por arquivo/loja.",
+      "description": "Exibe somente endpoints com P95 estritamente acima de 500 ms na última hora. 95% das chamadas do endpoint terminam até este tempo. Medido nos logs do Nginx; inclui transferência do cliente e backend. IDs e trechos longos são agrupados para evitar uma linha por arquivo/loja.",
       "options": {
         "cellHeight": "sm",
         "showHeader": true
@@ -933,7 +933,7 @@
     },
     {
       "id": 58,
-      "title": "Nginx · espera média pelo backend · 1 h",
+      "title": "Nginx · espera média pelo backend > 500 ms · 1 h",
       "type": "table",
       "datasource": {
         "type": "loki",
@@ -956,12 +956,12 @@
       },
       "targets": [
         {
-          "expr": "1000 * topk(20,avg_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | upstream_response_time!=\"-\" | unwrap upstream_response_time | __error__=\"\" [1h]) by(method,endpoint))",
+          "expr": "(1000 * topk(20,avg_over_time({container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | upstream_response_time!=\"-\" | unwrap upstream_response_time | __error__=\"\" [1h]) by(method,endpoint))) > 500",
           "refId": "A",
           "queryType": "instant"
         }
       ],
-      "description": "Tempo médio de resposta do upstream. Comparar com o tempo total do Nginx ajuda a separar processamento do backend e transferência. Valores com múltiplas tentativas ou sem upstream não são convertidos em zero.",
+      "description": "Exibe somente endpoints com espera média pelo backend estritamente acima de 500 ms na última hora. Tempo médio de resposta do upstream. Comparar com o tempo total do Nginx ajuda a separar processamento do backend e transferência. Valores com múltiplas tentativas ou sem upstream não são convertidos em zero.",
       "options": {
         "cellHeight": "sm",
         "showHeader": true
@@ -1001,7 +1001,7 @@
     },
     {
       "id": 59,
-      "title": "Nginx · chamadas demoradas (≥ 1 s) · 1 h",
+      "title": "Nginx · chamadas demoradas (> 500 ms) · 1 h",
       "type": "logs",
       "datasource": {
         "type": "loki",
@@ -1024,7 +1024,7 @@
       },
       "targets": [
         {
-          "expr": "{container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | request_time >= 1 | line_format `{{.time}} {{.method}} {{.endpoint}} status={{.status}} total_s={{.request_time}} backend_s={{.upstream_response_time}}` | keep method,endpoint,status",
+          "expr": "{container=\"nginx\"} | json host=\"host\", uri=\"uri\", method=\"method\", status=\"status\", request_time=\"request_time\", upstream_response_time=\"upstream_response_time\", time=\"time\" | host=\"campos-personalizados.wzhub.pro\" | __error__=\"\" | label_format endpoint=`{{ regexReplaceAll \"/[^/]{24,}\" (regexReplaceAll \"/[0-9][^/]*\" .uri \"/{id}\") \"/{id}\" }}` | request_time > 0.5 | line_format `{{.time}} {{.method}} {{.endpoint}} status={{.status}} total_s={{.request_time}} backend_s={{.upstream_response_time}}` | keep method,endpoint,status",
           "refId": "A",
           "queryType": "range",
           "maxLines": 100
@@ -1039,7 +1039,7 @@
         "enableLogDetails": true,
         "prettifyLogMessage": false
       },
-      "description": "Exemplos reais acima de 1 segundo, com tempo total e tempo do backend. Não exibe IP, query string, referer ou user-agent. Vazio significa nenhuma ocorrência encontrada nos logs disponíveis, não erro da aplicação."
+      "description": "Exibe somente chamadas com tempo total estritamente acima de 500 ms no Nginx. Exemplos reais acima de 1 segundo, com tempo total e tempo do backend. Não exibe IP, query string, referer ou user-agent. Vazio significa nenhuma ocorrência encontrada nos logs disponíveis, não erro da aplicação."
     },
     {
       "datasource": "${DS_PROMETHEUS}",

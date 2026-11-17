@@ -14,10 +14,12 @@ import java.util.Locale;
  */
 public class AppLocaleResolver implements LocaleResolver {
 
+    public static final String REQUEST_KEY = "appRequestLocale";
     public static final String SESSION_KEY = "appLocale";
 
     @Override
     public Locale resolveLocale(HttpServletRequest request) {
+        if (request.getAttribute(REQUEST_KEY) instanceof Locale locale) return locale;
         HttpSession session = request.getSession(false);
         if (session != null && session.getAttribute(SESSION_KEY) instanceof Locale locale) {
             return locale;

@@ -53,5 +53,20 @@ class BackofficeUpgradeCouponsTest {
                 .param("actionToken",token).param("confirmation","EXCLUIR")).andExpect(status().is3xxRedirection());
         assertThat(coupons.findByCode("MVC_CUPOM")).isEmpty();
     }
+    @Test void createsCouponsForFirstMonthWithoutChangingExistingUpgradeCoupons() throws Exception {
+        var session=admin();
+        var html=mvc.perform(get("/backoffice/payments/coupons").session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("Primeira mensalidade", "Finalidade");
+        String token=(String)session.getAttribute(BackofficeUpgradeCouponsController.TOKEN_KEY);
+        mvc.perform(post("/backoffice/payments/coupons").session(session).param("actionToken",token)
+                .param("code","PRIMEIRO30").param("discountPercent","30").param("environment","SANDBOX")
+                .param("targetPlan","PREMIUM").param("purpose","FIRST_PAYMENT").param("enabled","true"))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("message"));
+        var coupon=coupons.findByCode("PRIMEIRO30").orElseThrow();
+        assertThat(coupon.getPurpose()).isEqualTo(br.com.nuvemcustomfields.entity.UpgradeCoupon.Purpose.FIRST_PAYMENT);
+        assertThat(coupon.getDiscountPercent()).isEqualByComparingTo("30");
+    }
+
     private MockHttpSession admin(){var s=new MockHttpSession();s.setAttribute(BackofficeSessionInterceptor.SESSION_KEY,true);return s;}
 }

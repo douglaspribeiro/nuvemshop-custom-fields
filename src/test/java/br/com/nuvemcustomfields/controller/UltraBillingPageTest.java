@@ -188,7 +188,7 @@ class UltraBillingPageTest {
         assertThat(plans).contains("75 produtos personalizados", "6 campos por produto",
                         "2 GB de armazenamento", "10 GB de armazenamento", "até 20 MB por arquivo", "90 dias após o pedido")
                 .doesNotContain("20 GB de armazenamento", "50 produtos personalizados", "Templates por nicho", "??billing.");
-        assertThat(plans.split("Editor de campos, modelos reutilizáveis",-1)).hasSize(2);
+        assertThat(plans.split("billing-shared-features",-1)).hasSize(2);
         if (Boolean.getBoolean("ncf.billing.export")) {
             String html=plans.replaceAll("(?s)<script\\b[^>]*>.*?</script>", "");
             for (String stylesheet : java.util.List.of("app.css","merchant.css","billing.css")) {

@@ -204,8 +204,8 @@ winback:
   discount:
     enabled: ${WINBACK_DISCOUNT_ENABLED:false}
     allow-production: ${WINBACK_DISCOUNT_ALLOW_PRODUCTION:false}
-  enabled: ${WINBACK_ENABLED:false}
-  mail-enabled: ${WINBACK_MAIL_ENABLED:false}
+  enabled: ${WINBACK_ENABLED:true}
+  mail-enabled: ${WINBACK_MAIL_ENABLED:true}
   queue-url: ${WINBACK_SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao}
   region: ${WINBACK_AWS_REGION:us-east-2}
   publish-delay-ms: 30000

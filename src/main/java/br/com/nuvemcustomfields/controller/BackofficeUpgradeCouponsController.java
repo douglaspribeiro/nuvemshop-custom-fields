@@ -29,6 +29,7 @@ public class BackofficeUpgradeCouponsController {
         model.addAttribute("coupons",catalog);model.addAttribute("couponUses",coupons.recentUses());
         model.addAttribute("couponNames",catalog.stream().collect(java.util.stream.Collectors.toMap(UpgradeCoupon::getId,UpgradeCoupon::getCode)));
         model.addAttribute("environments",PaymentEnvironment.values());
+        model.addAttribute("couponPurposes", UpgradeCoupon.Purpose.values());
         model.addAttribute("couponPlans",new PlanType[]{PlanType.PREMIUM,PlanType.PREMIUM_PLUS,PlanType.PREMIUM_ULTRA});
         return "backoffice/upgrade-coupons";
     }
@@ -37,11 +38,12 @@ public class BackofficeUpgradeCouponsController {
             @RequestParam BigDecimal discountPercent,@RequestParam PaymentEnvironment environment,@RequestParam PlanType targetPlan,
             @RequestParam(defaultValue="false") boolean enabled,@RequestParam(defaultValue="") String startsAt,
             @RequestParam(defaultValue="") String endsAt,@RequestParam(required=false) Integer maxUses,
-            @RequestParam(defaultValue="1") int maxUsesPerStore,HttpSession session,RedirectAttributes flash){
+            @RequestParam(defaultValue="1") int maxUsesPerStore,
+            @RequestParam(defaultValue="UPGRADE") UpgradeCoupon.Purpose purpose,HttpSession session,RedirectAttributes flash){
         validate(session,actionToken);
         try{
-            coupons.save(id,code,discountPercent,environment,targetPlan,enabled,date(startsAt),date(endsAt),maxUses,maxUsesPerStore);
-            flash.addFlashAttribute("message","Cupom salvo. O desconto vale somente para o ajuste deste ciclo, sem alterar a mensalidade recorrente.");
+            coupons.save(id,code,discountPercent,environment,targetPlan,enabled,date(startsAt),date(endsAt),maxUses,maxUsesPerStore,purpose);
+            flash.addFlashAttribute("message","Cupom salvo. O desconto vale somente na finalidade escolhida; as mensalidades seguintes mantêm o valor integral.");
         }catch(IllegalArgumentException ex){flash.addFlashAttribute("error",ex.getMessage());}
         catch(org.springframework.dao.DataIntegrityViolationException ex){flash.addFlashAttribute("error","Já existe um cupom com este código. Atualize a lista.");}
         return "redirect:/backoffice/payments/coupons";

@@ -93,7 +93,7 @@ public class WinbackCampaignService {
         if (!smtp.configured() || !StringUtils.hasText(ses.configurationSet()))
             throw new IllegalStateException("Configure SES e Configuration Set antes de disparar a reconquista.");
         var event = outbox.findById(eventId).orElse(null);
-        if (event == null || !homolog.allows(event.getStoreId())) return null;
+        if (event == null) return null;
         var store = stores.findByStoreIdForUpdate(event.getStoreId()).orElse(null);
         if (store == null || store.getAccessBlockedAt() != null || store.isActive() || store.isErasurePending() || !event.getUninstalledAt().equals(store.getUninstalledAt())) return null;
         if (event.getPublishedAt() == null) return null;
@@ -113,12 +113,13 @@ public class WinbackCampaignService {
         String campaignId = emails.campaignIdFor(emailId).orElse(null);
         if (campaignId == null) return;
         var storeId = campaigns.storeIdFor(campaignId).orElse(null);
-        if (!homolog.allows(storeId)) return;
         // Locks held through SMTP: redact and reinstall cannot race the eligibility check.
         var store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         var campaign = campaigns.findById(campaignId).orElse(null);
         var mail = emails.findById(emailId).orElse(null);
         if (campaign == null || mail == null || store == null) return;
+        // Initial uninstall feedback is available to all stores; later steps keep their release gate.
+        if (!"FEEDBACK".equals(mail.getStep()) && !homolog.allows(storeId)) return;
         if (!"SENDING".equals(mail.getStatus())) return;
         boolean featureDelivered = "FEATURE_DELIVERED".equals(mail.getStep());
         if (store.getAccessBlockedAt() != null || (store.isErasurePending() && !authorizedPendingContact(store, mail)) || (!featureDelivered && (store.isActive() || !campaign.getUninstalledAt().equals(store.getUninstalledAt())
@@ -183,6 +184,14 @@ public class WinbackCampaignService {
         if (storeId == null || stores.findByStoreId(storeId).map(s -> s.isErasurePending() && !authorizedPendingContact(s, mail)).orElse(true))
             throw new ResponseStatusException(HttpStatus.GONE);
         return mail;
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Locale publicLocale(String id) {
+        var mail = publicEmail(id);
+        var store = campaigns.storeIdFor(mail.getCampaignId()).flatMap(stores::findByStoreId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.GONE));
+        return br.com.nuvemcustomfields.i18n.StoreLocale.forCountry(store.getStoreCountryCode());
     }
 
     @Transactional

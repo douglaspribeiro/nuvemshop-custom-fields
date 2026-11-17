@@ -1,23 +1,52 @@
-<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<meta name="robots" content="noindex,nofollow"><title>Campos Personalizados</title>
-<link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
-</head><body><main class="shell"><section class="panel">
-<h1>Como podemos melhorar? / ¿Cómo podemos mejorar?</h1>
-<p>Conte o motivo da saída. / Cuéntanos por qué desinstalaste la aplicación.</p>
-<div th:if="${coupon != null}"><h2>Seu cupom de retorno</h2><p><strong th:text="${coupon.code}"></strong></p>
-<p>50% apenas na primeira mensalidade, após reinstalar na mesma loja. As mensalidades seguintes terão o valor integral.
-Válido até <span th:attr="data-local-time=${coupon.expiresAt}" data-time-format="date" th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
-<a class="button primary" th:href="@{/install}">Reinstalar e escolher um plano</a></div>
-<p th:if="${coupon == null}"><a class="button" th:href="@{/install}">Voltar ao aplicativo / Volver a la aplicación</a></p>
-<p th:if="${expired}">O prazo para responder terminou. / El plazo para responder terminó.</p>
-<form th:if="${!expired}" method="post" th:action="@{/winback/{id}(id=${emailId})}"><label for="reason">Motivo</label>
-<select id="reason" name="reason" required><option value="">Selecione / Selecciona</option>
-<option value="PRICE">Preço / Precio</option><option value="CONFIGURATION">Dificuldade de configuração / Dificultad de configuración</option>
-<option value="NO_LONGER_NEEDED">Não preciso mais / Ya no lo necesito</option>
-<option value="MISSING_FEATURE">Faltou uma funcionalidade / Falta una funcionalidad</option><option value="OTHER">Outro / Otro</option></select>
-<label for="response">O que podemos fazer por você? / ¿Cómo podemos ayudarte?</label><textarea id="response" name="response" maxlength="2000" rows="5"></textarea>
-<button class="button primary" type="submit">Enviar</button></form>
-<form method="post" th:action="@{/winback/{id}(id=${emailId})}"><input type="hidden" name="optOut" value="true">
-<button class="button" type="submit">Não receber novas mensagens / Dejar de recibir mensajes</button></form>
-</section></main></body></html>
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex,nofollow">
+    <title th:text="#{winback.page.title}"></title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/winback.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+</head>
+<body class="winback-page">
+<main class="shell winback-shell">
+    <p class="winback-brand">Campos Personalizados</p>
+    <section class="panel winback-card" aria-labelledby="feedback-title">
+        <header class="winback-heading">
+            <p class="eyebrow" th:text="#{winback.feedback.eyebrow}"></p>
+            <h1 id="feedback-title" th:text="#{winback.feedback.title}"></h1>
+            <p th:text="#{winback.feedback.intro}"></p>
+        </header>
+        <p class="notice" th:if="${expired}" th:text="#{winback.feedback.expired}"></p>
+        <form class="form winback-form" th:if="${!expired}" method="post" th:action="@{/winback/{id}(id=${emailId})}">
+            <label for="reason"><span th:text="#{winback.feedback.reason}"></span>
+                <select id="reason" name="reason" required>
+                    <option value="" th:text="#{winback.feedback.choose}"></option>
+                    <option th:each="reason : ${ {'PRICE','CONFIGURATION','NO_LONGER_NEEDED','MISSING_FEATURE','OTHER'} }"
+                            th:value="${reason}" th:text="#{'winback.reason.' + ${reason}}"></option>
+                </select>
+            </label>
+            <label for="response"><span th:text="#{winback.feedback.response}"></span>
+                <textarea id="response" name="response" maxlength="2000" rows="5"
+                          aria-describedby="response-help" th:placeholder="#{winback.feedback.placeholder}"></textarea>
+            </label>
+            <p id="response-help" class="field-help" th:text="#{winback.feedback.help}"></p>
+            <div class="winback-actions">
+                <button class="button primary" type="submit" th:text="#{winback.feedback.send}"></button>
+                <a th:href="@{/install}" th:text="#{winback.back}"></a>
+            </div>
+        </form>
+        <a class="button" th:if="${expired}" th:href="@{/install}" th:text="#{winback.back}"></a>
+        <th:block th:replace="~{winback/fragments :: coupon}"></th:block>
+        <footer class="winback-footer">
+            <form method="post" th:action="@{/winback/{id}(id=${emailId})}">
+                <input type="hidden" name="optOut" value="true">
+                <button class="winback-optout" type="submit" th:text="#{winback.optout}"></button>
+            </form>
+        </footer>
+    </section>
+</main>
+</body>
+</html>

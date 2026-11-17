@@ -5,14 +5,41 @@ import java.time.Instant;
 
 @Entity
 @Table(name="upgrade_coupon_uses")
-public class UpgradeCouponUse {
+public class UpgradeCouponUse implements EfiFirstPaymentDiscountUse {
     public enum Status { RESERVED, USED, RELEASED }
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @Column(nullable=false) private Long couponId;
     @Column(nullable=false) private Long storeId;
-    @Column(nullable=false,unique=true,length=36) private String adjustmentId;
+    @Column(unique=true,length=36) private String adjustmentId;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=20) private Status status=Status.RESERVED;
     @Column(nullable=false) private Instant createdAt=Instant.now();
+    @Column(unique=true, length=64) private String paymentReference;
+    @Column(length=36) private String couponCode;
+    @Column(length=120) private String subscriptionId;
+    @Column(length=120) private String firstPaymentId;
+    @Column(precision=12, scale=2) private java.math.BigDecimal regularAmount;
+    @Column(precision=12, scale=2) private java.math.BigDecimal firstAmount;
+    private Instant usedAt;
+    private Instant priceRestoredAt;
+    private Instant recurrenceStoppedAt;
+    public String getPaymentReference() { return paymentReference; }
+    public String getExternalReference() { return paymentReference; }
+    public String getCouponCode() { return couponCode; }
+    public String getSubscriptionId() { return subscriptionId; }
+    public String getFirstPaymentId() { return firstPaymentId; }
+    public java.math.BigDecimal getRegularAmount() { return regularAmount; }
+    public java.math.BigDecimal getFirstAmount() { return firstAmount; }
+    public Instant getUsedAt() { return usedAt; }
+    public Instant getPriceRestoredAt() { return priceRestoredAt; }
+    public Instant getRecurrenceStoppedAt() { return recurrenceStoppedAt; }
+    public void payment(String reference, String code, java.math.BigDecimal regular, java.math.BigDecimal first) {
+        paymentReference = reference; couponCode = code; regularAmount = regular; firstAmount = first;
+    }
+    public void subscription(String id) { subscriptionId = id; }
+    public void firstPayment(String id) { firstPaymentId = id; }
+    public void used() { if (usedAt == null) usedAt = Instant.now(); status = Status.USED; }
+    public void restored() { if (priceRestoredAt == null) priceRestoredAt = Instant.now(); }
+    public void stopped() { if (recurrenceStoppedAt == null) recurrenceStoppedAt = Instant.now(); }
     public Long getId(){return id;}
     public Long getCouponId(){return couponId;} public void setCouponId(Long v){couponId=v;}
     public Long getStoreId(){return storeId;} public void setStoreId(Long v){storeId=v;}

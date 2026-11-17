@@ -10,6 +10,10 @@
     <button class="button small color-option-add" type="button" th:text="#{color.option.add}"></button>
     <p class="color-options-status" role="status" aria-live="polite"></p>
 </section>
+<small th:fragment="availability" class="field-help" th:if="${!unavailableFieldTypes.isEmpty()}">
+    <span th:each="restriction : ${unavailableFieldTypes}" style="display:block"
+          th:text="|#{'field.type.' + ${restriction.key}}: ${restriction.value}|"></span>
+</small>
 <section th:fragment="validation" class="field-validation">
     <label>
         <span th:text="#{editor.format}"></span>

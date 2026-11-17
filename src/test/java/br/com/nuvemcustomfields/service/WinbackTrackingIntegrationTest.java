@@ -141,6 +141,26 @@ class WinbackTrackingIntegrationTest {
     }
 
     @Test
+    void feedbackAndConfirmationUseOnlyTheStoreLanguage() throws Exception {
+        String id = service.prepare(event.getId()); service.send(id);
+        var pt = mvc.perform(get("/winback/" + id).header("Accept-Language", "es"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(pt).contains("lang=\"pt-BR\"", "Como podemos melhorar?", "class=\"form winback-form\"", "/styles/winback.css")
+                .doesNotContain("¿Cómo podemos mejorar?", " / ");
+        store.setStoreCountryCode("AR"); stores.saveAndFlush(store);
+        var es = mvc.perform(get("/winback/" + id).header("Accept-Language", "pt-BR"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(es).contains("lang=\"es\"", "¿Cómo podemos mejorar?", "Enviar mi opinión")
+                .doesNotContain("Como podemos melhorar?", "Enviar minha opinião");
+        var thanks = mvc.perform(post("/winback/" + id).param("reason", "PRICE"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(thanks).contains("Gracias por compartir", "lang=\"es\"").doesNotContain("Obrigado por compartilhar");
+        var optout = mvc.perform(post("/winback/" + id).param("optOut", "true"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(optout).contains("No recibirás más mensajes de esta campaña").doesNotContain("winback-coupon");
+    }
+
+    @Test
     void smtpFailureKeepsClaimAndDuplicateDoesNotResend() {
         String id = service.prepare(event.getId());
         doThrow(new MailSendException("simulated")).when(sender).send(any(MimeMessage.class));

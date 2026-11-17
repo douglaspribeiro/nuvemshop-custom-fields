@@ -33,6 +33,22 @@
             <p class="notice warning payment-sandbox" th:if="${efiEnvironment == 'sandbox'}">Ambiente de homologação — nenhuma cobrança real será realizada.</p>
             <p class="notice error payment-flash" th:if="${error}" th:text="${error}">Erro</p>
 
+            <section class="payment-panel payment-coupon" th:if="${upgradeAdjustment == null and reactivation != true}" aria-labelledby="payment-coupon-title">
+                <h2 id="payment-coupon-title" th:text="#{checkout.coupon.title}"></h2>
+                <form class="payment-coupon-form" method="get" th:action="@{/admin/billing/pay}">
+                    <input type="hidden" name="plan" th:value="${plan.name()}">
+                    <label for="first-payment-coupon"><span th:text="#{checkout.coupon.label}"></span>
+                        <input id="first-payment-coupon" name="couponCode" maxlength="36" autocomplete="off" spellcheck="false"
+                               th:value="${enteredCouponCode}" th:placeholder="#{checkout.coupon.placeholder}" aria-describedby="payment-coupon-help">
+                    </label>
+                    <button class="button" type="submit" th:text="#{checkout.coupon.apply}"></button>
+                    <a th:if="${enteredCouponCode != null and !#strings.isEmpty(enteredCouponCode)}" th:href="@{/admin/billing/pay(plan=${plan.name()})}" th:text="#{checkout.coupon.clear}"></a>
+                </form>
+                <p id="payment-coupon-help" class="payment-fieldset-hint" th:text="#{checkout.coupon.help}"></p>
+                <p class="notice error" th:if="${couponError != null}" th:text="${couponError}" role="alert"></p>
+                <p class="notice" th:if="${discounted}" th:text="#{checkout.coupon.applied(${couponCode})}" role="status"></p>
+            </section>
+
             <section class="payment-panel" aria-labelledby="payment-form-title">
             <form id="efi-payment-form" th:action="${reactivation == true} ? @{/admin/billing/reactivate} : (${upgradeAdjustment!=null} ? @{/admin/billing/upgrade/efi/pay} : @{/admin/billing/pay})" method="post"
                   th:attr="data-payee-code=${payeeCode},data-environment=${efiEnvironment},data-single-charge=${upgradeAdjustment!=null}">
@@ -40,6 +56,8 @@
                 <input type="hidden" name="plan" th:value="${plan.name()}">
                 <input type="hidden" name="paymentToken" id="payment-token">
                 <input th:if="${discounted}" type="hidden" name="couponCode" th:value="${couponCode}">
+                <input th:if="${upgradeAdjustment == null}" type="hidden" name="quotedFirstAmount" th:value="${amount}">
+                <input th:if="${upgradeAdjustment == null}" type="hidden" name="quotedRegularAmount" th:value="${quotedRegularAmount}">
 
                 <fieldset class="payment-fieldset">
                     <legend id="payment-form-title">Dados do titular</legend>
@@ -65,7 +83,7 @@
                 </fieldset>
 
                 <p id="payment-error" class="notice error" role="alert" tabindex="-1" hidden></p>
-                <button class="button primary payment-submit" id="payment-submit" type="submit">
+                <button class="button primary payment-submit" id="payment-submit" type="submit" th:disabled="${couponError != null}">
                     <span th:text="${reactivation == true ? 'Atualizar cartão e reativar — ' + formattedAmount : (upgradeAdjustment!=null ? 'Confirmar upgrade e pagar '+formattedAmount : 'Confirmar e pagar')}">Confirmar e pagar</span><span aria-hidden="true">→</span>
                 </button>
                 <p class="payment-submit-note" th:text="${upgradeAdjustment!=null ? 'Ao confirmar, você autoriza o ajuste único de hoje e a mudança de sua assinatura para a mensalidade indicada. O cartão informado paga apenas o ajuste; o cartão da assinatura não será trocado.' : 'Ao confirmar, você autoriza a cobrança mensal indicada no resumo. A renovação automática pode ser desativada pelo painel.'}"></p>
@@ -93,7 +111,9 @@
                 <p th:if="${upgradeAdjustment.couponCode!=null}">Cupom somente no ajuste deste ciclo, sem desconto nas renovações seguintes.</p>
                 <p>A mensalidade do novo plano substitui a anterior. Não haverá duas assinaturas nem mensalidades simultâneas de Pro e Ultra.</p>
             </th:block>
-            <p th:if="${discounted}">Cupom de reconquista: 50% de desconto apenas na primeira mensalidade.
+            <div class="payment-summary-line" th:if="${discounted}"><span th:text="#{checkout.coupon.regular}"></span><strong th:text="${formattedRegularAmount}"></strong></div>
+            <div class="payment-summary-line" th:if="${discounted}"><span th:text="#{checkout.coupon.discount}"></span><strong th:text="|− ${formattedDiscountAmount}|"></strong></div>
+            <p th:if="${discounted}"><span th:text="#{checkout.coupon.summary(${couponCode})}"></span>
                 A partir da segunda, <strong th:text="${formattedRegularAmount}"></strong> por mês.</p>
             <div class="payment-summary-divider"></div>
             <div class="payment-summary-line" th:if="${upgradeAdjustment==null}"><span th:text="${discounted ? 'Primeiro mês (cupom)' : 'Assinatura mensal'}">Assinatura mensal</span><strong th:text="${formattedAmount}">R$ 19,99</strong></div>

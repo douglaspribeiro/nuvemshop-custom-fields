@@ -413,3 +413,14 @@ Nenhuma publicação de dashboard, alteração do servidor, push ou deploy nesta
 ## Período atualizado — 14 dias
 
 O período padrão do dashboard passa a ser últimos 14 dias. Envios SMTP e falhas SES usam janela de 14 dias, e o retorno de entrega consulta apenas envios confirmados nesse intervalo. O gráfico diário tem até 14 dias de calendário (hoje parcial e 13 anteriores), sem zeros anteriores ao histórico conhecido. Filas, mensagens a revisar, controles e armazenamento continuam sendo estados atuais: não ocultar uma falha antiga que ainda precisa de ação.
+
+
+## Endpoints lentos — corte de 500 ms
+
+Os painéis de lentidão usam o limite estrito de **mais de 500 ms** na última
+hora. A tabela da aplicação filtra pela média por método e rota e mantém o
+volume apenas desses endpoints. O Nginx filtra separadamente o P95, a espera
+média pelo backend e os registros individuais acima de 500 ms. Uma média
+abaixo do corte pode esconder chamadas lentas: os registros individuais e o
+P95 permitem observá-las. Os contadores gerais de tráfego e erros continuam
+abrangendo todos os endpoints; sem dados não significa zero.

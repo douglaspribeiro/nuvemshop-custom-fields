@@ -8,32 +8,31 @@ Descrição completa:
 
 Cada pedido personalizado empieza con los detalles correctos
 
-¿Qué nombre imprimir? ¿Qué diseño eligió el cliente? ¿Dónde está su archivo? Recibí esta información en la página del producto junto a la compra y reduce los mensajes para completar cada encargo.
+Recibe nombres, elecciones y diseños en la página del producto. Campos Personalizados guarda las respuestas en el artículo del pedido en Tiendanube: más claridad para producir y menos mensajes para completar cada encargo.
 
-Campos Personalizados guarda las respuestas en el artículo del pedido en Tiendanube. Prepará cada producto como lo pidió el cliente, con los detalles reunidos en la compra.
-
-Ideal para regalos, papelería, camisetas, recuerdos y productos por encargo.
+Ideal para regalos, papelería, camisetas, recuerdos, kits y productos por encargo.
 
 Funcionalidades para tu tienda
 
 - Texto corto, texto largo y números para nombres, dedicatorias e instrucciones.
-- Listas e imágenes de la tienda para elegir tapas, estampas y modelos.
-- Archivos del comprador (Beta): fotos, logotipos y diseños en JPG, PNG o PDF. Pro: 1 archivo de hasta 10 MB por campo y 2 GB de almacenamiento. Ultra: hasta 5 archivos por campo, de hasta 20 MB cada uno, y 10 GB. Descarga en la app durante 90 días después del pedido.
-- Campos obligatorios y límites de caracteres para guiar al cliente.
-- Campos por producto, con respuestas vinculadas al artículo en carrito, checkout y pedido.
-- Consulta de pedidos personalizados recientes en la app.
-- Exportación CSV de pedidos personalizados entre los últimos 50 pedidos de la tienda.
+- Listas, colores y selección múltiple para combinar preferencias, con límites de selección.
+- Imágenes de la tienda para mostrar estampas y modelos en los planes pagos.
+- Opciones con cantidad en Pro y Ultra para armar ramos, kits y canastas, con límites en el total de unidades. Sin precio ni stock por opción.
+- Archivos del comprador (Beta) en Pro y Ultra: fotos, logotipos y diseños en JPG, PNG o PDF, con descarga en la app.
+- Campos obligatorios, límites de caracteres y plantillas reutilizables.
+- Detalles por artículo en carrito, checkout y pedido.
+- Consulta y exportación CSV de pedidos personalizados recientes.
 
 Planes mensuales en Argentina, en dólares estadounidenses (USD)
 
-- Free: gratis, con 1 producto y 1 campo.
-- Esencial: USD 4.99/mes.
-- Pro: USD 7.49/mes.
-- Ultra: USD 14.99/mes.
+- Free: empieza gratis y recibe nombres, mensajes y elecciones junto al pedido.
+- Esencial: USD 4.99/mes. Colores, selección múltiple e imágenes. Ej.: color de camiseta y nombre para estampar.
+- Pro: USD 7.49/mes. Todo lo de Esencial + cantidades y archivos del comprador (Beta). Ej.: kit elegido por el cliente con su diseño.
+- Ultra: USD 14.99/mes. Todo lo de Pro + varios archivos por campo, más almacenamiento y atención prioritaria. Ej.: fotos para un montaje.
 
-Compará funcionalidades y límites: https://campos-personalizados.wzhub.pro/precos/?country=AR
+Compara recursos y límites: https://campos-personalizados.wzhub.pro/precos/?country=AR
 
-Empezá gratis con 1 producto y 1 campo. Recibí tu próximo pedido con los detalles que necesitás.
+Instala gratis y prepara tu primer producto personalizado.
 
 Soporte: https://campos-personalizados.wzhub.pro/support/
 contato@wzhub.pro

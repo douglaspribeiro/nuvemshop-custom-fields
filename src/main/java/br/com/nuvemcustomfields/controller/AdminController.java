@@ -357,7 +357,8 @@ public class AdminController {
     }
 
     @GetMapping("/admin/billing/pay")
-    public String efiPaymentPage(@RequestParam PlanType plan, HttpSession session, Model model,
+    public String efiPaymentPage(@RequestParam PlanType plan, @RequestParam(required = false) String couponCode,
+                                 HttpSession session, Model model,
                                  HttpServletResponse response) {
         Store store = adminStoreService.requireCurrentStore(session);
         if (paymentSubscriptionService.provider(store).orElse(null) != PaymentProviderType.EFI
@@ -367,6 +368,15 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("plan", plan);
         var quote = paymentSubscriptionService.efiQuote(store, plan);
+        if (couponCode != null && !couponCode.isBlank()) {
+            try { quote = paymentSubscriptionService.efiQuote(store, plan, couponCode); }
+            catch (IllegalArgumentException ex) {
+                model.addAttribute("couponError", ex.getMessage());
+                quote = new br.com.nuvemcustomfields.service.WinbackDiscountService.Quote(null, quote.regularAmount(), quote.regularAmount());
+            }
+        }
+        model.addAttribute("enteredCouponCode", couponCode == null || couponCode.isBlank() ? quote.code() : couponCode);
+        model.addAttribute("quotedRegularAmount", quote.regularAmount());
         model.addAttribute("couponCode", quote.code());
         model.addAttribute("analyticsProvider", "EFI");
         model.addAttribute("analyticsCurrency", "BRL");
@@ -377,6 +387,8 @@ public class AdminController {
                 .format(quote.firstAmount()));
         model.addAttribute("formattedRegularAmount", NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
                 .format(quote.regularAmount()));
+        model.addAttribute("formattedDiscountAmount", NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
+                .format(quote.regularAmount().subtract(quote.firstAmount())));
         model.addAttribute("payeeCode", paymentSubscriptionService.efiPayeeCode());
         model.addAttribute("efiEnvironment", paymentSubscriptionService.efiSandbox() ? "sandbox" : "production");
         return "admin/billing-payment";
@@ -389,7 +401,7 @@ public class AdminController {
         if (storeId != null && !storeId.equals(store.getStoreId())) return "redirect:/admin/billing";
         var previous = paymentSubscriptionService.reactivationPlan(store.getStoreId());
         if (previous.isEmpty()) return "redirect:/admin/billing";
-        String view = efiPaymentPage(previous.get(), session, model, response);
+        String view = efiPaymentPage(previous.get(), null, session, model, response);
         model.addAttribute("reactivation", true);
         return view;
     }
@@ -417,18 +429,24 @@ public class AdminController {
                              @RequestParam String payerEmail, @RequestParam String phone,
                              @RequestParam String birth, @RequestParam String paymentToken,
                              @RequestParam(required = false) String couponCode,
+                             @RequestParam(required = false) BigDecimal quotedFirstAmount,
+                             @RequestParam(required = false) BigDecimal quotedRegularAmount,
                              HttpSession session, RedirectAttributes redirectAttributes) {
         Store store = adminStoreService.requireCurrentStore(session);
         try {
+            if (couponCode != null && !couponCode.isBlank() && (quotedFirstAmount == null || quotedRegularAmount == null))
+                throw new IllegalArgumentException("Aplique o cupom e confira os valores antes de pagar.");
             paymentSubscriptionService.payWithEfi(store.getStoreId(), plan,
                     new EfiGateway.EfiPayer(payerName, cpf.replaceAll("\\D", ""), payerEmail,
-                            normalizeEfiPhone(phone), birth), paymentToken, couponCode);
+                            normalizeEfiPhone(phone), birth), paymentToken, couponCode, quotedFirstAmount, quotedRegularAmount);
             return "redirect:/admin/billing/processing";
         } catch (RuntimeException ex) {
             LOGGER.warn("payments.efi.failed store_id={} plan={} type={}", store.getStoreId(), plan,
                     ex.getClass().getSimpleName());
             redirectAttributes.addFlashAttribute("error", merchantError(ex));
-            return "redirect:/admin/billing/pay?plan=" + plan.name();
+            redirectAttributes.addAttribute("plan", plan.name());
+            if (couponCode != null && !couponCode.isBlank()) redirectAttributes.addAttribute("couponCode", couponCode);
+            return "redirect:/admin/billing/pay";
         }
     }
 
@@ -766,8 +784,23 @@ public class AdminController {
         model.addAttribute("store", store);
         model.addAttribute("rule", rule);
         model.addAttribute("fieldTypes", FieldType.values());
+        var unavailableFieldTypes = new java.util.EnumMap<FieldType, String>(FieldType.class);
+        if (!store.getEffectivePlan().supportsQuantityOptions()) {
+            unavailableFieldTypes.put(FieldType.QUANTITY_SELECT, messages.get("quantity.plan.unavailable"));
+        }
+        if (store.getEffectivePlan() != PlanType.PREMIUM_PLUS && store.getEffectivePlan() != PlanType.PREMIUM_ULTRA) {
+            unavailableFieldTypes.put(FieldType.FILE_UPLOAD, messages.get("upload.unavailable"));
+        }
+        boolean canUseImages = planLimitService.canConfigureImageProduct(store, productId);
+        if (!canUseImages) {
+            unavailableFieldTypes.put(FieldType.IMAGE_SELECT,
+                    planLimitService.imageProductLimit(store.getEffectivePlan()) == 0
+                            ? messages.get("image.plan.unavailable")
+                            : messages.get("image.plan.products.limit", planLimitService.imageProductLimit(store.getEffectivePlan())));
+        }
+        model.addAttribute("unavailableFieldTypes", unavailableFieldTypes);
         model.addAttribute("imagesEnabled", personalizationAdminService.imagesEnabled());
-        model.addAttribute("canUseImages", planLimitService.canConfigureImageProduct(store, productId));
+        model.addAttribute("canUseImages", canUseImages);
         model.addAttribute("imageProductLimit", planLimitService.imageProductLimit(store.getEffectivePlan()));
         model.addAttribute("imageProductsUsed", planLimitService.imageProductIds(store.getStoreId()).size());
         model.addAttribute("imageOptionLimit", planLimitService.imageOptionLimit(store.getEffectivePlan()));

@@ -13,6 +13,8 @@ public class UpgradeCouponService {
     private final UpgradeCouponRepository coupons;
     private final UpgradeCouponUseRepository uses;
     private final UpgradeAdjustmentRepository adjustments;
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
     public UpgradeCouponService(UpgradeCouponRepository coupons,UpgradeCouponUseRepository uses,UpgradeAdjustmentRepository adjustments){
         this.coupons=coupons;this.uses=uses;this.adjustments=adjustments;
     }
@@ -21,6 +23,7 @@ public class UpgradeCouponService {
     public UpgradeCoupon eligible(String code,Long storeId,PaymentEnvironment environment,PlanType target){
         if(code==null || code.isBlank())return null;
         var c=coupons.findByCode(normalize(code)).orElseThrow(UpgradeCouponService::unavailable);
+        if (c.getPurpose() != UpgradeCoupon.Purpose.UPGRADE) throw unavailable();
         validate(c,storeId,environment,target);
         return c;
     }
@@ -33,6 +36,60 @@ public class UpgradeCouponService {
                 || uses.countByCouponIdAndStoreIdAndStatusNot(c.getId(),storeId,UpgradeCouponUse.Status.RELEASED)>=c.getMaxUsesPerStore())
             throw unavailable();
     }
+    public UpgradeCoupon firstPaymentEligible(String code, Long storeId, PaymentEnvironment environment, PlanType plan) {
+        var coupon = coupons.findByCode(normalize(code)).orElseThrow(UpgradeCouponService::firstPaymentUnavailable);
+        if (coupon.getPurpose() != UpgradeCoupon.Purpose.FIRST_PAYMENT) throw firstPaymentUnavailable();
+        validateFirstPayment(coupon, storeId, environment, plan);
+        return coupon;
+    }
+
+    @Transactional
+    public UpgradeCouponUse reserveFirstPayment(String code, Long storeId, PaymentEnvironment environment,
+            PlanType plan, String reference, BigDecimal regular) {
+        var coupon = coupons.findByCode(normalize(code)).orElseThrow(UpgradeCouponService::firstPaymentUnavailable);
+        // Refresh after obtaining the lock: this entity may already be cached by the checkout preview.
+        entityManager.refresh(coupon, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (coupon.getPurpose() != UpgradeCoupon.Purpose.FIRST_PAYMENT) throw firstPaymentUnavailable();
+        validateFirstPayment(coupon, storeId, environment, plan);
+        BigDecimal first = firstAmount(regular, coupon.getDiscountPercent());
+        coupon.setUsedCount(coupon.getUsedCount() + 1);
+        var use = new UpgradeCouponUse(); use.setCouponId(coupon.getId()); use.setStoreId(storeId);
+        use.payment(reference, coupon.getCode(), regular, first);
+        return uses.saveAndFlush(use);
+    }
+
+    public Optional<UpgradeCouponUse> firstPaymentUse(PaymentSubscription subscription) {
+        if (subscription.getExternalReference() == null) return Optional.empty();
+        return uses.findByPaymentReference(subscription.getExternalReference()).filter(use ->
+                use.getStoreId().equals(subscription.getStoreId())
+                && Objects.equals(use.getCouponCode(), subscription.getWinbackCouponCode()));
+    }
+
+    @Transactional
+    public void releaseFirstPayment(UpgradeCouponUse use) {
+        if (use.getStatus() != UpgradeCouponUse.Status.RESERVED) return;
+        var coupon = coupons.findLocked(use.getCouponId()).orElseThrow();
+        entityManager.refresh(coupon, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        use.setStatus(UpgradeCouponUse.Status.RELEASED);
+        coupon.setUsedCount(Math.max(0, coupon.getUsedCount() - 1));
+    }
+
+    public static BigDecimal firstAmount(BigDecimal regular, BigDecimal percent) {
+        BigDecimal first = regular.multiply(BigDecimal.ONE.subtract(percent.movePointLeft(2)))
+                .setScale(2, java.math.RoundingMode.DOWN);
+        if (first.signum() <= 0) throw new IllegalArgumentException("O desconto precisa manter um valor maior que zero na primeira mensalidade.");
+        return first;
+    }
+
+    private void validateFirstPayment(UpgradeCoupon coupon, Long storeId, PaymentEnvironment environment, PlanType plan) {
+        try { validate(coupon, storeId, environment, plan); }
+        catch (IllegalArgumentException ex) { throw firstPaymentUnavailable(); }
+    }
+
+    private static IllegalArgumentException firstPaymentUnavailable() {
+        return new IllegalArgumentException("Cupom inválido ou indisponível para a primeira mensalidade deste plano.");
+    }
+
     /** Reserva no início do pagamento, sob o mesmo commit da intenção financeira. */
     @Transactional
     public void reserve(UpgradeAdjustment a){
@@ -40,6 +97,7 @@ public class UpgradeCouponService {
         if(a.getCouponId()==null)throw new IllegalArgumentException("Revise o upgrade para validar o cupom novamente.");
         var c=coupons.findLocked(a.getCouponId()).orElseThrow(UpgradeCouponService::unavailable);
         if(uses.findByAdjustmentId(a.getId()).isPresent())return;
+        if (c.getPurpose() != UpgradeCoupon.Purpose.UPGRADE) throw unavailable();
         validate(c,a.getStoreId(),a.getEnvironment(),a.getTargetPlan());
         if(!c.getCode().equals(a.getCouponCode()) || c.getDiscountPercent().compareTo(a.getCouponPercent())!=0)
             throw new IllegalArgumentException("O cupom mudou. Revise o upgrade antes de pagar.");
@@ -65,21 +123,30 @@ public class UpgradeCouponService {
     @Transactional
     public UpgradeCoupon save(Long id,String code,BigDecimal percent,PaymentEnvironment environment,PlanType target,
             boolean enabled,Instant starts,Instant ends,Integer maxUses,int perStore){
+        return save(id, code, percent, environment, target, enabled, starts, ends, maxUses, perStore, UpgradeCoupon.Purpose.UPGRADE);
+    }
+    @Transactional
+    public UpgradeCoupon save(Long id,String code,BigDecimal percent,PaymentEnvironment environment,PlanType target,
+            boolean enabled,Instant starts,Instant ends,Integer maxUses,int perStore,UpgradeCoupon.Purpose purpose){
         String normalized=normalize(code);
         if(percent==null || percent.scale()>2 || percent.signum()<=0 || percent.compareTo(new BigDecimal("100"))>0
                 || environment==null || target==null || !target.isBillable()
                 || (starts!=null && ends!=null && !starts.isBefore(ends))
                 || (maxUses!=null && maxUses<1) || perStore<1)
             throw new IllegalArgumentException("Confira percentual (0,01 a 100), período e limites de utilização.");
+        if (purpose == null || (purpose == UpgradeCoupon.Purpose.FIRST_PAYMENT
+                && (percent.compareTo(new BigDecimal("100")) >= 0 || normalized.startsWith("VOLTE50-"))))
+            throw new IllegalArgumentException("Para a primeira mensalidade, use desconto menor que 100% e um código sem o prefixo VOLTE50-.");
         var c=id==null?new UpgradeCoupon():coupons.findLocked(id).orElseThrow(()->new IllegalArgumentException("Cupom não encontrado."));
-        if(c.getId()!=null && (!normalized.equals(c.getCode()))
+        if(c.getId()!=null && (!normalized.equals(c.getCode()) || c.getPurpose() != purpose)
                 && (uses.existsByCouponId(id) || adjustments.existsByCouponId(id)))
-            throw new IllegalArgumentException("O código de um cupom com histórico não pode ser alterado.");
+            throw new IllegalArgumentException("O código ou a finalidade de um cupom com histórico não pode ser alterado.");
         var duplicate=coupons.findByCode(normalized);
         if(duplicate.isPresent() && !Objects.equals(duplicate.get().getId(),id))throw new IllegalArgumentException("Já existe um cupom com este código.");
         if(maxUses!=null && maxUses<c.getUsedCount())throw new IllegalArgumentException("O limite não pode ser menor que as utilizações já reservadas/confirmadas.");
+        c.setPurpose(purpose);
         c.setCode(normalized);c.setDiscountPercent(percent);c.setEnvironment(environment);c.setTargetPlan(target);c.setEnabled(enabled);
-        c.setStartsAt(starts);c.setEndsAt(ends);c.setMaxUses(maxUses);c.setMaxUsesPerStore(perStore);c.setUpdatedAt(Instant.now());
+        c.setStartsAt(starts);c.setEndsAt(ends);c.setMaxUses(maxUses);c.setMaxUsesPerStore(purpose == UpgradeCoupon.Purpose.FIRST_PAYMENT ? 1 : perStore);c.setUpdatedAt(Instant.now());
         return coupons.save(c);
     }
     @Transactional

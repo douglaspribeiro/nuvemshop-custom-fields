@@ -25,6 +25,9 @@ public class WinbackDiscountService {
     private final PaymentGatewayRouter router;
     private final WinbackDiscountProperties properties;
     private final PlanEventRepository planEvents;
+    private UpgradeCouponService firstPaymentCoupons;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setFirstPaymentCoupons(UpgradeCouponService service) { firstPaymentCoupons = service; }
     public WinbackDiscountService(WinbackCouponRepository coupons, WinbackCampaignRepository campaigns,
             PaymentSubscriptionRepository subscriptions, PaymentNotificationOutboxRepository history,
             StoreRepository stores, EfiGateway efi, PaymentGatewayRouter router, WinbackDiscountProperties properties,
@@ -68,6 +71,31 @@ public class WinbackDiscountService {
                 .orElseGet(() -> new Quote(null, regular, regular));
     }
 
+    /** An explicitly entered code never falls back to an unrelated automatic promotion. */
+    @Transactional(readOnly = true)
+    public Quote quote(Store store, PlanType plan, String code) {
+        if (code == null || code.isBlank()) return quote(store, plan);
+        String normalized = code.strip().toUpperCase(java.util.Locale.ROOT);
+        BigDecimal regular = efi.amount(plan);
+        var winback = coupons.findById(normalized);
+        if (winback.isPresent()) {
+            if (!store.getStoreId().equals(winback.get().getStoreId()) || !eligible(winback.get(), store))
+                throw new IllegalArgumentException("O cupom não está disponível para esta loja. Confira o prazo e a reinstalação.");
+            return new Quote(normalized, half(regular), regular);
+        }
+        requireFirstPaymentEligibility(store);
+        var coupon = firstPaymentCoupons.firstPaymentEligible(normalized, store.getStoreId(), efi.environment(), plan);
+        return new Quote(coupon.getCode(), UpgradeCouponService.firstAmount(regular, coupon.getDiscountPercent()), regular);
+    }
+
+    private void requireFirstPaymentEligibility(Store store) {
+        if (firstPaymentCoupons == null || !store.isActive() || store.isErasurePending()
+                || !efi.configured() || !efi.supports(store)
+                || !router.forStore(store).map(g -> g.provider() == PaymentProviderType.EFI).orElse(false)
+                || hasPaidHistory(store.getStoreId()))
+            throw new IllegalArgumentException("Este cupom está disponível somente no primeiro pagamento da loja pela Efí.");
+    }
+
     private boolean eligible(WinbackCoupon coupon, Store store) {
         if (!available(store) || !store.isActive() || coupon.getUsedAt() != null
                 || coupon.getExpiresAt().isBefore(Instant.now()) || hasPaidHistory(store.getStoreId())) return false;
@@ -80,7 +108,14 @@ public class WinbackDiscountService {
     public Quote reserve(Store store, PlanType plan, String code, String reference) {
         BigDecimal regular = efi.amount(plan);
         if (code == null || code.isBlank()) return new Quote(null, regular, regular);
-        var coupon = coupons.findById(code.strip().toUpperCase()).orElseThrow(() -> new IllegalArgumentException("Cupom inválido."));
+        String normalized = code.strip().toUpperCase(java.util.Locale.ROOT);
+        var winback = coupons.findById(normalized);
+        if (winback.isEmpty()) {
+            requireFirstPaymentEligibility(store);
+            var use = firstPaymentCoupons.reserveFirstPayment(normalized, store.getStoreId(), efi.environment(), plan, reference, regular);
+            return new Quote(use.getCouponCode(), use.getFirstAmount(), regular);
+        }
+        var coupon = winback.get();
         if (!store.getStoreId().equals(coupon.getStoreId()) || !eligible(coupon, store))
             throw new IllegalArgumentException("O cupom não está disponível para esta loja. Confira o prazo e a reinstalação.");
         BigDecimal first = half(regular);
@@ -102,13 +137,25 @@ public class WinbackDiscountService {
                 || !local.getProviderSubscriptionId().equals(invoice.subscriptionId())) return;
         couponFor(local).filter(c -> local.getProviderSubscriptionId().equals(c.getSubscriptionId())).ifPresent(c -> {
             c.used();
-            campaigns.findById(c.getCampaignId()).ifPresent(WinbackCampaign::converted);
+            if (c instanceof WinbackCoupon winback)
+                campaigns.findById(winback.getCampaignId()).ifPresent(WinbackCampaign::converted);
         });
     }
-    private Optional<WinbackCoupon> couponFor(PaymentSubscription local) {
+    private Optional<EfiFirstPaymentDiscountUse> couponFor(PaymentSubscription local) {
         if (local.getWinbackCouponCode() == null) return Optional.empty();
+        if (firstPaymentCoupons != null) {
+            var use = firstPaymentCoupons.firstPaymentUse(local);
+            if (use.isPresent()) return Optional.of(use.get());
+        }
         return coupons.findById(local.getWinbackCouponCode()).filter(c ->
-                local.getStoreId().equals(c.getStoreId()) && local.getExternalReference().equals(c.getExternalReference()));
+                local.getStoreId().equals(c.getStoreId()) && local.getExternalReference().equals(c.getExternalReference()))
+                .map(c -> c);
+    }
+
+    private void stop(EfiFirstPaymentDiscountUse coupon) {
+        coupon.stopped();
+        if (coupon instanceof UpgradeCouponUse use && firstPaymentCoupons != null)
+            firstPaymentCoupons.releaseFirstPayment(use);
     }
 
     /** Restore after confirmation of the first approved charge; pending charges keep their original price. */
@@ -139,7 +186,7 @@ public class WinbackDiscountService {
                     }
                     if (!java.util.Set.of("canceled", "cancelled", "expired").contains(remote.status()))
                         throw new PaymentGatewayException("Cancelamento da recorrência promocional ainda não confirmado.");
-                    local.winbackRecurrenceStopped(); coupon.stopped();
+                    local.winbackRecurrenceStopped(); stop(coupon);
                 }
                 return;
             }
@@ -149,12 +196,12 @@ public class WinbackDiscountService {
         if (java.util.Set.of("canceled", "cancelled", "expired").contains(knownStatus)) {
             var remote = efi.getSubscription(local.getProviderSubscriptionId());
             if (java.util.Set.of("canceled", "cancelled", "expired").contains(remote.status())) {
-                local.winbackRecurrenceStopped(); coupon.stopped(); return;
+                local.winbackRecurrenceStopped(); stop(coupon); return;
             }
         }
         efi.updateRecurringAmount(local.getProviderSubscriptionId(), local.getPlan(), local.getWinbackRegularAmount());
         local.winbackRestored();
-        couponFor(local).ifPresent(WinbackCoupon::restored);
+        couponFor(local).ifPresent(EfiFirstPaymentDiscountUse::restored);
     }
 
     @Transactional(noRollbackFor = PaymentGatewayException.class)

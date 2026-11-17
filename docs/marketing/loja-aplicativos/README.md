@@ -59,8 +59,10 @@ As capturas contêm apenas dados fictícios. Não anunciar esses pedidos como ve
 reais ou usar esses números como prova social.
 
 As descrições destacam os benefícios para os pedidos personalizados e incluem
-arquivos do comprador (Beta) na lista de funcionalidades, com os limites de Pro
-e Ultra. Os textos não incluem uma seção de passos para instalação.
+cores, múltiplas escolhas, composição por quantidade e arquivos do comprador
+(Beta). A composição por quantidade e o upload são exclusivos de Pro e Ultra;
+Ultra também destaca envio de vários arquivos, armazenamento e suporte prioritário.
+Os textos dos planos focam nos benefícios; os limites ficam na página de preços. Os textos não incluem uma seção de passos para instalação.
 
 ## Antes de atualizar o perfil
 

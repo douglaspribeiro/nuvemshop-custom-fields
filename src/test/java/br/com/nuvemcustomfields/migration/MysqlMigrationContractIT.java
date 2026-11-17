@@ -30,6 +30,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void addsFirstPaymentCouponsWithoutReclassifyingUpgradeHistory() {
+        isolatedDatabase(source -> {
+            var jdbc = new JdbcTemplate(source); flyway(source, "86").migrate();
+            jdbc.update("INSERT INTO upgrade_coupons(code,discount_percent,environment,target_plan,enabled,max_uses_per_store,used_count,created_at,updated_at) VALUES('LEGACY30',30,'SANDBOX','PREMIUM_ULTRA',true,1,1,NOW(),NOW())");
+            Long id = jdbc.queryForObject("SELECT id FROM upgrade_coupons WHERE code='LEGACY30'", Long.class);
+            jdbc.update("INSERT INTO upgrade_coupon_uses(coupon_id,store_id,adjustment_id,status,created_at) VALUES(?,900087,'legacy-adjustment','USED',NOW())", id);
+            assertThat(flyway(source, "87").migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT purpose FROM upgrade_coupons WHERE id=?", String.class, id)).isEqualTo("UPGRADE");
+            assertThat(jdbc.queryForObject("SELECT adjustment_id FROM upgrade_coupon_uses WHERE coupon_id=?", String.class, id)).isEqualTo("legacy-adjustment");
+            jdbc.update("INSERT INTO upgrade_coupon_uses(coupon_id,store_id,payment_reference,coupon_code,status,regular_amount,first_amount,created_at) VALUES(?,900088,'first-checkout-reference','FIRST30','RESERVED',19.99,13.99,NOW())", id);
+            assertThat(jdbc.queryForObject("SELECT first_amount FROM upgrade_coupon_uses WHERE payment_reference='first-checkout-reference'", java.math.BigDecimal.class)).isEqualByComparingTo("13.99");
+            assertThat(flyway(source, "87").validateWithResult().validationSuccessful).isTrue();
+            validateHibernateAndReadField(source, null);
+        });
+    }
+
     @Test void addsRateBoxFromV82AndPreservesConservativePaidDates() {
         isolatedDatabase(source->{
             var jdbc=new JdbcTemplate(source);flyway(source,"82").migrate();

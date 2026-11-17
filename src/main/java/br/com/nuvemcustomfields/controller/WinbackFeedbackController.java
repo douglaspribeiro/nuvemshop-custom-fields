@@ -16,6 +16,12 @@ public class WinbackFeedbackController {
         response.setHeader("Referrer-Policy", "no-referrer");
         response.setHeader("X-Robots-Tag", "noindex, nofollow");
     }
+    @ModelAttribute
+    public void pageLocale(@PathVariable String id, jakarta.servlet.http.HttpServletRequest request) {
+        var locale = service.publicLocale(id);
+        request.setAttribute(br.com.nuvemcustomfields.i18n.AppLocaleResolver.REQUEST_KEY, locale);
+        org.springframework.context.i18n.LocaleContextHolder.setLocale(locale);
+    }
     @GetMapping("/{id}")
     public String feedback(@PathVariable String id, Model model) {
         var mail = service.publicEmail(id);

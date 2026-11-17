@@ -1,31 +1,30 @@
 Personalized orders start with the right details
 
-Which name should you print? Which design did the customer choose? Where is their artwork? Collect these details on the product page with the purchase and reduce follow-up messages.
+Collect names, choices and artwork on the product page. Campos Personalizados saves the answers with the order item in Tiendanube: clearer production instructions and fewer follow-up messages.
 
-Campos Personalizados saves the answers with the order item in Tiendanube, so you can prepare each product as requested. Keep personalization details out of scattered conversations.
-
-Made for gifts, stationery, shirts, party favors and made-to-order products.
+Made for gifts, stationery, shirts, party favors, kits and made-to-order products.
 
 Features for your store
 
 - Short text, long text and numbers for names, messages and instructions.
-- Selection lists and store images for covers, prints and designs.
-- Buyer files (Beta): receive photos, logos and artwork in JPG, PNG or PDF. Pro: 1 file per field, up to 10 MB, with 2 GB storage. Ultra: up to 5 files per field, up to 20 MB each, with 10 GB. Download files in the app for 90 days after the order.
-- Required fields and character limits to guide customers.
-- Fields configured per product, with answers linked to the item in the cart, checkout and order.
-- Recent personalized orders in the app.
-- CSV export of personalized orders found among the store’s last 50 orders.
+- Lists, colors and multiple choices to combine preferences, with selection limits.
+- Store images to present prints and designs on paid plans.
+- Options with quantities on Pro and Ultra to build bouquets, kits and baskets, with total unit limits. No price or inventory per option.
+- Buyer files (Beta) on Pro and Ultra: photos, logos and artwork in JPG, PNG or PDF, with downloads in the app.
+- Required fields, character limits and reusable templates.
+- Details per item in the cart, checkout and order.
+- View and export recent personalized orders as CSV.
 
 Monthly plans in US dollars (USD)
 
-- Free: free of charge, with 1 product and 1 field.
-- Essential: USD 4.99/month.
-- Pro: USD 7.49/month.
-- Ultra: USD 14.99/month.
+- Free: start free and collect names, messages and choices with the order.
+- Essential: USD 4.99/month. Colors, multiple choices and store images. E.g., shirt color and a name to print.
+- Pro: USD 7.49/month. Everything in Essential + quantities and buyer files (Beta). E.g., a customer-built kit with their artwork.
+- Ultra: USD 14.99/month. Everything in Pro + multiple files per field, more storage and priority support. E.g., photos for a collage.
 
 Compare features and limits: https://campos-personalizados.wzhub.pro/precos/?country=US
 
-Start free with 1 product and 1 field. Make the details part of your next order.
+Install free and prepare your first personalized product.
 
 Support: https://campos-personalizados.wzhub.pro/support/
 contato@wzhub.pro

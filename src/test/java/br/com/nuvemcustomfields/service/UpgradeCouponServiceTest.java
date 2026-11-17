@@ -84,6 +84,25 @@ class UpgradeCouponServiceTest {
         assertThat(service.delete(c.getId())).isFalse();assertThat(coupons.findById(c.getId()).orElseThrow().isEnabled()).isFalse();
         var unused=create(null,1);assertThat(service.delete(unused.getId())).isTrue();created.remove(unused.getId());
     }
+    @Test void concurrentFirstPaymentsCannotReserveTheLastSlotTwice() throws Exception {
+        var c=service.save(null,"FIRST_"+UUID.randomUUID().toString().replace("-", "").substring(0,12),
+                new BigDecimal("30"),PaymentEnvironment.SANDBOX,PlanType.PREMIUM,true,null,null,1,1,UpgradeCoupon.Purpose.FIRST_PAYMENT);
+        created.add(c.getId());
+        var barrier=new CyclicBarrier(2);var pool=Executors.newFixedThreadPool(2);
+        try {
+            var tasks=List.of(11L,12L).stream().map(id->pool.submit(()->{
+                barrier.await(5,TimeUnit.SECONDS);
+                try {service.reserveFirstPayment(c.getCode(),id,c.getEnvironment(),c.getTargetPlan(),
+                        UUID.randomUUID().toString(),new BigDecimal("19.99"));return true;}
+                catch(IllegalArgumentException ex){return false;}
+            })).toList();
+            int success=0;for(var result:tasks)if(result.get(10,TimeUnit.SECONDS))success++;
+            assertThat(success).isEqualTo(1);
+            assertThat(coupons.findById(c.getId()).orElseThrow().getUsedCount()).isEqualTo(1);
+            assertThat(uses.findByCouponId(c.getId())).hasSize(1);
+        } finally {pool.shutdownNow();}
+    }
+
     @Test void concurrentStoresCannotReserveTheLastSlotTwice() throws Exception {
         var c=create(1,1);var barrier=new CyclicBarrier(2);
         var pool=Executors.newFixedThreadPool(2);

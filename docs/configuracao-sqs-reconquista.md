@@ -8,10 +8,18 @@ necessário criar outro remetente ou outra credencial SMTP no SES.
 ```text
 WINBACK_SQS_QUEUE_URL=https://sqs.us-east-2.amazonaws.com/265105089924/eventosDesistalacao
 WINBACK_AWS_REGION=us-east-2
-WINBACK_ENABLED=false
+WINBACK_ENABLED=true
+WINBACK_MAIL_ENABLED=true
 ```
 
-A role da aplicação precisa de `sqs:SendMessage` somente no ARN
+O webhook `app/uninstalled` registra automaticamente o e-mail inicial de reconquista
+para novas desinstalações. O envio fica habilitado por padrão e não depende da
+lista de homologação. Uma variável explicitamente definida como `false` no
+ambiente continua desativando a etapa correspondente. Não há disparo retroativo
+para lojas que desinstalaram antes da ativação.
+
+A role da aplicação precisa de `sqs:SendMessage`, `sqs:ReceiveMessage`,
+`sqs:DeleteMessage` e `sqs:ChangeMessageVisibility` no ARN
 `arn:aws:sqs:us-east-2:265105089924:eventosDesistalacao`. A outbox grava o evento
 no banco e o publicador envia depois, com atraso de 15 minutos. O corpo não contém
 Store ID, e-mail, token ou nome:
@@ -51,8 +59,13 @@ mensagens: SQS distribui cada mensagem para um consumidor.
 3. Confirmar que o SMTP do suporte continua funcionando.
 4. Enviar e-mail de teste com as tags da reconquista e conferir `Send`, `Delivery`,
    `Open` e `Click` no backoffice.
-5. Ativar `WINBACK_ENABLED=true`, depois `WINBACK_MAIL_ENABLED=true` somente após
-   o teste controlado. `AWS_SES_EVENTS_ENABLED=true` ativa o consumidor SES.
+5. Manter `WINBACK_ENABLED=true` e `WINBACK_MAIL_ENABLED=true` no deploy.
+   `AWS_SES_EVENTS_ENABLED=true` ativa o consumidor SES.
+
+A espera de 15 minutos permite cancelar o contato se a loja reinstalar. Opt-out,
+exclusão pendente, bloqueio permanente, ausência de e-mail e duplicidade continuam
+impedindo o envio. A fila persiste o evento antes de acessar a AWS; o webhook não
+espera o envio do e-mail.
 
 Mantenha `WINBACK_DISCOUNT_ENABLED=false` e
 `WINBACK_DISCOUNT_ALLOW_PRODUCTION=false` até a aprovação operacional.

@@ -53,6 +53,61 @@ class ProductFieldEditorCompatibilityTest {
         assertThat(saved.getFirst().isRequired()).isTrue();
         assertThat(saved.getFirst().getSortOrder()).isEqualTo(3);
     }
+    @Test void fieldSelectorsExplainAndDisableUnavailableTypesForEveryPlan() throws Exception {
+        long nextId = 990088850L;
+        for (var plan : PlanType.values()) {
+            long id = nextId++;
+            var store = new Store(); store.setStoreId(id); store.setStoreCountryCode("BR"); store.setPlan(plan);
+            stores.saveAndFlush(store); admin.ensureRule(id, 140L, "Personalizado");
+            // Paid plans render both the creation and editing selectors.
+            if (plan.isBillable()) {
+                var text = new FieldForm(); text.setLabel("Nome"); admin.addField(id, 140L, text);
+            }
+            entityManager.flush(); entityManager.clear();
+            var session = new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, id);
+            var html = mvc.perform(get("/admin/products/140/fields").session(session))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            for (var type : FieldType.values()) {
+                boolean blocked = switch (type) {
+                    case QUANTITY_SELECT, FILE_UPLOAD -> !plan.supportsQuantityOptions();
+                    case IMAGE_SELECT -> !plan.isBillable();
+                    default -> false;
+                };
+                var options = java.util.regex.Pattern.compile("<option[^>]*value=\"" + type + "\"[^>]*>").matcher(html);
+                int count = 0;
+                while (options.find()) {
+                    assertThat(options.group().contains("disabled=\"disabled\""))
+                            .as("%s on %s", type, plan).isEqualTo(blocked);
+                    count++;
+                }
+                assertThat(count).as("Selectors for %s on %s", type, plan).isEqualTo(plan.isBillable() ? 2 : 1);
+            }
+            if (!plan.supportsQuantityOptions()) assertThat(html).contains("disponíveis nos planos Pro e Ultra", "O envio de arquivos está disponível");
+            if (!plan.isBillable()) assertThat(html).contains("Seu plano não inclui opções com imagem");
+        }
+    }
+
+    @Test void imageProductLimitAlsoDisablesSelectionBeforeSaving() throws Exception {
+        long id = 990088860L;
+        var store = new Store(); store.setStoreId(id); store.setStoreCountryCode("BR"); store.setPlan(PlanType.PREMIUM);
+        stores.saveAndFlush(store);
+        var rule = admin.ensureRule(id, 141L, "Produto com imagem");
+        var image = new PersonalizationField(); image.setRule(rule); image.setLabel("Modelo"); image.setFieldType(FieldType.IMAGE_SELECT);
+        entityManager.persist(image); entityManager.flush();
+        admin.ensureRule(id, 142L, "Outro produto");
+        entityManager.flush(); entityManager.clear();
+        var session = new MockHttpSession(); session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, id);
+        var html = mvc.perform(get("/admin/products/142/fields").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).containsPattern("<option(?=[^>]*disabled=\"disabled\")(?=[^>]*value=\"IMAGE_SELECT\")[^>]*>");
+        assertThat(html).contains("Seu plano permite imagens em até 1 produto(s)");
+        // The product already using the image allowance remains configurable.
+        html = mvc.perform(get("/admin/products/141/fields").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var options = java.util.regex.Pattern.compile("<option[^>]*value=\"IMAGE_SELECT\"[^>]*>").matcher(html);
+        while (options.find()) assertThat(options.group()).doesNotContain("disabled");
+    }
+
     @Test void quantityOptionsPersistOnlyForProAndUltraAndRejectDowngradedEdits() throws Exception {
         long nextId=990088800L;
         for (var plan : new PlanType[]{PlanType.FREE,PlanType.PREMIUM,PlanType.PREMIUM_PLUS,PlanType.PREMIUM_ULTRA}) {

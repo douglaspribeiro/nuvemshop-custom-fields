@@ -16,7 +16,7 @@ Espaços ao redor dos valores são aceitos. IDs devem ser inteiros positivos sem
 
 - Dodo Test: seleção e compras para lojas autorizadas, mantendo o catálogo e a exclusão do Brasil.
 - Stripe sandbox e Creem sandbox: novas compras e upgrades onde suportados.
-- Winback: criação e envio de mensagens na fila, mantendo `WINBACK_ENABLED` e demais condições.
+- Winback: envio manual e etapas posteriores da campanha. O e-mail inicial automático após desinstalação já está liberado para todas as lojas elegíveis, mantendo `WINBACK_ENABLED`, `WINBACK_MAIL_ENABLED` e demais condições.
 
 Templates e upload do comprador não dependem dessa lista. Templates mantêm limites e validações por plano; novos uploads exigem Pro ou Ultra e armazenamento habilitado.
 

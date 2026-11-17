@@ -1,11 +1,27 @@
-<!doctype html><html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>Campos Personalizados</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="referrer" content="no-referrer">
+    <title th:text="#{winback.page.title}"></title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/winback.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
-<body><main class="shell"><section class="panel"><h1 th:text="${optedOut ? 'Comunicações interrompidas / Comunicaciones desactivadas' : 'Obrigado pela resposta / Gracias por tu respuesta'}"></h1>
-<p th:if="${!optedOut}">Sua resposta foi registrada para nossa equipe. / Registramos tu respuesta para nuestro equipo.</p>
-<div th:if="${coupon != null}"><h2>Seu cupom de retorno</h2><p><strong th:text="${coupon.code}"></strong></p>
-<p>50% apenas na primeira mensalidade, após reinstalar na mesma loja. A partir da segunda, o valor integral do plano escolhido.
-Válido até <span th:attr="data-local-time=${coupon.expiresAt}" data-time-format="date" th:text="${#temporals.format(coupon.expiresAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}"></span>, por cartão na Efí.</p>
-<a class="button primary" th:href="@{/install}">Reinstalar e escolher um plano</a></div>
-</section></main></body></html>
+<body class="winback-page">
+<main class="shell winback-shell">
+    <p class="winback-brand">Campos Personalizados</p>
+    <section class="panel winback-card" aria-labelledby="thanks-title">
+        <header class="winback-heading">
+            <p class="eyebrow" th:text="#{winback.feedback.eyebrow}"></p>
+            <h1 id="thanks-title" th:text="${optedOut} ? #{winback.optout.title} : #{winback.thanks.title}"></h1>
+            <p th:text="${optedOut} ? #{winback.optout.description} : #{winback.thanks.description}"></p>
+        </header>
+        <th:block th:replace="~{winback/fragments :: coupon}"></th:block>
+        <a class="button" th:href="@{/install}" th:text="#{winback.back}"></a>
+    </section>
+</main>
+</body>
+</html>

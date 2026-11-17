@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UpgradeCouponUseRepository extends JpaRepository<UpgradeCouponUse,Long> {
+    Optional<UpgradeCouponUse> findByPaymentReference(String reference);
     Optional<UpgradeCouponUse> findByAdjustmentId(String id);
     long countByCouponIdAndStoreIdAndStatusNot(Long couponId,Long storeId,UpgradeCouponUse.Status status);
     boolean existsByCouponId(Long id);

@@ -20,7 +20,6 @@ public class WinbackQueueService {
     private static final Logger LOGGER = LoggerFactory.getLogger(WinbackQueueService.class);
     private final WinbackOutboxRepository outbox;
     private final StoreRepository stores;
-    private final br.com.nuvemcustomfields.properties.HomologProperties homolog;
     private final WinbackProperties properties;
     private final ObjectProvider<SqsClient> client;
     private final ObjectMapper json;
@@ -29,8 +28,7 @@ public class WinbackQueueService {
     public WinbackQueueService(WinbackOutboxRepository outbox, StoreRepository stores,
             WinbackProperties properties, @org.springframework.beans.factory.annotation.Qualifier("winbackSqsClient")
             ObjectProvider<SqsClient> client, ObjectMapper json,
-            WinbackTrackingService tracking, br.com.nuvemcustomfields.properties.HomologProperties homolog) {
-        this.homolog = homolog;
+            WinbackTrackingService tracking) {
         this.outbox = outbox;
         this.stores = stores;
         this.properties = properties;
@@ -42,10 +40,6 @@ public class WinbackQueueService {
     @Transactional
     public void enqueue(Store store) {
         if (store.getUninstalledAt() == null || store.isErasurePending()) return;
-        if (!homolog.allows(store.getStoreId())) {
-            LOGGER.info("winback.uninstall_received store_id={} flow=disabled_by_allow_list", store.getStoreId());
-            return;
-        }
         tracking.record(store);
         if (!properties.enabled()) return;
         // Chamado sob o lock da loja, na mesma transação do webhook.
@@ -60,11 +54,6 @@ public class WinbackQueueService {
         Store store = stores.findByStoreIdForUpdate(storeId).orElse(null);
         WinbackOutbox event = outbox.findForUpdate(id).orElse(null);
         if (event == null || event.getPublishedAt() != null || event.getNextAttemptAt().isAfter(Instant.now())) return;
-        if (!homolog.allows(storeId)) {
-            LOGGER.info("winback.queue.skipped event_id={} store_id={} reason=disabled_by_allow_list", id, storeId);
-            outbox.delete(event);
-            return;
-        }
         if (store == null || store.isActive() || store.isErasurePending() || !store.getUninstalledAt().equals(event.getUninstalledAt())) {
             outbox.delete(event);
             return;

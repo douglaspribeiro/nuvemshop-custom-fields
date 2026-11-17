@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "winback_coupons")
-public class WinbackCoupon {
+public class WinbackCoupon implements EfiFirstPaymentDiscountUse {
     @Id @Column(length = 36)
     private String code = "VOLTE50-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
     @Column(name = "store_id", nullable = false, unique = true) private Long storeId;

@@ -50,3 +50,8 @@ pricing:
 # Existing feature tests run with homologation access enabled explicitly.
 homolog:
   allowed-store-ids: "*"
+
+# Tests enable the uninstall queue and SMTP consumer explicitly when needed.
+winback:
+  enabled: false
+  mail-enabled: false

@@ -157,6 +157,7 @@ public class PaymentSubscription {
     private Instant updatedAt = Instant.now();
 
     public Long getId() { return id; }
+    // Legacy column/accessor names also store first-month coupons created in the backoffice.
     public String getWinbackCouponCode() { return winbackCouponCode; }
     public BigDecimal getWinbackRegularAmount() { return winbackRegularAmount; }
     public BigDecimal getWinbackInitialAmount() { return winbackInitialAmount; }

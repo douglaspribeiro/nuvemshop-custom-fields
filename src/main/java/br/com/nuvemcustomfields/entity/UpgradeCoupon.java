@@ -7,6 +7,16 @@ import java.time.Instant;
 @Entity
 @Table(name="upgrade_coupons")
 public class UpgradeCoupon {
+    public enum Purpose {
+        UPGRADE("Upgrade de plano"), FIRST_PAYMENT("Primeira mensalidade");
+        private final String label;
+        Purpose(String label) { this.label = label; }
+        public String getLabel() { return label; }
+    }
+    @Enumerated(EnumType.STRING) @Column(nullable=false, length=30)
+    private Purpose purpose = Purpose.UPGRADE;
+    public Purpose getPurpose() { return purpose; }
+    public void setPurpose(Purpose value) { purpose = value; }
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @Column(nullable=false, unique=true, length=36) private String code;
     @Column(nullable=false, precision=5, scale=2) private BigDecimal discountPercent;

@@ -142,3 +142,45 @@ ID, nome, intervalo em meses, repetições e criação, com paginação de 50 re
 É somente leitura e não exige que os IDs já estejam cadastrados no catálogo local.
 Copie o `plan_id` do Ultra para o catálogo do mesmo ambiente. Planos criados no painel
 que não forem retornados devem ter sua disponibilidade na API confirmada com a Efí.
+
+## Cupons na primeira mensalidade
+
+O checkout de cartão Efí em `/admin/billing/pay` permite informar e aplicar um
+cupom antes de preencher o cartão. O resumo mostra o valor integral, o desconto,
+a primeira mensalidade e o valor normal a partir da segunda cobrança. Um código
+inválido precisa ser corrigido ou limpo antes de confirmar o pagamento.
+
+No backoffice, em **Pagamentos → Cupons Efí**, escolha a finalidade
+**Primeira mensalidade**, o plano, o percentual, o ambiente, a validade e o limite
+total de utilizações. O percentual deve ser menor que 100% e preservar uma cobrança
+positiva. Não é necessário publicar um cupom na Efí: o aplicativo valida o código
+e cria a assinatura com o primeiro valor já calculado. Nenhum código é criado
+ou habilitado pela migration.
+
+- Primeira mensalidade: apenas lojas sem histórico de pagamento; uma utilização
+  por loja. O cupom é específico para o plano e ambiente cadastrados.
+- Upgrade: os cupons anteriores conservam essa finalidade. Eles não passam a valer
+  no primeiro pagamento. Seu desconto continua restrito ao ajuste proporcional.
+- Reconquista: o cupom `VOLTE50-...` continua automático para lojas elegíveis e
+  também pode ser informado no checkout. A emissão depende das configurações de
+  desconto da reconquista. Os descontos não se acumulam: vale apenas o código
+  exibido no resumo do pagamento.
+
+O servidor recalcula o valor ao pagar e recusa um preço diferente daquele exibido
+no resumo. A vaga é reservada sob bloqueio do cupom, para impedir que duas lojas
+ocupem a última utilização disponível. Consultar ou aplicar no resumo não gasta
+uma utilização.
+
+Após confirmar a primeira cobrança, o aplicativo restaura o valor integral na
+assinatura Efí. Se a restauração falhar, o trabalho permanece gravado e é retomado
+pelo worker, sem cobrar o cartão novamente. Cobranças pendentes ou com resposta
+incerta mantêm a reserva até a conciliação. Uma recusa confirmada só libera a
+reserva depois de confirmar o encerramento da recorrência promocional.
+
+A migration `V87__efi_first_payment_coupons.sql` amplia o catálogo e o histórico
+existentes, preservando os cupons e usos de upgrade. A infraestrutura de restauração
+mantém os nomes históricos `winback_*` no banco e também atende aos cupons da
+primeira mensalidade cadastrados manualmente.
+
+A validação local usa respostas simuladas da Efí. Uma compra real em produção e a
+conferência da próxima cobrança na Efí são etapas separadas do deploy.

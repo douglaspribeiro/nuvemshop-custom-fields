@@ -1,5 +1,13 @@
 # Histórico de saídas e publicação na SQS
 
+> Atualização de 17/11/2026: o e-mail inicial de reconquista é automático para
+> novas desinstalações, com atraso de 15 minutos, sem depender da lista de
+> homologação. `WINBACK_ENABLED` e `WINBACK_MAIL_ENABLED` passam a ter padrão
+> `true`; valores explícitos no ambiente prevalecem. Os trechos abaixo que
+> descrevem o fluxo desligado registram a implantação anterior. A configuração
+> atual está em [configuracao-sqs-reconquista.md](configuracao-sqs-reconquista.md).
+
+
 ## Estado atual — 01/10/2026
 
 O desenvolvimento abaixo está implementado no workspace. Ainda não foi publicado
