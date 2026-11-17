@@ -107,6 +107,7 @@ else
 fi
 
 docker buildx build \
+  --pull \
   --platform linux/arm64 \
   --build-arg APP_VERSION="${VERSION}" \
   --build-arg SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH}" \

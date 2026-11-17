@@ -15,7 +15,7 @@
 ARG SOURCE_DATE_EPOCH=1577836800
 
 # --- Stage 1: extrai layers do JAR no host via BUILDPLATFORM -----------------
-FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk AS extractor
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk@sha256:884a2f8692cc1e2c7e21f95914adf0ae0eafee9a7eb663a12169cc44468256ec AS extractor
 ARG SOURCE_DATE_EPOCH
 WORKDIR /layers
 COPY docker/Healthcheck.java /tmp/Healthcheck.java
@@ -27,7 +27,7 @@ RUN java -Djarmode=tools -jar /tmp/app.jar extract --layers --launcher --destina
  && find /layers -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
 
 # --- Stage 2: runtime Java 25 com Tomcat embarcado pelo Spring Boot ----------
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre@sha256:945247f9d092703e0c6be92243ef3c51640229e23ab34d353c8dcdc73e6cd4e6
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
