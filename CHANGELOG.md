@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.69.0.2] - 2026-11-17
+
+### Outros
+
+- Integra cupons Dodo à compra e à reconquista automática (`51187b8`)
+- Implementa cupons Efí na primeira mensalidade e revisa fluxos lojistas (`216d022`)
+
 ## [1.69.0.1] - 2026-11-17
 
 ### Outros
