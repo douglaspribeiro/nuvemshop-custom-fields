@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.72.0] - 2026-11-18
+
+### Features
+
+- adiciona Pix agendado da Efí com acesso provisório até D+2 (`c158c3a`)
+
 ## [1.71.0] - 2026-11-18
 
 ### Features
