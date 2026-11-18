@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.71.0] - 2026-11-18
+
+### Features
+
+- adiciona exceções por funcionalidade (`70b4074`)
+- restringe menu de aplicativos à hml (`af74629`)
+
 ## [1.70.2.1] - 2026-11-18
 
 ### Outros
