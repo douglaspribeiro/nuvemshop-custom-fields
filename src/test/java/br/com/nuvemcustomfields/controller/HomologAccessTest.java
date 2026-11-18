@@ -42,7 +42,10 @@ class HomologAccessTest {
         return session;
     }
     @Test void templatesAndPaidUploadsAreAvailableOutsideTheFormerAllowlist() throws Exception {
-        mvc.perform(get("/admin/templates").session(session(99))).andExpect(status().isOk());
+        mvc.perform(get("/admin/templates").session(session(42))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/apps\"")));
+        mvc.perform(get("/admin/templates").session(session(99))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/apps\""))));
         mvc.perform(get("/admin/buyer-uploads").session(session(99))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/buyer-uploads\"")));
         assertThat(templates.list(99)).isNotNull();
