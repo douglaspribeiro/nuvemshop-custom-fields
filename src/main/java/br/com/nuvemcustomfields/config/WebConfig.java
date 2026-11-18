@@ -16,11 +16,14 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final AdminSessionInterceptor adminSessionInterceptor;
     private final BackofficeSessionInterceptor backofficeSessionInterceptor;
+    private final ProductComplementsAccessInterceptor productComplementsAccessInterceptor;
 
-    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor, UserJourneyAuditInterceptor journeyAudit) {
+    public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor,
+                     UserJourneyAuditInterceptor journeyAudit, ProductComplementsAccessInterceptor productComplementsAccessInterceptor) {
         this.journeyAudit = journeyAudit;
         this.adminSessionInterceptor = adminSessionInterceptor;
         this.backofficeSessionInterceptor = backofficeSessionInterceptor;
+        this.productComplementsAccessInterceptor = productComplementsAccessInterceptor;
     }
 
     @Override
@@ -31,6 +34,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(adminSessionInterceptor)
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/embedded", "/admin/nexo/session");
+        registry.addInterceptor(productComplementsAccessInterceptor)
+                .addPathPatterns("/admin/apps/complements", "/admin/apps/complements/**");
         registry.addInterceptor(backofficeSessionInterceptor)
                 .addPathPatterns("/backoffice/**")
                 .excludePathPatterns("/backoffice/login");

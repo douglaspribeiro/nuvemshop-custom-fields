@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties={"homolog.allowed-store-ids=42", "buyer-uploads.cleanup-delay-ms=10000000"})
+@SpringBootTest(properties={"features.allowed=42:apps-menu,42:product-complements", "buyer-uploads.cleanup-delay-ms=10000000"})
 @AutoConfigureMockMvc
 class HomologAccessTest {
     @Autowired MockMvc mvc;
@@ -46,6 +46,7 @@ class HomologAccessTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/apps\"")));
         mvc.perform(get("/admin/templates").session(session(99))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/apps\""))));
+        mvc.perform(get("/admin/apps/complements").session(session(99))).andExpect(status().isForbidden());
         mvc.perform(get("/admin/buyer-uploads").session(session(99))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/buyer-uploads\"")));
         assertThat(templates.list(99)).isNotNull();

@@ -5,6 +5,7 @@ import br.com.nuvemcustomfields.dto.ProductPage;
 import br.com.nuvemcustomfields.dto.ProductSummary;
 import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.properties.FeatureAccessProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -46,6 +47,7 @@ class ComplementAdminTest {
     @Autowired StoreRepository stores;
     @Autowired ComplementOffers offers;
     @MockitoBean NuvemshopApiClient catalog;
+    @MockitoBean FeatureAccessProperties features;
     MockHttpSession session;
     long storeId;
     String csrf;
@@ -54,6 +56,7 @@ class ComplementAdminTest {
         var migration = new ResourceDatabasePopulator(new ClassPathResource("db/migration/V91__product_complements.sql"));
         if (storeTableMissing()) migration.execute(source);
         session = merchant("read_products");
+        when(features.allows(anyLong(), eq(FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS))).thenReturn(true);
         storeId = (Long) session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
         mvc.perform(get(HOME).session(session)).andExpect(status().isOk());
         csrf = (String) session.getAttribute("complementAdminCsrf");

@@ -1,23 +1,23 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
-import br.com.nuvemcustomfields.properties.HomologProperties;
+import br.com.nuvemcustomfields.properties.FeatureAccessProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 @ControllerAdvice
-public class HomologAppsMenuModelAdvice {
-    private final HomologProperties homolog;
+public class FeatureAppsMenuModelAdvice {
+    private final FeatureAccessProperties features;
 
-    public HomologAppsMenuModelAdvice(HomologProperties homolog) {
-        this.homolog = homolog;
+    public FeatureAppsMenuModelAdvice(FeatureAccessProperties features) {
+        this.features = features;
     }
 
     @ModelAttribute("appsMenuVisible")
     public boolean appsMenuVisible(HttpServletRequest request) {
         var session = request.getSession(false);
         if (session == null || !(session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY) instanceof Long storeId)) return false;
-        return homolog.allows(storeId);
+        return features.allows(storeId, FeatureAccessProperties.Feature.APPS_MENU);
     }
 }
