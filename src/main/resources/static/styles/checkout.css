@@ -43,7 +43,7 @@
 .payment-trust { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 34px; border-top: 1px solid #e9edf0; background: #fbfcfd; color: #75838d; font-size: .75rem; }
 .payment-processor { display: flex; align-items: center; gap: 8px; }
 .payment-processor img { width: 38px; height: 34px; object-fit: contain; }
-.payment-trust-copy { text-align: right; }
+.payment-trust-copy { text-align: right; display: none;}
 .payment-summary { position: sticky; top: 26px; padding: 27px 26px; }
 .payment-summary-label { margin: 0 0 26px; color: #6c7d89; font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .payment-summary h2 { color: #1b2e3b; font-size: 1.2rem; font-weight: 750; letter-spacing: -.02em; }
