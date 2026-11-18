@@ -3,6 +3,14 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.70.2.1] - 2026-11-18
+
+### Outros
+
+- Add app switcher prototype (`05f63fc`)
+- Implement financial settlement agenda (`a2934c0`)
+- Implement product complements administration (`0a09b02`)
+
 ## [1.70.2] - 2026-11-17
 
 ### Correções
