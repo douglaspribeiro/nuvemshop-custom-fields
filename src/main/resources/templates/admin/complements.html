@@ -1,0 +1,55 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{complements.title}">Complementos de Produto</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+</head>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
+<main class="shell apps-layout">
+    <aside th:replace="~{fragments/app-switcher :: switcher('complements')}"></aside>
+    <div class="apps-content">
+        <section class="page-header">
+            <div><h1 th:text="#{complements.title}">Complementos de Produto</h1><p th:text="#{complements.intro}"></p></div>
+            <a class="button primary" th:href="@{/admin/apps/complements/new}" th:text="#{complements.new}">Nova oferta</a>
+        </section>
+        <p class="notice" role="status" th:if="${message}" th:text="${message}"></p>
+        <p class="notice error" role="alert" th:if="${error}" th:text="${error}"></p>
+        <p class="notice" th:text="#{complements.adminOnly}"></p>
+        <section class="panel" th:if="${offers.isEmpty()}">
+            <h2 th:text="#{complements.empty}"></h2>
+            <p th:text="#{complements.empty.detail}"></p>
+        </section>
+        <article class="panel complement-offer" th:each="offer : ${offers}">
+            <h2 th:text="${offer.parentName + ' + ' + offer.productName}"></h2>
+            <p class="muted" th:if="${offer.ready()}" th:text="#{complements.variantId(${offer.variantId})}"></p>
+            <p class="notice warning" th:if="${offer.uncertain()}" th:text="#{complements.pending(${offer.id})}"></p>
+            <form method="post" th:if="${offer.uncertain()}" th:action="@{/admin/apps/complements/{id}/recover(id=${offer.id})}">
+                <input type="hidden" name="csrf" th:value="${csrf}">
+                <button class="button" type="submit" th:text="#{complements.recover}"></button>
+            </form>
+            <form method="post" class="form complement-settings" th:if="${offer.ready()}"
+                  th:action="@{/admin/apps/complements/{id}/update(id=${offer.id})}">
+                <input type="hidden" name="csrf" th:value="${csrf}">
+                <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${offer.label}"></label>
+                <label class="complement-toggle"><input name="enabled" type="checkbox" value="true" th:checked="${offer.enabled}"><span th:text="#{complements.enabled}"></span></label>
+                <button class="button" type="submit" th:text="#{complements.save}">Salvar</button>
+            </form>
+            <details th:if="${offer.ready()}" class="complement-remove">
+                <summary th:text="#{complements.remove}">Remover oferta</summary>
+                <p th:text="#{complements.remove.detail}"></p>
+                <form method="post" th:action="@{/admin/apps/complements/{id}/remove(id=${offer.id})}">
+                    <input type="hidden" name="csrf" th:value="${csrf}">
+                    <button class="button" type="submit" th:text="#{complements.remove.confirm}">Confirmar remoção</button>
+                </form>
+            </details>
+        </article>
+    </div>
+</main>
+<th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</body>
+</html>

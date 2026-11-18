@@ -1,0 +1,99 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{complements.new}">Nova oferta</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+</head>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
+<main class="shell apps-layout">
+    <aside th:replace="~{fragments/app-switcher :: switcher('complements')}"></aside>
+    <div class="apps-content">
+        <section class="page-header">
+            <div>
+                <a th:href="@{/admin/apps/complements}" th:text="#{complements.back}"></a>
+                <h1 th:text="#{complements.new}">Nova oferta</h1>
+                <p th:if="${parentName}" th:text="#{complements.parent(${parentName})}"></p>
+            </div>
+        </section>
+        <p class="notice error" role="alert" th:if="${error}" th:text="${error}"></p>
+        <section class="panel" th:if="${catalogPage != null}">
+            <h2 th:text="${parentId == null} ? #{complements.selectParent} : #{complements.selectExtra}"></h2>
+            <div th:if="${parentId != null}" class="complement-actions">
+                <a class="button primary" th:if="${canCreate}" th:href="@{/admin/apps/complements/new(parentId=${parentId},create=true)}" th:text="#{complements.create}"></a>
+                <p th:unless="${canCreate}" th:text="#{complements.scopeHelp}"></p>
+                <details th:if="${canReauthorize}">
+                    <summary th:text="#{complements.reauthorize}"></summary>
+                    <p th:text="#{complements.reauthorize.detail}"></p>
+                    <a class="button" th:href="@{/install}" th:text="#{complements.reauthorize}"></a>
+                </details>
+            </div>
+            <form class="form inline-form" method="get" th:action="@{/admin/apps/complements/new}">
+                <input th:if="${parentId != null}" type="hidden" name="parentId" th:value="${parentId}">
+                <input type="search" name="q" maxlength="120" th:aria-label="#{complements.search}" th:placeholder="#{complements.search}" th:value="${catalogPage.query}">
+                <button class="button" type="submit" th:text="#{common.search}"></button>
+            </form>
+            <p th:if="${catalogPage.items.isEmpty()}" th:text="#{complements.noProducts}"></p>
+            <div class="complement-products">
+                <th:block th:each="product : ${catalogPage.items}">
+                    <a th:if="${parentId == null}" th:href="@{/admin/apps/complements/new(parentId=${product.id})}" th:text="${product.name}"></a>
+                    <a th:if="${parentId != null and parentId != product.id}" th:href="@{/admin/apps/complements/new(parentId=${parentId},productId=${product.id})}" th:text="${product.name}"></a>
+                </th:block>
+            </div>
+            <div class="complement-actions">
+                <a th:if="${catalogPage.hasPrevious()}" th:href="@{/admin/apps/complements/new(parentId=${parentId},q=${catalogPage.query},page=${catalogPage.previousPage()})}" th:text="#{complements.previous}"></a>
+                <a th:if="${catalogPage.hasNext()}" th:href="@{/admin/apps/complements/new(parentId=${parentId},q=${catalogPage.query},page=${catalogPage.nextPage()})}" th:text="#{complements.next}"></a>
+            </div>
+        </section>
+        <section class="panel" th:if="${variants != null}">
+            <h2 th:text="${productName}"></h2>
+            <p th:if="${variants.isEmpty()}" th:text="#{complements.error.variant}"></p>
+            <form class="form complement-form" th:unless="${variants.isEmpty()}" th:action="@{/admin/apps/complements/link}" method="post">
+                <input type="hidden" name="csrf" th:value="${csrf}">
+                <input type="hidden" name="parentId" th:value="${parentId}">
+                <input type="hidden" name="productId" th:value="${productId}">
+                <label><span th:text="#{complements.variant}"></span><select name="variantId" required>
+                    <option th:each="variant : ${variants}" th:value="${variant.id}" th:text="${variant.name + ' · ' + variant.price}"></option>
+                </select></label>
+                <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="#{complements.addLabel(${productName})}"></label>
+                <button class="button primary" type="submit" th:text="#{complements.link}"></button>
+            </form>
+            <a th:href="@{/admin/apps/complements/new(parentId=${parentId})}" th:text="#{complements.chooseAnother}"></a>
+        </section>
+        <section class="panel" th:if="${creationForm and requestId != null}">
+            <h2 th:text="#{complements.create}"></h2>
+            <p th:text="#{complements.create.detail}"></p>
+            <form class="form complement-form" th:action="@{/admin/apps/complements/create}" method="post">
+                <input type="hidden" name="csrf" th:value="${csrf}">
+                <input type="hidden" name="requestId" th:value="${requestId}">
+                <input type="hidden" name="parentId" th:value="${parentId}">
+                <label><span th:text="#{complements.name}"></span><input name="name" required maxlength="120" th:value="${draft?.name}"></label>
+                <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${draftLabel}"></label>
+                <div class="complement-fields">
+                    <label><span th:text="#{complements.price}"></span><input name="price" type="number" required min="0.01" max="999999999" step="0.01" th:value="${draft?.price}"></label>
+                    <label><span th:text="#{complements.stock}"></span><input name="stock" type="number" required min="0" max="1000000" step="1" th:value="${draft?.stock}"></label>
+                </div>
+                <label><span th:text="#{complements.image}"></span><input name="imageUrl" type="url" placeholder="https://" maxlength="1000" th:value="${draft?.imageUrl}"></label>
+                <details>
+                    <summary th:text="#{complements.shipping}"></summary>
+                    <div class="complement-fields">
+                        <label><span th:text="#{complements.weight}"></span><input name="weight" type="number" min="0.001" step="0.001" max="10000" th:value="${draft?.weight}"></label>
+                        <label><span th:text="#{complements.width}"></span><input name="width" type="number" min="0.001" step="0.001" max="10000" th:value="${draft?.width}"></label>
+                        <label><span th:text="#{complements.height}"></span><input name="height" type="number" min="0.001" step="0.001" max="10000" th:value="${draft?.height}"></label>
+                        <label><span th:text="#{complements.depth}"></span><input name="depth" type="number" min="0.001" step="0.001" max="10000" th:value="${draft?.depth}"></label>
+                    </div>
+                </details>
+                <label class="complement-toggle"><input name="unlisted" type="checkbox" value="true" th:checked="${draft == null or draft.unlisted}"><span th:text="#{complements.unlisted}"></span></label>
+                <button class="button primary" type="submit" th:text="#{complements.create.submit}"></button>
+            </form>
+            <a th:href="@{/admin/apps/complements/new(parentId=${parentId})}" th:text="#{complements.chooseAnother}"></a>
+        </section>
+    </div>
+</main>
+<th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</body>
+</html>

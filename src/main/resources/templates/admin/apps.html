@@ -1,0 +1,31 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{complements.apps}">Aplicativos</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+</head>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
+<main class="shell apps-layout">
+    <aside th:replace="~{fragments/app-switcher :: switcher('nc')}"></aside>
+    <div class="apps-content">
+        <section class="page-header">
+            <div><h1 th:text="#{complements.apps}">Aplicativos</h1><p th:text="#{complements.apps.intro}"></p></div>
+        </section>
+        <section class="panel apps-home-card">
+            <div><h2 th:text="#{complements.nc}">Campos Personalizados</h2><p th:text="#{complements.nc.detail}"></p></div>
+            <a class="button" th:href="@{/admin}" th:text="#{complements.open}">Abrir</a>
+        </section>
+        <section class="panel apps-home-card">
+            <div><h2 th:text="#{complements.title}">Complementos de Produto</h2><p th:text="#{complements.intro}"></p></div>
+            <a class="button primary" th:href="@{/admin/apps/complements}" th:text="#{complements.open}">Abrir</a>
+        </section>
+    </div>
+</main>
+<th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</body>
+</html>

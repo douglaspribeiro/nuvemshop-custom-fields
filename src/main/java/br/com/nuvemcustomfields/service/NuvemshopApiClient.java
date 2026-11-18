@@ -271,11 +271,35 @@ public class NuvemshopApiClient {
     }
 
     public ProductSummary getProduct(Store store,long productId) {
-        JsonNode product=restClient.get().uri(properties.apiBaseUrl()+"/v1/{storeId}/products/{id}",store.getStoreId(),productId)
-                .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);
-        if(product==null || product.path("id").asLong()!=productId)throw new IllegalArgumentException("template.product.invalid");
-        return new ProductSummary(productId,localizedName(product.path("name"),"Produto"));
+        JsonNode product = getCatalogProduct(store, productId);
+        return new ProductSummary(productId, localizedName(product.path("name"), "Produto"), productImageUrl(product));
     }
+
+    public JsonNode getCatalogProduct(Store store, long productId) {
+        JsonNode product = restClient.get()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/products/{id}", store.getStoreId(), productId)
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve().body(JsonNode.class);
+        if (product == null || product.path("id").asLong() != productId) {
+            throw new IllegalArgumentException("template.product.invalid");
+        }
+        return product;
+    }
+
+    public JsonNode getCatalogProductBySku(Store store, String sku) {
+        return restClient.get()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/products/sku/{sku}", store.getStoreId(), sku)
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .retrieve().body(JsonNode.class);
+    }
+
+    public JsonNode createCatalogProduct(Store store, Map<String, ?> product) {
+        return restClient.post()
+                .uri(properties.apiBaseUrl() + "/v1/{storeId}/products", store.getStoreId())
+                .header("Authentication", "bearer " + store.getAccessToken())
+                .body(product).retrieve().body(JsonNode.class);
+    }
+
     public JsonNode listTemplateBatchProducts(Store store,int page) {
         return restClient.get().uri(properties.apiBaseUrl()+"/v1/{store}/products?page={page}&per_page=100&fields=id,name,categories,brand",store.getStoreId(),page)
                 .header("Authentication","bearer "+store.getAccessToken()).retrieve().body(JsonNode.class);

@@ -34,6 +34,22 @@ public class LocalNuvemshopApiClient extends NuvemshopApiClient {
                 .filter(product -> product.id()==productId).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("template.product.invalid"));
     }
+    @Override public JsonNode getCatalogProduct(Store store, long productId) {
+        var product = getProduct(store, productId);
+        var result = JsonNodeFactory.instance.objectNode();
+        result.put("id", product.id()).put("visibility", "visible");
+        result.putObject("name").put("pt", product.name());
+        result.putArray("variants").addObject().put("id", productId + 10000).put("price", "12.00");
+        return result;
+    }
+    @Override public JsonNode getCatalogProductBySku(Store store, String sku) {
+        check(store);
+        return null;
+    }
+    @Override public JsonNode createCatalogProduct(Store store, java.util.Map<String, ?> product) {
+        check(store);
+        throw new UnsupportedOperationException("A loja fictícia local não cria produtos na Nuvemshop.");
+    }
     private JsonNode empty(Store s){check(s);return JsonNodeFactory.instance.arrayNode();}
     @Override public JsonNode listWebhooks(Store s){return empty(s);}
     @Override public JsonNode listScripts(Store s){return empty(s);}

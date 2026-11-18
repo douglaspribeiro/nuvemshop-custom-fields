@@ -30,6 +30,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses only randomly named disposable schemas on a loopback test server. Never cleans an existing schema.
  */
 class MysqlMigrationContractIT {
+    @Test void complementsMigrationPreservesExistingStoresAndErasesTheirOffers() {
+        isolatedDatabase(source -> {
+            var jdbc = new JdbcTemplate(source);
+            flyway(source,"90").migrate();
+            jdbc.update("INSERT INTO stores(store_id,access_token,plan) VALUES(900091,'test','FREE')");
+            assertThat(flyway(source,"91").migrate().migrationsExecuted).isEqualTo(1);
+            String offer = """
+                    INSERT INTO product_complement_offers
+                    (id,store_id,parent_product_id,parent_name,complement_name,label,creation_state)
+                    VALUES (?,900091,10,'Agenda','Passante','Adicionar passante','PENDING')
+                    """;
+            jdbc.update(offer, "first");
+            jdbc.update(offer, "second");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_complement_offers", Integer.class)).isEqualTo(2);
+            jdbc.update("DELETE FROM stores WHERE store_id=900091");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_complement_offers", Integer.class)).isZero();
+        });
+    }
+
     @Test void addsDodoWinbackIntentWithoutChangingExistingEfiCoupons() {
         isolatedDatabase(source -> {
             var jdbc=new JdbcTemplate(source);flyway(source,"88").migrate();
