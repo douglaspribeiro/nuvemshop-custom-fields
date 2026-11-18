@@ -167,6 +167,17 @@ public class EfiGateway implements PaymentGateway {
         throw new UnsupportedOperationException("Concilie a assinatura Efí pelo ID da assinatura.");
     }
 
+    @Override public java.util.List<JsonNode> financialHistory(String subscriptionId) {
+        var result=new java.util.ArrayList<JsonNode>();
+        var seen=new java.util.HashSet<String>();
+        for(JsonNode entry:detail(subscriptionId).path("history")) {
+            String chargeId=entry.path("charge_id").asText("");
+            if(chargeId.matches("[0-9]+") && seen.add(chargeId))
+                result.add(call("detailCharge",Map.of("id",chargeId),Map.of()).path("data"));
+        }
+        return result;
+    }
+
     @Override public void cancel(String subscriptionId) {
         call("cancelSubscription", Map.of("id", subscriptionId), Map.of());
     }

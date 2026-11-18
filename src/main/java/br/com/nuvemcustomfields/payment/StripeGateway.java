@@ -205,6 +205,40 @@ public class StripeGateway implements PaymentGateway {
     public String disputeCharge(String disputeId) {
         return required(get("/disputes/" + id(disputeId, "dp_")), "charge");
     }
+    @Override public java.util.List<JsonNode> financialHistory(String subscriptionId) {
+        var result=new java.util.ArrayList<JsonNode>();String cursor="";
+        for(int page=0;page<1000;page++) {
+            JsonNode response=get("/invoices?subscription="+id(subscriptionId,"sub_")+"&limit=100"+cursor);
+            JsonNode items=response.path("data");if(!items.isArray())throw new PaymentGatewayException("Histórico Stripe inválido.");
+            for(JsonNode invoice:items) {
+                if(!"paid".equals(text(invoice,"status")) || invoice.path("amount_paid").asLong()<=0)continue;
+                JsonNode payments=get("/invoice_payments?invoice="+id(required(invoice,"id"),"in_")+"&status=paid&limit=100&expand[]=data.payment.payment_intent.latest_charge.balance_transaction");
+                if(payments.path("has_more").asBoolean())throw new PaymentGatewayException("Fatura Stripe com paginação pendente.");
+                for(JsonNode payment:payments.path("data")) {
+                    JsonNode charge=payment.path("payment").path("payment_intent").path("latest_charge");
+                    if(!charge.isObject())throw new PaymentGatewayException("Cobrança Stripe sem detalhamento.");
+                    checkMode(charge);result.add(charge);
+                }
+            }
+            if(!response.path("has_more").asBoolean())return result;
+            if(items.isEmpty())throw new PaymentGatewayException("Paginação Stripe inválida.");
+            cursor="&starting_after="+id(required(items.get(items.size()-1),"id"),"in_");
+        }
+        throw new PaymentGatewayException("Histórico Stripe incompleto.");
+    }
+    @Override public java.util.List<JsonNode> financialPayouts() {
+        var result=new java.util.ArrayList<JsonNode>();String cursor="";
+        for(int page=0;page<1000;page++) {
+            JsonNode response=get("/payouts?limit=100"+cursor),items=response.path("data");
+            if(!items.isArray())throw new PaymentGatewayException("Repasses Stripe inválidos.");
+            for(JsonNode item:items){checkMode(item);result.add(item);}
+            if(!response.path("has_more").asBoolean())return result;
+            if(items.isEmpty())throw new PaymentGatewayException("Paginação Stripe inválida.");
+            cursor="&starting_after="+id(required(items.get(items.size()-1),"id"),"po_");
+        }
+        throw new PaymentGatewayException("Repasses Stripe incompletos.");
+    }
+
     @Override public void cancel(String subscriptionId) {
         post("/subscriptions/" + id(subscriptionId, "sub_"), form("cancel_at_period_end", "true"), "ncf-cancel-" + subscriptionId);
     }

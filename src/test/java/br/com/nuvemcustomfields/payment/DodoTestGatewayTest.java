@@ -183,4 +183,14 @@ class DodoTestGatewayTest {
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("não pertence");server.verify();
     }
 
+    @Test void financialHistoryFetchesLedgerWithoutInferringCreationAsPaidDate(){
+        server.expect(requestTo("https://test.dodopayments.com/payments?subscription_id=sub_own&page_size=100&page_number=0"))
+                .andExpect(method(HttpMethod.GET)).andRespond(withSuccess("{\"items\":[{\"payment_id\":\"pay_one\"}]}",MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://test.dodopayments.com/payments/pay_one"))
+                .andExpect(method(HttpMethod.GET)).andRespond(withSuccess("{\"payment_id\":\"pay_one\",\"subscription_id\":\"sub_own\",\"status\":\"succeeded\",\"created_at\":\"2026-11-16T21:51:40Z\"}",MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://test.dodopayments.com/balances/ledger?reference_object_id=pay_one&page_size=100&page_number=0"))
+                .andExpect(method(HttpMethod.GET)).andRespond(withSuccess("{\"items\":[{\"id\":\"ledger_one\",\"event_type\":\"payment\"}]}",MediaType.APPLICATION_JSON));
+        var rows=gateway.financialHistory("sub_own");assertThat(rows).hasSize(1);assertThat(rows.getFirst().path("financial_ledger")).hasSize(1);assertThat(rows.getFirst().has("paid_at")).isFalse();server.verify();
+    }
+
 }

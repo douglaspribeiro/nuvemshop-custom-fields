@@ -131,6 +131,17 @@ backoffice:
   password: ${BACKOFFICE_PASSWORD:admin}
 
 payments:
+  finance:
+    enabled: ${FINANCE_ENABLED:true}
+    sync-delay-ms: ${FINANCE_SYNC_DELAY_MS:900000}
+    initial-delay-ms: ${FINANCE_INITIAL_DELAY_MS:120000}
+    accounts:
+      efi: ${FINANCE_EFI_ACCOUNT:default}
+      mercado_pago: ${FINANCE_MERCADO_PAGO_ACCOUNT:default}
+      dodo: ${FINANCE_DODO_ACCOUNT:default}
+      dodo_test: ${FINANCE_DODO_TEST_ACCOUNT:default}
+      stripe: ${FINANCE_STRIPE_ACCOUNT:default}
+      creem: ${FINANCE_CREEM_ACCOUNT:default}
   stripe:
     enabled: ${STRIPE_ENABLED:false}
     sandbox: ${STRIPE_SANDBOX:true}

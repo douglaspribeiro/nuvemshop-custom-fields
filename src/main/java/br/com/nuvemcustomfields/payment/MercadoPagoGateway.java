@@ -99,6 +99,19 @@ public class MercadoPagoGateway implements PaymentGateway {
         return invoice(get("/authorized_payments/" + invoiceId));
     }
 
+    @Override public java.util.List<JsonNode> financialHistory(String subscriptionId) {
+        if(!subscriptionId.matches("[A-Za-z0-9_-]{1,160}"))throw new IllegalArgumentException("Assinatura inválida.");
+        var result=new java.util.ArrayList<JsonNode>();
+        for(int offset=0;offset<100000;offset+=100) {
+            JsonNode page=get("/authorized_payments/search?preapproval_id="+subscriptionId+"&limit=100&offset="+offset);
+            JsonNode items=page.path("results");if(!items.isArray())throw new PaymentGatewayException("Histórico Mercado Pago inválido.");
+            for(JsonNode item:items) {String paymentId=item.path("payment").path("id").asText("");
+                if(paymentId.matches("[0-9]+"))result.add(get("/v1/payments/"+paymentId));}
+            if(items.size()<100)return result;
+        }
+        throw new PaymentGatewayException("Histórico Mercado Pago excedeu limite; cobertura incompleta.");
+    }
+
     @Override
     public void cancel(String subscriptionId) {
         put("/preapproval/" + subscriptionId, Map.of("status", "cancelled"));

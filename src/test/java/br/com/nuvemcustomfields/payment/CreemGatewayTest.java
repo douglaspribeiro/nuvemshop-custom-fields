@@ -135,4 +135,12 @@ class CreemGatewayTest {
         assertThat(gateway.createCheckout(store, PlanType.PREMIUM, "ref", "https://app.test/return").checkoutResourceId()).isEqualTo("ch_1");
         server.verify();
     }
+    @Test void financialHistoryFollowsExplicitNextPageEvenWhenPageIsSparse(){
+        server.expect(requestTo("https://test-api.creem.io/v1/transactions/search?page_size=100&page_number=1"))
+                .andExpect(method(HttpMethod.GET)).andRespond(withSuccess("{\"items\":[{\"id\":\"txn_other\",\"subscription\":\"sub_other\",\"mode\":\"test\"}],\"pagination\":{\"next_page\":2}}",MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://test-api.creem.io/v1/transactions/search?page_size=100&page_number=2"))
+                .andExpect(method(HttpMethod.GET)).andRespond(withSuccess("{\"items\":[{\"id\":\"txn_own\",\"subscription\":\"sub_own\",\"mode\":\"test\"}],\"pagination\":{\"next_page\":null}}",MediaType.APPLICATION_JSON));
+        assertThat(gateway(true).financialHistory("sub_own")).hasSize(1).first().extracting(n->n.path("id").asText()).isEqualTo("txn_own");server.verify();
+    }
+
 }

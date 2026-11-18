@@ -49,6 +49,24 @@ class MysqlMigrationContractIT {
         });
     }
 
+    @Test void financialAgendaMigratesFromV89AndPersistsAuditableIdempotentEntries() {
+        isolatedDatabase(source -> {
+            flyway(source,"89").migrate();
+            assertThat(flyway(source,"90").migrate().migrationsExecuted).isEqualTo(1);
+            var ledger=new br.com.nuvemcustomfields.finance.FinancialLedger(new JdbcTemplate(source),
+                    com.fasterxml.jackson.databind.json.JsonMapper.builder().findAndAddModules().build());
+            var entry=new br.com.nuvemcustomfields.finance.FinancialEntry(null,
+                    br.com.nuvemcustomfields.entity.PaymentProviderType.EFI,"default",br.com.nuvemcustomfields.entity.PaymentEnvironment.PRODUCTION,
+                    "charge-migration","1",br.com.nuvemcustomfields.finance.FinancialEntry.Stage.PAYMENT,null,null,null,"BR","card","BRL",
+                    new java.math.BigDecimal("19.99"),null,null,null,java.time.LocalDate.of(2026,11,17),java.time.LocalDate.of(2026,11,17),null,"paid",
+                    br.com.nuvemcustomfields.finance.FinancialEntry.Certainty.CONFIRMED,"API","Consulta sanitizada de teste",java.time.Instant.now(),null,null);
+            var saved=ledger.record(entry,"migration-test");ledger.record(entry,"migration-test");
+            assertThat(ledger.entries()).hasSize(1);assertThat(ledger.history(saved.key())).hasSize(1);
+            assertThat(ledger.require(saved.key()).gross()).isEqualByComparingTo("19.99");
+            assertThat(flyway(source,"90").validateWithResult().validationSuccessful).isTrue();
+        });
+    }
+
     @Test void addsDodoWinbackIntentWithoutChangingExistingEfiCoupons() {
         isolatedDatabase(source -> {
             var jdbc=new JdbcTemplate(source);flyway(source,"88").migrate();

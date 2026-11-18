@@ -55,3 +55,8 @@ homolog:
 winback:
   enabled: false
   mail-enabled: false
+
+# Financial tables use Flyway, which is disabled in the shared H2 test profile.
+payments:
+  finance:
+    enabled: false

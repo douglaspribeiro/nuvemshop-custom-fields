@@ -152,6 +152,25 @@ public class CreemGateway implements PaymentGateway {
         return new GatewayInvoice(required(data, "id"), required(data, "subscription"), required(data, "id"), status,
                 required(data, "currency"), data.path("amount_paid").isNumber() ? money(data, "amount_paid") : money(data, "amount"));
     }
+    @Override public java.util.List<JsonNode> financialHistory(String subscriptionId) {
+        var result=new java.util.ArrayList<JsonNode>();
+        for(int page=1,attempt=0;attempt<1000;attempt++) {
+            JsonNode response;
+            try {response=client.get().uri(properties.baseUrl()+"/transactions/search?page_size=100&page_number="+page)
+                    .header("x-api-key",properties.apiKey()).retrieve().body(JsonNode.class);}
+            catch(RestClientException ex){throw new PaymentGatewayException("Não foi possível consultar o histórico financeiro Creem.",ex);}
+            if(response==null)throw new PaymentGatewayException("Histórico Creem vazio.");
+            JsonNode items=response.path("items");if(!items.isArray())throw new PaymentGatewayException("Histórico Creem inválido.");
+            for(JsonNode item:items){checkMode(item);if(subscriptionId.equals(resourceId(item.path("subscription"))))result.add(item);}
+            if(response.path("pagination").has("next_page")) {
+                if(response.path("pagination").path("next_page").isNull())return result;
+                int next=response.path("pagination").path("next_page").asInt();
+                if(next<=page)throw new PaymentGatewayException("Paginação Creem sem progresso.");page=next;
+            }else{if(items.size()<100)return result;page++;}
+        }
+        throw new PaymentGatewayException("Histórico Creem incompleto.");
+    }
+
     @Override public void cancel(String id) { post("/subscriptions/" + safeId(id) + "/cancel", Map.of("mode", "scheduled", "onExecute", "cancel"), null); }
     @Override public void cancelImmediately(String id) { post("/subscriptions/" + safeId(id) + "/cancel", Map.of("mode", "immediate"), null); }
     @Override public void cancelCheckout(String id) {

@@ -30,6 +30,11 @@ public interface PaymentGateway {
     }
     Optional<GatewayInvoice> getLatestInvoice(String subscriptionId);
     GatewayInvoice getInvoice(String invoiceId);
+    /** Read-only history. Missing capabilities must be shown as coverage gaps. */
+    default java.util.List<com.fasterxml.jackson.databind.JsonNode> financialHistory(String subscriptionId) {
+        throw new UnsupportedOperationException("Histórico automático indisponível; importe relatório documentado.");
+    }
+    default java.util.List<com.fasterxml.jackson.databind.JsonNode> financialPayouts() { return java.util.List.of(); }
     void cancel(String subscriptionId);
     default void cancelImmediately(String subscriptionId) { cancel(subscriptionId); }
     void cancelCheckout(String checkoutResourceId);

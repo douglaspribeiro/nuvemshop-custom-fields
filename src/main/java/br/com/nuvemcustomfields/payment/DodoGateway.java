@@ -219,6 +219,35 @@ public abstract class DodoGateway implements PaymentGateway {
         return new GatewayInvoice(required(data, "payment_id"), required(data, "subscription_id"), required(data, "payment_id"), status,
                 required(data, "currency"), money(data, "total_amount"));
     }
+    @Override public java.util.List<JsonNode> financialHistory(String subscriptionId) {
+        var result=new java.util.ArrayList<JsonNode>();
+        for(int page=0;page<1000;page++) {
+            JsonNode response=get("/payments?subscription_id="+safeId(subscriptionId)+"&page_size=100&page_number="+page);
+            JsonNode items=response.path("items");if(!items.isArray())throw new PaymentGatewayException("Histórico Dodo inválido.");
+            for(JsonNode item:items){
+                String paymentId=safeId(required(item,"payment_id"));JsonNode detail=get("/payments/"+paymentId);
+                var ledger=mapper.createArrayNode();
+                for(int ledgerPage=0;ledgerPage<1000;ledgerPage++) {
+                    JsonNode entries=get("/balances/ledger?reference_object_id="+paymentId+"&page_size=100&page_number="+ledgerPage).path("items");
+                    if(!entries.isArray())throw new PaymentGatewayException("Ledger Dodo inválido.");entries.forEach(ledger::add);
+                    if(entries.size()<100)break;if(ledgerPage==999)throw new PaymentGatewayException("Ledger Dodo incompleto.");
+                }
+                ((com.fasterxml.jackson.databind.node.ObjectNode)detail).set("financial_ledger",ledger);result.add(detail);
+            }
+            if(items.size()<100)return result;
+        }
+        throw new PaymentGatewayException("Histórico Dodo incompleto.");
+    }
+    @Override public java.util.List<JsonNode> financialPayouts() {
+        var result=new java.util.ArrayList<JsonNode>();
+        for(int page=0;page<1000;page++) {
+            JsonNode items=get("/payouts?page_size=100&page_number="+page).path("items");
+            if(!items.isArray())throw new PaymentGatewayException("Repasses Dodo inválidos.");
+            items.forEach(result::add);if(items.size()<100)return result;
+        }
+        throw new PaymentGatewayException("Histórico de repasses Dodo incompleto.");
+    }
+
     @Override public void cancel(String id) { patchSubscription(id, Map.of("cancel_at_next_billing_date", true)); }
     @Override public void cancelImmediately(String id) { patchSubscription(id, Map.of("status", "cancelled")); }
     private void patchSubscription(String id, Object body) {
