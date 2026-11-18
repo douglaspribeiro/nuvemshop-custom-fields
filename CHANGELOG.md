@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.72.1] - 2026-11-18
+
+### Correções
+
+- display none cupom card div (`ce7031a`)
+
 ## [1.72.0] - 2026-11-18
 
 ### Features
