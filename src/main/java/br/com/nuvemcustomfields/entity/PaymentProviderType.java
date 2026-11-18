@@ -3,6 +3,7 @@ package br.com.nuvemcustomfields.entity;
 public enum PaymentProviderType {
     MERCADO_PAGO,
     EFI,
+    EFI_PIX,
     PADDLE,
     CREEM,
     DODO,

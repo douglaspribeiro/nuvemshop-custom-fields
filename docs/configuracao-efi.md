@@ -186,3 +186,30 @@ A validação local usa respostas simuladas da Efí. Uma compra real em produç�
 conferência da próxima cobrança na Efí são etapas separadas do deploy.
 
 O fluxo Dodo e a separação por gateway estão em [Cupons na primeira mensalidade](cupons-primeira-mensalidade.md).
+
+## Pix agendado via Open Finance
+
+No checkout brasileiro de cartão, a permissão `scheduled-pix` oferece 24 mensalidades
+de valor fixo com consentimento no banco. Inclua `ID_DA_LOJA:scheduled-pix` na
+lista completa de `FEATURES_ALLOWED`. A remoção da permissão impede novas adesões.
+Assinaturas existentes continuam sendo consultadas e podem ser canceladas.
+
+Configure no ambiente do aplicativo:
+
+- `EFI_OPEN_FINANCE_ENABLED=true` e `EFI_SANDBOX=true` para homologação.
+- `EFI_OPEN_FINANCE_CLIENT_ID` e `EFI_OPEN_FINANCE_CLIENT_SECRET` da aplicação Efí.
+- `EFI_OPEN_FINANCE_CERTIFICATE` com o caminho do certificado P12 do ambiente,
+  montado para leitura pelo processo Java.
+- `EFI_OPEN_FINANCE_BENEFICIARY_KEY` com a chave Pix do recebedor e
+  `EFI_OPEN_FINANCE_CITY_CODE` com o código IBGE de sete dígitos.
+- `EFI_OPEN_FINANCE_WEBHOOK_SECRET` com o hash configurado na Efí para o callback
+  `/prod/webhooks/efi-open-finance`. Proteja a URL e os logs de proxy para que
+  o parâmetro de autenticação não seja registrado.
+
+Na aplicação Open Finance, habilite consulta de participantes, iniciação, consulta e
+cancelamento de Pix. Configure a URL de retorno para `/admin/billing` na origem
+pública do aplicativo. O callback dispara consulta autenticada. A conciliação
+periódica também verifica os débitos. A autorização confirmada concede acesso
+provisório até 00h de Brasília do dia seguinte ao primeiro débito previsto.
+O débito aceito libera o período mensal. Valide em homologação o consentimento, a baixa e o
+cancelamento antes de habilitar lojas em produção.

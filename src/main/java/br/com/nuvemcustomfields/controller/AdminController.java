@@ -207,7 +207,9 @@ public class AdminController {
             store = adminStoreService.requireCurrentStore(session);
         }
         var subscription = paymentSubscriptionService.find(store.getStoreId()).orElse(null);
-        if (subscription != null && subscription.getUpgradePlan() != null) {
+        if (subscription != null && (subscription.getUpgradePlan() != null
+                || (subscription.getProvider() == PaymentProviderType.EFI_PIX
+                    && subscription.getStatus() == PaymentSubscriptionStatus.PENDING))) {
             try {
                 paymentSubscriptionService.reconcile(store.getStoreId());
                 store = adminStoreService.requireCurrentStore(session);
@@ -237,7 +239,7 @@ public class AdminController {
         model.addAttribute("ultraAvailable", ultraAvailable);
         model.addAttribute("premiumUltraPrice", ultraAvailable ? formatBillingPrice(billingCurrency,
                 paymentSubscriptionService.amount(store, PlanType.PREMIUM_ULTRA)) : "");
-        model.addAttribute("canUpgrade", subscription != null && !subscription.getProvider().isDodo()
+        model.addAttribute("canUpgrade", subscription != null && subscription.getProvider() != PaymentProviderType.EFI_PIX && !subscription.getProvider().isDodo()
                 && subscription.getProvider() != PaymentProviderType.STRIPE && subscription.isAccessActive()
                 && subscription.getStatus() == PaymentSubscriptionStatus.ACTIVE
                 && !subscription.isCancellationPending() && subscription.getCancellationEffectiveAt() == null

@@ -34,7 +34,7 @@ app:
 # Exceções por loja, independentes do plano: "123:apps-menu,456:product-complements".
 # Configuração inválida não libera nenhuma exceção.
 features:
-  allowed: ${FEATURES_ALLOWED:5538394:apps-menu,5538394:product-complements}
+  allowed: ${FEATURES_ALLOWED:5538394:apps-menu,5538394:product-complements,5538394:scheduled-pix}
 
 uptimerobot:
   api-key: ${UPTIMEROBOT_API_KEY:}
@@ -159,6 +159,15 @@ payments:
     reconcile-delay-ms: ${UPGRADE_RECONCILE_DELAY_MS:60000}
   reconciliation-delay-ms: ${PAYMENTS_RECONCILIATION_DELAY_MS:3600000}
   efi:
+    open-finance:
+      enabled: ${EFI_OPEN_FINANCE_ENABLED:false}
+      sandbox: ${EFI_SANDBOX:true}
+      client-id: ${EFI_OPEN_FINANCE_CLIENT_ID:}
+      client-secret: ${EFI_OPEN_FINANCE_CLIENT_SECRET:}
+      certificate: ${EFI_OPEN_FINANCE_CERTIFICATE:}
+      beneficiary-key: ${EFI_OPEN_FINANCE_BENEFICIARY_KEY:}
+      city-code: ${EFI_OPEN_FINANCE_CITY_CODE:}
+      webhook-secret: ${EFI_OPEN_FINANCE_WEBHOOK_SECRET:}
     enabled: ${EFI_ENABLED:false}
     sandbox: ${EFI_SANDBOX:true}
     client-id: ${EFI_CLIENT_ID:}

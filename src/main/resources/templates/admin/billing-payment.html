@@ -49,6 +49,8 @@
                 <p class="notice" th:if="${discounted}" th:text="#{checkout.coupon.applied(${couponCode})}" role="status"></p>
             </section>
 
+            <a class="button" th:if="${scheduledPixVisible and upgradeAdjustment == null and reactivation != true and discounted != true and couponError == null}"
+               th:href="@{/admin/billing/pay/pix(plan=${plan.name()})}">Pagar com Pix agendado</a>
             <section class="payment-panel" aria-labelledby="payment-form-title">
             <form id="efi-payment-form" th:action="${reactivation == true} ? @{/admin/billing/reactivate} : (${upgradeAdjustment!=null} ? @{/admin/billing/upgrade/efi/pay} : @{/admin/billing/pay})" method="post"
                   th:attr="data-payee-code=${payeeCode},data-environment=${efiEnvironment},data-single-charge=${upgradeAdjustment!=null}">

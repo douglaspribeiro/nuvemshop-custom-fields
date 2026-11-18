@@ -363,7 +363,24 @@ public class Store {
         this.billingLastError = billingLastError;
     }
 
+    @Enumerated(EnumType.STRING)
+    @Column(name="pix_provisional_plan", length=30)
+    private PlanType pixProvisionalPlan;
+    @Column(name="pix_provisional_until")
+    private Instant pixProvisionalUntil;
+
+    public Instant getPixProvisionalUntil() { return pixProvisionalUntil; }
+    public boolean isPixProvisionalActive() {
+        return pixProvisionalPlan != null && pixProvisionalUntil != null && Instant.now().isBefore(pixProvisionalUntil);
+    }
+    public void setPixProvisionalAccess(PlanType plan, Instant until) {
+        pixProvisionalPlan=plan;
+        pixProvisionalUntil=until;
+    }
     public PlanType getEffectivePlan() {
+        if (!manualPlanOverride && !courtesyPremium && !plan.isBillable() && !isPremiumBonusActive()
+                && isPixProvisionalActive())
+            return pixProvisionalPlan;
         if (!plan.isBillable() && isPremiumBonusActive()) {
             return getPremiumBonusPlan();
         }

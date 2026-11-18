@@ -20,4 +20,11 @@ public class FeatureAppsMenuModelAdvice {
         if (session == null || !(session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY) instanceof Long storeId)) return false;
         return features.allows(storeId, FeatureAccessProperties.Feature.APPS_MENU);
     }
+
+    @ModelAttribute("scheduledPixVisible")
+    public boolean scheduledPixVisible(HttpServletRequest request) {
+        var session = request.getSession(false);
+        return session != null && session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY) instanceof Long id
+                && features.allows(id, FeatureAccessProperties.Feature.SCHEDULED_PIX);
+    }
 }

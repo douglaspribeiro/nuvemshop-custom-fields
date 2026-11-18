@@ -205,6 +205,9 @@ public class PaymentSubscriptionService {
         if (plan == PlanType.PREMIUM_ULTRA && !efi.planAvailable(store, plan))
             throw new IllegalArgumentException("O Ultra ainda não está disponível para assinatura.");
         PaymentSubscription local = subscriptions.findByStoreId(storeId).orElse(null);
+        if (local != null && local.getProvider() == PaymentProviderType.EFI_PIX &&
+                (local.getStatus() != PaymentSubscriptionStatus.CANCELED || local.isAccessActive()))
+            throw new IllegalArgumentException("Já existe uma recorrência Pix. Confira sua assinatura antes de iniciar outro pagamento.");
         if (local != null && (local.getProvider().isStripeOrCreem() || local.getProvider().isDodo())
                 && local.getStatus() == PaymentSubscriptionStatus.PENDING && !hasText(local.getProviderCheckoutId()))
             throw new IllegalStateException("A tentativa anterior no gateway ainda precisa ser conciliada. Contate o suporte.");
@@ -645,7 +648,7 @@ public class PaymentSubscriptionService {
                 throw new PaymentGatewayException("Aguardando a confirmação do cancelamento pelo provedor.");
             }
         }
-        Optional<GatewayInvoice> invoice = canceled(remote.status()) && local.getProvider() != PaymentProviderType.EFI
+        Optional<GatewayInvoice> invoice = canceled(remote.status()) && local.getProvider() != PaymentProviderType.EFI && local.getProvider() != PaymentProviderType.EFI_PIX
                 ? Optional.empty() : latestInvoice(gateway, local, remote);
         if (local.getProvider() == PaymentProviderType.EFI && local.getStatus() == PaymentSubscriptionStatus.PENDING
                 && canceled(remote.status()) && invoice.isPresent()
@@ -998,6 +1001,15 @@ public class PaymentSubscriptionService {
         }
         paymentNotifications.paymentFailed(local, invoice);
         String status = remote.status() == null ? "" : remote.status().toLowerCase();
+        if (local.getProvider() == PaymentProviderType.EFI_PIX) {
+            Instant until = null;
+            if ("authorized".equals(status) && invoice == null && local.getPaidStartedAt() == null
+                    && remote.nextPaymentAt() != null && store.isActive()) {
+                until = remote.nextPaymentAt().atZone(br.com.nuvemcustomfields.payment.EfiScheduledPixGateway.ZONE)
+                        .plusDays(1).toInstant();
+            }
+            store.setPixProvisionalAccess(until == null ? null : local.getPlan(), until);
+        }
         boolean refunded = invoice!=null && ("refunded".equalsIgnoreCase(invoice.paymentStatus())
                 || "chargedBack".equalsIgnoreCase(invoice.paymentStatus()));
         if (canceled(status) || (remote.cancellationEffectiveAt()!=null && !refunded)) {
@@ -1081,6 +1093,11 @@ public class PaymentSubscriptionService {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
             deactivate(local, store, source);
         } else if (canceled(status)) {
+            if (local.getProvider() == PaymentProviderType.EFI_PIX && invoice != null && invoice.approved()
+                    && remote.nextPaymentAt() != null && Instant.now().isBefore(remote.nextPaymentAt())) {
+                activate(local, store, source);
+                paymentNotifications.enqueue(local, invoice);
+            }
             if (local.getProvider().isStripeOrCreem()) {
                 local.setNextPaymentAt(Instant.now());
                 deactivate(local, store, source);
@@ -1453,6 +1470,8 @@ public class PaymentSubscriptionService {
     }
 
     private void deactivate(PaymentSubscription local, Store store, String source) {
+        if (store != null && local.getProvider() == PaymentProviderType.EFI_PIX)
+            store.setPixProvisionalAccess(null, null);
         if (!"APP_UNINSTALLED".equals(source) && !canceled(local.getProviderStatus()) && store != null && !store.isManualPlanOverride() && !store.isCourtesyPremium()
                 && store.getEffectivePlan().isBillable() && (local.isAccessActive() || "PAYMENT_WEBHOOK".equals(source))) {
             if (local.getWebhookDowngradeAfter()==null && "PAYMENT_WEBHOOK".equals(source)

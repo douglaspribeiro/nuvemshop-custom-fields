@@ -42,7 +42,7 @@ public class BuyerUploadLedger {
         lockStore(storeId);
         var usage = usageLocked(storeId);
         if (!usage.acceptsUploads()) throw new Rejected("upload.unavailable");
-        var plan = jdbc.queryForObject("select plan from stores where store_id=?", String.class, storeId);
+        var plan = usage.quotaBytes() == BuyerUploadPolicy.ULTRA_BYTES ? "PREMIUM_ULTRA" : "PREMIUM_PLUS";
         if (sizeBytes > BuyerUploadPolicy.maxFileBytes(br.com.nuvemcustomfields.entity.PlanType.valueOf(plan)))
             throw new Rejected("upload.size.invalid");
         String hash = hash(sessionToken);
@@ -200,9 +200,12 @@ public class BuyerUploadLedger {
     }
 
     private Usage usageLocked(long storeId) {
-        var quotas = jdbc.queryForList("select case when s.plan='PREMIUM_PLUS' then ? else ? end from stores s "
-                + "where s.store_id=? and s.uninstalled_at is null and s.erasure_requested_at is null and s.billing_suspended=false "
-                + "and s.plan in ('PREMIUM_PLUS','PREMIUM_ULTRA')",
+        var quotas = jdbc.queryForList("select case when p.plan='PREMIUM_PLUS' then ? else ? end from "
+                + "(select case when plan in ('FREE','FREE_GRATIS') and manual_plan_override=false and courtesy_premium=false "
+                + "and (premium_bonus_expires_at is null or premium_bonus_expires_at<=current_timestamp) "
+                + "and pix_provisional_until>current_timestamp then pix_provisional_plan else plan end as plan "
+                + "from stores where store_id=? and uninstalled_at is null and erasure_requested_at is null and billing_suspended=false) p "
+                + "where p.plan in ('PREMIUM_PLUS','PREMIUM_ULTRA')",
                 Long.class, BuyerUploadPolicy.PRO_BYTES, BuyerUploadPolicy.ULTRA_BYTES, storeId);
         long occupied = jdbc.queryForObject("select coalesce(sum(size_bytes),0) from buyer_uploads where store_id=? "
                 + "and state not in ('DELETED','EXPIRED')", Long.class, storeId);

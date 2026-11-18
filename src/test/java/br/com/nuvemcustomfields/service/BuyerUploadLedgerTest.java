@@ -30,6 +30,7 @@ class BuyerUploadLedgerTest {
         var source = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=5000", "sa", "");
         jdbc = new JdbcTemplate(source);
         jdbc.execute("create table stores (store_id bigint primary key, plan varchar(30), billing_suspended boolean default false, uninstalled_at timestamp, erasure_requested_at timestamp)");
+        jdbc.execute("alter table stores add (pix_provisional_plan varchar(30), pix_provisional_until timestamp, manual_plan_override boolean default false, courtesy_premium boolean default false, premium_bonus_expires_at timestamp)");
         jdbc.execute("create table payment_subscriptions (store_id bigint primary key, access_active boolean, provider_environment varchar(30))");
         jdbc.execute("create table personalization_rules (id bigint primary key, store_id bigint, product_id bigint)");
         jdbc.execute("create table personalization_fields (id bigint primary key, rule_id bigint)");
@@ -46,6 +47,14 @@ class BuyerUploadLedgerTest {
     }
     private BuyerUploadLedger.Entry reserve(long bytes) {
         return tx.execute(status -> ledger.reserve(1,100,11,SESSION,UUID.randomUUID().toString(),bytes));
+    }
+
+    @Test void provisionalPixQuotaExpiresWithoutAnotherProviderEvent() {
+        jdbc.update("update stores set plan='FREE',pix_provisional_plan='PREMIUM_PLUS',pix_provisional_until=? where store_id=1",
+                Timestamp.from(Instant.now().plusSeconds(300)));
+        assertEquals(PRO_BYTES,ledger.usage(1).quotaBytes());
+        jdbc.update("update stores set pix_provisional_until=? where store_id=1",Timestamp.from(Instant.now().minusSeconds(1)));
+        assertFalse(ledger.usage(1).acceptsUploads());
     }
     private void run(Runnable action) { tx.executeWithoutResult(status -> action.run()); }
     private void stored(BuyerUploadLedger.Entry file) { run(() -> ledger.stored(1,file.id(),SESSION,file.sizeBytes())); }
