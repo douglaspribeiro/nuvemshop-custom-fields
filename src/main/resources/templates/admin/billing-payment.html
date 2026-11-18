@@ -33,7 +33,7 @@
             <p class="notice warning payment-sandbox" th:if="${efiEnvironment == 'sandbox'}">Ambiente de homologação — nenhuma cobrança real será realizada.</p>
             <p class="notice error payment-flash" th:if="${error}" th:text="${error}">Erro</p>
 
-            <section class="payment-panel payment-coupon" th:if="${upgradeAdjustment == null and reactivation != true}" aria-labelledby="payment-coupon-title">
+            <section class="payment-panel payment-coupon" th:if="${upgradeAdjustment == null and reactivation != true}"  style="display: none" aria-labelledby="payment-coupon-title">
                 <h2 id="payment-coupon-title" th:text="#{checkout.coupon.title}"></h2>
                 <form class="payment-coupon-form" method="get" th:action="@{/admin/billing/pay}">
                     <input type="hidden" name="plan" th:value="${plan.name()}">
