@@ -36,9 +36,22 @@
 .apps-discover p { margin: 6px 0 0; font-size: .88rem; }
 .apps-section { margin-top: 16px; }
 .apps-content { min-width: 0; }
-.apps-home-card, .complement-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.apps-home-card { justify-content: space-between; }
-.complement-actions { margin: 12px 0; }
+.apps-home-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 18px;
+}
+.apps-home-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    min-width: 0;
+}
+.apps-home-card h2 { margin: 0; font-size: 1.15rem; line-height: 1.35; }
+.apps-home-card p { margin: 6px 0 0; color: var(--merchant-muted, #4c6258); line-height: 1.55; }
+.complement-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
 .complement-products { display: grid; margin-top: 12px; }
 .complement-products a { padding: 9px 0; border-bottom: 1px solid #ebe7f3; }
 .complement-form, .complement-settings { margin: 14px 0; max-width: 620px; }

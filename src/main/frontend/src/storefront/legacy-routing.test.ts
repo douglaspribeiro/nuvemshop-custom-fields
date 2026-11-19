@@ -259,6 +259,7 @@ it.each([true, false])("uses the native cart for the parent and chosen legacy co
         {productId: 621, variantId: 711, label: "Passante", subtitle: "Um detalhe especial", price: "12", stock: 5,
             singleVariant: true, imageUrl: "https://store.test/passante.jpg", appearance: {accentColor: "#b03450"}},
         {productId: 622, variantId: 713, label: "Marcador", price: "5", stock: 7, productUrl: "https://store.test/produtos/marcador/"},
+        {productId: 623, variantId: 714, label: "Embalagem", price: "8", stock: 7, singleVariant: true},
     ];
     const fetch = vi.fn(async (url: string) => {
         if (url.endsWith("/complements")) return {ok: true, json: async () => ({locale:"pt-BR", currency:"BRL", items})};
@@ -277,7 +278,7 @@ it.each([true, false])("uses the native cart for the parent and chosen legacy co
         expect(fieldset).not.toBeNull();
         return fieldset!;
     });
-    const [first, second] = panel.querySelectorAll<HTMLInputElement>("input[type='checkbox']");
+    const [first, second, third] = panel.querySelectorAll<HTMLInputElement>("input[type='checkbox']");
     const [units] = panel.querySelectorAll<HTMLInputElement>("input[type='number']");
     const card = first.closest<HTMLElement>(".ncf-complement")!;
     expect(card.firstElementChild?.tagName).toBe("IMG");
@@ -290,6 +291,7 @@ it.each([true, false])("uses the native cart for the parent and chosen legacy co
     units.dispatchEvent(new win.Event("input"));
     expect(card.querySelector(".ncf-complement-total")?.textContent).toMatch(/Total do complemento: R\$\s36,00/);
     second.click();
+    third.click();
     const buy = win.document.querySelector<HTMLButtonElement>(".js-addtocart")!;
     buy.click();
     expect(add).not.toHaveBeenCalled();
@@ -310,6 +312,9 @@ it.each([true, false])("uses the native cart for the parent and chosen legacy co
         await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(3));
         expect(sent(2)).toEqual({"add_to_cart":"622",quantity:"1","variation[0]":"13","properties[Grupo de complementos]":group});
         add.mock.calls[2][5]();
+        await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(4));
+        expect(sent(3)).toEqual({"add_to_cart":"623",quantity:"1","properties[Grupo de complementos]":group});
+        add.mock.calls[3][5]();
         await vi.waitFor(() => expect(panel.textContent).toContain("adicionados"));
     } else {
         add.mock.calls[1][6]();

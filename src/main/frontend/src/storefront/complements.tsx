@@ -10,6 +10,7 @@ type Item = { productId: number; variantId: number; label: string; subtitle?: st
     appearance?: {backgroundColor: string | null; textColor: string | null; accentColor?: string | null;
         showBorder: boolean; roundedCorners: boolean}; };
 type Catalog = { locale: string; currency: string | null; items: Item[] };
+type CartConfirmation = { product_id?: number; variant_id?: number; quantity?: number; properties?: unknown };
 
 const ColoredOffer = styled(Column)`
     & .nube-check .form-group-icon svg { color: var(--ncf-complement-check) !important; }
@@ -48,6 +49,7 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
     let catalog: Catalog | null = null;
     let selected = new Map<number, number>();
     let pending: PersonalizedAdd[] = [];
+    let awaitingConfirmation = false;
     let message = "";
     let timer: ReturnType<typeof setTimeout> | undefined;
     let generation = 0;
@@ -55,8 +57,6 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
     let confirmed = 0;
     let parentConfirmed: (() => void) | undefined;
     let review = false;
-    let groupKey = "";
-    let group = "";
 
     const es = () => catalog?.locale.startsWith("es") === true;
     const say = (pt: string, spanish: string) => es() ? spanish : pt;
@@ -68,6 +68,7 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
         catalog = next;
         selected = new Map();
         pending = [];
+        awaitingConfirmation = false;
         parentConfirmed = undefined;
         message = "";
         review = false;
@@ -79,6 +80,7 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
         adder.settle(current.product_id, current.variant_id);
         clearTimeout(timer);
         pending = [];
+        awaitingConfirmation = false;
         parentConfirmed = undefined;
         selected.clear();
         review = true;
@@ -99,6 +101,7 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
             nube.send("cart:open");
             return;
         }
+        awaitingConfirmation = true;
         timer = setTimeout(stop, 10000);
         adder.add(next);
     }
@@ -115,9 +118,9 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
             render();
             return true;
         }
-        groupKey = "Grupo de complementos";
+        let groupKey = "Grupo de complementos";
         while (Object.prototype.hasOwnProperty.call(parent.properties, groupKey)) groupKey += "+";
-        group = `${Date.now().toString(36)}-${(++basket).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const group = `${Date.now().toString(36)}-${(++basket).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         confirmed = 0;
         parentConfirmed = onParentConfirmed;
         pending = [
@@ -133,34 +136,44 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
         return true;
     }
 
-    function finished(state: NubeSDKState, success: boolean) {
+    function confirms(item: CartConfirmation | null | undefined, expected: PersonalizedAdd) {
+        if (item?.product_id !== expected.product_id || item.variant_id !== expected.variant_id
+            || item.quantity !== expected.quantity) return false;
+        const properties = Object.fromEntries(normalizeProperties(item.properties, { includeInternal: true })
+            .map(property => [property.name, property.value]));
+        return Object.entries(expected.properties).every(([key, value]) => properties[key] === value);
+    }
+
+    function confirmFromCart(state: NubeSDKState, added?: CartConfirmation | null) {
         const current = pending[0];
-        if (!current) return false;
-        const added = state.eventPayload as {product_id?: number; variant_id?: number; quantity?: number; properties?: unknown} | null;
-        if (!success) {
-            // The storefront failure event can lack item IDs. Never retry an ambiguous mutation.
-            if (!added?.product_id || (added.product_id === current.product_id && added.variant_id === current.variant_id)) {
-                stop();
-                return true;
-            }
-            return false;
-        }
-        if (added?.product_id !== current.product_id || added.variant_id !== current.variant_id) return false;
-        const properties = Object.fromEntries(normalizeProperties(added.properties).map(property => [property.name, property.value]));
-        if (properties[groupKey] !== group) return false;
-        if (added.quantity !== current.quantity ||
-            Object.entries(current.properties).some(([key, value]) => properties[key] !== value)) {
-            stop();
-            return true;
-        }
+        if (!current || !awaitingConfirmation) return false;
+        // cart:add can expose an optimistic item without an id even when the store rejects it.
+        const isPersisted = state.cart?.items?.some(item => item.id > 0 && confirms(item, current));
+        if (!confirms(added, current) && !isPersisted) return false;
+
         clearTimeout(timer);
+        awaitingConfirmation = false;
         adder.settle(current.product_id, current.variant_id);
         pending.shift();
         if (confirmed++ === 0) {
             parentConfirmed?.();
             parentConfirmed = undefined;
         }
-        sendNext();
+        // Let the SDK finish dispatching the mutation events before sending the next item.
+        if (pending.length) timer = setTimeout(sendNext, 0);
+        else sendNext();
+        return true;
+    }
+
+    function finished(state: NubeSDKState, success: boolean) {
+        const current = pending[0];
+        if (!current || !awaitingConfirmation) return false;
+        const added = state.eventPayload as CartConfirmation | null;
+        if (success) return confirmFromCart(state, added);
+        // The storefront failure event can lack item IDs. Never retry an ambiguous mutation.
+        if (added?.product_id && (added.product_id !== current.product_id
+            || (added.variant_id != null && added.variant_id !== current.variant_id))) return false;
+        stop();
         return true;
     }
 
@@ -298,6 +311,6 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
         ]};
     }
 
-    return {reset, add, fields, finished, hasSelection: () => selected.size > 0,
+    return {reset, add, fields, finished, cartUpdated: confirmFromCart, hasSelection: () => selected.size > 0,
         pending: () => pending.length > 0, review: () => review, locale: () => catalog?.locale};
 }

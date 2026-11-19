@@ -68,6 +68,7 @@ describe("SDK storefront without a legacy script", () => {
             {productId: 400, variantId: 201, label: "Passante", subtitle: "Um detalhe especial", price: "12.00", stock: 5,
                 imageUrl: "https://store.test/passante.jpg", appearance: {backgroundColor: "#fff3f5", accentColor: "#b03450"}},
             {productId: 500, variantId: 301, label: "Marcador", price: "6.00", stock: 5, imageUrl: null},
+            {productId: 600, variantId: 401, label: "Embalagem", price: "8.00", stock: 5, imageUrl: null},
         ];
         state.store.theme = "other";
         vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ok: true, json: async () => url.endsWith("/complements")
@@ -93,6 +94,7 @@ describe("SDK storefront without a legacy script", () => {
         control("ncf-complement-201-quantity")!.onChange!({value: "3"});
         expect(JSON.stringify(currentTree())).toMatch(/Total do complemento: R\$\s36,00/);
         control("ncf-complement-301")!.onChange!({value: "true"});
+        control("ncf-complement-401")!.onChange!({value: "true"});
         add();
         add("double-click");
 
@@ -105,6 +107,8 @@ describe("SDK storefront without a legacy script", () => {
         confirm({...parent, properties: {}});
         expect(sent()).toHaveLength(1);
         confirm(parent);
+        expect(sent()).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(1);
         const first = sent()[1];
         expect(first).toEqual({product_id: 400, variant_id: 201, quantity: 3, properties: parent.properties});
         if (!fullSuccess) {
@@ -113,10 +117,29 @@ describe("SDK storefront without a legacy script", () => {
             expect(JSON.stringify(currentTree())).toContain("Inclusão parcial");
             return;
         }
+        // The storefront can report a partial event payload. The persisted cart line
+        // confirms the same purchase even when cart:add:success omits the properties.
+        confirm({product_id: first.product_id, variant_id: first.variant_id});
+        await vi.advanceTimersByTimeAsync(1);
+        expect(sent()).toHaveLength(2);
+        state.cart.items = [parent, first];
+        listeners.get("cart:update")!(state);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(sent()).toHaveLength(2);
+        state.cart.items = [parent, {...first, id: 91, properties: Object.entries(first.properties)
+            .map(([name, value]) => ({ name, value }))}];
+        listeners.get("cart:update")!(state);
         confirm(first);
+        await vi.advanceTimersByTimeAsync(1);
         const second = sent()[2];
         expect(second).toEqual({product_id: 500, variant_id: 301, quantity: 1, properties: parent.properties});
         confirm(second);
+        await vi.advanceTimersByTimeAsync(1);
+        const third = sent()[3];
+        expect(third).toEqual({product_id: 600, variant_id: 401, quantity: 1, properties: parent.properties});
+        expect(send.mock.calls.some(([event]) => event === "cart:open")).toBe(false);
+        confirm(third);
+        expect(sent()).toHaveLength(4);
         expect(send.mock.calls.some(([event]) => event === "cart:open")).toBe(true);
     });
 

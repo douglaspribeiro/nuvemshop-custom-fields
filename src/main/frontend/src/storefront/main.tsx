@@ -81,7 +81,10 @@ export function App(nube: NubeSDK) {
 	void syncProduct(nube, safeState(nube));
 	nube.on("page:loaded", (state) => { void syncProduct(nube, state); void renderCartImages(state); void quickBuy.syncCatalog(state); });
 	nube.on("location:updated", (state) => { quickBuy.locationChanged(); void syncProduct(nube, state); void renderCartImages(state); void quickBuy.syncCatalog(state); });
-    nube.on("cart:update", state => void renderCartImages(state));
+    nube.on("cart:update", state => {
+        complements.cartUpdated(state);
+        void renderCartImages(state);
+    });
 	nube.on("product:variant_selected", (state) => {
 		const selected = readVariantId(state);
 		if (selected != null) {

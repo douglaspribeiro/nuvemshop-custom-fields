@@ -16,14 +16,26 @@
         <section class="page-header">
             <div><h1 th:text="#{complements.apps}">Aplicativos</h1><p th:text="#{complements.apps.intro}"></p></div>
         </section>
-        <section class="panel apps-home-card">
-            <div><h2 th:text="#{complements.nc}">Campos Personalizados</h2><p th:text="#{complements.nc.detail}"></p></div>
-            <a class="button" th:href="@{/admin}" th:text="#{complements.open}">Abrir</a>
-        </section>
-        <section class="panel apps-home-card">
-            <div><h2 th:text="#{complements.title}">Complementos de Produto</h2><p th:text="#{complements.intro}"></p></div>
-            <a class="button primary" th:href="@{/admin/apps/complements}" th:text="#{complements.open}">Abrir</a>
-        </section>
+        <div class="apps-home-grid">
+            <section class="panel apps-home-card">
+                <div>
+                    <h2 id="app-custom-fields-title" th:text="#{complements.nc}">Campos Personalizados</h2>
+                    <p th:text="#{complements.nc.detail}"></p>
+                </div>
+                <a class="button" th:href="@{/admin}" aria-labelledby="app-custom-fields-open app-custom-fields-title">
+                    <span id="app-custom-fields-open" th:text="#{complements.open}">Abrir</span>
+                </a>
+            </section>
+            <section class="panel apps-home-card">
+                <div>
+                    <h2 id="app-complements-title" th:text="#{complements.title}">Complementos de Produto</h2>
+                    <p th:text="#{complements.intro}"></p>
+                </div>
+                <a class="button primary" th:href="@{/admin/apps/complements}" aria-labelledby="app-complements-open app-complements-title">
+                    <span id="app-complements-open" th:text="#{complements.open}">Abrir</span>
+                </a>
+            </section>
+        </div>
     </div>
 </main>
 <th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>

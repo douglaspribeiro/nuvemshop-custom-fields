@@ -8,16 +8,16 @@ export type ItemProperties = { productName: string; quantity?: number; fields: N
  * `CartItem.properties` chega como objeto ou array dependendo do tema/versao da
  * plataforma, entao normalizamos as duas formas.
  */
-export function normalizeProperties(properties: unknown): NamedProperty[] {
+export function normalizeProperties(properties: unknown, { includeInternal = false } = {}): NamedProperty[] {
 	if (!properties) {
 		return [];
 	}
 	if (Array.isArray(properties)) {
-		return properties.map(normalizeProperty).filter(isNamedProperty);
+		return properties.map(property => normalizeProperty(property, includeInternal)).filter(isNamedProperty);
 	}
 	if (typeof properties === "object") {
 		return Object.entries(properties as Record<string, unknown>)
-			.map(([name, value]) => normalizeProperty({ name, value }))
+			.map(([name, value]) => normalizeProperty({ name, value }, includeInternal))
 			.filter(isNamedProperty);
 	}
 	return [];
@@ -36,7 +36,7 @@ export function collectItemProperties(items: CartItem[] | undefined): ItemProper
 		.filter((group) => group.fields.length > 0);
 }
 
-function normalizeProperty(property: unknown): NamedProperty | null {
+function normalizeProperty(property: unknown, includeInternal: boolean): NamedProperty | null {
 	if (!property || typeof property !== "object") {
 		return null;
 	}
@@ -44,7 +44,7 @@ function normalizeProperty(property: unknown): NamedProperty | null {
 	const name = String(candidate.name ?? candidate.label ?? candidate.key ?? "").trim();
 	const value = String(candidate.value ?? candidate.text ?? "").trim();
 	// Underscore e a convencao da Nuvemshop para propriedade interna/oculta.
-	if (!name || !value || name.startsWith("_")) {
+	if (!name || !value || (!includeInternal && name.startsWith("_"))) {
 		return null;
 	}
 	return { name, value };

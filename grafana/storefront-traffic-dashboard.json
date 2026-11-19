@@ -1224,7 +1224,7 @@
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "description": "Beacons de execução recebidos pelo backend: total e versões de vitrine e checkout. A coleta é best-effort e não representa todas as chamadas HTTP, visitantes únicos ou histórico anterior à instrumentação. Incrementos são estimados em blocos sem sobreposição de pelo menos 4 minutos; lacunas não são reconstruídas.",
+      "description": "Execuções reportadas ao backend, por versão e no total. O Prometheus acumula incrementos estimados em blocos completos do período selecionado. A resolução mínima é de 4 minutos. Séries novas aparecem após duas coletas. A coleta não reconstrói lacunas nem dados anteriores à instrumentação.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1237,7 +1237,9 @@
             "drawStyle": "line",
             "lineInterpolation": "stepAfter",
             "fillOpacity": 15,
-            "spanNulls": false
+            "spanNulls": false,
+            "showPoints": "always",
+            "pointSize": 5
           }
         },
         "overrides": []
@@ -1249,7 +1251,7 @@
         "h": 8
       },
       "id": 9,
-      "maxDataPoints": 100,
+      "maxDataPoints": 6000,
       "interval": "4m",
       "options": {
         "legend": {
@@ -1267,7 +1269,7 @@
       },
       "targets": [
         {
-          "expr": "sum(clamp_min(increase(ncf_storefront_script_executions_total{job=\"app-custom-fields\"}[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
+          "expr": "sum(sum_over_time((sum by (script_version) (clamp_min(increase(ncf_storefront_script_executions_total{job=\"app-custom-fields\"}[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000)))[$__range:$__interval]))",
           "interval": "4m",
           "instant": false,
           "range": true,
@@ -1275,24 +1277,12 @@
           "refId": "A"
         },
         {
-          "expr": "sum by (script_version) (clamp_min(increase(ncf_storefront_script_executions_total{job=\"app-custom-fields\"}[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
+          "expr": "sum_over_time((sum by (script_version) (clamp_min(increase(ncf_storefront_script_executions_total{job=\"app-custom-fields\"}[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000)))[$__range:$__interval])",
           "interval": "4m",
           "instant": false,
           "range": true,
           "legendFormat": "{{script_version}}",
           "refId": "B"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "calculateField",
-          "options": {
-            "mode": "cumulativeFunctions",
-            "cumulative": {
-              "reducer": "sum"
-            },
-            "replaceFields": true
-          }
         }
       ],
       "title": "Execuções acumuladas por versão · estimativa",
@@ -2054,13 +2044,162 @@
       }
     },
     {
+      "id": 60,
+      "title": "Desinstalação · entrega do e-mail de feedback · últimos 14 dias",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "x": 0,
+        "y": 121,
+        "w": 24,
+        "h": 5
+      },
+      "description": "E-mails iniciais de feedback enviados nos últimos 14 dias e ainda presentes no histórico. Cada e-mail conta uma vez no total e uma vez pelo retorno do SES. Entrega indica aceitação pelo servidor do destinatário. Falhas incluem devolução, rejeição ou falha de renderização.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (outcome) (ncf_winback_feedback_last14d{job=\"app-custom-fields\"} and on (job, instance) ((time() - ncf_winback_feedback_snapshot_timestamp_seconds{job=\"app-custom-fields\"}) < 180))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sent"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Enviados"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delivered"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Entregues (SES)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Falhas de entrega"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "complaint"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reclamações"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "awaiting"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sem confirmação"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
       "id": 44,
       "title": "Uploads · volume, tráfego e armazenamento AWS / OCI",
       "type": "row",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 121,
+        "y": 126,
         "w": 24,
         "h": 1
       },
@@ -2073,7 +2212,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 122,
+        "y": 127,
         "w": 6,
         "h": 5
       },
@@ -2126,7 +2265,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 6,
-        "y": 122,
+        "y": 127,
         "w": 6,
         "h": 5
       },
@@ -2179,7 +2318,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 12,
-        "y": 122,
+        "y": 127,
         "w": 6,
         "h": 5
       },
@@ -2232,7 +2371,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 18,
-        "y": 122,
+        "y": 127,
         "w": 6,
         "h": 5
       },
@@ -2293,7 +2432,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 127,
+        "y": 132,
         "w": 16,
         "h": 8
       },
@@ -2334,7 +2473,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 16,
-        "y": 127,
+        "y": 132,
         "w": 8,
         "h": 8
       },
@@ -2387,7 +2526,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "x": 0,
-        "y": 135,
+        "y": 140,
         "w": 24,
         "h": 7
       },
