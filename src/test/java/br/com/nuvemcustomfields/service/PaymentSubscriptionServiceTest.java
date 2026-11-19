@@ -213,6 +213,40 @@ class PaymentSubscriptionServiceTest {
         verify(mailQueue,times(1)).save(any(RenewalFailureEmail.class));
     }
 
+    @Test void efiWaitingRenewalKeepsAccessUntilFailureStartsOneDayGrace() {
+        var mailQueue = mock(RenewalFailureEmailRepository.class);
+        service.setRenewalFailures(new RenewalFailurePolicy(mailQueue));
+        var local = local();
+        local.setProvider(PaymentProviderType.EFI);
+        local.setAccessActive(true);
+        local.setStatus(PaymentSubscriptionStatus.ACTIVE);
+        var store = store();
+        store.setPlan(local.getPlan());
+        var remote = new GatewaySubscription("sub-1", "plan-1", "ncf_123_ref", "active", "BRL",
+                new BigDecimal("19.99"), Instant.now().plusSeconds(86400));
+        when(router.require(PaymentProviderType.EFI)).thenReturn(gateway);
+        when(gateway.getSubscription("sub-1")).thenReturn(remote);
+        when(gateway.getLatestInvoice("sub-1")).thenReturn(
+                Optional.of(new GatewayInvoice("charge-2", "sub-1", "charge-2", "waiting")),
+                Optional.of(new GatewayInvoice("charge-2", "sub-1", "charge-2", "unpaid")));
+        when(subscriptions.findByProviderSubscriptionId("sub-1")).thenReturn(Optional.of(local));
+        when(stores.findByStoreId(123L)).thenReturn(Optional.of(store));
+        when(subscriptions.save(local)).thenReturn(local);
+
+        service.synchronizeFromSubscription(PaymentProviderType.EFI, "sub-1");
+        assertThat(local.isAccessActive()).isTrue();
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getGraceUntil()).isNull();
+
+        service.synchronizeFromSubscription(PaymentProviderType.EFI, "sub-1");
+        assertThat(local.isAccessActive()).isTrue();
+        assertThat(store.getPlan()).isEqualTo(PlanType.PREMIUM);
+        assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.PAST_DUE);
+        assertThat(java.time.Duration.between(local.getRenewalFailureDetectedAt(), local.getGraceUntil()))
+                .isEqualTo(java.time.Duration.ofDays(1));
+        verify(mailQueue).save(any(RenewalFailureEmail.class));
+    }
+
     @Test void anUnconfirmedReplacementCannotKeepPaidAccessBeyondTheOriginalGrace() {
         service.setRenewalFailures(new RenewalFailurePolicy(mock(RenewalFailureEmailRepository.class)));
         var sub=local(); sub.setProvider(PaymentProviderType.EFI); sub.setStatus(PaymentSubscriptionStatus.PENDING);

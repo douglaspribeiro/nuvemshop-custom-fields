@@ -1068,6 +1068,11 @@ public class PaymentSubscriptionService {
                  || (invoice != null && java.util.Set.of("refunded", "chargedBack").contains(invoice.paymentStatus())))) {
             local.setStatus(PaymentSubscriptionStatus.PAUSED);
             deactivate(local, store, source);
+        } else if (local.getProvider() == PaymentProviderType.EFI && local.isAccessActive()
+                && local.getRenewalFailureDetectedAt() == null && "active".equals(status)
+                && invoice != null && "waiting".equalsIgnoreCase(invoice.paymentStatus())) {
+            // A new charge can remain waiting while the provider processes the renewal.
+            // Keep the paid access until the charge succeeds or fails.
         } else if ("past_due".equals(status) || (local.isAccessActive() && invoice != null && !invoice.approved())) {
             local.setStatus(PaymentSubscriptionStatus.PAST_DUE);
             if (local.getGraceUntil() == null) {
