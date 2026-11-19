@@ -3,6 +3,19 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.73.0] - 2026-11-19
+
+### Features
+
+- adiciona filtros de lojas e versão no rodapé (`8c66175`)
+- monitora execuções por versão dos scripts (`329184e`)
+- adiciona ofertas complementares na vitrine (`c3464fe`)
+
+### Correções
+
+- preserva acesso durante processamento da renovação Efí (`eeed49e`)
+- payment page efi (`245bf16`)
+
 ## [1.72.1] - 2026-11-18
 
 ### Correções
