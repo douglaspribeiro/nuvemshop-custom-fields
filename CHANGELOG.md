@@ -3,6 +3,13 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.74.0] - 2026-11-19
+
+### Features
+
+- ajusta complementos, tela de aplicativos e métricas (`d6d3188`)
+- personaliza o cartão de complementos na vitrine (`00bec35`)
+
 ## [1.73.0] - 2026-11-19
 
 ### Features
