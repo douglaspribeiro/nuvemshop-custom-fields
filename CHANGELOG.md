@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.74.1] - 2026-11-19
+
+### Outros
+
+- spring version (`50f4c42`)
+
 ## [1.74.0] - 2026-11-19
 
 ### Features
