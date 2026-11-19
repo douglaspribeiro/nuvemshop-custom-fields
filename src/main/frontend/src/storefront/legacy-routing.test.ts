@@ -256,7 +256,8 @@ it.each([true, false])("uses the native cart for the parent and chosen legacy co
         <button class="js-addtocart" type="submit">Comprar</button></form></body></html>`,
         {url:"https://store.test/produtos/agenda/",runScripts:"outside-only"});
     const items = [
-        {productId: 621, variantId: 711, label: "Passante", price: "12", stock: 5, singleVariant: true},
+        {productId: 621, variantId: 711, label: "Passante", subtitle: "Um detalhe especial", price: "12", stock: 5,
+            singleVariant: true, imageUrl: "https://store.test/passante.jpg", appearance: {accentColor: "#b03450"}},
         {productId: 622, variantId: 713, label: "Marcador", price: "5", stock: 7, productUrl: "https://store.test/produtos/marcador/"},
     ];
     const fetch = vi.fn(async (url: string) => {
@@ -278,10 +279,16 @@ it.each([true, false])("uses the native cart for the parent and chosen legacy co
     });
     const [first, second] = panel.querySelectorAll<HTMLInputElement>("input[type='checkbox']");
     const [units] = panel.querySelectorAll<HTMLInputElement>("input[type='number']");
+    const card = first.closest<HTMLElement>(".ncf-complement")!;
+    expect(card.firstElementChild?.tagName).toBe("IMG");
+    expect(card.textContent).toContain("Um detalhe especial");
+    expect(card.textContent).toContain("12,00 por unidade");
+    expect(card.style.getPropertyValue("--ncf-complement-accent")).toBe("#b03450");
+    expect(card.querySelector(".ncf-complement-details")?.hasAttribute("hidden")).toBe(true);
     first.click();
     units.value = "3";
     units.dispatchEvent(new win.Event("input"));
-    expect(panel.textContent).toContain("36,00");
+    expect(card.querySelector(".ncf-complement-total")?.textContent).toMatch(/Total do complemento: R\$\s36,00/);
     second.click();
     const buy = win.document.querySelector<HTMLButtonElement>(".js-addtocart")!;
     buy.click();

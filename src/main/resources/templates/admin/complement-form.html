@@ -59,7 +59,9 @@
                 <label><span th:text="#{complements.variant}"></span><select name="variantId" required>
                     <option th:each="variant : ${variants}" th:value="${variant.id}" th:text="${variant.name + ' · ' + variant.price}"></option>
                 </select></label>
-                <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="#{complements.addLabel(${productName})}"></label>
+                <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120"
+                       th:value="${draftLabel} ?: #{complements.addLabel(${productName})}"></label>
+                <label><span th:text="#{complements.subtitle}"></span><input name="subtitle" maxlength="180" th:value="${draftSubtitle}"></label>
                 <div class="complement-form-actions">
                     <button class="button primary" type="submit" th:text="#{complements.link}"></button>
                     <a class="button" th:href="@{/admin/apps/complements/new(parentId=${parentId})}" th:text="#{complements.chooseAnother}"></a>
@@ -75,6 +77,7 @@
                 <input type="hidden" name="parentId" th:value="${parentId}">
                 <label><span th:text="#{complements.name}"></span><input name="name" required maxlength="120" th:value="${draft?.name}"></label>
                 <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${draftLabel}"></label>
+                <label><span th:text="#{complements.subtitle}"></span><input name="subtitle" maxlength="180" th:value="${draftSubtitle}"></label>
                 <div class="complement-fields">
                     <label><span th:text="#{complements.price}"></span><input name="price" type="number" required min="0.01" max="999999999" step="0.01" th:value="${draft?.price}"></label>
                     <label><span th:text="#{complements.stock}"></span><input name="stock" type="number" required min="0" max="1000000" step="1" th:value="${draft?.stock}"></label>

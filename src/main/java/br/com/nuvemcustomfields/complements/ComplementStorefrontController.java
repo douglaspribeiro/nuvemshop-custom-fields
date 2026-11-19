@@ -35,7 +35,8 @@ public class ComplementStorefrontController {
     }
 
     public record Catalog(String locale, String currency, List<Item> items) {}
-    public record Item(long productId, long variantId, String label, String price, String imageUrl, Integer stock, String productUrl, boolean singleVariant, ComplementOffers.Appearance appearance) {}
+    public record Item(long productId, long variantId, String label, String subtitle, String price, String imageUrl,
+                       Integer stock, String productUrl, boolean singleVariant, ComplementOffers.Appearance appearance) {}
 
     @GetMapping("/public/stores/{storeId}/products/{productId}/complements")
     public Catalog get(@PathVariable long storeId, @PathVariable long productId) {
@@ -81,7 +82,7 @@ public class ComplementStorefrontController {
         if (price.isBlank()) price = variant.path("price").asText("");
         if (price.isBlank()) return null;
         String image = product.path("images").path(0).path("src").asText("");
-        return new Item(offer.productId(), offer.variantId(), offer.label(), price,
+        return new Item(offer.productId(), offer.variantId(), offer.label(), offer.subtitle(), price,
                 offer.appearance().showImage() && image.startsWith("https://") ? image : null, stock,
                 product.path("canonical_url").asText(null), product.path("variants").size() == 1, offer.appearance());
     }

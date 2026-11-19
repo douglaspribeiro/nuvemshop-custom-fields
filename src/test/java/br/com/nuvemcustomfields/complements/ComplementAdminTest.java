@@ -54,7 +54,8 @@ class ComplementAdminTest {
 
     @BeforeEach void setup() throws Exception {
         var migration = new ResourceDatabasePopulator(new ClassPathResource("db/migration/V91__product_complements.sql"),
-                new ClassPathResource("db/migration/V94__complement_offer_appearance.sql"));
+                new ClassPathResource("db/migration/V94__complement_offer_appearance.sql"),
+                new ClassPathResource("db/migration/V95__complement_offer_subtitle_and_accent.sql"));
         if (storeTableMissing()) migration.execute(source);
         session = merchant("read_products");
         when(features.allows(anyLong(), eq(FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS))).thenReturn(true);
@@ -80,13 +81,16 @@ class ComplementAdminTest {
 
         mvc.perform(link("999", csrf)).andExpect(flash().attributeExists("error"));
         mvc.perform(link("21", "wrong")).andExpect(status().isForbidden());
-        mvc.perform(link("21", csrf)).andExpect(redirectedUrl(HOME));
+        mvc.perform(link("21", csrf).param("subtitle", "Um detalhe especial para sua agenda")).andExpect(redirectedUrl(HOME));
         mvc.perform(link("21", csrf)).andExpect(flash().attributeExists("error"));
         var offer = offers.list(storeId).getFirst();
         assertThat(offer.variantId()).isEqualTo(21);
         assertThat(offer.enabled()).isFalse();
+        assertThat(offer.subtitle()).isEqualTo("Um detalhe especial para sua agenda");
         mvc.perform(get(HOME).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Produto principal: Agenda")));
+                .andExpect(content().string(containsString("Produto principal: Agenda")))
+                .andExpect(content().string(containsString("name=\"accentColor\"")))
+                .andExpect(content().string(containsString("value=\"Um detalhe especial para sua agenda\"")));
 
         MockHttpSession other = merchant("read_products");
         mvc.perform(get(HOME).session(other)).andExpect(content().string(not(containsString("Passante"))));
@@ -94,9 +98,12 @@ class ComplementAdminTest {
                         .param("csrf", (String) other.getAttribute("complementAdminCsrf")))
                 .andExpect(flash().attributeExists("error"));
         mvc.perform(post(HOME + "/" + offer.id() + "/update").session(session)
-                        .param("csrf", csrf).param("label", "Adicionar passante dourado").param("enabled", "true").param("showImage", "false"))
+                        .param("csrf", csrf).param("label", "Adicionar passante dourado")
+                        .param("subtitle", " ").param("accentColor", "#b03450").param("enabled", "true").param("showImage", "false"))
                 .andExpect(redirectedUrl(HOME));
         assertThat(offers.list(storeId).getFirst().label()).isEqualTo("Adicionar passante dourado");
+        assertThat(offers.list(storeId).getFirst().subtitle()).isNull();
+        assertThat(offers.list(storeId).getFirst().appearance().accentColor()).isEqualTo("#b03450");
         assertThat(offers.list(storeId).getFirst().enabled()).isTrue();
         assertThat(offers.list(storeId).getFirst().appearance().showImage()).isFalse();
         mvc.perform(post(HOME + "/" + offer.id() + "/remove").session(session).param("csrf", csrf))
@@ -112,12 +119,13 @@ class ComplementAdminTest {
         passanteProduct.putArray("images").addObject().put("src", "https://img.example/passante.jpg");
         when(catalog.getCatalogProduct(any(), eq(20L))).thenReturn(passanteProduct);
         when(catalog.getCatalogProduct(any(), eq(30L))).thenReturn(marker);
-        offers.link(store, 10, 20, 21, "Passante", "pt");
-        offers.link(store, 10, 30, 31, "Marcador", "pt");
+        offers.link(store, 10, 20, 21, "Passante", null, "pt");
+        offers.link(store, 10, 30, 31, "Marcador", null, "pt");
         mvc.perform(get(publicUrl)).andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
 
         for (var offer : offers.list(storeId)) {
-            offers.update(storeId, UUID.fromString(offer.id()), offer.label(), true, new ComplementOffers.Appearance(true, null, null, true, true));
+            offers.update(storeId, UUID.fromString(offer.id()), offer.label(), null, true,
+                    new ComplementOffers.Appearance(true, null, null, null, true, true));
         }
         mvc.perform(get("/public/stores/" + storeId + "/personalization").param("productId", "10"))
                 .andExpect(jsonPath("$.complements").value(true));
@@ -131,12 +139,15 @@ class ComplementAdminTest {
                 .andExpect(jsonPath("$.image").value("https://img.example/passante.jpg"))
                 .andExpect(jsonPath("$.price").value("12.00"));
         mvc.perform(get(previewUrl).session(merchant("read_products"))).andExpect(status().isNotFound());
-        offers.update(storeId, UUID.fromString(passante.id()), "Adicionar passante", true, new ComplementOffers.Appearance(false, "#fff3e5", "#472000", false, false));
+        offers.update(storeId, UUID.fromString(passante.id()), "Adicionar passante", "Um detalhe especial", true,
+                new ComplementOffers.Appearance(false, "#fff3e5", "#472000", "#b03450", false, false));
         mvc.perform(get(publicUrl)).andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].variantId").value(21))
                 .andExpect(jsonPath("$.items[0].price").value("12.00"))
                 .andExpect(jsonPath("$.items[0].imageUrl").doesNotExist())
+                .andExpect(jsonPath("$.items[0].subtitle").value("Um detalhe especial"))
                 .andExpect(jsonPath("$.items[0].appearance.backgroundColor").value("#fff3e5"))
+                .andExpect(jsonPath("$.items[0].appearance.accentColor").value("#b03450"))
                 .andExpect(jsonPath("$.items[0].appearance.roundedCorners").value(false));
         when(features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).thenReturn(false);
         mvc.perform(get(publicUrl)).andExpect(jsonPath("$.items").isEmpty());

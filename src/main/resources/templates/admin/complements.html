@@ -48,6 +48,7 @@
                       th:action="@{/admin/apps/complements/{id}/update(id=${offer.id})}">
                     <input type="hidden" name="csrf" th:value="${csrf}">
                     <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${offer.label}"></label>
+                    <label><span th:text="#{complements.subtitle}"></span><input name="subtitle" maxlength="180" th:value="${offer.subtitle}"></label>
                     <details class="complement-appearance" th:with="appearance=${offer.appearance}">
                         <summary th:text="#{complements.appearance}"></summary>
                         <div class="complement-appearance-body">
@@ -73,33 +74,36 @@
                                         <option value="false" th:selected="${!appearance.roundedCorners}" th:text="#{complements.square}"></option>
                                     </select>
                                 </label>
-                                <div th:each="setting : ${ {'backgroundColor', 'textColor'} }" class="complement-color-setting">
-                                    <span th:text="#{${'complements.' + setting}}"></span>
+                                <div th:each="setting : ${ {'backgroundColor': appearance.backgroundColor, 'textColor': appearance.textColor, 'accentColor': appearance.accentColor} }"
+                                     class="complement-color-setting" th:with="caption=${'complements.' + setting.key}">
+                                    <span th:text="#{${caption}}"></span>
                                     <span class="complement-color-input">
-                                        <input type="color" tabindex="-1" th:aria-label="#{${'complements.' + setting}}">
-                                        <input type="text" th:aria-label="#{${'complements.' + setting}}" th:name="${setting}" th:value="${setting == 'backgroundColor' ? appearance.backgroundColor : appearance.textColor}"
+                                        <input type="color" th:aria-label="#{${caption}}">
+                                        <input type="text" th:aria-label="#{${caption}}" th:name="${setting.key}" th:value="${setting.value}"
                                                maxlength="7" pattern="#[0-9a-fA-F]{6}" th:placeholder="#{complements.themeColor}">
                                     </span>
                                 </div>
                             </div>
-                            <section class="complement-preview" th:attr="data-url=@{/admin/apps/complements/{id}/preview(id=${offer.id})},data-error=#{complements.previewError}">
+                            <section class="complement-preview"
+                                     th:attr="data-url=@{/admin/apps/complements/{id}/preview(id=${offer.id})},data-error=#{complements.previewError},
+                                              data-unit=#{complements.previewUnit},data-total=#{complements.previewTotal}">
                                 <h4 th:text="#{complements.preview}"></h4>
                                 <div class="complement-preview-card">
-                                    <div class="complement-preview-row">
-                                        <img alt="" width="52" height="52" hidden>
-                                        <div class="complement-preview-description">
-                                            <label><input type="checkbox" checked><span data-preview-label></span></label>
-                                            <span data-preview-price></span>
+                                    <img alt="" hidden>
+                                    <div class="complement-preview-description">
+                                        <label><input type="checkbox" checked><span data-preview-label></span></label>
+                                        <span data-preview-subtitle hidden></span>
+                                        <strong data-preview-price></strong>
+                                        <div class="complement-preview-quantity">
+                                            <strong th:text="#{complements.previewQuantity}"></strong>
+                                            <div class="complement-preview-stepper">
+                                                <button type="button" data-preview-step="-1" th:aria-label="#{complements.previewDecrease}">−</button>
+                                                <span data-preview-units>1</span>
+                                                <button type="button" data-preview-step="1" th:aria-label="#{complements.previewIncrease}">+</button>
+                                            </div>
+                                            <strong data-preview-subtotal aria-live="polite"></strong>
+                                            <span th:text="#{complements.previewQuantityHint}"></span>
                                         </div>
-                                    </div>
-                                    <div class="complement-preview-quantity">
-                                        <span th:text="#{complements.previewQuantity}"></span>
-                                        <div>
-                                            <button type="button" data-preview-step="-1" th:aria-label="#{complements.previewDecrease}">−</button>
-                                            <strong data-preview-units>1</strong>
-                                            <button type="button" data-preview-step="1" th:aria-label="#{complements.previewIncrease}">+</button>
-                                        </div>
-                                        <strong data-preview-subtotal></strong>
                                     </div>
                                 </div>
                                 <p data-preview-status role="status" hidden></p>

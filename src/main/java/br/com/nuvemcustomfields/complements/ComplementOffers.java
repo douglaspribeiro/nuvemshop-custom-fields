@@ -17,16 +17,17 @@ import org.springframework.web.client.RestClientResponseException;
 @Service
 public class ComplementOffers {
     public record Offer(String id, long parentId, String parentName, Long productId, Long variantId,
-                        String productName, String label, boolean enabled, Appearance appearance, String state) {
+                        String productName, String label, String subtitle, boolean enabled, Appearance appearance, String state) {
         public boolean ready() { return "READY".equals(state); }
         public boolean uncertain() { return !ready(); }
     }
 
-    public record Appearance(boolean showImage, String backgroundColor, String textColor, boolean showBorder, boolean roundedCorners) {}
+    public record Appearance(boolean showImage, String backgroundColor, String textColor, String accentColor,
+                             boolean showBorder, boolean roundedCorners) {}
 
     private static Appearance appearance(java.sql.ResultSet row) throws java.sql.SQLException {
         return new Appearance(row.getBoolean("show_image"), row.getString("background_color"),
-                row.getString("text_color"), row.getBoolean("show_border"), row.getBoolean("rounded_corners"));
+                row.getString("text_color"), row.getString("accent_color"), row.getBoolean("show_border"), row.getBoolean("rounded_corners"));
     }
 
     public record Variant(long id, String name, String price) {}
@@ -52,19 +53,20 @@ public class ComplementOffers {
         return jdbc.query("SELECT * FROM product_complement_offers WHERE store_id=? ORDER BY created_at DESC,id",
                 (rs, n) -> new Offer(rs.getString("id"), rs.getLong("parent_product_id"), rs.getString("parent_name"),
                         rs.getObject("complement_product_id", Long.class), rs.getObject("complement_variant_id", Long.class),
-                        rs.getString("complement_name"), rs.getString("label"), rs.getBoolean("enabled"), appearance(rs),
+                        rs.getString("complement_name"), rs.getString("label"), rs.getString("subtitle"), rs.getBoolean("enabled"), appearance(rs),
                         rs.getString("creation_state")), storeId);
     }
 
-    record PublishedOffer(long productId, long variantId, String label, Appearance appearance) {}
+    record PublishedOffer(long productId, long variantId, String label, String subtitle, Appearance appearance) {}
 
     List<PublishedOffer> published(long storeId, long parentId) {
         return jdbc.query("""
-                SELECT complement_product_id, complement_variant_id, label, show_image, background_color, text_color, show_border, rounded_corners
+                SELECT complement_product_id, complement_variant_id, label, subtitle,
+                    show_image, background_color, text_color, accent_color, show_border, rounded_corners
                 FROM product_complement_offers
                 WHERE store_id=? AND parent_product_id=? AND enabled AND creation_state='READY'
                 ORDER BY created_at,id
-                """, (rs, n) -> new PublishedOffer(rs.getLong(1), rs.getLong(2), rs.getString(3), appearance(rs)), storeId, parentId);
+                """, (rs, n) -> new PublishedOffer(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4), appearance(rs)), storeId, parentId);
     }
 
     public static boolean hasScope(Store store, String scope) {
@@ -100,9 +102,10 @@ public class ComplementOffers {
                 }).toList();
     }
 
-    public void link(Store store, long parentId, long productId, long variantId, String label, String language) {
+    public void link(Store store, long parentId, long productId, long variantId, String label, String subtitle, String language) {
         if (parentId == productId) throw new Invalid("same");
         label = text(label, 120);
+        subtitle = optionalSubtitle(subtitle);
         JsonNode parent = product(store, parentId);
         JsonNode complement = product(store, productId);
         if ("hidden".equals(complement.path("visibility").asText())
@@ -113,28 +116,29 @@ public class ComplementOffers {
         try {
             jdbc.update("""
                     INSERT INTO product_complement_offers
-                    (id,store_id,parent_product_id,parent_name,complement_product_id,complement_variant_id,complement_name,label,creation_state)
-                    VALUES (?,?,?,?,?,?,?,?,'READY')
+                    (id,store_id,parent_product_id,parent_name,complement_product_id,complement_variant_id,complement_name,label,subtitle,creation_state)
+                    VALUES (?,?,?,?,?,?,?,?,?,'READY')
                     """, UUID.randomUUID().toString(), store.getStoreId(), parentId, name(parent, language),
-                    productId, variantId, name(complement, language), label);
+                    productId, variantId, name(complement, language), label, subtitle);
         } catch (DuplicateKeyException ex) {
             throw new Invalid("duplicate");
         }
     }
 
-    public void create(Store store, UUID requestId, long parentId, String label, NewProduct input, String language) {
+    public void create(Store store, UUID requestId, long parentId, String label, String subtitle, NewProduct input, String language) {
         if (!hasScope(store, "write_products")) throw new Invalid("scope");
         String productName = text(input.name(), 120);
         label = text(label, 120);
+        subtitle = optionalSubtitle(subtitle);
         var payload = productPayload(input, productName, requestId);
         JsonNode parent = product(store, parentId);
         String id = requestId.toString();
         try {
             jdbc.update("""
                     INSERT INTO product_complement_offers
-                    (id,store_id,parent_product_id,parent_name,complement_name,label,creation_state)
-                    VALUES (?,?,?,?,?,?,'PENDING')
-                    """, id, store.getStoreId(), parentId, name(parent, language), productName, label);
+                    (id,store_id,parent_product_id,parent_name,complement_name,label,subtitle,creation_state)
+                    VALUES (?,?,?,?,?,?,?,'PENDING')
+                    """, id, store.getStoreId(), parentId, name(parent, language), productName, label, subtitle);
         } catch (DuplicateKeyException ex) {
             throw new Invalid("submitted");
         }
@@ -234,11 +238,13 @@ public class ComplementOffers {
         variant.put(field, value.toPlainString());
     }
 
-    public void update(long storeId, UUID id, String label, boolean enabled, Appearance appearance) {
+    public void update(long storeId, UUID id, String label, String subtitle, boolean enabled, Appearance appearance) {
         int count = jdbc.update("""
-                UPDATE product_complement_offers SET label=?,enabled=?,show_image=?,background_color=?,text_color=?,show_border=?,rounded_corners=?
+                UPDATE product_complement_offers
+                SET label=?,subtitle=?,enabled=?,show_image=?,background_color=?,text_color=?,accent_color=?,show_border=?,rounded_corners=?
                 WHERE store_id=? AND id=? AND creation_state='READY'
-                """, text(label, 120), enabled, appearance.showImage(), color(appearance.backgroundColor()), color(appearance.textColor()),
+                """, text(label, 120), optionalSubtitle(subtitle), enabled, appearance.showImage(),
+                color(appearance.backgroundColor()), color(appearance.textColor()), color(appearance.accentColor()),
                 appearance.showBorder(), appearance.roundedCorners(), storeId, id.toString());
         if (count == 0) throw new Invalid("missing");
         cache.invalidateStoreAfterCommit(storeId);
@@ -248,6 +254,10 @@ public class ComplementOffers {
         if (value == null || value.isBlank()) return null;
         if (!value.matches("#[0-9a-fA-F]{6}")) throw new Invalid("color");
         return value;
+    }
+
+    private static String optionalSubtitle(String subtitle) {
+        return subtitle == null || subtitle.isBlank() ? null : text(subtitle, 180);
     }
 
     public void remove(long storeId, UUID id) {

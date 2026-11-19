@@ -90,26 +90,30 @@ public class ComplementAdminController {
 
     @PostMapping("/complements/link")
     public String link(@RequestParam long parentId, @RequestParam long productId, @RequestParam long variantId,
-                       @RequestParam String label, @RequestParam String csrf, HttpSession session, Locale locale,
+                       @RequestParam String label, @RequestParam(required = false) String subtitle,
+                       @RequestParam String csrf, HttpSession session, Locale locale,
                        RedirectAttributes flash) {
         Store store = authorized(session, csrf);
         try {
-            offers.link(store, parentId, productId, variantId, label, locale.getLanguage());
+            offers.link(store, parentId, productId, variantId, label, subtitle, locale.getLanguage());
             notice(flash, "saved");
             return HOME;
         } catch (ComplementOffers.Invalid ex) {
             error(flash, ex);
+            flash.addFlashAttribute("draftLabel", label);
+            flash.addFlashAttribute("draftSubtitle", subtitle);
             return "redirect:/admin/apps/complements/new?parentId=" + parentId + "&productId=" + productId;
         }
     }
 
     @PostMapping("/complements/create")
     public String create(@RequestParam UUID requestId, @RequestParam long parentId, @RequestParam String label,
+                         @RequestParam(required = false) String subtitle,
                          @ModelAttribute ComplementOffers.NewProduct product, @RequestParam String csrf,
                          HttpSession session, Locale locale, RedirectAttributes flash) {
         Store store = authorized(session, csrf);
         try {
-            offers.create(store, requestId, parentId, label, product, locale.getLanguage());
+            offers.create(store, requestId, parentId, label, subtitle, product, locale.getLanguage());
             notice(flash, "saved");
             return HOME;
         } catch (ComplementOffers.Invalid ex) {
@@ -117,6 +121,7 @@ public class ComplementAdminController {
             if (ex.getMessage().endsWith(".uncertain") || ex.getMessage().endsWith(".submitted")) return HOME;
             flash.addFlashAttribute("draft", product);
             flash.addFlashAttribute("draftLabel", label);
+            flash.addFlashAttribute("draftSubtitle", subtitle);
             return "redirect:/admin/apps/complements/new?parentId=" + parentId + "&create=true";
         }
     }
@@ -160,16 +165,18 @@ public class ComplementAdminController {
 
     @PostMapping("/complements/{id}/update")
     public String update(@PathVariable UUID id, @RequestParam String label,
+                         @RequestParam(required = false) String subtitle,
                          @RequestParam(defaultValue = "false") boolean enabled,
                          @RequestParam(defaultValue = "true") boolean showImage,
                          @RequestParam(required = false) String backgroundColor, @RequestParam(required = false) String textColor,
+                         @RequestParam(required = false) String accentColor,
                          @RequestParam(defaultValue = "true") boolean showBorder, @RequestParam(defaultValue = "true") boolean roundedCorners,
                          @RequestParam String csrf,
                          HttpSession session, RedirectAttributes flash) {
         Store store = authorized(session, csrf);
         try {
-            offers.update(store.getStoreId(), id, label, enabled,
-                    new ComplementOffers.Appearance(showImage, backgroundColor, textColor, showBorder, roundedCorners));
+            offers.update(store.getStoreId(), id, label, subtitle, enabled,
+                    new ComplementOffers.Appearance(showImage, backgroundColor, textColor, accentColor, showBorder, roundedCorners));
             notice(flash, "updated");
         } catch (ComplementOffers.Invalid ex) {
             error(flash, ex);

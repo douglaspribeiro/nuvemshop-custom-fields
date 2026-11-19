@@ -1,12 +1,36 @@
 import { Button, Checkbox, Column, Image, NumberField, Row, Text } from "@tiendanube/nube-sdk-jsx";
 import type { NubeComponent, NubeSDK, NubeSDKState } from "@tiendanube/nube-sdk-types";
+import { styled } from "@tiendanube/nube-sdk-ui";
 import { appOrigin } from "../shared/config";
-import { normalizeProperties } from "../shared/properties";
+import { normalizedColor, normalizeProperties } from "../shared/properties";
 import type { createCartAdder, PersonalizedAdd } from "./cart-add";
 
-type Item = { productId: number; variantId: number; label: string; price: string; imageUrl: string | null; stock: number | null;
-    appearance?: {backgroundColor: string | null; textColor: string | null; showBorder: boolean; roundedCorners: boolean}; };
+type Item = { productId: number; variantId: number; label: string; subtitle?: string | null;
+    price: string; imageUrl: string | null; stock: number | null;
+    appearance?: {backgroundColor: string | null; textColor: string | null; accentColor?: string | null;
+        showBorder: boolean; roundedCorners: boolean}; };
 type Catalog = { locale: string; currency: string | null; items: Item[] };
+
+const ColoredOffer = styled(Column)`
+    & .nube-check .form-group-icon svg { color: var(--ncf-complement-check) !important; }
+`;
+
+function luminance(hex: string): number {
+    const [r, g, b] = [1, 3, 5].map(offset => {
+        const channel = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function checkboxColor(background: string | undefined, text: string | undefined): string | undefined {
+    if (!background) return text;
+    const surface = luminance(background);
+    const ink = luminance(text ?? "#25323d");
+    return (Math.max(surface, ink) + 0.05) / (Math.min(surface, ink) + 0.05) >= 4.5
+        ? text ?? "#25323d"
+        : surface >= 0.18 ? "#000000" : "#ffffff";
+}
 
 export async function fetchComplements(store: number, product: number): Promise<Catalog | null> {
     try {
@@ -153,44 +177,77 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
                 return `${amount.toFixed(2)} ${catalog!.currency ?? ""}`.trim();
             }
         };
-        const border = "color-mix(in srgb, currentColor 25%, transparent)";
-        return {type: "col", gap: 8, style: {paddingTop: "12px", paddingBottom: "12px"}, children: [
-            <Text style={{fontWeight: "700", fontSize: "16px"}}>{say("Complementos opcionais", "Complementos opcionales")}</Text>,
+        return {type: "col", gap: 8, style: {paddingTop: "8px", paddingBottom: "8px"}, children: [
+            <Text style={{fontWeight: "700", fontSize: "16px", lineHeight: "1.3", margin: "0"}}>
+                {say("Complementos opcionais", "Complementos opcionales")}
+            </Text>,
             ...catalog.items.map(item => {
                 const quantity = selected.get(item.variantId);
                 const name = `ncf-complement-${item.variantId}`;
                 const appearance = item.appearance;
                 const rounded = appearance?.roundedCorners !== false;
+                const textColor = normalizedColor(appearance?.textColor) ?? undefined;
+                const background = normalizedColor(appearance?.backgroundColor) ?? undefined;
+                const accent = normalizedColor(appearance?.accentColor) ?? textColor ?? "currentColor";
+                const tint = `color-mix(in srgb, ${accent} 12%, transparent)`;
+                const checkColor = checkboxColor(background, accent === "currentColor" ? undefined : accent);
+                const Offer = checkColor ? ColoredOffer : Column;
                 const controlStyle = {
-                    border: "1px solid currentColor", borderRadius: rounded ? "50%" : "0",
-                    minWidth: "40px", minHeight: "40px", backgroundColor: "transparent", color: "inherit", boxShadow: "none",
+                    width: "36px", height: "36px", minWidth: "0", minHeight: "36px", flex: "0 1 36px",
+                    margin: "0", padding: "0", border: "0", borderRadius: "0",
+                    backgroundColor: tint, color: "inherit", boxSizing: "border-box", boxShadow: "none",
                 };
-                const textColor = appearance?.textColor ?? undefined;
-                const summary = <Column gap={3} style={{minWidth: "0", flex: "1", overflowWrap: "anywhere"}}>
-                    {locked ? <Text color={textColor} style={{fontWeight: "600"}}>{item.label}</Text> :
+                const summary = [
+                    locked ? <Text color={textColor} style={{fontSize: "17px", fontWeight: "700", margin: "0"}}>{item.label}</Text> :
                         <Checkbox key={name} name={name} label={item.label} checked={quantity != null}
-                            style={{label: {minHeight: "36px", color: textColor, fontWeight: "600", whiteSpace: "normal", overflowWrap: "anywhere"}}}
+                            style={{
+                                container: {display: "flex", flexDirection: "column", alignItems: "stretch", minHeight: "0", margin: "0"},
+                                label: {
+                                    margin: "0", padding: "0", minHeight: "0", lineHeight: "1.35",
+                                    alignItems: "center", textAlign: "start", color: textColor, fontSize: "17px", fontWeight: "700",
+                                    whiteSpace: "normal", overflowWrap: "anywhere",
+                                },
+                                checkbox: {width: "20px", height: "20px", alignSelf: "center", margin: "0", flexShrink: "0"},
+                            }}
                             onChange={event => {
                                 if (generation !== ownGeneration || pending.length || review) return;
                                 if (event.value) selected.set(item.variantId, 1);
                                 else selected.delete(item.variantId);
                                 message = "";
                                 render();
-                            }} />}
-                    <Text color={textColor} style={{fontSize: "13px"}}>{price(item)}</Text>
-                </Column>;
-                const thumbnail = item.imageUrl ? [<Image src={item.imageUrl} width="52px" height="52px" alt=""
-                    style={{borderRadius: rounded ? "8px" : "0", objectFit: "contain", flexShrink: "0"}} />] : [];
-                const content = [<Row gap={12} style={{alignItems: "center", minWidth: "0"}}>{[...thumbnail, summary]}</Row>];
+                            }} />,
+                    ...(item.subtitle ? [<Text color={textColor} style={{fontSize: "14px", margin: "0"}}>{item.subtitle}</Text>] : []),
+                    <Text color={accent} style={{fontSize: "16px", fontWeight: "700", margin: "0"}}>
+                        {`${price(item)} ${say("por unidade", "por unidad")}`}
+                    </Text>,
+                ];
+                const photo = item.imageUrl ? [
+                    <Column gap={0} style={{flex: "1 1 38%", width: "0", minWidth: "0"}}>
+                        {[<Image src={item.imageUrl} width="100%" alt="" style={{
+                            display: "block", height: "auto", maxHeight: "260px", aspectRatio: "1.08",
+                            borderRadius: rounded ? "12px" : "0", objectFit: "cover",
+                        }} />]}
+                    </Column>,
+                ] : [];
 
                 if (quantity != null) {
                     const quantityField = <NumberField key={`${name}-quantity`} name={`${name}-quantity`} label={say("Quantidade", "Cantidad")}
                         min={1} max={item.stock ?? undefined} step={1} value={quantity} disabled={locked}
                         style={{
-                            container: {width: "auto", minWidth: "0", display: "flex", alignItems: "center", gap: "8px"},
-                            label: {fontSize: "13px", margin: "0", color: textColor},
-                            wrapper: {maxWidth: "132px"},
-                            input: {color: "inherit", backgroundColor: "transparent"},
+                            container: {display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px", margin: "0"},
+                            label: {width: "auto", fontSize: "13px", fontWeight: "700", margin: "0", padding: "0", textAlign: "start", color: textColor},
+                            wrapper: {
+                                display: "flex", alignItems: "center", gap: "0", width: "fit-content", maxWidth: "100%",
+                                margin: "0", padding: "0", border: `1px solid ${accent}`,
+                                borderRadius: rounded ? "8px" : "0", overflow: "hidden",
+                                backgroundColor: "transparent",
+                            },
+                            input: {
+                                width: "54px", minWidth: "0", flex: "0 1 54px", height: "36px", minHeight: "36px",
+                                margin: "0", padding: "0", textAlign: "center", border: "0",
+                                borderInline: `1px solid ${accent}`, borderRadius: "0", fontWeight: "700",
+                                color: "inherit", backgroundColor: "transparent", boxSizing: "border-box",
+                            },
                             incrementButton: controlStyle, decrementButton: controlStyle,
                         }}
                         onChange={event => {
@@ -199,20 +256,34 @@ export function createComplements(nube: NubeSDK, adder: ReturnType<typeof create
                             render();
                         }} />;
                     const subtotal = Number.isSafeInteger(quantity) && quantity >= 1
-                        ? [<Text color={textColor} style={{fontSize: "13px", fontWeight: "600"}}>{`Subtotal: ${price(item, quantity)}`}</Text>]
+                        ? [<Text color={accent} style={{
+                            fontSize: "16px", fontWeight: "700", margin: "4px 0 0", padding: "6px 9px",
+                            backgroundColor: tint, borderRadius: rounded ? "8px" : "0",
+                        }}>
+                            {`${say("Total do complemento", "Total del complemento")}: ${price(item, quantity)}`}
+                        </Text>]
                         : [];
-                    content.push(<Row gap={12} style={{
-                        flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",
-                        marginTop: "10px", paddingTop: "10px", borderTop: `1px solid ${border}`,
-                    }}>{[quantityField, ...subtotal]}</Row>);
+                    summary.push(<Column gap={6} style={{marginTop: "4px", alignItems: "stretch"}}>
+                        {[quantityField, ...subtotal,
+                            <Text color={textColor} style={{fontSize: "13px", margin: "0"}}>
+                                {say("Quantidade total para este item do pedido.", "Cantidad total para este artículo del pedido.")}
+                            </Text>,
+                        ]}
+                    </Column>);
                 }
 
-                return <Column key={name} gap={0} style={{
-                    color: textColor, border: `1px solid ${appearance?.showBorder === false ? "transparent"
-                        : quantity == null ? border : "currentColor"}`,
-                    borderRadius: rounded ? "12px" : "0", padding: "12px", minWidth: "0", boxSizing: "border-box",
-                    backgroundColor: appearance?.backgroundColor ?? (quantity == null ? "transparent" : "color-mix(in srgb, currentColor 4%, transparent)"),
-                }}>{content}</Column>;
+                return <Offer key={name} gap={0} style={{
+                    ...(checkColor ? {"--ncf-complement-check": checkColor} : {}),
+                    color: textColor, border: `1px solid ${appearance?.showBorder === false ? "transparent" : accent}`,
+                    borderRadius: rounded ? "16px" : "0", padding: "14px", minWidth: "0", boxSizing: "border-box",
+                    backgroundColor: background ?? "transparent",
+                }}>
+                    {[<Row gap={14} style={{flexWrap: "wrap", alignItems: "center", minWidth: "0", width: "100%"}}>
+                        {[...photo, <Column gap={6} style={{
+                            flex: "1.6 1 180px", minWidth: "0", alignItems: "stretch", overflowWrap: "anywhere",
+                        }}>{summary}</Column>]}
+                    </Row>]}
+                </Offer>;
             }),
             ...(message ? [<Text style={{fontSize: "14px", marginTop: "4px"}}>{message}</Text>] : []),
             ...(review ? [

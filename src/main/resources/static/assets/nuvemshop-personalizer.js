@@ -284,6 +284,10 @@
             const appearance = item.appearance || {};
             if (/^#[0-9a-f]{6}$/i.test(appearance.backgroundColor)) row.style.backgroundColor = appearance.backgroundColor;
             if (/^#[0-9a-f]{6}$/i.test(appearance.textColor)) row.style.color = appearance.textColor;
+            const accent = normalizedHexColor(appearance.accentColor);
+            if (accent) row.style.setProperty("--ncf-complement-accent", accent);
+            const checkColor = complementCheckboxColor(normalizedHexColor(appearance.backgroundColor), accent || normalizedHexColor(appearance.textColor));
+            if (checkColor) row.style.setProperty("--ncf-complement-check", checkColor);
             row.classList.toggle("ncf-complement-borderless", appearance.showBorder === false);
             row.classList.toggle("ncf-complement-square", appearance.roundedCorners === false);
             const label = document.createElement("label");
@@ -292,24 +296,30 @@
                 const image = document.createElement("img");
                 image.src = item.imageUrl;
                 image.alt = "";
-                image.width = image.height = 52;
                 image.loading = "lazy";
-                label.appendChild(image);
+                row.appendChild(image);
             }
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
-            const description = document.createElement("span");
+            const description = document.createElement("div");
             description.className = "ncf-complement-description";
             const name = document.createElement("strong");
             name.textContent = item.label;
-            const unitPrice = document.createElement("span");
-            unitPrice.textContent = price(Number(item.price));
-            description.append(name, unitPrice);
-            label.append(checkbox, description);
+            label.append(checkbox, name);
+            description.appendChild(label);
+            if (item.subtitle) {
+                const subtitle = document.createElement("span");
+                subtitle.textContent = item.subtitle;
+                description.appendChild(subtitle);
+            }
+            const unitPrice = document.createElement("strong");
+            unitPrice.className = "ncf-complement-unit-price";
+            unitPrice.textContent = price(Number(item.price)) + " " + say("por unidade", "por unidad");
+            description.appendChild(unitPrice);
             const details = document.createElement("div");
             details.className = "ncf-complement-details";
             details.hidden = true;
-            const quantityLabel = document.createElement("label");
+            const quantityLabel = document.createElement("strong");
             quantityLabel.textContent = say("Quantidade", "Cantidad");
             const quantity = document.createElement("input");
             quantity.type = "number";
@@ -335,21 +345,25 @@
             };
             const decrease = quantityButton(-1, "−", say("Diminuir quantidade", "Reducir cantidad"));
             const increase = quantityButton(1, "+", say("Aumentar quantidade", "Aumentar cantidad"));
-            const subtotal = document.createElement("span");
+            const subtotal = document.createElement("strong");
+            subtotal.className = "ncf-complement-total";
+            subtotal.setAttribute("aria-live", "polite");
+            const quantityHint = document.createElement("span");
+            quantityHint.textContent = say("Quantidade total para este item do pedido.", "Cantidad total para este artículo del pedido.");
             const update = () => {
                 details.hidden = !checkbox.checked;
-                row.classList.toggle("ncf-complement-selected", checkbox.checked);
                 quantity.disabled = !checkbox.checked;
                 decrease.disabled = Number(quantity.value) <= 1;
                 increase.disabled = item.stock != null && Number(quantity.value) >= item.stock;
                 subtotal.textContent = quantity.checkValidity() && quantity.value
-                    ? "Subtotal: " + price(Number(item.price) * Number(quantity.value)) : "";
+                    ? say("Total do complemento", "Total del complemento") + ": " + price(Number(item.price) * Number(quantity.value)) : "";
             };
             checkbox.addEventListener("change", update);
             quantity.addEventListener("input", update);
             controls.append(decrease, quantity, increase);
-            details.append(quantityLabel, controls, subtotal);
-            row.append(label, details);
+            details.append(quantityLabel, controls, subtotal, quantityHint);
+            description.appendChild(details);
+            row.appendChild(description);
             panel.appendChild(row);
             update();
             return {item, checkbox, quantity, update};
@@ -804,27 +818,29 @@
         style.id = "ncf-personalization-style";
         style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px;color:var(--ncf-product-text-color,inherit)}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}.ncf-cart-property-list{display:block;margin-top:4px;font-size:.875em;line-height:1.35}.ncf-cart-property-line{display:block}.ncf-cart-property-line b{font-weight:700}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium,.summary-details [data-testid='product-name-qty'] .text-foreground-medium{color:var(--ncf-cart-property-color,inherit)!important}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm,.summary-details [data-testid='product-name-qty'] .text-sm{color:var(--ncf-cart-property-color,inherit)!important}";
         style.textContent += `
-            .ncf-complements{min-width:0;border:0;padding:0;margin-inline:0;--ncf-complement-border:color-mix(in srgb,currentColor 25%,transparent)}
+            .ncf-complements{min-width:0;border:0;padding:0;margin-inline:0}
             .ncf-complements-title{padding:0;margin-bottom:8px;font-size:16px;line-height:1.3;font-weight:700}
-            .ncf-complement{padding:12px;border:1px solid var(--ncf-complement-border);border-radius:12px}
+            .ncf-complement{--ncf-accent:var(--ncf-complement-accent,currentColor);--ncf-tint:color-mix(in srgb,var(--ncf-accent) 12%,transparent);display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px;border:1px solid var(--ncf-accent);border-radius:16px}
             .ncf-complement+.ncf-complement{margin-top:8px}
-            .ncf-complement-selected{border-color:currentColor;background:color-mix(in srgb,currentColor 4%,transparent)}
             .ncf-complement-borderless{border-color:transparent}
-            .ncf-complement-choice{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;cursor:pointer}
-            .ncf-complement-choice img{width:52px;height:52px;flex:0 0 52px;object-fit:contain;border-radius:8px}
-            .ncf-complement-description{display:grid;flex:1;min-width:0;gap:3px;overflow-wrap:anywhere;font-size:13px}
-            .ncf-complement-description strong{font-size:14px;line-height:1.35}
-            .ncf-complement-choice input{appearance:auto;width:18px;height:18px;margin:0;flex:none;accent-color:currentColor}
-            .ncf-complement-details:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding-top:10px;margin-top:10px;border-top:1px solid var(--ncf-complement-border);font-size:13px}
-            .ncf-complement-details label{margin:0;color:inherit}
-            .ncf-complement-controls{display:flex;align-items:center;gap:4px}
-            .ncf-complement-controls button,.ncf-complement-controls input{box-sizing:border-box;width:40px;min-height:40px;padding:0;font:inherit;color:inherit;background:transparent;border:1px solid var(--ncf-complement-border);border-radius:8px;text-align:center}
-            .ncf-complement-controls button{border-radius:50%;cursor:pointer}
+            .ncf-complement-choice{display:flex;align-items:center;gap:8px;margin:0;color:inherit;font-size:17px;line-height:1.3;cursor:pointer}
+            .ncf-complement>img{flex:1 1 38%;width:0;min-width:0;max-height:260px;aspect-ratio:1.08;object-fit:cover;border-radius:12px}
+            .ncf-complement-description{display:grid;flex:1.6 1 180px;min-width:0;gap:6px;overflow-wrap:anywhere;font-size:14px}
+            .ncf-complement-choice input[type=checkbox]{appearance:auto;position:static;opacity:1;width:20px;height:20px;min-height:0;margin:0;padding:0;flex:none;border-radius:3px;accent-color:var(--ncf-complement-check,var(--ncf-accent));outline:1px solid var(--ncf-complement-check,var(--ncf-accent));outline-offset:-1px}
+            .ncf-complement-choice input[type=checkbox]:focus-visible{outline:2px solid var(--ncf-complement-check,currentColor);outline-offset:2px}
+            .ncf-complement-details[hidden]{display:none}
+            .ncf-complement-details:not([hidden]){display:grid;gap:6px;margin-top:4px;font-size:13px}
+            .ncf-complement-controls{display:flex;align-items:center;width:fit-content;max-width:100%;border:1px solid var(--ncf-accent);border-radius:8px;overflow:hidden}
+            .ncf-complement-controls button,.ncf-complement-controls input{box-sizing:border-box;height:36px;min-height:36px;margin:0;padding:0;font:inherit;font-weight:700;color:inherit;background:transparent;border:0;border-radius:0;text-align:center;box-shadow:none}
+            .ncf-complement-controls button{width:36px;min-width:0;flex:0 1 36px;background:var(--ncf-tint);font-size:18px;cursor:pointer}
             .ncf-complement-controls button:disabled{opacity:.5;cursor:default}
-            .ncf-complement-controls input{appearance:textfield}
+            .ncf-complement-controls :focus-visible{outline:2px solid var(--ncf-accent);outline-offset:-2px}
+            .ncf-complement-controls input{appearance:textfield;flex:0 1 54px;min-width:0;width:54px;border-inline:1px solid var(--ncf-accent)}
             .ncf-complement-controls input::-webkit-inner-spin-button{appearance:none}
-            .ncf-complement-details span{font-weight:600;margin-inline-start:auto}
-            .ncf-complement-square,.ncf-complement-square img,.ncf-complement-square .ncf-complement-controls>*{border-radius:0}
+            .ncf-complement-unit-price,.ncf-complement-total{color:var(--ncf-accent);font-size:16px}
+            .ncf-complement-total{margin-top:4px;padding:6px 9px;border-radius:8px;background:var(--ncf-tint)}
+            .ncf-complement-total:empty{display:none}
+            .ncf-complement-square,.ncf-complement-square img,.ncf-complement-square .ncf-complement-controls,.ncf-complement-square .ncf-complement-total{border-radius:0}
             .ncf-complements-status{margin:8px 0 0;font-size:14px}
             .ncf-complements-status:empty,.ncf-complements-actions:not(:has(:not([hidden]))){display:none}
             .ncf-complements-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-top:4px}
@@ -1214,6 +1230,22 @@
 
     function luminance(color) {
         return ((0.2126 * color.red) + (0.7152 * color.green) + (0.0722 * color.blue)) / 255;
+    }
+
+    function complementCheckboxColor(background, text) {
+        if (!background) return text;
+        const relativeLuminance = hex => {
+            const [r, g, b] = [1, 3, 5].map(offset => {
+                const channel = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+                return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+            });
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        const surface = relativeLuminance(background);
+        const color = text || "#25323d";
+        const ink = relativeLuminance(color);
+        return (Math.max(surface, ink) + 0.05) / (Math.min(surface, ink) + 0.05) >= 4.5
+            ? color : surface >= 0.18 ? "#000000" : "#ffffff";
     }
 
     function renderField(field) {

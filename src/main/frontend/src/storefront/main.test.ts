@@ -65,7 +65,8 @@ describe("SDK storefront without a legacy script", () => {
 
     it.each([true, false])("adds multiple complements after the main product is confirmed (full success: %s)", async fullSuccess => {
         const items = [
-            {productId: 400, variantId: 201, label: "Passante", price: "12.00", stock: 5, imageUrl: null},
+            {productId: 400, variantId: 201, label: "Passante", subtitle: "Um detalhe especial", price: "12.00", stock: 5,
+                imageUrl: "https://store.test/passante.jpg", appearance: {backgroundColor: "#fff3f5", accentColor: "#b03450"}},
             {productId: 500, variantId: 301, label: "Marcador", price: "6.00", stock: 5, imageUrl: null},
         ];
         state.store.theme = "other";
@@ -83,8 +84,14 @@ describe("SDK storefront without a legacy script", () => {
             }
         }
         await vi.waitFor(() => expect(control("ncf-complement-201")).toBeDefined());
+        expect(JSON.stringify(currentTree())).toContain("Um detalhe especial");
+        expect(JSON.stringify(currentTree())).toContain("12,00 por unidade");
+        expect(JSON.stringify(currentTree())).toContain("https://store.test/passante.jpg");
+        expect(JSON.stringify(currentTree())).toContain("1px solid #b03450");
+        expect(control("ncf-complement-201-quantity")).toBeUndefined();
         control("ncf-complement-201")!.onChange!({value: "true"});
         control("ncf-complement-201-quantity")!.onChange!({value: "3"});
+        expect(JSON.stringify(currentTree())).toMatch(/Total do complemento: R\$\s36,00/);
         control("ncf-complement-301")!.onChange!({value: "true"});
         add();
         add("double-click");
