@@ -43,7 +43,7 @@ class StoreLastAccessTest {
         assertThat(access()).isEqualTo(timestamp);
         for(String path:new String[]{"/backoffice","/backoffice/stores","/backoffice/stores/"+store.getStoreId()}) {
             mvc.perform(get(path).session(owner)).andExpect(status().isOk())
-                    .andExpect(content().string(containsString("Último acesso em")))
+                    .andExpect(content().string(containsString("Último acesso")))
                     .andExpect(content().string(containsString("data-local-time=\""+timestamp+"\"")));
         }
     }

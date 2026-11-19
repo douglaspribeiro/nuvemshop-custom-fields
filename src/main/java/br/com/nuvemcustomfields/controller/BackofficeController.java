@@ -132,10 +132,13 @@ public class BackofficeController {
     }
 
     @GetMapping("/backoffice")
-    public String index(@RequestParam(required = false, defaultValue = "") String q, Model model) {
+    public String index(@RequestParam(required = false, defaultValue = "") String q,
+                        @RequestParam(required = false, defaultValue = "") String plan,
+                        @RequestParam(required = false, defaultValue = "") String status,
+                        @RequestParam(required = false, defaultValue = "") String country, Model model) {
         LOGGER.debug("backoffice.index.open");
         var stores = storeRepository.findAll();
-        populateStoreDirectory(model, stores, q);
+        populateStoreDirectory(model, stores, q, false, plan, status, country);
         long rules = backofficeService.fields();
         long flags = featureFlagRepository.count();
         model.addAttribute("rules", rules);
@@ -406,25 +409,40 @@ public class BackofficeController {
     }
 
     private void populateStoreDirectory(Model model, List<Store> allStores, String query, boolean uninstalledOnly) {
+        populateStoreDirectory(model, allStores, query, uninstalledOnly, "", "", "");
+    }
+
+    private void populateStoreDirectory(Model model, List<Store> allStores, String query, boolean uninstalledOnly,
+                                        String plan, String status, String country) {
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         Comparator<Store> ordering = uninstalledOnly
                 ? Comparator.comparing(Store::getUninstalledAt, Comparator.nullsLast(Comparator.reverseOrder()))
                 : Comparator.comparing(Store::isActive).reversed()
                         .thenComparing(Store::getInstalledAt, Comparator.reverseOrder());
-        List<Store> stores = allStores.stream()
+        List<Store> matching = allStores.stream()
                 .filter(store -> !uninstalledOnly || !store.isActive())
                 .filter(store -> normalizedQuery.isEmpty() || matches(store, normalizedQuery))
                 .sorted(ordering)
                 .toList();
-        Map<Long, br.com.nuvemcustomfields.entity.PaymentSubscription> subscriptions = stores.isEmpty() ? Map.of()
-                : paymentSubscriptionRepository.findByStoreIdIn(stores.stream()
+        Map<Long, br.com.nuvemcustomfields.entity.PaymentSubscription> subscriptions = matching.isEmpty() ? Map.of()
+                : paymentSubscriptionRepository.findByStoreIdIn(matching.stream()
                         .map(br.com.nuvemcustomfields.entity.Store::getStoreId).toList())
                 .stream().collect(Collectors.toMap(br.com.nuvemcustomfields.entity.PaymentSubscription::getStoreId,
                         Function.identity()));
+        List<Store> stores = matching.stream()
+                .filter(store -> matchesPlan(store, plan))
+                .filter(store -> matchesStatus(store, subscriptions.get(store.getStoreId()), status))
+                .filter(store -> country == null || country.isBlank() || country.equalsIgnoreCase(store.getStoreCountryCode()))
+                .toList();
         var active = allStores.stream().filter(br.com.nuvemcustomfields.entity.Store::isActive).toList();
         model.addAttribute("stores", stores);
         model.addAttribute("subscriptionsByStoreId", subscriptions);
         model.addAttribute("query", query == null ? "" : query.trim());
+        model.addAttribute("selectedPlan", plan);
+        model.addAttribute("selectedStatus", status);
+        model.addAttribute("selectedCountry", country);
+        model.addAttribute("countries", allStores.stream().map(Store::getStoreCountryCode)
+                .filter(value -> value != null && !value.isBlank()).distinct().sorted().toList());
         model.addAttribute("installations", allStores.size());
         model.addAttribute("activeInstallations", active.size());
         model.addAttribute("inactiveInstallations", allStores.size() - active.size());
@@ -438,6 +456,31 @@ public class BackofficeController {
                 && store.getEffectivePlan() == PlanType.PREMIUM_PLUS).count());
         model.addAttribute("ultraInstallations", active.stream().filter(store -> !store.isCourtesyPremium()
                 && store.getEffectivePlan() == PlanType.PREMIUM_ULTRA).count());
+    }
+
+    private static boolean matchesPlan(Store store, String plan) {
+        if (plan == null || plan.isBlank()) return true;
+        if ("COURTESY".equals(plan)) return store.isCourtesyPremium();
+        if (store.isCourtesyPremium()) return false;
+        return switch (plan) {
+            case "FREE" -> store.getEffectivePlan() == PlanType.FREE || store.getEffectivePlan() == PlanType.FREE_GRATIS;
+            case "PREMIUM" -> store.getEffectivePlan() == PlanType.PREMIUM;
+            case "PREMIUM_PLUS" -> store.getEffectivePlan() == PlanType.PREMIUM_PLUS;
+            case "PREMIUM_ULTRA" -> store.getEffectivePlan() == PlanType.PREMIUM_ULTRA;
+            default -> false;
+        };
+    }
+
+    private static boolean matchesStatus(Store store, br.com.nuvemcustomfields.entity.PaymentSubscription subscription, String status) {
+        if (status == null || status.isBlank()) return true;
+        return switch (status) {
+            case "INSTALLED" -> store.isActive();
+            case "UNINSTALLED" -> store.getUninstalledAt() != null;
+            case "ERASURE_PENDING" -> store.isErasurePending();
+            case "BLOCKED" -> store.getAccessBlockedAt() != null;
+            case "NO_SUBSCRIPTION" -> subscription == null;
+            default -> subscription != null && subscription.getStatus().name().equals(status);
+        };
     }
 
     private static boolean matches(br.com.nuvemcustomfields.entity.Store store, String query) {

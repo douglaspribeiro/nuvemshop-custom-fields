@@ -37,3 +37,5 @@
 .configuration-history { margin-top:18px; }
 .configuration-log { border-top:1px solid #dce6e0; padding:12px 0; }
 @media(max-width:600px) { .configuration-properties { grid-template-columns:1fr; } }
+
+.backoffice-directory-filters{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-top:16px}.backoffice-directory-filters label{display:grid;gap:6px;flex:1 1 170px;color:#526962;font-size:.8rem;font-weight:750}.backoffice-directory-filters select{width:100%;min-height:41px;padding:0 9px;border:1px solid #ccdcd5;border-radius:7px;background:#fff;color:#203531}.backoffice-directory-filters .button{min-height:41px}

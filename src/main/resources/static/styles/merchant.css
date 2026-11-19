@@ -430,3 +430,5 @@ body.merchant-page { background:var(--merchant-bg); color:var(--merchant-ink); }
 .field-preview-quantity-controls input {width:30px;min-width:30px;padding:0;border:0;background:transparent;text-align:center;appearance:textfield;-moz-appearance:textfield;box-shadow:none;}
 .field-preview-quantity-controls input::-webkit-inner-spin-button {appearance:none;}
 @media(max-width:699px){.field-preview-quantity-list{grid-template-columns:minmax(0,1fr);}}
+
+.merchant-footer-version{display:block;margin-top:6px;color:#71867f}

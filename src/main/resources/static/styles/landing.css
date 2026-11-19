@@ -77,3 +77,5 @@
 @media(max-width:1000px) { .pricing-intro { align-items:flex-start; gap:24px; }.pricing-card { padding:22px; }.pricing-free { flex-wrap:wrap; gap:12px 20px; }.pricing-free p { flex-basis:55%; } }
 @media(max-width:860px) { .pricing-intro { flex-direction:column; }.pricing-market { width:100%; max-width:400px; min-width:0; }.pricing-page .marketing-price-grid { grid-template-columns:minmax(0,1fr); }.pricing-card-description { min-height:0; }.pricing-card { padding:24px; }.pricing-free p { flex-basis:100%; order:3; }.pricing-free > a { margin-left:auto; }.pricing-details { grid-template-columns:1fr; gap:22px; }.pricing-page .public-marketing { padding-top:32px; } }
 @media(max-width:380px) { .pricing-page .landing-brand { font-size:.8rem; }.pricing-page .landing-nav .button { padding:8px; font-size:.75rem; }.pricing-free { padding:16px; }.pricing-free-name { gap:8px; }.pricing-free > a { font-size:.76rem; } }
+
+.landing-footer-status small{display:block;margin-top:5px}

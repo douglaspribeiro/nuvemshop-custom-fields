@@ -60,6 +60,9 @@ class BackofficeUninstalledStoresPageTest {
 
     private MockHttpSession session;
 
+    @Autowired
+    private br.com.nuvemcustomfields.repository.PaymentSubscriptionRepository subscriptions;
+
     @BeforeEach
     void setUp() {
         cleanUp();
@@ -109,6 +112,33 @@ class BackofficeUninstalledStoresPageTest {
     void menuRequiresBackofficeSession() throws Exception {
         mockMvc.perform(get("/backoffice/stores").param("status", "uninstalled"))
                 .andExpect(redirectedUrl("/backoffice/login"));
+    }
+
+    @Test
+    @Transactional
+    void overviewCombinesPlanPaymentCountryAndSearchFilters() throws Exception {
+        Store store = stores.findByStoreId(ACTIVE_ID).orElseThrow();
+        store.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);
+        store.setStoreCountryCode("BR");
+        stores.save(store);
+        var sub = new br.com.nuvemcustomfields.entity.PaymentSubscription();
+        sub.setStoreId(ACTIVE_ID);
+        sub.setProvider(br.com.nuvemcustomfields.entity.PaymentProviderType.EFI);
+        sub.setExternalReference("overview-filter-" + ACTIVE_ID);
+        sub.setPlan(br.com.nuvemcustomfields.entity.PlanType.PREMIUM_PLUS);
+        sub.setCurrency("BRL");
+        sub.setAmountValue(BigDecimal.TEN);
+        sub.setStatus(br.com.nuvemcustomfields.entity.PaymentSubscriptionStatus.PAST_DUE);
+        subscriptions.saveAndFlush(sub);
+        mockMvc.perform(get("/backoffice").session(session).param("q", "Teste Menu")
+                        .param("plan", "PREMIUM_PLUS").param("status", "PAST_DUE").param("country", "BR"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Teste Menu Ativa")))
+                .andExpect(content().string(not(containsString("Teste Menu Desinstalada"))));
+        mockMvc.perform(get("/backoffice").session(session).param("q", "Teste Menu").param("status", "UNINSTALLED"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Teste Menu Desinstalada")))
+                .andExpect(content().string(not(containsString("Teste Menu Ativa"))));
     }
 
     @Test
