@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.dto;
 
 import br.com.nuvemcustomfields.i18n.StoreLocale;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 
 /**
@@ -13,15 +14,20 @@ public record PersonalizationResponse(
         List<FieldResponse> fields,
         PersonalizationStyleResponse style,
         String locale,
-        boolean paused
+        boolean paused,
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT) boolean complements
 ) {
 
     public PersonalizationResponse(boolean enabled, List<FieldResponse> fields, PersonalizationStyleResponse style, String locale) {
-        this(enabled, fields, style, locale, false);
+        this(enabled, fields, style, locale, false, false);
+    }
+
+    public PersonalizationResponse withComplements() {
+        return new PersonalizationResponse(enabled, fields, style, locale, paused, true);
     }
 
     public static PersonalizationResponse paused(String locale, PersonalizationStyleResponse style) {
-        return new PersonalizationResponse(false, List.of(), style, locale, true);
+        return new PersonalizationResponse(false, List.of(), style, locale, true, false);
     }
 
     public static PersonalizationResponse disabled() {

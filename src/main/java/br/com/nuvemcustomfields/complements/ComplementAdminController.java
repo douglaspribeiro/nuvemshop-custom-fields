@@ -6,7 +6,9 @@ import br.com.nuvemcustomfields.properties.NuvemshopProperties;
 import br.com.nuvemcustomfields.service.AdminStoreService;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
 import jakarta.servlet.http.HttpSession;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -46,7 +48,8 @@ public class ComplementAdminController {
     @GetMapping("/complements")
     public String list(HttpSession session, Model model) {
         Store store = page(session, model);
-        model.addAttribute("offers", offers.list(store.getStoreId()));
+        model.addAttribute("offerGroups", offers.list(store.getStoreId()).stream()
+                .collect(Collectors.groupingBy(ComplementOffers.Offer::parentId, LinkedHashMap::new, Collectors.toList())));
         return "admin/complements";
     }
 
@@ -131,13 +134,42 @@ public class ComplementAdminController {
         return HOME;
     }
 
+    public record Preview(String image, String price, String currency) {}
+
+    @GetMapping("/complements/{id}/preview")
+    @ResponseBody
+    public Preview preview(@PathVariable UUID id, HttpSession session) {
+        Store store = stores.requireCurrentStore(session);
+        var offer = offers.list(store.getStoreId()).stream()
+                .filter(candidate -> candidate.ready() && candidate.id().equals(id.toString())).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        try {
+            var product = offers.product(store, offer.productId());
+            String image = product.path("images").path(0).path("src").asText("");
+            for (var variant : product.path("variants")) {
+                if (variant.path("id").asLong() != offer.variantId()) continue;
+                String price = variant.path("promotional_price").asText("");
+                if (price.isBlank()) price = variant.path("price").asText("");
+                return new Preview(image.startsWith("https://") ? image : null, price, store.getStoreCurrency());
+            }
+        } catch (ComplementOffers.Invalid ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, ex.getMessage());
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    }
+
     @PostMapping("/complements/{id}/update")
     public String update(@PathVariable UUID id, @RequestParam String label,
-                         @RequestParam(defaultValue = "false") boolean enabled, @RequestParam String csrf,
+                         @RequestParam(defaultValue = "false") boolean enabled,
+                         @RequestParam(defaultValue = "true") boolean showImage,
+                         @RequestParam(required = false) String backgroundColor, @RequestParam(required = false) String textColor,
+                         @RequestParam(defaultValue = "true") boolean showBorder, @RequestParam(defaultValue = "true") boolean roundedCorners,
+                         @RequestParam String csrf,
                          HttpSession session, RedirectAttributes flash) {
         Store store = authorized(session, csrf);
         try {
-            offers.update(store.getStoreId(), id, label, enabled);
+            offers.update(store.getStoreId(), id, label, enabled,
+                    new ComplementOffers.Appearance(showImage, backgroundColor, textColor, showBorder, roundedCorners));
             notice(flash, "updated");
         } catch (ComplementOffers.Invalid ex) {
             error(flash, ex);

@@ -17,6 +17,7 @@ import { createBuyerUploads } from "./buyer-uploads";
 import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate } from "./values";
 import { installQuickBuy } from "./quick-buy";
 import { createCartAdder } from "./cart-add";
+import { createComplements, fetchComplements } from "./complements";
 
 const SLOT = "before_product_detail_add_to_cart";
 
@@ -43,6 +44,7 @@ let textColor: string | undefined;
 
 let verifyingUploads = false;
 let cartAdder: ReturnType<typeof createCartAdder>;
+let complements: ReturnType<typeof createComplements>;
 let reportedNativeGate = false;
 let draftGeneration = 0;
 let directPending = false;
@@ -62,6 +64,7 @@ export function App(nube: NubeSDK) {
 	// Sem este opt-in a plataforma nunca dispara cart:before_update.
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
     cartAdder = createCartAdder(nube);
+    complements = createComplements(nube, cartAdder, () => render(nube));
     const quickBuy = installQuickBuy(nube, cartAdder);
 
 	startDiagnostics(nube);
@@ -88,6 +91,7 @@ export function App(nube: NubeSDK) {
 	nube.on("cart:before_update", (state) => { if (!quickBuy.intercept(state)) gate(nube, state); });
 	nube.on("cart:add:success", (state) => {
         void renderCartImages(state);
+        if (complements.finished(state, true)) return;
         quickBuy.finished(state, true);
         const added = state.eventPayload as {product_id?: number; variant_id?: number; properties?: unknown} | undefined;
         const sent = submitted;
@@ -108,16 +112,13 @@ export function App(nube: NubeSDK) {
             render(nube);
             return;
         }
-        if(store && productId && config.fields.some(field => field.fieldType === "FILE_UPLOAD")) resetBuyerUploadFields(nube,store,productId);
-        if(store && productId) for(const field of config.fields.filter(f => f.fieldType === "FILE_UPLOAD"))
-            void createBuyerUploads(store,productId,nube.getBrowserAPIs().asyncSessionStorage).forget(field);
+        clearPurchasedValues(nube);
         directMessage = config.locale.startsWith("es") ? "Revisá la personalización en el carrito." : "Confira a personalização no carrinho.";
         void renderCartImages(state);
-		values = {};
-		errors = [];
         render(nube);
 	});
 	nube.on("cart:add:fail", (state) => {
+        if (complements.finished(state, false)) return;
         const failed=state.eventPayload as {product_id?:number;variant_id?:number}|undefined;
         cartAdder.settle(failed?.product_id,failed?.variant_id);
         quickBuy.finished(state, false);
@@ -126,6 +127,16 @@ export function App(nube: NubeSDK) {
         directMessage = config.locale.startsWith("es") ? "No pudimos agregar el producto. Revisá el carrito antes de intentar nuevamente." : "Não foi possível adicionar o produto. Confira o carrinho antes de tentar novamente.";
         render(nube);
 	});
+}
+
+function clearPurchasedValues(nube: NubeSDK) {
+    if (store && productId && config.fields.some(field => field.fieldType === "FILE_UPLOAD")) {
+        resetBuyerUploadFields(nube, store, productId);
+        const uploads = createBuyerUploads(store, productId, nube.getBrowserAPIs().asyncSessionStorage);
+        for (const field of config.fields.filter(field => field.fieldType === "FILE_UPLOAD")) void uploads.forget(field);
+    }
+    values = {};
+    errors = [];
 }
 
 async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
@@ -144,7 +155,7 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 		return;
 	}
 
-	if (nextProduct === productId && config.enabled) {
+	if (nextStore === store && nextProduct === productId && inFlightProduct !== nextProduct) {
 		render(nube);
 		outcome = "rendered";
 		return;
@@ -156,6 +167,9 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
 		return;
 	}
 
+	complements.reset();
+	config = DISABLED;
+	textColor = undefined;
 	store = nextStore;
 	productId = nextProduct;
 	variantId = readVariantId(state);
@@ -165,29 +179,30 @@ async function syncProduct(nube: NubeSDK, state: NubeSDKState | null) {
     draftGeneration++; submitted = null;
     directPending = false; directQuantity = 1; directMessage = "";
 
-	inFlightProduct = nextProduct;
-	try {
-		config = await fetchConfig(nextStore, nextProduct);
-	} finally {
-		inFlightProduct = null;
-	}
-    if (config.paused) { render(nube); outcome = "config_paused"; return; }
-	if (!config.enabled || config.fields.length === 0) {
-		outcome = config.enabled ? "config_without_fields" : "config_disabled";
-		clear(nube);
-		return;
-	}
+    const generation = draftGeneration;
+    inFlightProduct = nextProduct;
+    nube.clearSlot(SLOT);
+    const nextConfig = await fetchConfig(nextStore, nextProduct);
+    if (generation !== draftGeneration) return;
+    inFlightProduct = null;
+    config = nextConfig;
 	textColor = normalizedColor(config.style?.productTextColor);
 	render(nube);
-	outcome = "rendered";
+    outcome = config.paused ? "config_paused" : config.enabled ? "rendered" : "config_disabled";
+    if (!config.complements) return;
+    const catalog = await fetchComplements(nextStore, nextProduct);
+    if (catalog && generation === draftGeneration) {
+        complements.reset(catalog);
+        render(nube);
+    }
 }
 
 function render(nube: NubeSDK) {
-    if (config.paused) { nube.render(SLOT, <Column id={SDK_MARKER_ID} style={{paddingTop:"12px",paddingBottom:"12px"}}><Text>{messages(config.locale).personalizationPaused}</Text></Column>); return; }
-    if (!config.enabled) { nube.clearSlot(SLOT); return; }
+    const extraFields = complements.fields();
+    if (!config.enabled && !config.paused && !extraFields) { nube.clearSlot(SLOT); return; }
     const renderProduct = productId;
     const renderGeneration = draftGeneration;
-    const fields = <PersonalizationFields
+    const fields = config.enabled ? <PersonalizationFields
 			fields={config.fields}
 			errors={errors}
 			color={textColor}
@@ -203,23 +218,32 @@ function render(nube: NubeSDK) {
                 errors = errors.filter(error => error.propertyName !== key);
                 if (refresh) render(nube);
 			}}
-		/>;
-    if (!isPatagonia(nube)) { nube.render(SLOT, fields); return; }
-    const es = config.locale.startsWith("es");
+        /> : config.paused ? <Text>{messages(config.locale).personalizationPaused}</Text> : <Column gap={0} />;
+    const content = <Column id={config.enabled ? undefined : SDK_MARKER_ID} gap={8}>{fields}{extraFields ?? <Column gap={0} />}
+        {!isPatagonia(nube) && directMessage ? <Text>{directMessage}</Text> : <Column gap={0} />}
+    </Column>;
+    if (!isPatagonia(nube) || (!config.enabled && !extraFields)) {
+        nube.render(SLOT, extraFields || config.paused ? content : fields);
+        return;
+    }
+    const locale = complements.locale() ?? config.locale;
+    const es = locale.startsWith("es");
+    const addLabel = extraFields ? (es ? "Agregar al carrito" : "Adicionar ao carrinho")
+        : (es ? "Agregar con personalización" : "Adicionar com personalização");
     const state = safeState(nube);
     const variants = productVariants(state);
     const selected = variants.find(variant => variant.id === directVariantId) ?? variants[0];
-    const selectedValues = selected?.values?.map(value => localized(value, config.locale)) ?? [];
-    const attributes = productAttributeLabels(state, selectedValues.length, config.locale);
+    const selectedValues = selected?.values?.map(value => localized(value, locale)) ?? [];
+    const attributes = productAttributeLabels(state, selectedValues.length, locale);
     const variantSelectors = selected && variants.length > 1 ? attributes.map((label, index) => {
             const choices = [...new Set(variants.filter(variant => variant.values.every((value, valueIndex) =>
-                valueIndex === index || localized(value, config.locale) === selectedValues[valueIndex]))
-                .map(variant => localized(variant.values[index], config.locale)).filter(Boolean))];
+                valueIndex === index || localized(value, locale) === selectedValues[valueIndex]))
+                .map(variant => localized(variant.values[index], locale)).filter(Boolean))];
             return <Select name={`ncf-variant-${index}`} label={label} value={selectedValues[index] ?? ""}
                 options={choices.map(value => ({label: value, value}))}
                 disabled={directPending} onChange={event => {
                     const matched = variants.find(variant => variant.values.every((value, valueIndex) =>
-                        localized(value, config.locale) === (valueIndex === index ? event.value : selectedValues[valueIndex])));
+                        localized(value, locale) === (valueIndex === index ? event.value : selectedValues[valueIndex])));
                     if (matched) { directVariantId = matched.id; directMessage = ""; render(nube); }
                 }} />;
         }) : [];
@@ -227,13 +251,13 @@ function render(nube: NubeSDK) {
     const variantControls: NubeComponent = selected && variants.length > 1
         ? {type: "col", gap: 8, children: [<Text>{es ? "Variante del producto" : "Variação do produto"}</Text>, ...variantSelectors]}
         : {type: "col", gap: 0, children: []};
-    nube.render(SLOT, <Column gap={8}>{fields}
+    nube.render(SLOT, <Column gap={8}>{content}
         {variantControls}
-        <Text>{es ? "Completá los datos y usá este botón para agregar tu producto personalizado." : "Preencha os dados e use este botão para adicionar seu produto personalizado."}</Text>
-        <NumberField name="ncf-personalized-quantity" label={es ? "Cantidad personalizada" : "Quantidade personalizada"}
+        {!extraFields ? <Text>{es ? "Completá los datos y usá este botón para agregar tu producto personalizado." : "Preencha os dados e use este botão para adicionar seu produto personalizado."}</Text> : <Column gap={0} />}
+        <NumberField name="ncf-personalized-quantity" label={extraFields ? (es ? "Cantidad del producto" : "Quantidade do produto") : (es ? "Cantidad personalizada" : "Quantidade personalizada")}
             min={1} step={1} value={directQuantity} disabled={directPending}
             onChange={event => { directQuantity = Number(event.value); }} />
-        <Button ariaLabel={es ? "Agregar con personalización" : "Adicionar com personalização"} disabled={directPending} onClick={() => {
+        <Button ariaLabel={addLabel} disabled={directPending || complements.pending() || complements.review()} onClick={() => {
             if (productId !== renderProduct || draftGeneration !== renderGeneration || directPending) return;
             const selectedId = selectedVariantId(nube);
             if (!Number.isSafeInteger(directQuantity) || directQuantity < 1 || selectedId == null) {
@@ -245,7 +269,7 @@ function render(nube: NubeSDK) {
             directMessage = "";
             gate(nube, {...state, eventPayload: {action: "ADD", item: {product_id: productId, variant_id: selectedId,
                 previous_quantity: 0, new_quantity: directQuantity}}} as NubeSDKState, true);
-        }}>{directPending ? (es ? "Agregando…" : "Adicionando…") : (es ? "Agregar con personalización" : "Adicionar com personalização")}</Button>
+        }}>{directPending ? (es ? "Agregando…" : "Adicionando…") : addLabel}</Button>
         <Text>{directMessage}</Text>
     </Column>);
 }
@@ -255,6 +279,8 @@ function isPatagonia(nube: NubeSDK): boolean {
 }
 
 function clear(nube: NubeSDK) {
+    complements.reset();
+    inFlightProduct = null;
 	config = DISABLED;
 	productId = null;
 	variantId = null;
@@ -282,7 +308,7 @@ function gate(nube: NubeSDK, state: NubeSDKState | null, direct = false) {
 		report(store, productId, "cart_before_update_received");
 	}
 
-	if (payload?.action !== "ADD" || !config.enabled || config.fields.length === 0) {
+	if (payload?.action !== "ADD") {
 		respond(nube, requestId, true);
 		return;
 	}
@@ -292,6 +318,15 @@ function gate(nube: NubeSDK, state: NubeSDKState | null, direct = false) {
 		respond(nube, requestId, true);
 		return;
 	}
+
+    if (complements.pending() || complements.review()) {
+        respond(nube, requestId, false, "complements_cart_review");
+        return;
+    }
+    if (!direct && !config.enabled && !complements.hasSelection()) {
+        respond(nube, requestId, true);
+        return;
+    }
 
 	const found = validate(config.fields, values, config.locale);
 	if (found.length > 0) {
@@ -321,7 +356,7 @@ function gate(nube: NubeSDK, state: NubeSDKState | null, direct = false) {
         return;
     }
 
-	if (!direct && !hasAnyValue(properties)) {
+	if (!direct && !hasAnyValue(properties) && !complements.hasSelection()) {
 		respond(nube, requestId, true);
 		return;
 	}
@@ -350,11 +385,20 @@ function reissue(
 	const previous = payload.item?.previous_quantity ?? 0;
 	const next = payload.item?.new_quantity ?? previous + 1;
 	const quantity = Math.max(1, next - previous);
-	const variant_id = payload.item?.variant_id ?? variantId ?? undefined;
+	const variant_id = payload.item?.variant_id ?? selectedVariantId(nube) ?? undefined;
 
-    if (!variant_id) return;
+    if (!variant_id) {
+        directMessage = (complements.locale() ?? config.locale).startsWith("es")
+            ? "Selecciona una variante para continuar." : "Selecione uma variação para continuar.";
+        render(nube);
+        return;
+    }
+    const sentValues = JSON.stringify(values);
+    if (complements.add({product_id, variant_id, quantity, properties}, () => {
+        if (sentValues === JSON.stringify(values)) clearPurchasedValues(nube);
+    })) return;
     submitted = {product: product_id, variant: variant_id, generation: draftGeneration,
-        values: JSON.stringify(values), properties: {...properties}};
+        values: sentValues, properties: {...properties}};
     if (!payload.request_id && isPatagonia(nube)) { directPending = true; render(nube); }
     cartAdder.add({product_id, variant_id, quantity, properties});
 }

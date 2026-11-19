@@ -592,3 +592,67 @@ input[type="color"] {
 }
 
 .audit-targets { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.store-detail {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.store-detail > .notice { margin: 0; }
+
+.store-detail-heading,
+.store-detail-identity,
+.store-detail-actions,
+.store-detail-payment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.store-detail-heading { justify-content: space-between; }
+.store-detail-heading h1 { overflow-wrap: anywhere; }
+.store-detail-back {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #16604a;
+    font-weight: 600;
+}
+
+.store-detail-identity { margin: 8px 0 0; }
+.store-detail-actions { border-top: 1px solid #e7edf0; padding-top: 16px; }
+.store-detail-payment-actions { margin-top: 16px; }
+
+.store-detail-facts {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 20px 0 16px;
+}
+
+.store-detail-facts dt { color: #536471; font-size: .85rem; }
+.store-detail-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+
+.store-detail-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 20px;
+}
+
+.store-detail .panel { overflow-wrap: anywhere; }
+.store-detail .row-actions { justify-content: flex-start; align-items: end; flex-wrap: wrap; }
+.store-detail .form > button { justify-self: start; }
+.store-detail .form > p { margin: 0; }
+.store-detail .settings-panel { border-top: 1px solid #e7edf0; padding-top: 16px; }
+.store-detail .settings-panel h3 { margin-top: 0; }
+.store-detail-danger { border-color: #e4b4b4; }
+.store-detail-danger h2 { color: #9a2f2f; }
+.store-detail-danger input[name="confirmation"] { max-width: 16rem; }
+
+@media (max-width: 780px) {
+    .store-detail-columns { grid-template-columns: minmax(0, 1fr); }
+    .store-detail-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .store-detail .row-actions { align-items: flex-start; }
+}

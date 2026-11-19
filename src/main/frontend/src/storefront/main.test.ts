@@ -63,6 +63,56 @@ describe("SDK storefront without a legacy script", () => {
 		} as unknown as NubeSDKState);
 	}
 
+    it.each([true, false])("adds multiple complements after the main product is confirmed (full success: %s)", async fullSuccess => {
+        const items = [
+            {productId: 400, variantId: 201, label: "Passante", price: "12.00", stock: 5, imageUrl: null},
+            {productId: 500, variantId: 301, label: "Marcador", price: "6.00", stock: 5, imageUrl: null},
+        ];
+        state.store.theme = "other";
+        vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ok: true, json: async () => url.endsWith("/complements")
+            ? {locale: "pt-BR", currency: "BRL", items}
+            : {...DISABLED, complements: true},
+        })));
+        await boot();
+
+        function control(name: string, node = currentTree()): Node | undefined {
+            if (node.name === name) return node;
+            for (const child of node.children ?? []) {
+                const match = control(name, child);
+                if (match) return match;
+            }
+        }
+        await vi.waitFor(() => expect(control("ncf-complement-201")).toBeDefined());
+        control("ncf-complement-201")!.onChange!({value: "true"});
+        control("ncf-complement-201-quantity")!.onChange!({value: "3"});
+        control("ncf-complement-301")!.onChange!({value: "true"});
+        add();
+        add("double-click");
+
+        const sent = () => send.mock.calls.filter(([event]) => event === "cart:add")
+            .map(([, build]) => build().cart.items[0]);
+        const confirm = (item: object) => listeners.get("cart:add:success")!({...state, eventPayload: item} as NubeSDKState);
+        expect(sent()).toHaveLength(1);
+        const parent = sent()[0];
+        expect(parent).toMatchObject({product_id: 341531127, variant_id: 101, quantity: 2});
+        confirm({...parent, properties: {}});
+        expect(sent()).toHaveLength(1);
+        confirm(parent);
+        const first = sent()[1];
+        expect(first).toEqual({product_id: 400, variant_id: 201, quantity: 3, properties: parent.properties});
+        if (!fullSuccess) {
+            listeners.get("cart:add:fail")!({...state, eventPayload: null} as NubeSDKState);
+            expect(sent()).toHaveLength(2);
+            expect(JSON.stringify(currentTree())).toContain("Inclusão parcial");
+            return;
+        }
+        confirm(first);
+        const second = sent()[2];
+        expect(second).toEqual({product_id: 500, variant_id: 301, quantity: 1, properties: parent.properties});
+        confirm(second);
+        expect(send.mock.calls.some(([event]) => event === "cart:open")).toBe(true);
+    });
+
     it("clips typed or pasted text at the configured limit", async () => {
         await boot();
         field(render.mock.calls[render.mock.calls.length - 1][1])!.onChange!({value:"A".repeat(31)});

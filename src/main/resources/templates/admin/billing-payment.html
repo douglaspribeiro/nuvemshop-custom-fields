@@ -33,7 +33,7 @@
             <p class="notice warning payment-sandbox" th:if="${efiEnvironment == 'sandbox'}">Ambiente de homologação — nenhuma cobrança real será realizada.</p>
             <p class="notice error payment-flash" th:if="${error}" th:text="${error}">Erro</p>
 
-            <section class="payment-panel payment-coupon" th:if="${upgradeAdjustment == null and reactivation != true}"  style="display: none" aria-labelledby="payment-coupon-title">
+            <section class="payment-panel payment-coupon" th:if="${upgradeAdjustment == null and reactivation != true}" aria-labelledby="payment-coupon-title">
                 <h2 id="payment-coupon-title" th:text="#{checkout.coupon.title}"></h2>
                 <form class="payment-coupon-form" method="get" th:action="@{/admin/billing/pay}">
                     <input type="hidden" name="plan" th:value="${plan.name()}">
@@ -49,7 +49,7 @@
                 <p class="notice" th:if="${discounted}" th:text="#{checkout.coupon.applied(${couponCode})}" role="status"></p>
             </section>
 
-            <a class="button" th:if="${scheduledPixVisible and upgradeAdjustment == null and reactivation != true and discounted != true and couponError == null}"
+            <a class="button payment-pix-link" th:if="${scheduledPixVisible and upgradeAdjustment == null and reactivation != true and discounted != true and couponError == null}"
                th:href="@{/admin/billing/pay/pix(plan=${plan.name()})}">Pagar com Pix agendado</a>
             <section class="payment-panel" aria-labelledby="payment-form-title">
             <form id="efi-payment-form" th:action="${reactivation == true} ? @{/admin/billing/reactivate} : (${upgradeAdjustment!=null} ? @{/admin/billing/upgrade/efi/pay} : @{/admin/billing/pay})" method="post"

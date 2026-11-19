@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.complements;
 
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
+import br.com.nuvemcustomfields.service.StorefrontCache;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -16,9 +17,16 @@ import org.springframework.web.client.RestClientResponseException;
 @Service
 public class ComplementOffers {
     public record Offer(String id, long parentId, String parentName, Long productId, Long variantId,
-                        String productName, String label, boolean enabled, String state) {
+                        String productName, String label, boolean enabled, Appearance appearance, String state) {
         public boolean ready() { return "READY".equals(state); }
         public boolean uncertain() { return !ready(); }
+    }
+
+    public record Appearance(boolean showImage, String backgroundColor, String textColor, boolean showBorder, boolean roundedCorners) {}
+
+    private static Appearance appearance(java.sql.ResultSet row) throws java.sql.SQLException {
+        return new Appearance(row.getBoolean("show_image"), row.getString("background_color"),
+                row.getString("text_color"), row.getBoolean("show_border"), row.getBoolean("rounded_corners"));
     }
 
     public record Variant(long id, String name, String price) {}
@@ -32,18 +40,31 @@ public class ComplementOffers {
 
     private final JdbcTemplate jdbc;
     private final NuvemshopApiClient catalog;
+    private final StorefrontCache cache;
 
-    public ComplementOffers(JdbcTemplate jdbc, NuvemshopApiClient catalog) {
+    public ComplementOffers(JdbcTemplate jdbc, NuvemshopApiClient catalog, StorefrontCache cache) {
         this.jdbc = jdbc;
         this.catalog = catalog;
+        this.cache = cache;
     }
 
     public List<Offer> list(long storeId) {
         return jdbc.query("SELECT * FROM product_complement_offers WHERE store_id=? ORDER BY created_at DESC,id",
                 (rs, n) -> new Offer(rs.getString("id"), rs.getLong("parent_product_id"), rs.getString("parent_name"),
                         rs.getObject("complement_product_id", Long.class), rs.getObject("complement_variant_id", Long.class),
-                        rs.getString("complement_name"), rs.getString("label"), rs.getBoolean("enabled"),
+                        rs.getString("complement_name"), rs.getString("label"), rs.getBoolean("enabled"), appearance(rs),
                         rs.getString("creation_state")), storeId);
+    }
+
+    record PublishedOffer(long productId, long variantId, String label, Appearance appearance) {}
+
+    List<PublishedOffer> published(long storeId, long parentId) {
+        return jdbc.query("""
+                SELECT complement_product_id, complement_variant_id, label, show_image, background_color, text_color, show_border, rounded_corners
+                FROM product_complement_offers
+                WHERE store_id=? AND parent_product_id=? AND enabled AND creation_state='READY'
+                ORDER BY created_at,id
+                """, (rs, n) -> new PublishedOffer(rs.getLong(1), rs.getLong(2), rs.getString(3), appearance(rs)), storeId, parentId);
     }
 
     public static boolean hasScope(Store store, String scope) {
@@ -213,17 +234,27 @@ public class ComplementOffers {
         variant.put(field, value.toPlainString());
     }
 
-    public void update(long storeId, UUID id, String label, boolean enabled) {
+    public void update(long storeId, UUID id, String label, boolean enabled, Appearance appearance) {
         int count = jdbc.update("""
-                UPDATE product_complement_offers SET label=?,enabled=? WHERE store_id=? AND id=? AND creation_state='READY'
-                """, text(label, 120), enabled, storeId, id.toString());
+                UPDATE product_complement_offers SET label=?,enabled=?,show_image=?,background_color=?,text_color=?,show_border=?,rounded_corners=?
+                WHERE store_id=? AND id=? AND creation_state='READY'
+                """, text(label, 120), enabled, appearance.showImage(), color(appearance.backgroundColor()), color(appearance.textColor()),
+                appearance.showBorder(), appearance.roundedCorners(), storeId, id.toString());
         if (count == 0) throw new Invalid("missing");
+        cache.invalidateStoreAfterCommit(storeId);
+    }
+
+    private static String color(String value) {
+        if (value == null || value.isBlank()) return null;
+        if (!value.matches("#[0-9a-fA-F]{6}")) throw new Invalid("color");
+        return value;
     }
 
     public void remove(long storeId, UUID id) {
         int count = jdbc.update("DELETE FROM product_complement_offers WHERE store_id=? AND id=? AND creation_state='READY'",
                 storeId, id.toString());
         if (count == 0) throw new Invalid("missing");
+        cache.invalidateStoreAfterCommit(storeId);
     }
 
     public static String name(JsonNode product, String language) {

@@ -53,7 +53,8 @@ class ComplementAdminTest {
     String csrf;
 
     @BeforeEach void setup() throws Exception {
-        var migration = new ResourceDatabasePopulator(new ClassPathResource("db/migration/V91__product_complements.sql"));
+        var migration = new ResourceDatabasePopulator(new ClassPathResource("db/migration/V91__product_complements.sql"),
+                new ClassPathResource("db/migration/V94__complement_offer_appearance.sql"));
         if (storeTableMissing()) migration.execute(source);
         session = merchant("read_products");
         when(features.allows(anyLong(), eq(FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS))).thenReturn(true);
@@ -85,7 +86,7 @@ class ComplementAdminTest {
         assertThat(offer.variantId()).isEqualTo(21);
         assertThat(offer.enabled()).isFalse();
         mvc.perform(get(HOME).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Agenda + Passante")));
+                .andExpect(content().string(containsString("Produto principal: Agenda")));
 
         MockHttpSession other = merchant("read_products");
         mvc.perform(get(HOME).session(other)).andExpect(content().string(not(containsString("Passante"))));
@@ -93,13 +94,52 @@ class ComplementAdminTest {
                         .param("csrf", (String) other.getAttribute("complementAdminCsrf")))
                 .andExpect(flash().attributeExists("error"));
         mvc.perform(post(HOME + "/" + offer.id() + "/update").session(session)
-                        .param("csrf", csrf).param("label", "Adicionar passante dourado").param("enabled", "true"))
+                        .param("csrf", csrf).param("label", "Adicionar passante dourado").param("enabled", "true").param("showImage", "false"))
                 .andExpect(redirectedUrl(HOME));
         assertThat(offers.list(storeId).getFirst().label()).isEqualTo("Adicionar passante dourado");
         assertThat(offers.list(storeId).getFirst().enabled()).isTrue();
+        assertThat(offers.list(storeId).getFirst().appearance().showImage()).isFalse();
         mvc.perform(post(HOME + "/" + offer.id() + "/remove").session(session).param("csrf", csrf))
                 .andExpect(redirectedUrl(HOME));
         assertThat(offers.list(storeId)).isEmpty();
+    }
+
+    @Test void storefrontPublishesOnlyEligibleEnabledOffers() throws Exception {
+        var store = stores.findByStoreId(storeId).orElseThrow();
+        String publicUrl = "/public/stores/" + storeId + "/products/10/complements";
+        var marker = product(30, 31, "Marcador");
+        var passanteProduct = product(20, 21, "Passante");
+        passanteProduct.putArray("images").addObject().put("src", "https://img.example/passante.jpg");
+        when(catalog.getCatalogProduct(any(), eq(20L))).thenReturn(passanteProduct);
+        when(catalog.getCatalogProduct(any(), eq(30L))).thenReturn(marker);
+        offers.link(store, 10, 20, 21, "Passante", "pt");
+        offers.link(store, 10, 30, 31, "Marcador", "pt");
+        mvc.perform(get(publicUrl)).andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
+
+        for (var offer : offers.list(storeId)) {
+            offers.update(storeId, UUID.fromString(offer.id()), offer.label(), true, new ComplementOffers.Appearance(true, null, null, true, true));
+        }
+        mvc.perform(get("/public/stores/" + storeId + "/personalization").param("productId", "10"))
+                .andExpect(jsonPath("$.complements").value(true));
+        mvc.perform(get(publicUrl)).andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[?(@.variantId == 21)].imageUrl").value(
+                        org.hamcrest.Matchers.contains("https://img.example/passante.jpg")));
+        ((ObjectNode) marker.path("variants").path(0)).put("stock_management", true).put("stock", 0);
+        var passante = offers.list(storeId).stream().filter(offer -> offer.productId() == 20L).findFirst().orElseThrow();
+        String previewUrl = HOME + "/" + passante.id() + "/preview";
+        mvc.perform(get(previewUrl).session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.image").value("https://img.example/passante.jpg"))
+                .andExpect(jsonPath("$.price").value("12.00"));
+        mvc.perform(get(previewUrl).session(merchant("read_products"))).andExpect(status().isNotFound());
+        offers.update(storeId, UUID.fromString(passante.id()), "Adicionar passante", true, new ComplementOffers.Appearance(false, "#fff3e5", "#472000", false, false));
+        mvc.perform(get(publicUrl)).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].variantId").value(21))
+                .andExpect(jsonPath("$.items[0].price").value("12.00"))
+                .andExpect(jsonPath("$.items[0].imageUrl").doesNotExist())
+                .andExpect(jsonPath("$.items[0].appearance.backgroundColor").value("#fff3e5"))
+                .andExpect(jsonPath("$.items[0].appearance.roundedCorners").value(false));
+        when(features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).thenReturn(false);
+        mvc.perform(get(publicUrl)).andExpect(jsonPath("$.items").isEmpty());
     }
 
     @Test void createsOnlyWithWriteScopeAndDoesNotRepeatAnUncertainRequest() throws Exception {

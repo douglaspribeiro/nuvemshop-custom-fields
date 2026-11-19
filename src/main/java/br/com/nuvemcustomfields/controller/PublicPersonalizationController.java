@@ -9,6 +9,7 @@ import br.com.nuvemcustomfields.dto.PersonalizationStyleResponse;
 import br.com.nuvemcustomfields.entity.PersonalizationRule;
 import br.com.nuvemcustomfields.entity.Store;
 import br.com.nuvemcustomfields.repository.PersonalizationRuleRepository;
+import br.com.nuvemcustomfields.properties.FeatureAccessProperties;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.IntegrationLogService;
 import br.com.nuvemcustomfields.service.PlanLimitService;
@@ -33,6 +34,7 @@ public class PublicPersonalizationController {
     private final java.util.concurrent.atomic.LongAdder sampledEvents = new java.util.concurrent.atomic.LongAdder();
     private final java.util.concurrent.atomic.LongAdder suppressedEvents = new java.util.concurrent.atomic.LongAdder();
     private final StorefrontCache cache;
+    private final FeatureAccessProperties features;
     private final StoreRepository storeRepository;
     private final PersonalizationRuleRepository ruleRepository;
     private final PlanLimitService planLimitService;
@@ -43,9 +45,11 @@ public class PublicPersonalizationController {
             PersonalizationRuleRepository ruleRepository,
             PlanLimitService planLimitService,
             IntegrationLogService integrationLogService,
-            StorefrontCache cache
+            StorefrontCache cache,
+            FeatureAccessProperties features
     ) {
         this.cache = cache;
+        this.features = features;
         this.storeRepository = storeRepository;
         this.ruleRepository = ruleRepository;
         this.planLimitService = planLimitService;
@@ -69,13 +73,16 @@ public class PublicPersonalizationController {
     ) {
         StoreState state = storeState(storeId);
         if (state.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
-        if (!state.hasFields() && !state.hasConfiguredFields()) return state.disabled();
+        boolean complements = state.active() && productId != null && productId > 0
+                && features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS);
+        if (!state.hasFields() && !state.hasConfiguredFields())
+            return complements ? state.disabled().withComplements() : state.disabled();
         CachedPersonalization cached = cache.get("personalization", storeId, productId,
                 () -> loadPersonalization(storeId, productId, path));
         if (cached.active()) request.setAttribute(StorefrontTrafficMetricsFilter.ACTIVE_STORE_ID_ATTRIBUTE, storeId);
         if (cached.response().enabled() && !cached.response().fields().isEmpty())
             request.setAttribute(StorefrontTrafficMetricsFilter.PERSONALIZED_PRODUCT_ID_ATTRIBUTE, productId);
-        return cached.response();
+        return complements ? cached.response().withComplements() : cached.response();
     }
 
     private record StoreState(boolean active, boolean hasFields, boolean hasConfiguredFields, PersonalizationResponse disabled) {

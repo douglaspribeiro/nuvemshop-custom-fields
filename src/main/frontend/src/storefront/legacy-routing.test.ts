@@ -247,3 +247,85 @@ it('validates and submits legacy quantities with one human-readable property',as
     expect(new dom.window.FormData(form).getAll('properties[Flores]')).toEqual(['Rosa × 3; Margarida × 4']);
     set(1,'5');expect(submit()).toBe(true);set(1,'-1');expect(submit()).toBe(true);set(1,'4.5');expect(submit()).toBe(true);
 });
+
+it.each([true, false])("uses the native cart for the parent and chosen legacy complements (success: %s)", async fullSuccess => {
+    dom = new JSDOM(`<html><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" action="/comprar/" method="post">
+        <input name="add_to_cart" value="456"><input name="quantity" value="2">
+        <select name="variation[0]"><option value="11">A</option></select>
+        <button class="js-addtocart" type="submit">Comprar</button></form></body></html>`,
+        {url:"https://store.test/produtos/agenda/",runScripts:"outside-only"});
+    const items = [
+        {productId: 621, variantId: 711, label: "Passante", price: "12", stock: 5, singleVariant: true},
+        {productId: 622, variantId: 713, label: "Marcador", price: "5", stock: 7, productUrl: "https://store.test/produtos/marcador/"},
+    ];
+    const fetch = vi.fn(async (url: string) => {
+        if (url.endsWith("/complements")) return {ok: true, json: async () => ({locale:"pt-BR", currency:"BRL", items})};
+        if (url.endsWith("/marcador/")) return {ok:true, text: async () => `<div data-variants='[{"id":712,"option0":"12"},{"id":713,"option0":"13"}]'>
+            <form><input name="add_to_cart" value="622"><select name="variation[0]"><option value="12">A</option><option value="13">B</option></select></form></div>`};
+        return {ok: true, json: async () => ({enabled: true, complements: true, fields: [{fieldType: "TEXT", label: "Nome", required: true}]})};
+    });
+    const add = vi.fn((_form: HTMLFormElement, _buy: string, _loading: string, _stock: string, _ajax: boolean,
+        _success: () => void, _fail: () => void) => {});
+    const win = dom.window;
+    Object.assign(win, {fetch, jQueryNuvem: (form: HTMLFormElement) => form, LS: {theme:{code:"idea"}, addToCartEnhanced: add}});
+    Object.defineProperty(win.document,"readyState",{value:"complete",configurable:true});
+    win.eval(source);
+    const panel = await vi.waitFor(() => {
+        const fieldset = win.document.querySelector(".ncf-complements");
+        expect(fieldset).not.toBeNull();
+        return fieldset!;
+    });
+    const [first, second] = panel.querySelectorAll<HTMLInputElement>("input[type='checkbox']");
+    const [units] = panel.querySelectorAll<HTMLInputElement>("input[type='number']");
+    first.click();
+    units.value = "3";
+    units.dispatchEvent(new win.Event("input"));
+    expect(panel.textContent).toContain("36,00");
+    second.click();
+    const buy = win.document.querySelector<HTMLButtonElement>(".js-addtocart")!;
+    buy.click();
+    expect(add).not.toHaveBeenCalled();
+    win.document.querySelector<HTMLInputElement>("[name='properties[Nome]']")!.value = "Ana";
+    buy.click();
+    buy.click();
+    await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(1));
+
+    const sent = (index: number) => Object.fromEntries(new win.FormData(add.mock.calls[index][0]));
+    const group = sent(0)["properties[Grupo de complementos]"];
+    expect(sent(0)).toEqual({"add_to_cart":"456",quantity:"2","variation[0]":"11","properties[Nome]":"Ana",
+        "properties[Grupo de complementos]":group});
+    add.mock.calls[0][5]();
+    await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(2));
+    expect(sent(1)).toEqual({"add_to_cart":"621",quantity:"3","properties[Grupo de complementos]":group});
+    if (fullSuccess) {
+        add.mock.calls[1][5]();
+        await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(3));
+        expect(sent(2)).toEqual({"add_to_cart":"622",quantity:"1","variation[0]":"13","properties[Grupo de complementos]":group});
+        add.mock.calls[2][5]();
+        await vi.waitFor(() => expect(panel.textContent).toContain("adicionados"));
+    } else {
+        add.mock.calls[1][6]();
+        await vi.waitFor(() => expect(panel.textContent).toContain("Inclusão parcial"));
+        buy.click();
+        expect(add).toHaveBeenCalledTimes(2);
+    }
+});
+
+it("cedes late-rendered complements to the SDK", async () => {
+    dom = new JSDOM(`<html><head><script src="https://campos-personalizados.wzhub.pro/assets/nuvemshop-personalizer.js?store=123"></script></head>
+        <body><form id="product_form" action="/comprar/"><input name="add_to_cart" value="456"><button>Comprar</button></form></body></html>`,
+        {url:"https://store.test/produtos/agenda/",runScripts:"outside-only"});
+    const win = dom.window;
+    const fetch = vi.fn(async (url: string) => ({ok: true, json: async () => url.endsWith("/complements")
+        ? {locale:"pt-BR",currency:"BRL",items:[{productId: 621, variantId: 711, label:"Passante", price:"12", singleVariant:true}]}
+        : {enabled:false,complements:true}}));
+    Object.assign(win,{fetch,LS:{theme:{code:"idea"},addToCartEnhanced:vi.fn()},jQueryNuvem:vi.fn()});
+    Object.defineProperty(win.document,"readyState",{value:"complete",configurable:true});
+    win.eval(source);
+    await vi.waitFor(() => expect(win.document.querySelector(".ncf-complements")).not.toBeNull());
+    const marker = win.document.createElement("div");
+    marker.id = "ncf-sdk-fields";
+    win.document.body.appendChild(marker);
+    await vi.waitFor(() => expect(win.document.querySelector(".ncf-complements")).toBeNull());
+});

@@ -7,6 +7,7 @@
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+    <script defer th:src="@{/assets/complements-admin.js(v=${assetVersion})}"></script>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
@@ -19,35 +20,107 @@
         </section>
         <p class="notice" role="status" th:if="${message}" th:text="${message}"></p>
         <p class="notice error" role="alert" th:if="${error}" th:text="${error}"></p>
-        <p class="notice" th:text="#{complements.adminOnly}"></p>
-        <section class="panel" th:if="${offers.isEmpty()}">
+        <section class="panel complement-empty" th:if="${offerGroups.isEmpty()}">
             <h2 th:text="#{complements.empty}"></h2>
             <p th:text="#{complements.empty.detail}"></p>
         </section>
-        <article class="panel complement-offer" th:each="offer : ${offers}">
-            <h2 th:text="${offer.parentName + ' + ' + offer.productName}"></h2>
-            <p class="muted" th:if="${offer.ready()}" th:text="#{complements.variantId(${offer.variantId})}"></p>
-            <p class="notice warning" th:if="${offer.uncertain()}" th:text="#{complements.pending(${offer.id})}"></p>
-            <form method="post" th:if="${offer.uncertain()}" th:action="@{/admin/apps/complements/{id}/recover(id=${offer.id})}">
-                <input type="hidden" name="csrf" th:value="${csrf}">
-                <button class="button" type="submit" th:text="#{complements.recover}"></button>
-            </form>
-            <form method="post" class="form complement-settings" th:if="${offer.ready()}"
-                  th:action="@{/admin/apps/complements/{id}/update(id=${offer.id})}">
-                <input type="hidden" name="csrf" th:value="${csrf}">
-                <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${offer.label}"></label>
-                <label class="complement-toggle"><input name="enabled" type="checkbox" value="true" th:checked="${offer.enabled}"><span th:text="#{complements.enabled}"></span></label>
-                <button class="button" type="submit" th:text="#{complements.save}">Salvar</button>
-            </form>
-            <details th:if="${offer.ready()}" class="complement-remove">
-                <summary th:text="#{complements.remove}">Remover oferta</summary>
-                <p th:text="#{complements.remove.detail}"></p>
-                <form method="post" th:action="@{/admin/apps/complements/{id}/remove(id=${offer.id})}">
+        <p class="complement-page-hint" th:unless="${offerGroups.isEmpty()}" th:text="#{complements.adminOnly}"></p>
+        <section class="panel complement-group" th:each="group : ${offerGroups}">
+            <header class="complement-group-header">
+                <h2 th:text="#{complements.parent(${group.value[0].parentName})}"></h2>
+                <a class="button small" th:href="@{/admin/apps/complements/new(parentId=${group.key})}" th:text="#{complements.addToProduct}"></a>
+            </header>
+            <article class="complement-offer" th:each="offer : ${group.value}">
+                <header class="complement-offer-header">
+                    <div>
+                        <h3 th:text="${offer.productName}"></h3>
+                        <p th:if="${offer.ready()}" th:text="#{complements.variantId(${offer.variantId})}"></p>
+                    </div>
+                    <span th:if="${offer.ready()}" class="complement-status" th:classappend="${offer.enabled} ? 'is-active' : ''"
+                          th:text="${offer.enabled} ? #{complements.active} : #{complements.inactive}"></span>
+                </header>
+                <p class="notice warning" th:if="${offer.uncertain()}" th:text="#{complements.pending(${offer.id})}"></p>
+                <form method="post" th:if="${offer.uncertain()}" th:action="@{/admin/apps/complements/{id}/recover(id=${offer.id})}">
                     <input type="hidden" name="csrf" th:value="${csrf}">
-                    <button class="button" type="submit" th:text="#{complements.remove.confirm}">Confirmar remoção</button>
+                    <button class="button" type="submit" th:text="#{complements.recover}"></button>
                 </form>
-            </details>
-        </article>
+                <form method="post" class="form complement-settings" th:if="${offer.ready()}"
+                      th:action="@{/admin/apps/complements/{id}/update(id=${offer.id})}">
+                    <input type="hidden" name="csrf" th:value="${csrf}">
+                    <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${offer.label}"></label>
+                    <details class="complement-appearance" th:with="appearance=${offer.appearance}">
+                        <summary th:text="#{complements.appearance}"></summary>
+                        <div class="complement-appearance-body">
+                            <div class="complement-display-settings">
+                                <label>
+                                    <span th:text="#{complements.catalogImage}"></span>
+                                    <select name="showImage">
+                                        <option value="true" th:selected="${appearance.showImage}" th:text="#{complements.imageShow}"></option>
+                                        <option value="false" th:selected="${!appearance.showImage}" th:text="#{complements.imageHide}"></option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span th:text="#{complements.border}"></span>
+                                    <select name="showBorder">
+                                        <option value="true" th:selected="${appearance.showBorder}" th:text="#{complements.borderShow}"></option>
+                                        <option value="false" th:selected="${!appearance.showBorder}" th:text="#{complements.borderHide}"></option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span th:text="#{complements.corners}"></span>
+                                    <select name="roundedCorners">
+                                        <option value="true" th:selected="${appearance.roundedCorners}" th:text="#{complements.rounded}"></option>
+                                        <option value="false" th:selected="${!appearance.roundedCorners}" th:text="#{complements.square}"></option>
+                                    </select>
+                                </label>
+                                <div th:each="setting : ${ {'backgroundColor', 'textColor'} }" class="complement-color-setting">
+                                    <span th:text="#{${'complements.' + setting}}"></span>
+                                    <span class="complement-color-input">
+                                        <input type="color" tabindex="-1" th:aria-label="#{${'complements.' + setting}}">
+                                        <input type="text" th:aria-label="#{${'complements.' + setting}}" th:name="${setting}" th:value="${setting == 'backgroundColor' ? appearance.backgroundColor : appearance.textColor}"
+                                               maxlength="7" pattern="#[0-9a-fA-F]{6}" th:placeholder="#{complements.themeColor}">
+                                    </span>
+                                </div>
+                            </div>
+                            <section class="complement-preview" th:attr="data-url=@{/admin/apps/complements/{id}/preview(id=${offer.id})},data-error=#{complements.previewError}">
+                                <h4 th:text="#{complements.preview}"></h4>
+                                <div class="complement-preview-card">
+                                    <div class="complement-preview-row">
+                                        <img alt="" width="52" height="52" hidden>
+                                        <div class="complement-preview-description">
+                                            <label><input type="checkbox" checked><span data-preview-label></span></label>
+                                            <span data-preview-price></span>
+                                        </div>
+                                    </div>
+                                    <div class="complement-preview-quantity">
+                                        <span th:text="#{complements.previewQuantity}"></span>
+                                        <div>
+                                            <button type="button" data-preview-step="-1" th:aria-label="#{complements.previewDecrease}">−</button>
+                                            <strong data-preview-units>1</strong>
+                                            <button type="button" data-preview-step="1" th:aria-label="#{complements.previewIncrease}">+</button>
+                                        </div>
+                                        <strong data-preview-subtotal></strong>
+                                    </div>
+                                </div>
+                                <p data-preview-status role="status" hidden></p>
+                            </section>
+                        </div>
+                    </details>
+                    <div class="complement-settings-footer">
+                        <label class="complement-toggle"><input name="enabled" type="checkbox" value="true" th:checked="${offer.enabled}"><span th:text="#{complements.enabled}"></span></label>
+                        <button class="button primary" type="submit" th:text="#{complements.save}">Salvar</button>
+                    </div>
+                </form>
+                <details th:if="${offer.ready()}" class="complement-remove">
+                    <summary th:text="#{complements.remove}">Remover oferta</summary>
+                    <p th:text="#{complements.remove.detail}"></p>
+                    <form method="post" th:action="@{/admin/apps/complements/{id}/remove(id=${offer.id})}">
+                        <input type="hidden" name="csrf" th:value="${csrf}">
+                        <button class="button danger" type="submit" th:text="#{complements.remove.confirm}">Confirmar remoção</button>
+                    </form>
+                </details>
+            </article>
+        </section>
     </div>
 </main>
 <th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>

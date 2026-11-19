@@ -197,7 +197,9 @@
         }
 
         track("load_config", { storeId: storeId, productId: productId });
-        loadConfig(productId, function (config) {
+        loadConfig(productId, async function (config) {
+            const catalog = config?.complements ? await loadComplements(productId) : null;
+            if (!form.isConnected) return;
             if (config && config.paused === true) {
                 whenSdkFieldsAbsent([], productId, function () {
                     if (form.dataset.ncfInjected === "true" || form.querySelector(".ncf-paused-notice")) return;
@@ -212,11 +214,13 @@
                     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(notice, anchor);
                     else form.appendChild(notice);
                     form.dataset.ncfInjected = "true";
+                    installComplements(form, [], catalog);
                 });
                 return;
             }
             if (!config || !config.enabled || !Array.isArray(config.fields) || config.fields.length === 0) {
-                track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
+                if (catalog) whenSdkFieldsAbsent([], productId, () => installComplements(form, [], catalog));
+                else track("disabled", { storeId: storeId, productId: productId, reason: "config_disabled_or_empty" });
                 return;
             }
             styleConfig = config.style || styleConfig || {};
@@ -226,12 +230,298 @@
                 if (form.dataset.ncfInjected === "true" || form.querySelector(".ncf-personalization")) return;
                 form.dataset.ncfInjected = "true";
                 renderFields(form, config.fields, styleConfig);
-                bindProductValidation(form, config.fields);
+                if (!installComplements(form, config.fields, catalog)) bindProductValidation(form, config.fields);
                 renderCartProperties();
                 syncCartPropertyColors();
                 track("injected", { storeId: storeId, productId: productId });
             });
         });
+    }
+
+    async function loadComplements(productId) {
+        try {
+            const url = apiOrigin + "/public/stores/" + encodeURIComponent(storeId)
+                + "/products/" + encodeURIComponent(productId) + "/complements";
+            const response = await fetch(url, {credentials: "omit", signal: AbortSignal.timeout(5000)});
+            const catalog = response.ok ? await response.json() : null;
+            return Array.isArray(catalog?.items) && catalog.items.length ? catalog : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function installComplements(form, fields, catalog) {
+        if (!catalog || form.querySelector(".ncf-complements") || sdkFieldsRendered(fields)) return false;
+        if (typeof window.LS?.addToCartEnhanced !== "function" || typeof window.jQueryNuvem !== "function") return false;
+        const action = new URL(form.action);
+        if (action.origin !== window.location.origin || !form.elements.namedItem("add_to_cart")) return false;
+
+        const es = String(catalog.locale).startsWith("es");
+        const say = (pt, spanish) => es ? spanish : pt;
+        const currency = catalog.currency || window.LS.currency?.code;
+        const price = amount => currency ? new Intl.NumberFormat(catalog.locale, {style: "currency", currency}).format(amount) : amount.toFixed(2);
+        const panel = document.createElement("fieldset");
+        panel.className = "ncf-personalization ncf-complements";
+        applyProductTextColor(panel, styleConfig);
+        const title = document.createElement("legend");
+        title.className = "ncf-complements-title";
+        title.textContent = say("Complementos opcionais", "Complementos opcionales");
+        panel.appendChild(title);
+
+        const choices = catalog.items.map(item => {
+            const row = document.createElement("div");
+            row.className = "ncf-complement";
+            const appearance = item.appearance || {};
+            if (/^#[0-9a-f]{6}$/i.test(appearance.backgroundColor)) row.style.backgroundColor = appearance.backgroundColor;
+            if (/^#[0-9a-f]{6}$/i.test(appearance.textColor)) row.style.color = appearance.textColor;
+            row.classList.toggle("ncf-complement-borderless", appearance.showBorder === false);
+            row.classList.toggle("ncf-complement-square", appearance.roundedCorners === false);
+            const label = document.createElement("label");
+            label.className = "ncf-complement-choice";
+            if (item.imageUrl?.startsWith("https://")) {
+                const image = document.createElement("img");
+                image.src = item.imageUrl;
+                image.alt = "";
+                image.width = image.height = 52;
+                image.loading = "lazy";
+                label.appendChild(image);
+            }
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            const description = document.createElement("span");
+            description.className = "ncf-complement-description";
+            const name = document.createElement("strong");
+            name.textContent = item.label;
+            const unitPrice = document.createElement("span");
+            unitPrice.textContent = price(Number(item.price));
+            description.append(name, unitPrice);
+            label.append(checkbox, description);
+            const details = document.createElement("div");
+            details.className = "ncf-complement-details";
+            details.hidden = true;
+            const quantityLabel = document.createElement("label");
+            quantityLabel.textContent = say("Quantidade", "Cantidad");
+            const quantity = document.createElement("input");
+            quantity.type = "number";
+            quantity.min = "1";
+            quantity.step = "1";
+            quantity.value = "1";
+            quantity.required = true;
+            if (item.stock != null) quantity.max = String(item.stock);
+            quantity.setAttribute("aria-label", say("Quantidade", "Cantidad") + " · " + item.label);
+            const controls = document.createElement("div");
+            controls.className = "ncf-complement-controls";
+            const quantityButton = (amount, text, accessibleLabel) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = text;
+                button.setAttribute("aria-label", accessibleLabel + " · " + item.label);
+                button.addEventListener("click", () => {
+                    const next = Math.max(1, Math.min(item.stock ?? Infinity, (Number(quantity.value) || 1) + amount));
+                    quantity.value = String(next);
+                    update();
+                });
+                return button;
+            };
+            const decrease = quantityButton(-1, "−", say("Diminuir quantidade", "Reducir cantidad"));
+            const increase = quantityButton(1, "+", say("Aumentar quantidade", "Aumentar cantidad"));
+            const subtotal = document.createElement("span");
+            const update = () => {
+                details.hidden = !checkbox.checked;
+                row.classList.toggle("ncf-complement-selected", checkbox.checked);
+                quantity.disabled = !checkbox.checked;
+                decrease.disabled = Number(quantity.value) <= 1;
+                increase.disabled = item.stock != null && Number(quantity.value) >= item.stock;
+                subtotal.textContent = quantity.checkValidity() && quantity.value
+                    ? "Subtotal: " + price(Number(item.price) * Number(quantity.value)) : "";
+            };
+            checkbox.addEventListener("change", update);
+            quantity.addEventListener("input", update);
+            controls.append(decrease, quantity, increase);
+            details.append(quantityLabel, controls, subtotal);
+            row.append(label, details);
+            panel.appendChild(row);
+            update();
+            return {item, checkbox, quantity, update};
+        });
+        const status = document.createElement("p");
+        status.setAttribute("role", "status");
+        const review = document.createElement("a");
+        review.href = action.href;
+        review.textContent = say("Conferir carrinho", "Revisar carrito");
+        review.hidden = true;
+        const reviewed = document.createElement("button");
+        reviewed.type = "button";
+        reviewed.textContent = say("Já conferi o carrinho", "Ya revisé el carrito");
+        reviewed.hidden = true;
+        status.className = "ncf-complements-status";
+        const actions = document.createElement("div");
+        actions.className = "ncf-complements-actions";
+        actions.append(review, reviewed);
+        panel.append(status, actions);
+        insertBeforePurchase(form, panel);
+
+        let pending = false;
+        let needsReview = false;
+        reviewed.addEventListener("click", () => {
+            needsReview = false;
+            reviewed.hidden = review.hidden = true;
+            status.textContent = "";
+            for (const choice of choices) {
+                choice.checkbox.disabled = false;
+                choice.checkbox.checked = false;
+                choice.update();
+            }
+        });
+        const observer = new MutationObserver(() => {
+            if (!panel.isConnected) {
+                observer.disconnect();
+                return;
+            }
+            if (!pending && !needsReview && sdkFieldsRendered(fields)) {
+                panel.remove();
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, {childList: true, subtree: true});
+
+        bindProductValidation(form, fields, event => {
+            if (!pending && !needsReview && (!panel.isConnected || sdkFieldsRendered(fields))) return false;
+            const selected = choices.filter(choice => choice.checkbox.checked);
+            if (!selected.length && !pending && !needsReview) return false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (pending || needsReview) return true;
+            if (!form.reportValidity()) return true;
+            const invalid = selected.find(choice => !choice.quantity.value || !choice.quantity.checkValidity());
+            if (invalid) {
+                status.textContent = say("Confira a quantidade de cada complemento.", "Revisa la cantidad de cada complemento.");
+                invalid.quantity.reportValidity();
+                return true;
+            }
+            const data = new FormData(form);
+            let groupKey = "properties[Grupo de complementos]";
+            while (data.has(groupKey)) groupKey = groupKey.replace(/\]$/, "+]");
+            const group = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+            data.set(groupKey, group);
+            pending = true;
+            panel.disabled = true;
+            status.textContent = say("Adicionando ao carrinho…", "Agregando al carrito…");
+
+            void (async () => {
+                let confirmed = 0;
+                let attempted = false;
+                try {
+                    // Resolve every target variant before mutating the cart.
+                    const extras = await Promise.all(selected.map(async ({item, quantity}) => {
+                        const inputs = await classicVariantInputs(item);
+                        return [["add_to_cart", String(item.productId)], ["quantity", quantity.value], [groupKey, group], ...inputs];
+                    }));
+                    if (sdkFieldsRendered(fields)) {
+                        panel.remove();
+                        observer.disconnect();
+                        return;
+                    }
+                    attempted = true;
+                    await addClassicCartItem(form, data, es);
+                    confirmed++;
+                    consumeUploads(form, fields);
+                    for (const extra of extras) {
+                        await addClassicCartItem(form, extra, es);
+                        confirmed++;
+                    }
+                    for (const choice of choices) {
+                        choice.checkbox.checked = false;
+                        choice.update();
+                    }
+                    status.textContent = say("Produto e complementos adicionados ao carrinho.", "Producto y complementos agregados al carrito.");
+                    review.hidden = false;
+                } catch {
+                    needsReview = attempted;
+                    reviewed.hidden = review.hidden = !needsReview;
+                    status.textContent = confirmed
+                        ? say("Inclusão parcial. Confira quais itens entraram no carrinho.", "Compra agregada parcialmente. Revisa qué artículos quedaron en el carrito.")
+                        : attempted
+                            ? say("Não foi possível confirmar a inclusão. Confira o carrinho antes de tentar novamente.",
+                                "No pudimos confirmar la incorporación. Revisa el carrito antes de volver a intentar.")
+                            : say("Um complemento está indisponível. Revise suas escolhas.", "Un complemento no está disponible. Revisa tus elecciones.");
+                } finally {
+                    pending = false;
+                    panel.disabled = false;
+                    if (needsReview) {
+                        for (const choice of choices) {
+                            choice.checkbox.disabled = true;
+                            choice.quantity.disabled = true;
+                            choice.quantity.closest(".ncf-complement-controls").querySelectorAll("button")
+                                .forEach(button => { button.disabled = true; });
+                        }
+                    }
+                }
+            })();
+            return true;
+        });
+        return true;
+    }
+
+    async function classicVariantInputs(item) {
+        if (item.singleVariant) return [];
+        const url = new URL(item.productUrl, window.location.origin);
+        if (url.origin !== window.location.origin || !item.productUrl) throw new Error("complement_product_url");
+        const response = await fetch(url.href, {mode: "same-origin", signal: AbortSignal.timeout(5000)});
+        if (!response.ok) throw new Error("complement_product_page");
+        const page = new DOMParser().parseFromString(await response.text(), "text/html");
+        const identity = Array.from(page.querySelectorAll("form input[name='add_to_cart']"))
+            .find(input => input.value === String(item.productId) && input.closest("[data-variants]"));
+        const variants = JSON.parse(identity?.closest("[data-variants]").getAttribute("data-variants") || "[]");
+        const variant = variants.find(candidate => String(candidate.id) === String(item.variantId));
+        const selectors = Array.from(identity?.form.querySelectorAll("select[name^='variation[']") || []);
+        if (!variant || !selectors.length) throw new Error("complement_variant");
+        return selectors.map(select => {
+            const match = /^variation\[(\d+)\]$/.exec(select.name);
+            const value = match && variant["option" + match[1]];
+            if (value == null || !Array.from(select.options).some(option => option.value === String(value))) {
+                throw new Error("complement_variant_option");
+            }
+            return [select.name, String(value)];
+        });
+    }
+
+    function addClassicCartItem(sourceForm, values, es) {
+        return new Promise((resolve, reject) => {
+            const form = document.createElement("form");
+            form.method = "post";
+            form.action = sourceForm.action;
+            for (const [name, value] of values) {
+                if (typeof value !== "string") continue;
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            }
+            const timer = window.setTimeout(() => reject(new Error("cart_confirmation_timeout")), 10000);
+            function finish(done) {
+                window.clearTimeout(timer);
+                done();
+            }
+            try {
+                window.LS.addToCartEnhanced(window.jQueryNuvem(form),
+                    es ? "Agregar al carrito" : "Adicionar ao carrinho",
+                    es ? "Agregando…" : "Adicionando…",
+                    es ? "Producto sin stock suficiente." : "Produto sem estoque suficiente.",
+                    true, () => finish(resolve), () => finish(reject));
+            } catch (error) {
+                finish(() => reject(error));
+            }
+        });
+    }
+
+    function consumeUploads(form, fields) {
+        for (const field of fields.filter(field => field.fieldType === "FILE_UPLOAD")) {
+            const key = "properties[" + (field.propertyName || field.label) + "]";
+            const input = Array.from(form.elements).find(element => element.name === key);
+            input?.closest(".ncf-field")?.dispatchEvent(new Event("ncf-upload-consumed"));
+        }
     }
 
     function isPatagoniaStorefront() {
@@ -268,6 +558,7 @@
      * personalizavel sem campo nenhum e pior que um risco de piscada de UI duplicada.
      */
     function whenSdkFieldsAbsent(fields, productId, render) {
+        if (sdkFieldsRendered(fields)) return;
         if (typeof window.nubeSDK === "undefined") {
             render();
             return;
@@ -305,7 +596,7 @@
         });
         const inputs = slot.querySelectorAll("input, select, textarea");
         return Array.prototype.some.call(inputs, function (element) {
-            return names.indexOf(element.name) !== -1;
+            return names.indexOf(element.name) !== -1 || element.name.startsWith("ncf-complement-");
         });
     }
 
@@ -456,6 +747,10 @@
             container.appendChild(renderField(field));
         });
 
+        insertBeforePurchase(targetForm, container);
+    }
+
+    function insertBeforePurchase(targetForm, container) {
         const submit = targetForm.querySelector("button[type='submit'], input[type='submit'], .js-addtocart");
         const actionContainer = findActionContainer(targetForm, submit);
         if (actionContainer && actionContainer.parentNode) {
@@ -498,6 +793,33 @@
         const style = document.createElement("style");
         style.id = "ncf-personalization-style";
         style.textContent = ".ncf-personalization{display:block;box-sizing:border-box;width:100%;clear:both;margin:16px 0 14px;color:var(--ncf-product-text-color,inherit)}.ncf-field{display:block;margin:0 0 12px}.ncf-label{display:block;margin:0 0 6px;font-weight:700}.ncf-field input,.ncf-field textarea,.ncf-field select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-height:40px;padding:8px 10px;border:1px solid #c8d3d8;border-radius:6px;background:#fff;font:inherit}.ncf-field textarea{min-height:88px;resize:vertical}.ncf-cart-property{color:var(--ncf-cart-property-color,inherit)!important}.ncf-cart-property--dark{color:var(--ncf-cart-property-color,rgba(255,255,255,.88))!important}.ncf-cart-property-list{display:block;margin-top:4px;font-size:.875em;line-height:1.35}.ncf-cart-property-line{display:block}.ncf-cart-property-line b{font-weight:700}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-foreground-medium,.summary-details [data-testid='product-name-qty'] .text-foreground-medium{color:var(--ncf-cart-property-color,inherit)!important}[data-testid*='cart' i] [data-testid='product-name-qty'] .text-sm,.summary-details [data-testid='product-name-qty'] .text-sm{color:var(--ncf-cart-property-color,inherit)!important}";
+        style.textContent += `
+            .ncf-complements{min-width:0;border:0;padding:0;margin-inline:0;--ncf-complement-border:color-mix(in srgb,currentColor 25%,transparent)}
+            .ncf-complements-title{padding:0;margin-bottom:8px;font-size:16px;line-height:1.3;font-weight:700}
+            .ncf-complement{padding:12px;border:1px solid var(--ncf-complement-border);border-radius:12px}
+            .ncf-complement+.ncf-complement{margin-top:8px}
+            .ncf-complement-selected{border-color:currentColor;background:color-mix(in srgb,currentColor 4%,transparent)}
+            .ncf-complement-borderless{border-color:transparent}
+            .ncf-complement-choice{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;cursor:pointer}
+            .ncf-complement-choice img{width:52px;height:52px;flex:0 0 52px;object-fit:contain;border-radius:8px}
+            .ncf-complement-description{display:grid;flex:1;min-width:0;gap:3px;overflow-wrap:anywhere;font-size:13px}
+            .ncf-complement-description strong{font-size:14px;line-height:1.35}
+            .ncf-complement-choice input{appearance:auto;width:18px;height:18px;margin:0;flex:none;accent-color:currentColor}
+            .ncf-complement-details:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding-top:10px;margin-top:10px;border-top:1px solid var(--ncf-complement-border);font-size:13px}
+            .ncf-complement-details label{margin:0;color:inherit}
+            .ncf-complement-controls{display:flex;align-items:center;gap:4px}
+            .ncf-complement-controls button,.ncf-complement-controls input{box-sizing:border-box;width:40px;min-height:40px;padding:0;font:inherit;color:inherit;background:transparent;border:1px solid var(--ncf-complement-border);border-radius:8px;text-align:center}
+            .ncf-complement-controls button{border-radius:50%;cursor:pointer}
+            .ncf-complement-controls button:disabled{opacity:.5;cursor:default}
+            .ncf-complement-controls input{appearance:textfield}
+            .ncf-complement-controls input::-webkit-inner-spin-button{appearance:none}
+            .ncf-complement-details span{font-weight:600;margin-inline-start:auto}
+            .ncf-complement-square,.ncf-complement-square img,.ncf-complement-square .ncf-complement-controls>*{border-radius:0}
+            .ncf-complements-status{margin:8px 0 0;font-size:14px}
+            .ncf-complements-status:empty,.ncf-complements-actions:not(:has(:not([hidden]))){display:none}
+            .ncf-complements-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-top:4px}
+            .ncf-complements-actions button{min-height:44px;padding:0 8px;border:0;background:transparent;color:inherit;text-decoration:underline;cursor:pointer}
+        `;
         document.head.appendChild(style);
     }
 
@@ -521,7 +843,7 @@
         });
     }
 
-    function bindProductValidation(targetForm, fields) {
+    function bindProductValidation(targetForm, fields, purchaseComplements) {
         if (!targetForm || targetForm.dataset.ncfValidationBound === "true") {
             return;
         }
@@ -573,11 +895,9 @@
                     if(notice)notice.textContent=error.message || "Reenvie o arquivo para continuar.";
                 }).finally(()=>{checkingUploads=false;});return;
             }
+            if (purchaseComplements?.(event)) return;
             if(event.type === "submit") queueMicrotask(()=>{
-                for(const field of fields.filter(field=>field.fieldType === "FILE_UPLOAD")){
-                    const input=Array.from(targetForm.elements).find(element=>element.name==="properties["+(field.propertyName||field.label)+"]");
-                    input?.closest(".ncf-field")?.dispatchEvent(new Event("ncf-upload-consumed"));
-                }
+                consumeUploads(targetForm, fields);
             });
         };
         targetForm.addEventListener("submit", validateFields, true);

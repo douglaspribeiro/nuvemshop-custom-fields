@@ -76,13 +76,18 @@
     .payment-trust-copy { max-width: 125px; line-height: 1.4; }
 }
 
-.payment-coupon { margin-bottom: 20px; }
-.payment-coupon h2 { margin-bottom: 14px; }
+.payment-coupon { margin-bottom: 20px; padding: 24px 34px; }
+.payment-coupon h2 { margin: 0 0 18px; color: #1b2e3b; font-size: 1.05rem; letter-spacing: -.015em; }
 .payment-coupon-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-.payment-coupon-form label { flex: 1 1 180px; min-width: 0; }
-.payment-coupon-form input { width: 100%; text-transform: uppercase; }
+.payment-coupon-form label { display: grid; gap: 8px; flex: 1 1 180px; min-width: 0; color: #304352; font-size: .8rem; font-weight: 650; }
+.payment-coupon-form input { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 13px; border: 1px solid #cbd4dc; border-radius: 7px; font: inherit; font-size: .91rem; text-transform: uppercase; }
+.payment-coupon-form button { min-height: 46px; }
 .payment-coupon-form > a { align-self: center; font-size: .88rem; }
-.payment-coupon .notice { margin-bottom: 0; }
+.payment-coupon .payment-fieldset-hint { margin: 14px 0 0; }
+.payment-coupon .notice { margin: 14px 0 0; }
+.payment-pix-link { margin: 0 0 20px; }
 @media (max-width: 520px) {
+    .payment-coupon { padding: 22px 20px; }
     .payment-coupon-form label { flex-basis: 100%; }
+    .payment-coupon-form button { width: 100%; justify-content: center; }
 }

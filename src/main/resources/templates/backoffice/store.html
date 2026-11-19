@@ -9,82 +9,59 @@
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body>
-<main class="shell">
-    <section class="page-header">
-        <div>
-            <p class="eyebrow">Loja</p>
-            <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
-            <p class="muted" th:text="'Store ID ' + ${store.storeId}">Store ID 0</p>
-            <p th:if="${storeUrl != null}"><a th:href="${storeUrl}" th:text="${storeUrl}" target="_blank" rel="noopener noreferrer" style="overflow-wrap:anywhere"></a></p>
-            <p class="muted" th:if="${storeUrl == null}">Link da loja indisponível</p>
-            <p class="muted" th:text="${'Mercado ' + (store.storeCountryCode ?: '-') + ' / ' + (store.storeCurrency ?: '-')}">Mercado BR / BRL</p>
-            <small class="muted" th:if="${store.installedAt != null}">Instalada em <span th:attr="data-local-time=${store.installedAt}" data-time-format="date" th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">01/01/2026</span></small><small class="muted store-last-access" th:if="${store.lastAdminAccessAt != null}">Último acesso em <span th:attr="data-local-time=${store.lastAdminAccessAt}" data-time-format="datetime" th:text="${#temporals.format(store.lastAdminAccessAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></small><small class="muted store-last-access" th:if="${store.lastAdminAccessAt == null}">Último acesso: não registrado</small>
-        </div>
-        <nav class="row-actions">
+<main class="shell store-detail">
+    <header class="panel store-detail-header">
+        <div class="store-detail-heading">
+            <div>
+                <a class="store-detail-back" th:href="@{/backoffice/stores}">← Lojas</a>
+                <h1 th:text="${store.storeName ?: 'Loja sem nome'}">Loja</h1>
+                <p class="muted store-detail-identity">
+                    <span th:text="'Store ID ' + ${store.storeId}">Store ID 0</span>
+                    <span th:if="${store.active}" class="audit-status COMPLETED">Ativa</span>
+                    <span th:if="${store.accessBlockedAt != null}" class="audit-status REJECTED">Bloqueada</span>
+                    <span th:if="${store.accessBlockedAt == null and store.erasurePending}" class="audit-status ACCESS_REQUIRED">Exclusão pendente</span>
+                    <span th:if="${!store.active and store.accessBlockedAt == null and !store.erasurePending}" class="audit-status">Desinstalada</span>
+                </p>
+            </div>
             <form th:if="${store.active}" th:action="@{/backoffice/stores/{storeId}/enter(storeId=${store.storeId})}" method="post">
                 <button class="button primary" type="submit">Entrar no modo loja</button>
             </form>
-            <a class="button" th:href="@{/backoffice/stores/{storeId}/emails(storeId=${store.storeId})}">Histórico de e-mails</a>
-            <a class="button" th:href="@{/backoffice/audit(storeId=${store.storeId})}">Auditoria da jornada</a>
-            <a class="button" th:href="@{/backoffice/ratings(storeId=${store.storeId})}">Avaliações da loja</a>
-            <a class="button" th:href="@{/backoffice/stores/{storeId}/configuration(storeId=${store.storeId})}">Ver configuração</a>
-            <a class="button" th:href="@{/backoffice/stores/{storeId}/scripts(storeId=${store.storeId})}">Scripts</a>
-            <a class="button" th:href="@{/backoffice/stores}">Lojas</a>
+        </div>
+        <dl class="store-detail-facts">
+            <div>
+                <dt>Vitrine</dt>
+                <dd th:if="${storeUrl != null}"><a th:href="${storeUrl}" th:text="${storeUrl}" target="_blank" rel="noopener noreferrer"></a></dd>
+                <dd th:if="${storeUrl == null}">Link indisponível</dd>
+            </div>
+            <div>
+                <dt>Mercado</dt>
+                <dd th:text="${(store.storeCountryCode ?: '-') + ' / ' + (store.storeCurrency ?: '-')}">BR / BRL</dd>
+            </div>
+            <div>
+                <dt>Instalada em</dt>
+                <dd th:if="${store.installedAt != null}" th:attr="data-local-time=${store.installedAt}" data-time-format="date"
+                    th:text="${#temporals.format(store.installedAt, 'dd/MM/yyyy', 'America/Sao_Paulo')}">01/01/2026</dd>
+                <dd th:if="${store.installedAt == null}">Não registrado</dd>
+            </div>
+            <div>
+                <dt>Último acesso</dt>
+                <dd th:if="${store.lastAdminAccessAt != null}" th:attr="data-local-time=${store.lastAdminAccessAt}" data-time-format="datetime"
+                    th:text="${#temporals.format(store.lastAdminAccessAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></dd>
+                <dd th:if="${store.lastAdminAccessAt == null}">Não registrado</dd>
+            </div>
+        </dl>
+        <nav class="store-detail-actions" aria-label="Gerenciamento da loja">
+            <a class="button small" th:href="@{/backoffice/stores/{storeId}/configuration(storeId=${store.storeId})}">Ver configuração</a>
+            <a class="button small" th:href="@{/backoffice/stores/{storeId}/scripts(storeId=${store.storeId})}">Scripts</a>
+            <a class="button small" th:href="@{/backoffice/stores/{storeId}/emails(storeId=${store.storeId})}">Histórico de e-mails</a>
+            <a class="button small" th:href="@{/backoffice/audit(storeId=${store.storeId})}">Auditoria da jornada</a>
+            <a class="button small" th:href="@{/backoffice/ratings(storeId=${store.storeId})}">Avaliações da loja</a>
         </nav>
-    </section>
+    </header>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
-    <section class="panel" id="force-uninstall">
-        <h2>Forçar uninstall e bloquear loja</h2>
-        <p class="notice error" th:if="${store.accessBlockedAt != null}">Loja bloqueada permanentemente. Novas instalações deste ID serão recusadas.</p>
-        <form class="form" th:if="${store.accessBlockedAt == null}"
-              th:action="@{/backoffice/stores/{id}/force-uninstall(id=${store.storeId})}" method="post">
-            <p>Encerra o acesso ao aplicativo imediatamente e impede novas instalações pelo mesmo ID, inclusive após a exclusão dos dados da loja. Não há desbloqueio nesta tela.</p>
-            <p class="muted">O app poderá continuar listado no painel da Nuvemshop. Esta ação não cancela cobranças no gateway; use a ação de cancelamento da assinatura quando necessário.</p>
-            <input type="hidden" name="actionToken" th:value="${departureActionToken}">
-            <label>Digite o ID da loja para confirmar
-                <input type="text" name="confirmation" required autocomplete="off" th:placeholder="${store.storeId}">
-            </label>
-            <button class="button danger" type="submit">Forçar uninstall e bloquear permanentemente</button>
-        </form>
-    </section>
-    <section class="card">
-        <h2>Armazenamento dos arquivos enviados pelos compradores</h2>
-        <p><a class="button" th:href="@{/backoffice/stores/{id}/storage(id=${store.storeId})}">Ver uso de armazenamento</a></p>
-        <p class="muted">Escolha onde salvar os novos uploads desta loja. Arquivos já enviados continuam no armazenamento original.</p>
-        <p>Padrão do sistema: <strong th:text="${buyerStorageDefault}">AWS_S3</strong> · Destino desta loja: <strong th:text="${buyerStorageEffective}">AWS_S3</strong></p>
-        <form th:action="@{/backoffice/stores/{storeId}/buyer-upload-storage(storeId=${store.storeId})}" method="post">
-            <label for="buyer-storage-provider">Destino dos novos uploads</label>
-            <select id="buyer-storage-provider" name="provider">
-                <option value="" th:selected="${store.buyerUploadStorageProvider == null}">Usar padrão do sistema</option>
-                <option value="AWS_S3" th:selected="${store.buyerUploadStorageProvider != null and store.buyerUploadStorageProvider.name() == 'AWS_S3'}">AWS S3</option>
-                <option value="OCI_OBJECT_STORAGE" th:selected="${store.buyerUploadStorageProvider != null and store.buyerUploadStorageProvider.name() == 'OCI_OBJECT_STORAGE'}">OCI Object Storage</option>
-            </select>
-            <button class="button" type="submit">Salvar armazenamento</button>
-        </form>
-    </section>
-
-    <section class="panel" id="store-email">
-        <h2>Enviar e-mail ao administrador da loja</h2>
-        <p class="muted">Envie uma mensagem para o e-mail cadastrado da loja.</p>
-        <p>Destinatário: <strong th:text="${store.storeEmail ?: 'Não cadastrado'}">E-mail da loja</strong></p>
-        <p class="notice" th:if="${#strings.isEmpty(store.storeEmail)}">Cadastre um e-mail para esta loja antes de enviar uma mensagem.</p>
-        <form class="form" th:unless="${#strings.isEmpty(store.storeEmail)}"
-              th:action="@{/backoffice/stores/{storeId}/email(storeId=${store.storeId})}" method="post"
-              onsubmit="if (!confirm('Enviar este e-mail ao administrador desta loja?')) return false; this.querySelector('button[type=submit]').disabled = true;">
-            <input type="hidden" name="actionToken" th:value="${storeEmailToken}">
-            <label>Assunto
-                <input type="text" name="subject" maxlength="200" required th:value="${emailSubject}">
-            </label>
-            <label>Mensagem
-                <textarea name="body" rows="7" maxlength="10000" required th:text="${emailBody}"></textarea>
-            </label>
-            <small class="muted">A mensagem será enviada como texto, pelo remetente de e-mail do aplicativo.</small>
-            <div class="row-actions"><button class="button primary" type="submit">Enviar e-mail</button></div>
-        </form>
-    </section>
-    <section class="grid two">
-        <div class="panel">
+    <div class="store-detail-columns">
+        <section class="panel">
             <h2>Plano</h2>
             <form class="form" th:action="@{/backoffice/stores/{storeId}/plan(storeId=${store.storeId})}" method="post">
                 <label>
@@ -157,83 +134,126 @@
             <p class="notice" th:if="${store.courtesyPremium}">
                 Esta loja usa recursos premium sem entrar na cobrança.
             </p>
-        </div>
-        <div class="panel">
-            <h2>Auditoria de plano</h2>
-            <div class="empty" th:if="${#lists.isEmpty(events)}">Sem eventos de plano.</div>
-            <table class="table" th:if="${!#lists.isEmpty(events)}">
-                <tbody>
-                <tr th:each="event : ${events}">
-                    <td th:text="${(event.fromPlan == null ? '-' : event.fromPlan.displayName) + ' -> ' + event.toPlan.displayName}">FREE -> PREMIUM</td>
-                    <td th:text="${event.source}">OVERRIDE</td>
-                    <td th:attr="data-local-time=${event.createdAt}" data-time-format="datetime" th:text="${#temporals.format(event.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
+        </section>
+        <section class="panel">
+            <h2>Assinatura externa</h2>
+            <div class="empty" th:if="${paymentSubscription == null}">Sem assinatura criada.</div>
+            <div th:if="${paymentSubscription != null}">
+                <p>Gateway: <strong th:text="${paymentSubscription.provider}">MERCADO_PAGO</strong></p>
+                <p th:if="${store.manualPlanOverride}">Status do plano: <strong>Configuração manual</strong></p>
+                <p th:unless="${store.manualPlanOverride}">Status: <strong th:text="${paymentSubscription.status}">ACTIVE</strong>
+                    / remoto: <span th:text="${paymentSubscription.providerStatus ?: '-'}">authorized</span></p>
+                <p>Plano e valor: <span th:text="${paymentSubscription.plan.displayName}">Essencial</span>
+                    — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
+                <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
+                <p>Última cobrança: <span th:text="${paymentSubscription.lastPaymentId ?: '-'}">-</span>
+                    / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
+                <p th:if="${paymentSubscription.cancellationRequestedAt != null}">Cancelamento solicitado em:
+                    <span th:attr="data-local-time=${paymentSubscription.cancellationRequestedAt}" data-time-format="datetime"
+                          th:text="${#temporals.format(paymentSubscription.cancellationRequestedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+                <p class="muted" th:if="${paymentSubscription.cancellationRequestedAt == null and (paymentSubscription.status.name() == 'CANCELED' or paymentSubscription.cancellationPending or paymentSubscription.cancellationEffectiveAt != null)}">Data da solicitação de cancelamento não registrada.</p>
+                <p th:if="${paymentSubscription.cancellationEffectiveAt != null}">Cancelamento efetivo em:
+                    <span th:attr="data-local-time=${paymentSubscription.cancellationEffectiveAt}" data-time-format="datetime"
+                          th:text="${#temporals.format(paymentSubscription.cancellationEffectiveAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
+                <div th:if="${!#strings.isEmpty(paymentSubscription.cancellationReason)}">
+                    <strong>Motivo do cancelamento</strong>
+                    <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${paymentSubscription.cancellationReason}"></p>
+                </div>
+                <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
+                <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
+                <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.technicalError ?: paymentSubscription.lastError)}" th:text="${paymentSubscription.technicalError ?: paymentSubscription.lastError}">Erro técnico</p>
+                <div id="renewal-failure-email" th:if="${renewalEmail.eligible}">
+                    <h3>Avisar loja sobre falha na renovação</h3>
+                    <p th:if="${renewalAutomaticState != null}">Estado do aviso automático: <strong th:text="${renewalAutomaticState}"></strong></p>
+                    <p>Destinatário: <strong th:text="${renewalEmail.recipient}"></strong></p>
+                    <details>
+                        <summary>Ver o e-mail que será enviado</summary>
+                        <p><strong th:text="${renewalEmail.subject}"></strong></p>
+                        <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${renewalEmail.body}"></p>
+                        <p>Botão no e-mail: <strong th:text="${renewalEmail.actionLabel}"></strong></p>
+                    </details>
+                    <form th:action="@{/backoffice/stores/{storeId}/payment/renewal-failure-email(storeId=${store.storeId})}" method="post"
+                          onsubmit="this.querySelector('button[type=submit]').disabled = true;">
+                        <input type="hidden" name="actionToken" th:value="${renewalEmailToken}">
+                        <input type="hidden" name="fingerprint" th:value="${renewalEmail.fingerprint}">
+                        <button class="button primary" type="submit">Enviar aviso de renovação falhou</button>
+                    </form>
+                    <small class="muted">O envio confere novamente o pagamento e o plano atual. Esta ação envia apenas o aviso.</small>
+                </div>
+                <p class="notice" th:if="${!renewalEmail.eligible and (paymentSubscription.status.name() == 'ERROR' or paymentSubscription.status.name() == 'PAST_DUE')}"
+                   th:text="${renewalEmail.unavailableReason}"></p>
+                <div class="store-detail-payment-actions" th:if="${paymentSubscription.providerSubscriptionId != null}">
+                    <form th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
+                        <button class="button" type="submit">Reconciliar agora</button>
+                    </form>
+                    <form th:if="${paymentSubscription.status.name() != 'CANCELED'}"
+                          th:action="@{/backoffice/stores/{storeId}/payment/cancel(storeId=${store.storeId})}" method="post"
+                          onsubmit="return confirm('Cancelar esta assinatura no gateway? Esta ação não pode ser desfeita.');">
+                        <button class="button danger" type="submit">Cancelar assinatura no gateway</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="store-detail-columns">
+        <section class="panel">
+            <h2>Arquivos dos compradores</h2>
+            <p><a class="button" th:href="@{/backoffice/stores/{id}/storage(id=${store.storeId})}">Ver uso de armazenamento</a></p>
+            <p class="muted">Escolha onde salvar os novos uploads desta loja. Arquivos já enviados continuam no armazenamento original.</p>
+            <p>Padrão do sistema: <strong th:text="${buyerStorageDefault}">AWS_S3</strong> · Destino desta loja: <strong th:text="${buyerStorageEffective}">AWS_S3</strong></p>
+            <form class="form" th:action="@{/backoffice/stores/{storeId}/buyer-upload-storage(storeId=${store.storeId})}" method="post">
+                <label for="buyer-storage-provider">Destino dos novos uploads</label>
+                <select id="buyer-storage-provider" name="provider">
+                    <option value="" th:selected="${store.buyerUploadStorageProvider == null}">Usar padrão do sistema</option>
+                    <option value="AWS_S3" th:selected="${store.buyerUploadStorageProvider != null and store.buyerUploadStorageProvider.name() == 'AWS_S3'}">AWS S3</option>
+                    <option value="OCI_OBJECT_STORAGE" th:selected="${store.buyerUploadStorageProvider != null and store.buyerUploadStorageProvider.name() == 'OCI_OBJECT_STORAGE'}">OCI Object Storage</option>
+                </select>
+                <button class="button" type="submit">Salvar armazenamento</button>
+            </form>
+        </section>
+        <section class="panel" id="store-email">
+            <h2>Enviar e-mail ao administrador da loja</h2>
+            <p class="muted">Envie uma mensagem para o e-mail cadastrado da loja.</p>
+            <p>Destinatário: <strong th:text="${store.storeEmail ?: 'Não cadastrado'}">E-mail da loja</strong></p>
+            <p class="notice" th:if="${#strings.isEmpty(store.storeEmail)}">Cadastre um e-mail para esta loja antes de enviar uma mensagem.</p>
+            <form class="form" th:unless="${#strings.isEmpty(store.storeEmail)}"
+                  th:action="@{/backoffice/stores/{storeId}/email(storeId=${store.storeId})}" method="post"
+                  onsubmit="if (!confirm('Enviar este e-mail ao administrador desta loja?')) return false; this.querySelector('button[type=submit]').disabled = true;">
+                <input type="hidden" name="actionToken" th:value="${storeEmailToken}">
+                <label>Assunto
+                    <input type="text" name="subject" maxlength="200" required th:value="${emailSubject}">
+                </label>
+                <label>Mensagem
+                    <textarea name="body" rows="7" maxlength="10000" required th:text="${emailBody}"></textarea>
+                </label>
+                <small class="muted">A mensagem será enviada como texto, pelo remetente de e-mail do aplicativo.</small>
+                <div class="row-actions"><button class="button primary" type="submit">Enviar e-mail</button></div>
+            </form>
+        </section>
+    </div>
     <section class="panel">
-        <h2>Assinatura externa</h2>
-        <div class="empty" th:if="${paymentSubscription == null}">Sem assinatura criada.</div>
-        <div th:if="${paymentSubscription != null}">
-            <p>Gateway: <strong th:text="${paymentSubscription.provider}">MERCADO_PAGO</strong></p>
-            <p th:if="${store.manualPlanOverride}">Status do plano: <strong>Configuração manual</strong></p>
-            <p th:unless="${store.manualPlanOverride}">Status: <strong th:text="${paymentSubscription.status}">ACTIVE</strong>
-                / remoto: <span th:text="${paymentSubscription.providerStatus ?: '-'}">authorized</span></p>
-            <p>Plano e valor: <span th:text="${paymentSubscription.plan.displayName}">Essencial</span>
-                — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
-            <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
-            <p>Última cobrança: <span th:text="${paymentSubscription.lastPaymentId ?: '-'}">-</span>
-                / status: <strong th:text="${paymentSubscription.lastPaymentStatus ?: '-'}">-</strong></p>
-            <p th:if="${paymentSubscription.cancellationRequestedAt != null}">Cancelamento solicitado em:
-                <span th:attr="data-local-time=${paymentSubscription.cancellationRequestedAt}" data-time-format="datetime"
-                      th:text="${#temporals.format(paymentSubscription.cancellationRequestedAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
-            <p class="muted" th:if="${paymentSubscription.cancellationRequestedAt == null and (paymentSubscription.status.name() == 'CANCELED' or paymentSubscription.cancellationPending or paymentSubscription.cancellationEffectiveAt != null)}">Data da solicitação de cancelamento não registrada.</p>
-            <p th:if="${paymentSubscription.cancellationEffectiveAt != null}">Cancelamento efetivo em:
-                <span th:attr="data-local-time=${paymentSubscription.cancellationEffectiveAt}" data-time-format="datetime"
-                      th:text="${#temporals.format(paymentSubscription.cancellationEffectiveAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span></p>
-            <div th:if="${!#strings.isEmpty(paymentSubscription.cancellationReason)}">
-                <strong>Motivo do cancelamento</strong>
-                <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${paymentSubscription.cancellationReason}"></p>
-            </div>
-            <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
-            <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
-            <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.technicalError ?: paymentSubscription.lastError)}" th:text="${paymentSubscription.technicalError ?: paymentSubscription.lastError}">Erro técnico</p>
-            <div id="renewal-failure-email" th:if="${renewalEmail.eligible}">
-                <h3>Avisar loja sobre falha na renovação</h3>
-                <p th:if="${renewalAutomaticState != null}">Estado do aviso automático: <strong th:text="${renewalAutomaticState}"></strong></p>
-                <p>Destinatário: <strong th:text="${renewalEmail.recipient}"></strong></p>
-                <details>
-                    <summary>Ver o e-mail que será enviado</summary>
-                    <p><strong th:text="${renewalEmail.subject}"></strong></p>
-                    <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${renewalEmail.body}"></p>
-                    <p>Botão no e-mail: <strong th:text="${renewalEmail.actionLabel}"></strong></p>
-                </details>
-                <form th:action="@{/backoffice/stores/{storeId}/payment/renewal-failure-email(storeId=${store.storeId})}" method="post"
-                      onsubmit="this.querySelector('button[type=submit]').disabled = true;">
-                    <input type="hidden" name="actionToken" th:value="${renewalEmailToken}">
-                    <input type="hidden" name="fingerprint" th:value="${renewalEmail.fingerprint}">
-                    <button class="button primary" type="submit">Enviar aviso de renovação falhou</button>
-                </form>
-                <small class="muted">O envio confere novamente o pagamento e o plano atual. Esta ação envia apenas o aviso.</small>
-            </div>
-            <p class="notice" th:if="${!renewalEmail.eligible and (paymentSubscription.status.name() == 'ERROR' or paymentSubscription.status.name() == 'PAST_DUE')}"
-               th:text="${renewalEmail.unavailableReason}"></p>
-            <form th:if="${paymentSubscription.providerSubscriptionId != null}"
-                  th:action="@{/backoffice/stores/{storeId}/payment/reconcile(storeId=${store.storeId})}" method="post">
-                <button class="button" type="submit">Reconciliar agora</button>
-            </form>
-            <form th:if="${paymentSubscription.providerSubscriptionId != null and paymentSubscription.status.name() != 'CANCELED'}"
-                  th:action="@{/backoffice/stores/{storeId}/payment/cancel(storeId=${store.storeId})}" method="post"
-                  onsubmit="return confirm('Cancelar esta assinatura no gateway? Esta ação não pode ser desfeita.');">
-                <button class="button danger" type="submit">Cancelar assinatura no gateway</button>
-            </form>
-        </div>
+        <h2>Auditoria de plano</h2>
+        <div class="empty" th:if="${#lists.isEmpty(events)}">Sem eventos de plano.</div>
+        <table class="table" th:if="${!#lists.isEmpty(events)}">
+            <thead>
+            <tr><th scope="col">Mudança</th><th scope="col">Origem</th><th scope="col">Data</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="event : ${events}">
+                <td th:text="${(event.fromPlan == null ? '-' : event.fromPlan.displayName) + ' -> ' + event.toPlan.displayName}">FREE -> PREMIUM</td>
+                <td th:text="${event.source}">OVERRIDE</td>
+                <td th:attr="data-local-time=${event.createdAt}" data-time-format="datetime" th:text="${#temporals.format(event.createdAt, 'dd/MM/yyyy HH:mm')}">02/06/2026</td>
+            </tr>
+            </tbody>
+        </table>
     </section>
     <section class="panel">
         <h2>Logs recentes</h2>
         <div class="empty" th:if="${#lists.isEmpty(logs)}">Sem logs.</div>
         <table class="table" th:if="${!#lists.isEmpty(logs)}">
+            <thead>
+            <tr><th scope="col">Evento</th><th scope="col">Mensagem</th><th scope="col">Data</th></tr>
+            </thead>
             <tbody>
             <tr th:each="log : ${logs}">
                 <td th:text="${log.eventType}">event</td>
@@ -242,6 +262,20 @@
             </tr>
             </tbody>
         </table>
+    </section>
+    <section class="panel store-detail-danger" id="force-uninstall">
+        <h2>Forçar uninstall e bloquear loja</h2>
+        <p class="notice error" th:if="${store.accessBlockedAt != null}">Loja bloqueada permanentemente. Novas instalações deste ID serão recusadas.</p>
+        <form class="form" th:if="${store.accessBlockedAt == null}"
+              th:action="@{/backoffice/stores/{id}/force-uninstall(id=${store.storeId})}" method="post">
+            <p>Encerra o acesso ao aplicativo imediatamente e impede novas instalações pelo mesmo ID, inclusive após a exclusão dos dados da loja. Não há desbloqueio nesta tela.</p>
+            <p class="muted">O app poderá continuar listado no painel da Nuvemshop. Esta ação não cancela cobranças no gateway; use a ação de cancelamento da assinatura quando necessário.</p>
+            <input type="hidden" name="actionToken" th:value="${departureActionToken}">
+            <label>Digite o ID da loja para confirmar
+                <input type="text" name="confirmation" required autocomplete="off" th:placeholder="${store.storeId}">
+            </label>
+            <button class="button danger" type="submit">Forçar uninstall e bloquear permanentemente</button>
+        </form>
     </section>
 </main>
 </body>

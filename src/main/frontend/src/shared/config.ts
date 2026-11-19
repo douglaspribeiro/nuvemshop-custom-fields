@@ -38,6 +38,7 @@ export type PersonalizationStyle = {
 export type PersonalizationConfig = {
 	enabled: boolean;
     paused?: boolean;
+    complements?: boolean;
 	fields: PersonalizationField[];
 	style: PersonalizationStyle;
 	locale: string;
@@ -91,13 +92,15 @@ export async function fetchConfigRequired(store: number, productId: number, time
     if (typeof body?.enabled !== "boolean" || (body.enabled && !Array.isArray(body.fields)))
         throw new Error("personalization_policy_invalid");
     return body.enabled ? normalize(body) : body.paused === true
-        ? {...DISABLED, paused: true, locale: body.locale || DISABLED.locale, style: body.style || DISABLED.style}
-        : DISABLED;
+        ? {...DISABLED, paused: true, complements: body.complements === true,
+            locale: body.locale || DISABLED.locale, style: body.style || DISABLED.style}
+        : body.complements === true ? {...DISABLED, complements: true} : DISABLED;
 }
 
 function normalize(config: PersonalizationConfig): PersonalizationConfig {
 	return {
 		enabled: true,
+        complements: config.complements === true,
 		fields: (config.fields ?? []).filter((field) => !!field?.label).map(field => ({
             ...field,
             locale: config.locale,
