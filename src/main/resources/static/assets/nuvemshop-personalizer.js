@@ -6,6 +6,16 @@
     }
 
     const appOrigin = "https://campos-personalizados.wzhub.pro";
+    // Substituido nos artefatos gerados para cada registro do Partner.
+    const scriptVersion = "__NCF_SCRIPT_VERSION__";
+    try {
+        if (/^(legado-js|legadov2)\.js\?v=\d{14}$/.test(scriptVersion)) {
+            const beacon = new URL(appOrigin + "/public/script-events");
+            beacon.searchParams.set("event", "script_execution");
+            beacon.searchParams.set("scriptVersion", scriptVersion);
+            fetch(beacon.toString(), { credentials: "omit", keepalive: true }).catch(() => {});
+        }
+    } catch (ignored) { /* Nao interferir na vitrine. */ }
     const maxAttempts = 30;
     // Coexistencia com o script NubeSDK: a homologacao exige os dois registrados, mas o
     // mesmo comportamento nao pode rodar duas vezes (campos duplicados na vitrine).

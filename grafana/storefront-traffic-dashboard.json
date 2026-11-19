@@ -1224,7 +1224,7 @@
     },
     {
       "datasource": "${DS_PROMETHEUS}",
-      "description": "Acumula incrementos estimados em blocos sem sobreposição desde o início do intervalo selecionado. Não é uma janela móvel de 24h. Blocos completos têm no mínimo 4 minutos para a coleta de 60s; frações nas bordas e dados ausentes não são reconstruídos. O valor final pode diferir do cartão de total do período.",
+      "description": "Beacons de execução recebidos pelo backend: total e versões de vitrine e checkout. A coleta é best-effort e não representa todas as chamadas HTTP, visitantes únicos ou histórico anterior à instrumentação. Incrementos são estimados em blocos sem sobreposição de pelo menos 4 minutos; lacunas não são reconstruídas.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1267,12 +1267,20 @@
       },
       "targets": [
         {
-          "expr": "sum(clamp_min(increase(ncf_storefront_http_requests_total[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
+          "expr": "sum(clamp_min(increase(ncf_storefront_script_executions_total{job=\"app-custom-fields\"}[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
           "interval": "4m",
           "instant": false,
           "range": true,
-          "legendFormat": "Chamadas",
+          "legendFormat": "Total",
           "refId": "A"
+        },
+        {
+          "expr": "sum by (script_version) (clamp_min(increase(ncf_storefront_script_executions_total{job=\"app-custom-fields\"}[$__interval]), 0)) and on() (vector(time()) >= (${__from:date:seconds} + $__interval_ms / 1000))",
+          "interval": "4m",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{script_version}}",
+          "refId": "B"
         }
       ],
       "transformations": [
@@ -1283,12 +1291,11 @@
             "cumulative": {
               "reducer": "sum"
             },
-            "alias": "Acumulado",
             "replaceFields": true
           }
         }
       ],
-      "title": "Chamadas acumuladas no período · estimativa",
+      "title": "Execuções acumuladas por versão · estimativa",
       "type": "timeseries"
     },
     {

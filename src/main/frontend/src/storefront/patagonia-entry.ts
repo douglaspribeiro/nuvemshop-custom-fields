@@ -1,5 +1,8 @@
 import { startPatagonia, type StorefrontRuntime } from "./patagonia";
 import { appOrigin, fetchConfig } from "../shared/config";
+import { reportScriptExecution } from "../shared/script-telemetry";
+
+reportScriptExecution("patagonia");
 
 const page = window as typeof window & { nubeSDK?: StorefrontRuntime; ncfPatagoniaStarted?: boolean };
 // O script legado pode executar antes do runtime. O timer não depende de interação extra.

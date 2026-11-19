@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Scripts NubeSDK (storefront e checkout) do app Campos Personalizados",
   "scripts": {
-    "build": "tsup",
+    "build": "node build.mjs",
     "dev": "concurrently -k -n BUILD,SERVE -c blue,green \"tsup --sourcemap inline --watch\" \"serve dist -l 8090 --cors\"",
     "test": "vitest run",
     "test:watch": "vitest watch",

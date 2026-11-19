@@ -3,6 +3,7 @@ import { defineConfig } from "tsup";
 // APP_ORIGIN e resolvido em build time: o script roda na loja do lojista e precisa
 // saber onde buscar a config. Sem isso o bundle de staging aponta para producao.
 const APP_ORIGIN = process.env.APP_BASE_URL ?? "https://campos-personalizados.wzhub.pro";
+const BUILD_TIME = process.env.NCF_SCRIPT_BUILD_TIME ?? new Date().toISOString().replace(/\D/g, "").slice(0, 14);
 
 const sdk = {
   entry: {
@@ -21,6 +22,7 @@ const sdk = {
   skipNodeModulesBundle: false,
   define: {
     __APP_ORIGIN__: JSON.stringify(APP_ORIGIN),
+    __SCRIPT_BUILD_TIME__: JSON.stringify(BUILD_TIME),
   },
   esbuildOptions(options) {
     options.alias = {

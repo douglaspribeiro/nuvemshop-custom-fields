@@ -4,6 +4,7 @@ import { PersonalizationSummary } from "../shared/PersonalizationSummary";
 import { createConfigurationLoader, imageProperties } from "../shared/selected-images";
 import { appOrigin, safeState, storeId } from "../shared/config";
 import { collectItemProperties, normalizedColor, normalizeProperties, type ItemProperties } from "../shared/properties";
+import { reportScriptExecution } from "../shared/script-telemetry";
 
 const SLOT = "after_line_items";
 
@@ -11,6 +12,7 @@ let textColor: string | undefined;
 let locale: string | null = null;
 
 export function App(nube: NubeSDK) {
+    reportScriptExecution("checkout-sdk");
     // Checkout summaries must never prevent a purchase. Clear any validation left
     // by the previous version of this app; storefront form validation remains separate.
     nube.send("config:set", () => ({config: {has_cart_validation: false}}));

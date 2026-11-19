@@ -29,6 +29,9 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
     public static final String DURATION_METRIC = "ncf.storefront.http.duration";
     public static final String PRODUCT_REQUEST_METRIC = "ncf.storefront.personalized.product.requests";
     public static final String STORE_REQUEST_METRIC = "ncf.storefront.store.requests";
+    public static final String SCRIPT_EXECUTION_METRIC = "ncf.storefront.script.executions";
+    private static final java.util.regex.Pattern SCRIPT_VERSION = java.util.regex.Pattern.compile(
+            "(?:legado-js|legadov2|storefront-sdk|checkout-sdk|checkout-legacy|patagonia|buyer-upload-dom|buyer-upload-widget)\\.js\\?v=\\d{14}");
 
     private final StorefrontCache cache;
     private final MeterRegistry meterRegistry;
@@ -66,6 +69,14 @@ public class StorefrontTrafficMetricsFilter extends OncePerRequestFilter {
                     .tag("status", Integer.toString(response.getStatus()))
                     .register(meterRegistry)
                     .increment();
+            String version = request.getParameter("scriptVersion");
+            if ("storefront_script_beacon".equals(kind) && "GET".equals(request.getMethod())
+                    && "script_execution".equals(request.getParameter("event"))
+                    && version != null && SCRIPT_VERSION.matcher(version).matches()) {
+                Counter.builder(SCRIPT_EXECUTION_METRIC)
+                        .description("Best-effort script execution beacons by generated script version")
+                        .tag("script_version", version).register(meterRegistry).increment();
+            }
             // Loja em contador proprio: cruzar store_id com kind/method/status multiplicava series sem consumidor.
             String storeId = activeStoreId(request);
             if (storeId != null) {

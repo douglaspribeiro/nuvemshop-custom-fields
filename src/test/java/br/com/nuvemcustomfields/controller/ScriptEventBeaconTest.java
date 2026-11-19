@@ -20,6 +20,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ScriptEventBeaconTest {
 
+    @Test
+    void countsOnlyRecognizedExecutionVersions() throws Exception {
+        String version = "checkout-sdk.js?v=20261119092200";
+        double before = java.util.Optional.ofNullable(meterRegistry.find(StorefrontTrafficMetricsFilter.SCRIPT_EXECUTION_METRIC)
+                .tag("script_version", version).counter()).map(io.micrometer.core.instrument.Counter::count).orElse(0.0);
+        mockMvc.perform(get("/public/script-events").param("event", "script_execution")
+                .param("scriptVersion", version)).andExpect(status().isOk());
+        mockMvc.perform(get("/public/script-events").param("event", "script_execution")
+                .param("scriptVersion", "arbitrary.js?v=20261119092200")).andExpect(status().isOk());
+        assertThat(meterRegistry.get(StorefrontTrafficMetricsFilter.SCRIPT_EXECUTION_METRIC)
+                .tag("script_version", version).counter().count()).isEqualTo(before + 1);
+        assertThat(meterRegistry.find(StorefrontTrafficMetricsFilter.SCRIPT_EXECUTION_METRIC)
+                .tag("script_version", "arbitrary.js?v=20261119092200").counter()).isNull();
+    }
+
     private long STORE_ID = 5544332211L;
     private static final java.util.concurrent.atomic.AtomicLong IDS = new java.util.concurrent.atomic.AtomicLong(5544332211L);
 

@@ -1,3 +1,4 @@
+import { reportScriptExecution } from "../shared/script-telemetry";
 import { appOrigin, type PersonalizationConfig } from "../shared/config";
 import { buyerUploadControl } from "./buyer-upload-dom";
 import { setUploadSession, createBuyerUploads } from "./buyer-uploads";
@@ -44,3 +45,5 @@ async function boot() {
     } catch {root.textContent="Não foi possível carregar o envio de arquivos. Atualize a página para tentar novamente.";}
 }
 void boot();
+
+reportScriptExecution("buyer-upload-widget");

@@ -18,6 +18,7 @@ import { type FieldError, type ValueMap, hasAnyValue, toCartProperties, validate
 import { installQuickBuy } from "./quick-buy";
 import { createCartAdder } from "./cart-add";
 import { createComplements, fetchComplements } from "./complements";
+import { reportScriptExecution } from "../shared/script-telemetry";
 
 const SLOT = "before_product_detail_add_to_cart";
 
@@ -61,6 +62,7 @@ let inFlightProduct: number | null = null;
 let outcome = "boot";
 
 export function App(nube: NubeSDK) {
+	reportScriptExecution("storefront-sdk");
 	// Sem este opt-in a plataforma nunca dispara cart:before_update.
 	nube.send("config:set", () => ({ config: { handle_cart_before_update: true } }));
     cartAdder = createCartAdder(nube);

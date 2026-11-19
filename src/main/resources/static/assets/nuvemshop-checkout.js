@@ -7,10 +7,19 @@
 // Portal e apague este arquivo. Editar so este arquivo faz as duas versoes divergirem.
 
 const APP_ORIGIN = "https://campos-personalizados.wzhub.pro";
+const SCRIPT_VERSION = "__NCF_SCRIPT_VERSION__";
 
 let styleConfig = {};
 
 export function App(nube) {
+    try {
+        if (/^checkout-legacy\.js\?v=\d{14}$/.test(SCRIPT_VERSION)) {
+            const beacon = new URL(APP_ORIGIN + "/public/script-events");
+            beacon.searchParams.set("event", "script_execution");
+            beacon.searchParams.set("scriptVersion", SCRIPT_VERSION);
+            fetch(beacon.toString(), { credentials: "omit", keepalive: true }).catch(() => {});
+        }
+    } catch (ignored) { /* Nao interferir no checkout. */ }
     const state = safeState(nube);
     renderCustomFields(nube, state);
     loadStyle(state).then((style) => {
