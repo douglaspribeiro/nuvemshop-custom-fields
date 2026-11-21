@@ -1,6 +1,9 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
+import br.com.nuvemcustomfields.entity.MerchantInterfacePreference.Choice;
+import br.com.nuvemcustomfields.properties.FeatureAccessProperties;
+import br.com.nuvemcustomfields.service.MerchantInterfaceService;
 import br.com.nuvemcustomfields.dto.*;
 import br.com.nuvemcustomfields.entity.*;
 import br.com.nuvemcustomfields.repository.*;
@@ -20,6 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import static org.assertj.core.api.Assertions.*;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -34,6 +38,12 @@ class OptionImagesTest {
     @Autowired WebhookLifecycleService webhooks;
     @Autowired JdbcTemplate jdbc;
     @Autowired MockMvc mvc;
+    @Autowired MerchantInterfaceService merchantInterface;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean FeatureAccessProperties grants;
+    private void useNewEditor(long storeId) {
+        org.mockito.Mockito.when(grants.allows(storeId, FeatureAccessProperties.Feature.MERCHANT_INTERFACE_PREVIEW)).thenReturn(true);
+        assertThat(merchantInterface.choose(storeId, Choice.PREVIEW)).isTrue();
+    }
     @MockitoBean OptionImageStorage storage;
     private static final AtomicLong IDS=new AtomicLong(985000);
     private Long store;
@@ -130,6 +140,57 @@ class OptionImagesTest {
         assertThat(admin.requireRuleWithFields(store,product).getFields()).hasSize(1);
         assertThat(jdbc.queryForObject("select field_id from personalization_images where id=?",Long.class,id)).isEqualTo(ownerField);
         mvc.perform(get("/public/stores/"+(store+1)+"/images/"+id)).andExpect(status().isNotFound());
+    }
+    @Test void duplicatesOnlySourceImagesAndNewUploadsWithoutChangingTheSource() throws Exception {
+        useNewEditor(store);
+        String sourceImage = upload();
+        Long source = save(sourceImage);
+        String unrelatedImage = upload();
+        var unrelated = form(unrelatedImage);
+        unrelated.setLabel("Ilustração");
+        admin.addField(store, product, unrelated);
+        String newImage = upload();
+        String path = "/admin/products/" + product + "/fields";
+        String sourceId = source.toString();
+
+        mvc.perform(get(path).session(session).param("duplicateFieldId", sourceId))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("duplicateFieldId", source))
+                .andExpect(content().string(containsString("name=\"duplicateFieldId\"")))
+                .andExpect(content().string(containsString("duplicateFieldId=" + sourceId + "#new-field")));
+
+        mvc.perform(post(path).session(session).param("duplicateFieldId", sourceId)
+                        .param("label", "Capa alternativa").param("fieldType", "IMAGE_SELECT")
+                        .param("imageOptionsJson", form(sourceImage, unrelatedImage).getImageOptionsJson()))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("duplicateFieldId", source))
+                .andExpect(model().attributeExists("error"));
+        assertThat(admin.requireRuleWithFields(store, product).getFields()).hasSize(2);
+        assertThat(fields.findById(source).orElseThrow().getLabel()).isEqualTo("Capa");
+        assertThat(jdbc.queryForObject("select field_id from personalization_images where id=?", Long.class, sourceImage))
+                .isEqualTo(source);
+
+        var copyOptions = List.of(new ImageOption(sourceImage, "Capa renomeada"), new ImageOption(newImage, "Outra capa"));
+        mvc.perform(post(path).session(session).param("duplicateFieldId", sourceId)
+                        .param("label", "Capa alternativa").param("fieldType", "IMAGE_SELECT")
+                        .param("imageOptionsJson", ImageOptions.serialize(copyOptions)))
+                .andExpect(status().is3xxRedirection());
+        var copies = admin.requireRuleWithFields(store, product).getFields();
+        assertThat(copies).hasSize(3);
+        var copy = copies.stream().filter(field -> "Capa alternativa".equals(field.getLabel())).findFirst().orElseThrow();
+        assertThat(copy.getId()).isNotEqualTo(source);
+        assertThat(copy.imageOptions()).containsExactlyElementsOf(copyOptions);
+        assertThat(fields.findById(source).orElseThrow().imageOptions()).containsExactly(new ImageOption(sourceImage, "Capa 0"));
+
+        admin.deleteField(store, product, source);
+        assertThat(state(sourceImage)).isEqualTo("READY");
+        mvc.perform(get("/public/stores/" + store + "/images/" + sourceImage)).andExpect(status().isFound());
+        assertThatThrownBy(() -> admin.addField(store, product, form(sourceImage)))
+                .hasMessage("image.options.invalid");
+        admin.deleteField(store, product, copy.getId());
+        assertThat(state(sourceImage)).isEqualTo("DELETING");
+        assertThat(state(newImage)).isEqualTo("DELETING");
+        assertThat(state(unrelatedImage)).isEqualTo("READY");
     }
     @Test void replacementQueuesOldImageAndRetriesFailedS3Deletion() throws Exception {
         String old=upload();Long field=save(old);String replacement=upload();

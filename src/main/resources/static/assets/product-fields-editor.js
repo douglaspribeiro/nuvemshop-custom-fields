@@ -1,4 +1,25 @@
 (() => {
+    const productPreview = document.querySelector('[data-product-preview]');
+    const productControls = productPreview?.querySelector('[data-product-preview-fields]');
+    const productEmpty = productPreview?.querySelector('[data-product-preview-empty]');
+    const productFields = [];
+
+    let activePreviewField;
+    function highlightField(field) {
+        activePreviewField?.removeAttribute('aria-current');
+        activePreviewField = field.control;
+        activePreviewField.setAttribute('aria-current', 'true');
+    }
+
+    function positionProductField(field) {
+        productFields.sort((left, right) => left.order - right.order || left.id - right.id);
+        const following = productFields.slice(productFields.indexOf(field) + 1)
+            .find(candidate => candidate.control.parentElement === productControls);
+        if (field.control.parentElement !== productControls || field.control.nextElementSibling !== (following?.control ?? null)) {
+            productControls.insertBefore(field.control, following?.control ?? null);
+        }
+    }
+
     function initialize(form) {
         if(form.dataset.fieldEditorInitialized)return;
         form.dataset.fieldEditorInitialized="true";
@@ -20,6 +41,33 @@
         const advanced = form.querySelector('.field-custom-format');
         const preview = form.querySelector('.field-live-preview');
         const target = preview.querySelector('.field-preview-control');
+        const fieldItem = form.closest('.field-list > .field-item');
+        const isNew = form.closest('#new-field') !== null;
+        const productField = productControls && (fieldItem || isNew) ? {
+            control: document.createElement('div'),
+            id: isNew ? Infinity : Number(fieldItem.id.slice('configured-field-'.length)),
+            order: Number(get('sortOrder').value)
+        } : null;
+        let hasDraftSettings = false;
+        let locate;
+        if (productField) {
+            const control = productField.control;
+            control.className = 'field-preview-control';
+            control.tabIndex = -1;
+            control.setAttribute('role', 'group');
+            locate = document.createElement('button');
+            locate.type = 'button';
+            locate.className = 'button small preview-locate';
+            locate.textContent = productPreview.dataset.fieldLink;
+            preview.append(locate);
+            form.addEventListener('focusin', () => highlightField(productField));
+            locate.addEventListener('click', () => {
+                productPreview.open = true;
+                highlightField(productField);
+                control.focus();
+                control.scrollIntoView?.({block: 'center'});
+            });
+        }
         const initial = pattern.value || '';
         format.value = [...format.options].some(option => option.value === initial) ? initial : 'custom';
         custom.value = initial;
@@ -95,8 +143,7 @@
                     || minimum != null && maximum != null && minimum > maximum);
             min.setCustomValidity(invalid ? (quantities ? min.dataset.quantityInvalid : min.dataset.invalid) : '');
         }
-        function render() {
-            validateSelections();
+        function renderControl(target) {
             target.replaceChildren();
             const wrapper = document.createElement('label');
             const title = document.createElement('span');
@@ -105,11 +152,16 @@
             wrapper.append(title);
             let input;
             if(type.value === 'FILE_UPLOAD') {
-                input=document.createElement('input');input.type='file';input.multiple=Number(get('maxFiles')?.value || 1)>1;input.accept='.jpg,.jpeg,.png,.pdf';
+                const extensions = { JPG: '.jpg,.jpeg', PNG: '.png', PDF: '.pdf' };
+                const formats = new Set(get('optionsText').value.trim().toUpperCase().split(/[,\s]+/).map(value => value === 'JPEG' ? 'JPG' : value));
+                const allowed = Object.keys(extensions).filter(format => formats.has(format));
+                input=document.createElement('input');input.type='file';input.multiple=Number(get('maxFiles')?.value || 1)>1;
+                input.accept=allowed.map(format => extensions[format]).join(',');
                 wrapper.className='field-preview-upload';
                 const help=document.createElement('small');help.className='field-preview-upload-help';
                 const maxFiles=Number(get('maxFiles')?.value || 1);
-                help.textContent=(preview.dataset.uploadHelp || 'JPG, PNG ou PDF · até {0} MB por arquivo').replace('{0}',preview.dataset.uploadMaxMb || '10');
+                help.textContent=(preview.dataset.uploadHelp || '{1} · até {0} MB por arquivo')
+                    .replace('{0}',preview.dataset.uploadMaxMb || '10').replace('{1}',allowed.join(', '));
                 if(maxFiles>1) help.textContent+=' · '+(preview.dataset.uploadCount || 'até {0} arquivos').replace('{0}',String(maxFiles));
                 const selected=document.createElement('div');selected.className='field-preview-upload-files';
                 input.addEventListener('change',()=>{selected.textContent=Array.from(input.files || []).map(file=>file.name).join(', ');});
@@ -236,18 +288,43 @@
             }
             // The preview lives inside the editor form, so it must not block saving.
             input.addEventListener('input', () => {
-                let valid = true;
-                try { if (pattern.value) valid = new RegExp(pattern.value).test(input.value); } catch (_) { /* Show errors in the rule control. */ }
+                let valid = type.value !== 'NUMBER' || /^-?\d+([.,]\d+)?$/.test(input.value.trim());
+                try { if (valid && pattern.value) valid = new RegExp(pattern.value).test(input.value); } catch (_) { /* Show errors in the rule control. */ }
                 input.setAttribute('aria-invalid', String(Boolean(input.value) && !valid));
             });
             wrapper.append(input); target.append(wrapper);
         }
-        form.addEventListener('input', event => { if (!preview.contains(event.target)) render(); });
-        form.addEventListener('change', event => { if (!preview.contains(event.target)) { visibility(); render(); } });
+        function render() {
+            validateSelections();
+            renderControl(target);
+            if (!productField) return;
+            if (isNew && !get('label').value.trim() && !hasDraftSettings) {
+                productField.control.remove();
+            } else {
+                renderControl(productField.control);
+                const oldOrder = productField.order;
+                productField.order = Number(get('sortOrder').value);
+                if (oldOrder !== productField.order || !productField.control.parentElement) {
+                    positionProductField(productField);
+                }
+            }
+            locate.hidden = !productField.control.parentElement;
+            productField.control.setAttribute('aria-label', get('label').value.trim() || preview.dataset.fallbackLabel);
+            productEmpty.hidden = productControls.childElementCount > 0;
+        }
+        function update(event) {
+            if (preview.contains(event.target)) return;
+            if (isNew && event.target !== get('label')) hasDraftSettings = true;
+            if (event.type === 'change') visibility();
+            render();
+        }
+        form.addEventListener('input', update);
+        form.addEventListener('change', update);
         form.addEventListener('submit', event => {
             validatePattern(); validateSelections();
             if (!custom.disabled && !custom.checkValidity()) { event.preventDefault(); advanced.open = true; custom.reportValidity(); }
         });
+        if (productField) productFields.push(productField);
         visibility(); render();
     }
     window.ncfInitFieldEditor=initialize;

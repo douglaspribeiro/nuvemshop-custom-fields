@@ -6,7 +6,7 @@
     <title th:text="#{admin.billing.cancel.title} + ' - ' + #{common.app.title}">Desativar renovação automática</title>
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">

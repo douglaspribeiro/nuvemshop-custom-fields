@@ -79,19 +79,34 @@ public class OptionImageService {
         return new Uploaded(id,url+"?size=thumbnail",url);
     }
     /** Joins the owner's transaction. Image content is immutable; owners have independent option definitions. */
-    public void bind(PersonalizationField field, List<ImageOption> options) { bind(field,options,false); }
-    public void bindShared(PersonalizationField field,List<ImageOption> options) { bind(field,options,true); }
-    private void bind(PersonalizationField field,List<ImageOption> options,boolean shared) {
+    public void bind(PersonalizationField field, List<ImageOption> options) {
+        bind(field, options, null);
+    }
+    public void bind(PersonalizationField field, List<ImageOption> options, Long duplicateFieldId) {
+        bind(field, options, false, duplicateFieldId);
+    }
+    public void bindShared(PersonalizationField field,List<ImageOption> options) { bind(field,options,true,null); }
+    private void bind(PersonalizationField field,List<ImageOption> options,boolean shared,Long duplicateFieldId) {
         Long store=field.getRule().getStoreId(), product=field.getRule().getProductId();
         Set<String> previous=new HashSet<>(jdbc.queryForList("select image_id from personalization_image_references where store_id=? and owner_type='FIELD' and owner_id=?",String.class,store,field.getId()));
+        Set<String> sourceImages = duplicateFieldId == null ? Set.of() : new HashSet<>(jdbc.queryForList(
+                "select image_id from personalization_image_references where store_id=? and product_id=? and owner_type='FIELD' and owner_id=?",
+                String.class, store, product, duplicateFieldId));
         for(var option:options) {
             var rows=jdbc.queryForList("select field_id,product_id from personalization_images where id=? and store_id=? and state='READY' for update",option.id(),store);
             if(rows.isEmpty())throw new IllegalArgumentException("image.options.invalid");
             var row=rows.getFirst();Object current=row.get("field_id");
-            if(!shared && !previous.contains(option.id()) && (((Number)row.get("product_id")).longValue()!=product
-                    || current!=null && ((Number)current).longValue()!=field.getId()))throw new IllegalArgumentException("image.options.invalid");
+            boolean sameProduct = ((Number) row.get("product_id")).longValue() == product;
+            if (!shared && !previous.contains(option.id()) && !sourceImages.contains(option.id())) {
+                boolean unboundUpload = sameProduct && current == null && jdbc.queryForList(
+                        "select id from personalization_image_references where image_id=?", option.id()).isEmpty();
+                if (!unboundUpload && !(sameProduct && current instanceof Number owner
+                        && owner.longValue() == field.getId())) {
+                    throw new IllegalArgumentException("image.options.invalid");
+                }
+            }
             reference(store,option.id(),"FIELD",field.getId(),product);
-            if(current==null && ((Number)row.get("product_id")).longValue()==product)
+            if(current==null && sameProduct && !sourceImages.contains(option.id()))
                 jdbc.update("update personalization_images set field_id=?,updated_at=? where id=?",field.getId(),ts(Instant.now()),option.id());
         }
         Set<String> keep=new HashSet<>();options.forEach(o->keep.add(o.id()));

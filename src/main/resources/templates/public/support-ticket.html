@@ -5,16 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{support.ticket.title} + ' - ' + #{common.app.name}">Chamado</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:if="${newMerchantUi == true}">
+        <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
+    </th:block>
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
-<body>
-<main class="shell public-page">
+<body th:class="${newMerchantUi == true} ? 'merchant-page'">
+<th:block th:if="${newMerchantUi == true}">
+    <th:block th:replace="~{fragments/merchant-shell :: navigation(${supportInComplements ? 'complements-support' : 'support'})}"></th:block>
+</th:block>
+<main class="shell" th:classappend="${newMerchantUi != true} ? ' public-page'">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{support.ticket.number(${ticket.id})}">Chamado</p>
             <h1 th:text="${ticket.subject}">Assunto</h1>
         </div>
-        <a class="button" th:href="@{/support/}" th:text="#{support.ticket.back}">Voltar ao suporte</a>
+        <a class="button" th:href="${supportInComplements} ? @{/support/(app='complements')} : @{/support/}"
+           th:text="#{support.ticket.back}">Voltar ao suporte</a>
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
@@ -27,17 +34,27 @@
                 <span th:attr="data-local-time=${item.createdAt}" data-time-format="datetime" th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
             </div>
             <p th:text="${item.message}">Mensagem</p>
+            <th:block th:replace="~{fragments/support-attachments :: links(${attachmentsByMessage.get(item.id)}, ${ticket.id}, false)}"></th:block>
         </article>
     </section>
 
     <section class="panel settings-panel" th:if="${ticket.status.name() == 'OPEN'}">
         <h2 th:text="#{support.ticket.reply}">Responder</h2>
-        <form class="form" th:action="@{/support/tickets/{id}/messages(id=${ticket.id})}" method="post">
-            <textarea name="message" rows="6" maxlength="5000" required th:placeholder="#{support.ticket.reply.placeholder}"></textarea>
+        <form class="form support-form" th:action="@{/support/tickets/{id}/messages(id=${ticket.id})}" method="post"
+              th:attr="enctype=${newMerchantUi == true ? 'multipart/form-data' : null}">
+            <input th:if="${supportInComplements}" type="hidden" name="app" value="complements">
+            <textarea name="message" rows="6" maxlength="5000" required th:text="${supportDraft}"
+                      th:aria-label="#{support.ticket.reply.message}" th:placeholder="#{support.ticket.reply.placeholder}"></textarea>
+            <th:block th:if="${newMerchantUi == true}">
+                <th:block th:replace="~{fragments/support-attachments :: upload}"></th:block>
+            </th:block>
             <button class="button primary" type="submit" th:text="#{support.ticket.reply.submit}">Enviar resposta</button>
         </form>
     </section>
     <p class="notice warning" th:if="${ticket.status.name() == 'CLOSED'}" th:text="#{support.ticket.closed.notice}">Este chamado foi encerrado pelo suporte.</p>
 </main>
+<th:block th:if="${newMerchantUi == true}">
+    <th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</th:block>
 </body>
 </html>

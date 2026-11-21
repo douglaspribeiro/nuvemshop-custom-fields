@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PersonalizationAdminService {
@@ -79,24 +80,45 @@ public class PersonalizationAdminService {
 
     @Transactional(readOnly = true)
     public PersonalizationRule requireRuleWithFields(Long storeId, Long productId) {
-        PersonalizationRule rule = ruleRepository.findWithFieldsByStoreIdAndProductId(storeId, productId)
+        return findRuleWithFields(storeId, productId)
                 .orElseThrow(() -> new IllegalArgumentException("Regra de personalizacao nao encontrada."));
-        rule.getFields().sort(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
-        return rule;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PersonalizationRule> findRuleWithFields(Long storeId, Long productId) {
+        return ruleRepository.findWithFieldsByStoreIdAndProductId(storeId, productId).map(rule -> {
+            rule.getFields().sort(Comparator.comparing(PersonalizationField::getSortOrder).thenComparing(PersonalizationField::getId));
+            return rule;
+        });
     }
 
     @Transactional
     public void addField(Long storeId, Long productId, FieldForm form) {
+        addField(storeId, productId, form, null);
+    }
+
+    @Transactional
+    public void addField(Long storeId, Long productId, FieldForm form, Long duplicateFieldId) {
         images.lockStore(storeId);
         PersonalizationRule rule = ruleRepository.findByStoreIdAndProductId(storeId, productId)
                 .orElseThrow(() -> new IllegalArgumentException("Regra de personalizacao nao encontrada."));
+        if (duplicateFieldId != null) {
+            var store = stores.findActiveByStoreId(storeId)
+                    .orElseThrow(() -> new IllegalArgumentException("editor.duplicate.unavailable"));
+            if (!limits.canAddField(store, rule.getId())) {
+                throw new IllegalArgumentException("flash.field.limit");
+            }
+            if (rule.getFields().stream().noneMatch(field -> field.getId().equals(duplicateFieldId))) {
+                throw new IllegalArgumentException("editor.duplicate.unavailable");
+            }
+        }
         PersonalizationField field = new PersonalizationField();
         validateImagePlan(storeId, productId, form);
         applyForm(field, form);
         field.setRule(rule);
         fieldRepository.saveAndFlush(field);
         remember(field);
-        images.bind(field, field.imageOptions());
+        images.bind(field, field.imageOptions(), duplicateFieldId);
     }
 
     @Transactional

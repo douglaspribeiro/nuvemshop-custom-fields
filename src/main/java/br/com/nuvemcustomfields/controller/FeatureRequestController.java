@@ -2,6 +2,7 @@ package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.service.*;
 import br.com.nuvemcustomfields.i18n.Messages;
+import br.com.nuvemcustomfields.properties.FeatureAccessProperties;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
@@ -19,12 +20,15 @@ public class FeatureRequestController {
     private final FeatureRequestService requests;
     private final AdminStoreService stores;
     private final Messages messages;
-    public FeatureRequestController(FeatureRequestService requests,AdminStoreService stores,Messages messages){this.requests=requests;this.stores=stores;this.messages=messages;}
+    private final FeatureAccessProperties features;
+    public FeatureRequestController(FeatureRequestService requests,AdminStoreService stores,Messages messages,FeatureAccessProperties features){this.requests=requests;this.stores=stores;this.messages=messages;this.features=features;}
     @GetMapping("/admin/suggestions")
-    public String form(@RequestParam(required=false) String interest,@RequestParam(required=false) Long requestId,HttpSession session,Model model,HttpServletResponse response){
+    public String form(@RequestParam(required=false) String interest,@RequestParam(required=false) Long requestId,
+                       @RequestParam(required=false) String app,HttpSession session,Model model,HttpServletResponse response){
         response.setHeader("Cache-Control","no-store");var store=stores.requireCurrentStore(session);
         String token=UUID.randomUUID().toString();session.setAttribute(TOKEN,token);
         model.addAttribute("store",store);model.addAttribute("submissionToken",token);model.addAttribute("suggestions",requests.forStore(store.getStoreId(),requestId));
+        model.addAttribute("complementsSuggestions", complementsContext(app, store.getStoreId()));
         if (java.util.Set.of("uploads", "templates", "bulk").contains(interest == null ? "" : interest)) {
             String feature = messages.get("merchant.comingsoon." + interest + ".title");
             if (!model.containsAttribute("draftTitle")) model.addAttribute("draftTitle", messages.get("merchant.comingsoon.request.title", feature));
@@ -33,12 +37,18 @@ public class FeatureRequestController {
         return "admin/suggestions";
     }
     @PostMapping("/admin/suggestions")
-    public String submit(@RequestParam String title,@RequestParam String description,@RequestParam String submissionToken,HttpSession session,RedirectAttributes flash){
+    public String submit(@RequestParam String title,@RequestParam String description,@RequestParam String submissionToken,
+                         @RequestParam(required=false) String app,HttpSession session,RedirectAttributes flash){
         var store=stores.requireCurrentStore(session);
         if(!submissionToken.equals(session.getAttribute(TOKEN)))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Formulário inválido. Abra a página novamente.");
         try{requests.submit(store.getStoreId(),title,description,submissionToken);flash.addFlashAttribute("message",messages.get("suggestions.success"));}
         catch(IllegalArgumentException ex){flash.addFlashAttribute("error",messages.get("suggestions.invalid"));flash.addFlashAttribute("draftTitle",title);flash.addFlashAttribute("draftDescription",description);}
+        if (complementsContext(app, store.getStoreId())) flash.addAttribute("app", "complements");
         return "redirect:/admin/suggestions";
+    }
+
+    private boolean complementsContext(String app, Long storeId) {
+        return "complements".equals(app) && features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS);
     }
     @GetMapping("/backoffice/suggestions")
     public String backoffice(Model model,HttpServletResponse response,HttpSession session){

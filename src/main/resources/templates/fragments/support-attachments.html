@@ -1,0 +1,19 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<label th:fragment="upload">
+    <span th:text="#{support.attachment.label}">Anexo opcional</span>
+    <input type="file" name="attachment" aria-describedby="support-attachment-hint">
+    <small class="muted" id="support-attachment-hint" th:text="#{support.attachment.hint}">Envie um arquivo de até 5 MB.</small>
+</label>
+<ul th:fragment="links(files, ticketId, backoffice)" th:if="${files != null and !files.isEmpty()}"
+    class="support-attachment-list" th:aria-label="#{support.attachment.list}">
+    <li th:each="file : ${files}">
+        <a th:href="${backoffice}
+                ? @{/backoffice/support/{ticketId}/attachments/{fileId}(ticketId=${ticketId},fileId=${file.id})}
+                : @{/support/tickets/{ticketId}/attachments/{fileId}(ticketId=${ticketId},fileId=${file.id})}"
+           th:text="${file.filename}" download>Arquivo</a>
+    </li>
+</ul>
+</body>
+</html>

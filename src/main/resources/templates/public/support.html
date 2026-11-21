@@ -5,17 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{support.title} + ' - ' + #{common.app.name}">Suporte</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:if="${store != null and newMerchantUi == true}">
+        <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
+    </th:block>
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
-<body>
-<main class="shell public-page">
+<body th:class="${store != null and newMerchantUi == true} ? 'merchant-page'">
+<th:block th:if="${store != null and newMerchantUi == true}">
+    <th:block th:replace="~{fragments/merchant-shell :: navigation(${supportInComplements ? 'complements-support' : 'support'})}"></th:block>
+</th:block>
+<main class="shell" th:classappend="${store == null or newMerchantUi != true} ? ' public-page'">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{common.app.name}">Campos Personalizados</p>
             <h1 th:text="#{support.heading}">Suporte</h1>
             <p class="muted" th:text="#{support.subtitle}">Envie duvidas, problemas ou sugestoes.</p>
         </div>
-        <a class="button" th:if="${store}" th:href="@{/admin}" th:text="#{support.back.app}">Voltar ao aplicativo</a>
+        <a class="button" th:if="${store != null and newMerchantUi != true}" th:href="@{/admin}" th:text="#{support.back.app}">Voltar ao aplicativo</a>
     </section>
 
     <p class="muted" th:if="${!#strings.isEmpty(supportEmail)}"><span th:text="#{common.support}">Suporte</span>: <a th:href="${'mailto:' + supportEmail}" th:text="${supportEmail}">contato@wzhub.pro</a></p>
@@ -32,17 +38,22 @@
     <div class="grid two" th:if="${store}">
         <section class="panel">
             <h2 th:text="#{support.new.title}">Nova mensagem</h2>
-            <form class="form" th:action="@{/support/tickets}" method="post">
+            <form class="form support-form" th:action="@{/support/tickets}" method="post"
+                  th:attr="enctype=${newMerchantUi == true ? 'multipart/form-data' : null}">
+                <input th:if="${supportInComplements}" type="hidden" name="app" value="complements">
                 <label>
                     <span th:text="#{support.new.subject}">Assunto</span>
-                    <input type="text" name="subject" maxlength="160" required
+                    <input type="text" name="subject" maxlength="160" required th:value="${supportSubject}"
                            th:placeholder="#{support.new.subject.placeholder}">
                 </label>
                 <label>
                     <span th:text="#{support.new.message}">Como podemos ajudar?</span>
-                    <textarea name="message" rows="8" maxlength="5000" required
+                    <textarea name="message" rows="8" maxlength="5000" required th:text="${supportDraft}"
                               th:placeholder="#{support.new.message.placeholder}"></textarea>
                 </label>
+                <th:block th:if="${newMerchantUi == true}">
+                    <th:block th:replace="~{fragments/support-attachments :: upload}"></th:block>
+                </th:block>
                 <button class="button primary" type="submit" th:text="#{support.new.submit}">Enviar ao suporte</button>
             </form>
         </section>
@@ -52,7 +63,9 @@
             <div class="empty" th:if="${#lists.isEmpty(tickets)}" th:text="#{support.tickets.empty}">Nenhum chamado enviado.</div>
             <div class="ticket-list" th:if="${!#lists.isEmpty(tickets)}">
                 <a class="ticket-card" th:each="ticket : ${tickets}"
-                   th:href="@{/support/tickets/{id}(id=${ticket.id})}">
+                   th:href="${supportInComplements}
+                        ? @{/support/tickets/{id}(id=${ticket.id},app='complements')}
+                        : @{/support/tickets/{id}(id=${ticket.id})}">
                     <span>
                         <strong th:text="${ticket.subject}">Assunto</strong>
                         <small th:attr="data-local-time=${ticket.lastMessageAt}" data-time-format="datetime" th:text="${#temporals.format(ticket.lastMessageAt, 'dd/MM/yyyy HH:mm')}">Data</small>
@@ -63,5 +76,8 @@
         </section>
     </div>
 </main>
+<th:block th:if="${store != null and newMerchantUi == true}">
+    <th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</th:block>
 </body>
 </html>

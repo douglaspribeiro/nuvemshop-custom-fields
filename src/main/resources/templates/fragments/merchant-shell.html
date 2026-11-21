@@ -1,9 +1,23 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:fragment="stylesheet">
+        <link rel="stylesheet" th:if="${newMerchantUi == true}" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+        <link rel="stylesheet" th:unless="${newMerchantUi == true}" th:href="@{/styles/merchant-classic.css(v=${assetVersion})}">
+    </th:block>
+    <th:block th:fragment="complementsStylesheet">
+        <link rel="stylesheet" th:if="${newMerchantUi == true}" th:href="@{/styles/complements.css(v=${assetVersion})}">
+        <link rel="stylesheet" th:unless="${newMerchantUi == true}" th:href="@{/styles/complements-classic.css(v=${assetVersion})}">
+    </th:block>
+</head>
 <body>
-<header class="merchant-topbar" th:fragment="navigation(active)">
+<th:block th:fragment="navigation(active)">
+    <th:block th:if="${newMerchantUi == true}" th:insert="~{fragments/merchant-shell :: previewNavigation(${active})}"></th:block>
+    <th:block th:unless="${newMerchantUi == true}" th:insert="~{fragments/merchant-shell-classic :: navigation(${active})}"></th:block>
+</th:block>
+<header class="merchant-topbar" th:fragment="previewNavigation(active)" th:with="complementsApp=${active == 'apps' or active == 'new-offer' or active == 'complements-support' or active == 'complements-suggestions'}">
     <div class="merchant-topbar-inner">
-        <a class="merchant-brand" th:href="@{/admin}" aria-label="Campos Personalizados">
+        <a class="merchant-brand" th:href="@{/admin}">
             <span class="merchant-brand-mark" aria-hidden="true">C</span>
             <span class="merchant-brand-copy"><strong th:text="#{common.app.name}">Campos Personalizados</strong><small th:text="#{merchant.brand.subtitle}">Painel da loja</small></span>
         </a>
@@ -11,26 +25,55 @@
             <span class="merchant-store-copy"><strong th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</strong><small th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</small></span>
         </div>
     </div>
-    <nav class="merchant-nav" th:aria-label="#{merchant.nav.label}">
-        <div class="merchant-nav-inner">
+    <aside class="merchant-sidebar">
+        <a class="merchant-sidebar-brand" th:href="@{/admin}">
+            <span class="merchant-brand-mark" aria-hidden="true">C</span>
+            <span><strong th:text="#{common.app.name}">Campos Personalizados</strong><small th:text="#{merchant.brand.subtitle}">Painel da loja</small></span>
+        </a>
+        <div class="merchant-sidebar-store" th:if="${store != null}">
+            <strong th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</strong>
+            <small th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="#{plan.title(${planName})}">Plano FREE</small>
+        </div>
+        <th:block th:if="${productComplementsVisible and (appsMenuVisible or complementsApp or active == 'apps-directory')}">
+            <th:block th:replace="~{fragments/app-switcher :: switcher(${complementsApp ? 'complements' : 'nc'})}"></th:block>
+        </th:block>
+        <nav class="merchant-sidebar-nav" th:if="${complementsApp}" th:aria-label="#{merchant.shell.appnav}">
+            <a th:href="@{/admin/apps/complements}" th:aria-current="${active == 'apps'} ? 'page'" th:text="#{complements.offers}">Ofertas</a>
+            <a th:href="@{/admin/apps/complements/new}" th:aria-current="${active == 'new-offer'} ? 'page'" th:text="#{complements.new}">Nova oferta</a>
+            <a th:href="@{/support/(app='complements')}" th:aria-current="${active == 'complements-support'} ? 'page'" th:text="#{common.support}">Suporte</a>
+            <a th:href="@{/admin/suggestions(app='complements')}" th:aria-current="${active == 'complements-suggestions'} ? 'page'" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
+        </nav>
+        <nav class="merchant-sidebar-nav" th:unless="${complementsApp}" th:aria-label="#{merchant.nav.label}">
             <a th:href="@{/admin}" th:classappend="${active == 'overview'} ? ' is-active'" th:aria-current="${active == 'overview'} ? 'page'" th:text="#{merchant.nav.overview}">Visão geral</a>
             <a th:href="@{/admin/products}" th:classappend="${active == 'products'} ? ' is-active'" th:aria-current="${active == 'products'} ? 'page'" th:text="#{merchant.nav.products}">Produtos e campos</a>
-            <a th:href="@{/admin/templates}" th:classappend="${active == 'templates'} ? ' is-active'" th:text="#{template.library}"></a>
+            <a th:href="@{/admin/templates}" th:classappend="${active == 'templates'} ? ' is-active'" th:aria-current="${active == 'templates'} ? 'page'" th:text="#{template.library}"></a>
             <a th:href="@{/admin/dashboard}" th:classappend="${active == 'orders'} ? ' is-active'" th:aria-current="${active == 'orders'} ? 'page'" th:text="#{merchant.nav.orders}">Pedidos personalizados</a>
-            <a th:if="${store != null and (store.effectivePlan.name() == 'PREMIUM_PLUS' or store.effectivePlan.name() == 'PREMIUM_ULTRA')}" th:href="@{/admin/buyer-uploads}" th:classappend="${active == 'buyer-uploads'} ? ' is-active'" th:text="#{buyer.files.title}">Arquivos dos compradores</a>
+            <a th:if="${store != null and (store.effectivePlan.name() == 'PREMIUM_PLUS' or store.effectivePlan.name() == 'PREMIUM_ULTRA')}" th:href="@{/admin/buyer-uploads}" th:classappend="${active == 'buyer-uploads'} ? ' is-active'" th:aria-current="${active == 'buyer-uploads'} ? 'page'" th:text="#{buyer.files.title}">Arquivos dos compradores</a>
             <a th:href="@{/admin/settings/style}" th:classappend="${active == 'appearance'} ? ' is-active'" th:aria-current="${active == 'appearance'} ? 'page'" th:text="#{merchant.nav.appearance}">Aparência</a>
             <a th:href="@{/admin/billing}" th:classappend="${active == 'billing'} ? ' is-active'" th:aria-current="${active == 'billing'} ? 'page'" th:text="#{merchant.nav.billing}">Planos e cobrança</a>
-            <a th:if="${appsMenuVisible}" th:href="@{/admin/apps}" th:classappend="${active == 'apps'} ? ' is-active'" th:aria-current="${active == 'apps'} ? 'page'" th:text="#{complements.apps}">Aplicativos</a>
+            <a th:if="${appsMenuVisible and productComplementsVisible}" th:href="@{/admin/apps}" th:classappend="${active == 'apps' or active == 'apps-directory'} ? ' is-active'" th:aria-current="${active == 'apps' or active == 'apps-directory'} ? 'page'" th:text="#{complements.apps}">Aplicativos</a>
             <a th:href="@{/admin/help}" th:classappend="${active == 'help'} ? ' is-active'" th:aria-current="${active == 'help'} ? 'page'" th:text="#{merchant.nav.help}">Ajuda</a>
-        </div>
-    </nav>
+            <a th:href="@{/support/}" th:aria-current="${active == 'support'} ? 'page'" th:text="#{common.support}">Suporte</a>
+            <a th:href="@{/admin/suggestions}" th:aria-current="${active == 'suggestions'} ? 'page'" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
+        </nav>
+        <th:block th:if="${merchantUiEligible == true and merchantUiCsrf != null}">
+            <th:block th:replace="~{fragments/merchant-shell :: interfaceForm('classic', #{merchant.interface.return}, 'merchant-interface-return')}"></th:block>
+        </th:block>
+    </aside>
     <div class="shell notice warning" role="status" th:if="${active != 'overview' and planPausedProductIds != null and !#sets.isEmpty(planPausedProductIds)}">
         <strong th:text="#{plan.pause.status}">Pausado pelo plano</strong>
         <span th:text="#{plan.pause.detail}">Suas configurações continuam salvas.</span>
         <a th:href="@{/admin/billing}" th:text="#{plan.pause.action}">Reativar assinatura</a>
     </div>
 </header>
+<form method="post" th:action="@{/admin/interface}" th:class="${styleClass}" th:fragment="interfaceForm(choice, label, styleClass)">
+    <input type="hidden" name="csrf" th:value="${merchantUiCsrf}">
+    <button type="submit" class="button small" name="choice" th:value="${choice}" th:text="${label}"></button>
+</form>
 <footer th:fragment="footer" class="shell merchant-footer">
+    <th:block th:if="${newMerchantUi != true and merchantUiEligible == true and merchantUiCsrf != null and merchantUiInvite != true}">
+        <th:block th:replace="~{fragments/merchant-shell :: interfaceForm('preview', #{merchant.interface.try}, 'merchant-interface-entry')}"></th:block>
+    </th:block>
     <a th:href="@{/status/}" th:text="#{status.title}">Status do serviço</a>
     <small class="merchant-footer-version" th:text="#{common.app.version(${assetVersion})}">Versão dev</small>
 </footer>

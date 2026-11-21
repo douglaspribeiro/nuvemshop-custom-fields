@@ -36,6 +36,7 @@
                 <span th:attr="data-local-time=${item.createdAt}" data-time-format="datetime" th:text="${#temporals.format(item.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
             </div>
             <p th:text="${item.message}">Mensagem</p>
+            <th:block th:replace="~{fragments/support-attachments :: links(${attachmentsByMessage.get(item.id)}, ${ticket.id}, true)}"></th:block>
         </article>
     </section>
 
@@ -44,7 +45,7 @@
             <h2>Responder</h2>
             <form class="form" th:action="@{/backoffice/support/{id}/messages(id=${ticket.id})}" method="post" enctype="multipart/form-data">
                 <textarea name="message" rows="6" maxlength="5000" required placeholder="Escreva a resposta para a loja..."></textarea>
-                <label for="support-attachments">Anexar imagens ao e-mail</label>
+                <label for="support-attachments">Anexar imagens à resposta e ao e-mail</label>
                 <input type="file" id="support-attachments" name="attachments" accept="image/png,image/jpeg" multiple
                        aria-describedby="support-attachments-hint">
                 <small id="support-attachments-hint">PNG ou JPEG, até 5 MB por imagem e 6 MB por resposta.</small>

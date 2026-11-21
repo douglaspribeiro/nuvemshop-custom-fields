@@ -4,10 +4,10 @@ import { afterEach, expect, it } from 'vitest';
 const source = readFileSync(new URL('../../../resources/static/assets/product-fields-editor.js', import.meta.url), 'utf8');
 let dom: JSDOM;
 afterEach(() => dom?.window.close());
-function boot(pattern = '') {
+function boot(pattern = '', prepare?: (document: Document) => void) {
     dom = new JSDOM(`<form class="field-editor-form">
         <input name="label" value="Nome para gravar"><input type="checkbox" name="required" checked>
-        <select name="fieldType"><option>TEXT</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>QUANTITY_SELECT</option><option>FILE_UPLOAD</option></select>
+        <select name="fieldType"><option>TEXT</option><option>NUMBER</option><option>SELECT</option><option>IMAGE_SELECT</option><option>COLOR_SELECT</option><option>TEXTAREA</option><option>CHECKBOX</option><option>QUANTITY_SELECT</option><option>FILE_UPLOAD</option></select>
         <label class="field-quantity-layout" hidden><select name="quantityColumns"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label><input name="maxFiles" type="number" value="3"><label><input name="maxLength" value="20"></label><label><input name="placeholder" value="Ana"></label>
         <label><textarea name="optionsText">Azul\nVerde</textarea></label><input name="imageOptionsJson" value="[]">
         <label class="field-checkbox-limits" hidden><input name="minSelections" type="number" min="0" data-invalid="Limites inválidos" data-quantity-invalid="Limites de unidades inválidos" data-unit-counter="{0} de {1} unidades" data-unit-count="{0} unidades" data-counter="{0} de {1} selecionadas" data-count="{0} selecionadas"></label>
@@ -21,6 +21,7 @@ function boot(pattern = '') {
         <input type="hidden" name="sortOrder" value="0"><input class="field-position" type="number" min="1" step="1" required value="1">
         <button type="submit">Salvar</button></form>`, { runScripts: 'outside-only' });
     input('validationPattern').value = pattern;
+    prepare?.(dom.window.document);
     dom.window.eval(source);
 }
 function input(name: string) { return dom.window.document.querySelector<HTMLInputElement>(`[name="${name}"]`)!; }
@@ -187,6 +188,7 @@ it('prefills upload formats without overwriting a merchant restriction',()=>{
     select('[name="fieldType"]','TEXT');
     select('[name="fieldType"]','FILE_UPLOAD');
     expect(input('optionsText').value).toBe('PNG');
+    expect(dom.window.document.querySelector<HTMLInputElement>('.field-preview-upload input')!.accept).toBe('.png');
 });
 
 it('previews named colors in configured order without submitting preview choices',()=>{
@@ -235,4 +237,79 @@ it('previews the saved quantity layout and hides the column control for other ty
     expect(dom.window.document.querySelector<HTMLElement>('.field-preview-quantity-list')?.style.getPropertyValue('--quantity-columns')).toBe('3');
     expect(input('quantityColumns').disabled).toBe(false);
     select('[name=fieldType]','TEXT');expect(input('quantityColumns').disabled).toBe(true);
+});
+
+it('validates numeric preview answers with either decimal separator', () => {
+    boot();
+    select('[name="fieldType"]', 'NUMBER');
+    const answer = dom.window.document.querySelector<HTMLInputElement>('.field-preview-control input')!;
+    expect(answer.inputMode).toBe('decimal');
+    for (const [value, invalid] of [['abc', 'true'], ['-1,25', 'false'], ['8.5', 'false'], ['', 'false']]) {
+        answer.value = value;
+        answer.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+        expect(answer.getAttribute('aria-invalid')).toBe(invalid);
+    }
+});
+
+it('previews the whole product in storefront order with every field type and live drafts', () => {
+    boot('', document => {
+        const form = document.querySelector('form')!;
+        const configured = document.createElement('div');
+        configured.className = 'field-list';
+        const types = ['TEXT', 'TEXTAREA', 'NUMBER', 'SELECT', 'CHECKBOX', 'IMAGE_SELECT', 'COLOR_SELECT', 'QUANTITY_SELECT', 'FILE_UPLOAD'];
+        for (const [index, type] of types.entries()) {
+            const row = document.createElement('details');
+            row.className = 'field-item';
+            row.id = 'configured-field-' + (index + 1);
+            const editor = form.cloneNode(true) as HTMLFormElement;
+            editor.querySelector<HTMLInputElement>('[name=label]')!.value = type;
+            editor.querySelector<HTMLSelectElement>('[name=fieldType]')!.value = type;
+            editor.querySelector<HTMLInputElement>('[name=sortOrder]')!.value = String(index);
+            editor.querySelector<HTMLInputElement>('.field-position')!.value = String(index + 1);
+            editor.querySelector<HTMLInputElement>('[name=required]')!.checked = index === 0;
+            if (type === 'COLOR_SELECT') editor.querySelector<HTMLTextAreaElement>('[name=optionsText]')!.value = '[{"label":"Verde","color":"#008000"}]';
+            if (type === 'FILE_UPLOAD') editor.querySelector<HTMLTextAreaElement>('[name=optionsText]')!.value = 'PDF';
+            if (type === 'IMAGE_SELECT') editor.querySelector<HTMLInputElement>('[name=imageOptionsJson]')!.value = '[{"id":"img","label":"Foto"}]';
+            row.append(editor);
+            configured.append(row);
+        }
+        const draft = document.createElement('details');
+        draft.id = 'new-field';
+        form.querySelector<HTMLInputElement>('[name=label]')!.value = '';
+        form.before(configured, draft);
+        draft.append(form);
+        document.body.insertAdjacentHTML('beforeend', '<details data-product-preview><p data-product-preview-empty></p><div data-product-preview-fields></div></details>');
+    });
+    const document = dom.window.document;
+    const preview = document.querySelector<HTMLElement>('[data-product-preview-fields]')!;
+    const labels = () => [...preview.children].map(field => field.querySelector('legend, span')?.textContent);
+    expect(labels()).toEqual(['TEXT *', 'TEXTAREA', 'NUMBER', 'SELECT *', 'CHECKBOX', 'IMAGE_SELECT', 'COLOR_SELECT', 'QUANTITY_SELECT', 'FILE_UPLOAD']);
+    expect([...preview.children].map((field, index) => Boolean(field.querySelector([
+        'input[type=text]', 'textarea', 'input[inputmode=decimal]', 'select', 'input[type=checkbox]',
+        'img[src*="img"]', 'button[aria-label=Verde]', 'input[type=number]', 'input[accept=".pdf"]'
+    ][index])))).toEqual(Array(9).fill(true));
+    expect(Array.from(preview.querySelectorAll('input, textarea, select, button')).every(control =>
+        !control.id && !control.hasAttribute('name') && !control.closest('form'))).toBe(true);
+    const editor = document.querySelector<HTMLFormElement>('#configured-field-4 form')!;
+    editor.querySelector<HTMLInputElement>('[name=label]')!.focus();
+    expect(preview.children[3].getAttribute('aria-current')).toBe('true');
+    editor.querySelector<HTMLButtonElement>('.preview-locate')!.click();
+    expect(preview.closest('details')!.open).toBe(true);
+    expect(document.activeElement).toBe(preview.children[3]);
+    const dropdown = preview.querySelector('select')!;
+    dropdown.selectedIndex = 1;
+    expect(dropdown.value).toBe('Azul');
+    const edit = (control: HTMLInputElement, value: string) => {
+        control.value = value;
+        control.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    };
+    edit(document.querySelector<HTMLInputElement>('#configured-field-1 .field-position')!, '9');
+    expect(labels()).toEqual(['TEXTAREA', 'NUMBER', 'SELECT *', 'CHECKBOX', 'IMAGE_SELECT', 'COLOR_SELECT', 'QUANTITY_SELECT', 'TEXT *', 'FILE_UPLOAD']);
+    expect(dropdown.value).toBe('Azul');
+    const draft = document.querySelector<HTMLInputElement>('#new-field [name=label]')!;
+    edit(draft, 'Rascunho');
+    expect(labels()[0]).toBe('Rascunho *');
+    expect(preview.children).toHaveLength(10);
+    edit(draft, '');
+    expect(preview.children).toHaveLength(9);
 });

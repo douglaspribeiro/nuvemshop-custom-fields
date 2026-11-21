@@ -1,5 +1,5 @@
 <!doctype html>
-<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="#{template.choose}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="#{template.choose}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block></head>
 <body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('templates')}"></th:block><main class="shell"><p class="panel" role="alert" th:if="${templateError}" th:text="${templateError}"></p>
 <section class="page-header"><div><h1 th:text="#{template.choose}"></h1><p th:text="${template.name}"></p></div><a class="button" href="/admin/templates" th:text="#{template.library}"></a></section>
 <a class="button primary" th:href="@{/admin/templates/batch(key=${template.key})}" th:text="#{batch.title}"></a>

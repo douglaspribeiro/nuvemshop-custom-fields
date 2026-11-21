@@ -60,6 +60,7 @@ class ComplementAdminTest {
         session = merchant("read_products");
         when(features.allows(anyLong(), eq(FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS))).thenReturn(true);
         storeId = (Long) session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY);
+        when(features.allows(storeId, FeatureAccessProperties.Feature.APPS_MENU)).thenReturn(true);
         mvc.perform(get(HOME).session(session)).andExpect(status().isOk());
         csrf = (String) session.getAttribute("complementAdminCsrf");
         when(catalog.listProducts(any(), anyInt(), anyInt(), nullable(String.class)))
@@ -67,6 +68,62 @@ class ComplementAdminTest {
                         1,30,2,false,null));
         when(catalog.getCatalogProduct(any(), eq(10L))).thenReturn(product(10, 11, "Agenda"));
         when(catalog.getCatalogProduct(any(), eq(20L))).thenReturn(product(20, 21, "Passante"));
+    }
+
+    @Test void appSwitcherOnlyOpensComplementsForStoresWithAccess() throws Exception {
+        optIntoPreview();
+        when(features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).thenReturn(false);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("href=\"/admin/apps\""))))
+                .andExpect(content().string(not(containsString("apps-switcher-trigger"))));
+        mvc.perform(get("/admin/apps").session(session)).andExpect(status().isForbidden());
+        when(features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).thenReturn(true);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"/admin/apps/complements\"")));
+        String html = mvc.perform(get(HOME).session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).containsOnlyOnce("class=\"apps-sidebar\"")
+                .contains("/support/?app=complements", "/admin/suggestions?app=complements", "/styles/complements.css?v=");
+    }
+
+    @Test void classicAppsMenuRequiresBothGrantsAndDirectAccessRequiresComplements() throws Exception {
+        when(features.allows(storeId, FeatureAccessProperties.Feature.APPS_MENU)).thenReturn(false);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("href=\"/admin/apps\""))));
+        mvc.perform(get("/admin/apps").session(session)).andExpect(status().isOk());
+        when(features.allows(storeId, FeatureAccessProperties.Feature.APPS_MENU)).thenReturn(true);
+        when(features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).thenReturn(false);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("href=\"/admin/apps\""))));
+        mvc.perform(get("/admin/apps").session(session)).andExpect(status().isForbidden());
+        when(features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).thenReturn(true);
+        mvc.perform(get("/admin").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"/admin/apps\"")));
+        mvc.perform(get("/admin/apps").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("/styles/complements-classic.css?v=")))
+                .andExpect(content().string(not(containsString("merchant-sidebar"))));
+    }
+
+    @Test void groupsMultipleComplementsUnderOneProduct() throws Exception {
+        optIntoPreview();
+        when(catalog.getCatalogProduct(any(), eq(30L))).thenReturn(product(30, 31, "Caneta"));
+        mvc.perform(link("21", csrf)).andExpect(redirectedUrl(HOME));
+        mvc.perform(post(HOME + "/link").session(session)
+                        .param("parentId", "10").param("productId", "30").param("variantId", "31")
+                        .param("label", "Adicionar caneta").param("csrf", csrf))
+                .andExpect(redirectedUrl(HOME));
+        String html = mvc.perform(get(HOME).session(session)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).containsOnlyOnce("Produto principal: Agenda")
+                .contains("Adicionar passante", "Adicionar caneta", "new?parentId=10");
+    }
+
+    private void optIntoPreview() throws Exception {
+        when(features.allows(storeId, FeatureAccessProperties.Feature.MERCHANT_INTERFACE_PREVIEW)).thenReturn(true);
+        mvc.perform(get(HOME).session(session)).andExpect(status().isOk());
+        mvc.perform(post("/admin/interface").session(session).param("choice", "preview")
+                        .param("csrf", (String) session.getAttribute("merchantUiCsrf")))
+                .andExpect(redirectedUrl("/admin"));
     }
 
     @Test void linksAndManagesAnOfferOnlyWithinItsStore() throws Exception {

@@ -6,7 +6,7 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.style.title} + ' - ' + #{common.app.title}">Cores dos campos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('appearance')}"></th:block>

@@ -9,7 +9,8 @@ public record FeatureAccessProperties(String allowed) {
     public enum Feature {
         APPS_MENU("apps-menu"),
         PRODUCT_COMPLEMENTS("product-complements"),
-        SCHEDULED_PIX("scheduled-pix");
+        SCHEDULED_PIX("scheduled-pix"),
+        MERCHANT_INTERFACE_PREVIEW("merchant-interface-preview");
 
         private final String key;
         Feature(String key) { this.key = key; }

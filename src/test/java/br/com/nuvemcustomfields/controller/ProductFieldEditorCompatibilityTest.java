@@ -1,6 +1,9 @@
 package br.com.nuvemcustomfields.controller;
 
 import br.com.nuvemcustomfields.config.AdminSessionInterceptor;
+import br.com.nuvemcustomfields.entity.MerchantInterfacePreference.Choice;
+import br.com.nuvemcustomfields.properties.FeatureAccessProperties;
+import br.com.nuvemcustomfields.service.MerchantInterfaceService;
 import br.com.nuvemcustomfields.dto.FieldForm;
 import br.com.nuvemcustomfields.entity.*;
 import br.com.nuvemcustomfields.repository.StoreRepository;
@@ -22,6 +25,28 @@ class ProductFieldEditorCompatibilityTest {
     @Autowired StoreRepository stores;
     @Autowired PersonalizationAdminService admin;
     @Autowired MockMvc mvc;
+    @Autowired MerchantInterfaceService merchantInterface;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean FeatureAccessProperties grants;
+    private void useNewEditor(long storeId) {
+        org.mockito.Mockito.when(grants.allows(storeId, FeatureAccessProperties.Feature.MERCHANT_INTERFACE_PREVIEW)).thenReturn(true);
+        assertThat(merchantInterface.choose(storeId, Choice.PREVIEW)).isTrue();
+    }
+    @Test void duplicatesOnlyWithinTheProductAndPersistsAsAnIndependentField() throws Exception {
+        long storeId=990088781L, productId=124L;
+        var store=new Store();store.setStoreId(storeId);store.setStoreCountryCode("BR");store.setPlan(PlanType.PREMIUM_PLUS);stores.saveAndFlush(store);
+        useNewEditor(storeId);
+        admin.ensureRule(storeId,productId,"Produto");admin.ensureRule(storeId,productId+1,"Outro");
+        var source=new FieldForm();source.setLabel("Nome");source.setMaxLength(32);source.setPlaceholder("Digite");source.setRequired(true);source.setSortOrder(0);admin.addField(storeId,productId,source);
+        entityManager.flush();entityManager.clear();
+        var original=admin.requireRuleWithFields(storeId,productId).getFields().getFirst();var session=new MockHttpSession();session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY,storeId);
+        var html=mvc.perform(get("/admin/products/"+productId+"/fields").param("duplicateFieldId",original.getId().toString()).session(session)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("Nome c&oacute;pia", "data-initial-dirty=\"true\"");
+        assertThat(admin.requireRuleWithFields(storeId,productId).getFields()).hasSize(1);
+        mvc.perform(post("/admin/products/"+productId+"/fields").session(session).param("label","Nome (cópia)").param("fieldType","TEXT").param("required","true").param("maxLength","32").param("placeholder","Digite").param("sortOrder","1")).andExpect(status().is3xxRedirection());
+        entityManager.flush();entityManager.clear();
+        var saved=admin.requireRuleWithFields(storeId,productId).getFields();assertThat(saved).hasSize(2);assertThat(saved.get(0).getLabel()).isEqualTo("Nome");assertThat(saved.get(1).getLabel()).isEqualTo("Nome (cópia)");
+        var other=mvc.perform(get("/admin/products/"+(productId+1)+"/fields").param("duplicateFieldId",original.getId().toString()).session(session)).andExpect(status().isNotFound());
+    }
     @Test void editingExistingConfigurationPreservesItsRuleAndSeparatesCreation() throws Exception {
         long storeId = 990088779L, productId = 123L;
         var store = new Store(); store.setStoreId(storeId); store.setStoreCountryCode("BR"); store.setPlan(PlanType.PREMIUM_PLUS);
@@ -53,6 +78,34 @@ class ProductFieldEditorCompatibilityTest {
         assertThat(saved.getFirst().isRequired()).isTrue();
         assertThat(saved.getFirst().getSortOrder()).isEqualTo(3);
     }
+    @Test void offersAnotherFieldAfterSavingOnlyWhenThereIsCapacity() throws Exception {
+        for (var plan : java.util.List.of(PlanType.FREE, PlanType.PREMIUM_PLUS)) {
+            long storeId = 990088910L + plan.ordinal();
+            var store = new Store();
+            store.setStoreId(storeId);
+            store.setStoreCountryCode("BR");
+            store.setPlan(plan);
+            stores.saveAndFlush(store);
+            useNewEditor(storeId);
+            admin.ensureRule(storeId, 123L, "Agenda");
+            var session = new MockHttpSession();
+            session.setAttribute(AdminSessionInterceptor.STORE_SESSION_KEY, storeId);
+            String path = "/admin/products/123/fields";
+            var result = mvc.perform(post(path).session(session)
+                            .param("label", "Nome na capa").param("fieldType", "TEXT"))
+                    .andExpect(status().is3xxRedirection()).andReturn();
+            assertThat(result.getFlashMap().get("fieldSaved")).isEqualTo(true);
+            var html = mvc.perform(get(path).session(session).flashAttrs(result.getFlashMap()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            if (plan == PlanType.FREE) {
+                assertThat(html).contains("Seu plano atual atingiu o limite de campos por produto")
+                        .doesNotContain(">Adicionar outro campo</a>");
+            } else {
+                assertThat(html).contains(">Adicionar outro campo</a>", "id=\"new-field\"");
+            }
+        }
+    }
+
     @Test void fieldSelectorsExplainAndDisableUnavailableTypesForEveryPlan() throws Exception {
         long nextId = 990088850L;
         for (var plan : PlanType.values()) {

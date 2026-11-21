@@ -1,117 +1,660 @@
 <!doctype html>
 <html lang="pt-BR">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Seletor de aplicativos · Protótipo</title>
-<style>
-:root{--ink:#25213a;--muted:#625b75;--accent:#5034bf;--tint:#efebff;--border:#e5e1ee}
-*{box-sizing:border-box}
-body{margin:0;background:#f8f7fb;color:var(--ink);font:15px/1.5 system-ui,sans-serif;display:grid;grid-template-columns:292px minmax(0,1fr);min-height:100vh}
-aside{background:white;padding:26px 16px;border-right:1px solid var(--border)}
-.shop,.switch,.app,.item{display:flex;align-items:center;gap:11px}
-.shop{margin:0 6px 24px}.shop small,.item small{display:block}
-.icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:9px;background:var(--tint);color:var(--accent);font-weight:700}
-.shop .icon,.item .icon{width:42px;height:42px}
-small,p{color:var(--muted)}
-details{position:relative}
-summary{cursor:pointer;list-style:none;border:1px solid #d8cdf9;border-radius:10px;background:#faf8ff;padding:9px;color:var(--accent);font-weight:700;font-size:14px}
-summary::-webkit-details-marker{display:none}
-.chevron{margin-left:auto}
-details[open] .chevron{transform:rotate(180deg)}
-.apps{position:absolute;top:calc(100% + 8px);left:0;z-index:1;padding:8px;background:white;width:min(336px,calc(100vw - 32px));border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px #21133321}
-.apps>small{display:block;padding:5px 8px 8px;font-weight:650}
-.app{width:100%;text-decoration:none;color:inherit;font-size:13px;border-radius:8px;padding:7px;text-align:left;background:none;border:0;cursor:pointer}
-.app .name{flex:1;font-weight:650}.app b{color:var(--accent);font-size:12px}
-.app:hover,.app[aria-current=page]{background:var(--tint)}
-.menu{display:grid;gap:5px;margin-top:22px}
-.menu span{padding:8px 12px;border-radius:8px;color:var(--muted)}
-.menu span:first-child{background:var(--tint);color:var(--accent);font-weight:650}
-main{padding:32px clamp(20px,5vw,68px);max-width:1150px}
-.crumb{display:block;margin-bottom:28px}
-h1,h2,p{margin:0}h1{font-size:clamp(28px,4vw,39px);line-height:1.15;letter-spacing:-.035em}h2{font-size:18px}
-p{margin:9px 0 22px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:16px}
-.card{border:1px solid var(--border);background:white;border-radius:12px;padding:19px}
-.count{display:block;font-size:28px}
-.item{margin-top:12px;border-top:1px solid var(--border);padding-top:14px}
-.badge{margin-left:auto;background:#e5f5ec;color:#195f44;border-radius:99px;padding:3px 8px;font-size:12px}
-dialog{border:1px solid var(--border);border-radius:12px;color:var(--ink);padding:20px;width:min(390px,90vw)}
-dialog::backdrop{background:#21133355}
-dialog button{border:0;border-radius:7px;background:var(--tint);color:var(--accent);padding:7px 12px;cursor:pointer}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-@media(max-width:660px){body{display:block}aside{padding:16px;border-right:0;border-bottom:1px solid var(--border)}.shop{margin-bottom:14px}.menu{display:none}main{padding-top:22px}.crumb{margin-bottom:17px}}
-</style>
-<aside>
-  <div class="shop"><span class="icon" aria-hidden="true">P</span><div><strong>Minha papelaria</strong><small>Painel da loja</small></div></div>
-  <details id="switcher" open>
-    <summary class="switch"><span class="icon" id="appIcon" aria-hidden="true">▤</span><span id="appName">Nuvem Custom Fields</span><span class="chevron" aria-hidden="true">⌄</span></summary>
-    <nav class="apps" aria-label="Aplicativos">
-      <small>Aplicativos</small>
-      <a class="app" href="#nc"><span class="icon" aria-hidden="true">▤</span><span class="name">Nuvem Custom Fields</span><b>Abrir</b></a>
-      <a class="app" href="#complementos"><span class="icon" aria-hidden="true">◇</span><span class="name">Complementos de Produto</span><b>Abrir</b></a>
-      <button class="app" type="button" data-info="Permita que seus clientes salvem produtos para ver depois."><span class="icon" aria-hidden="true">♡</span><span class="name">Favoritos</span><b>Conhecer</b></button>
-      <button class="app" type="button" data-info="Avise seus clientes quando um produto voltar ao estoque."><span class="icon" aria-hidden="true">♧</span><span class="name">Avise-me</span><b>Conhecer</b></button>
-    </nav>
-  </details>
-  <div class="menu" id="menu"></div>
-</aside>
-<main>
-  <small class="crumb" id="crumb"></small>
-  <section id="nc">
-    <h1>Nuvem Custom Fields</h1>
-    <p>Gerencie as opções de personalização dos seus produtos.</p>
-    <div class="stats"><div class="card"><small>Produtos personalizados</small><strong class="count">3</strong></div><div class="card"><small>Campos ativos</small><strong class="count">5</strong></div></div>
-    <div class="card"><h2>Produtos personalizados</h2><div class="item"><span class="icon" aria-hidden="true">▤</span><div><strong>Agenda personalizada</strong><small>Nome na capa e cor da gravação</small></div><span class="badge">Ativo</span></div></div>
-  </section>
-  <section id="complementos" hidden>
-    <h1>Complementos de Produto</h1>
-    <p>Ofereça itens extras na página dos seus produtos.</p>
-    <div class="card"><h2>Ofertas</h2><div class="item"><span class="icon" aria-hidden="true">◇</span><div><strong>Agenda + passante</strong><small>Passante · R$ 12,00 por unidade</small></div><span class="badge">Ativa</span></div></div>
-  </section>
-</main>
-<dialog id="about" aria-labelledby="aboutTitle"><h2 id="aboutTitle"></h2><p id="aboutText"></p><form method="dialog"><button>Fechar</button></form></dialog>
-<script>
-const find = selector => document.querySelector(selector);
-const switcher = find('#switcher');
-const apps = [...document.querySelectorAll('.app[href]')];
-function showHome() {
-  const complementos = location.hash === '#complementos';
-  const active = complementos ? '#complementos' : '#nc';
-  const current = apps.find(link => link.hash === active);
-  const name = current.querySelector('.name').textContent;
-  find('#appName').textContent = name;
-  find('#appIcon').textContent = current.querySelector('.icon').textContent;
-  find('#crumb').textContent = 'Painel / ' + name;
-  const menu = complementos ? ['Ofertas', 'Configurações'] : ['Visão geral', 'Produtos', 'Modelos', 'Pedidos'];
-  find('#menu').replaceChildren(...menu.map(label => {
-    const row = document.createElement('span');
-    row.textContent = label;
-    return row;
-  }));
-  for (const link of apps) {
-    const selected = link === current;
-    find(link.hash).hidden = !selected;
-    if (selected) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
-    link.querySelector('b').textContent = selected ? 'Atual' : 'Abrir';
-  }
-}
-window.addEventListener('hashchange', showHome);
-for (const link of apps) link.addEventListener('click', () => { switcher.open = false; });
-document.addEventListener('click', event => { if (!switcher.contains(event.target)) switcher.open = false; });
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && switcher.open) {
-    switcher.open = false;
-    switcher.querySelector('summary').focus();
-  }
-});
-for (const button of document.querySelectorAll('[data-info]')) {
-  button.addEventListener('click', () => {
-    find('#aboutTitle').textContent = button.querySelector('.name').textContent;
-    find('#aboutText').textContent = button.dataset.info;
-    find('#about').showModal();
-  });
-}
-showHome();
-</script>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aplicativos da loja · Protótipo</title>
+  <style>
+    :root {
+      --ink: #182d34;
+      --muted: #4f636b;
+      --accent: #0b6074;
+      --tint: #e3f2f5;
+      --border: #d5e1e4;
+      --surface: #fff;
+      --canvas: #f5f8f9;
+      --green: #176345;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      min-height: 100vh;
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font: 15px/1.5 system-ui, sans-serif;
+    }
+    aside {
+      padding: 22px 15px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+    }
+    .shop, .switch, .app, .item { display: flex; align-items: center; gap: 11px; }
+    .shop { margin: 0 6px 22px; }
+    .shop small, .item small { display: block; }
+    small, p { color: var(--muted); }
+    .icon {
+      display: grid;
+      flex: none;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: var(--tint);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .shop .icon, .item .icon { width: 42px; height: 42px; }
+    details { position: relative; }
+    summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 9px;
+      border: 1px solid #a4c8d0;
+      border-radius: 10px;
+      background: #f2f9fa;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    summary::-webkit-details-marker { display: none; }
+    .chevron { margin-left: auto; }
+    .apps {
+      position: absolute;
+      z-index: 5;
+      top: calc(100% + 8px);
+      left: 0;
+      width: min(340px, calc(100vw - 32px));
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 12px 30px #15374021;
+    }
+    .apps > small { display: block; padding: 5px 8px 8px; font-weight: 650; }
+    .app {
+      width: 100%;
+      padding: 7px;
+      border: 0;
+      border-radius: 8px;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+      text-decoration: none;
+    }
+    .app .name { flex: 1; font-weight: 650; }
+    .app b { color: var(--accent); font-size: 12px; }
+    .app:hover, .app[aria-current="page"] { background: var(--tint); }
+    .menu { display: grid; gap: 4px; margin-top: 18px; }
+    .menu a {
+      display: block;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .menu a.active { background: var(--tint); color: var(--accent); font-weight: 650; }
+    main { width: 100%; max-width: 1220px; padding: 28px clamp(18px, 5vw, 66px); }
+    .crumb { display: block; margin-bottom: 20px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(27px, 4vw, 36px); letter-spacing: -.03em; line-height: 1.18; }
+    h2 { font-size: 19px; }
+    h3 { font-size: 16px; }
+    p { margin: 8px 0 20px; }
+    .panel { margin: 14px 0; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: white; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .item { flex-wrap: wrap; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .badge { margin-left: auto; padding: 3px 9px; border-radius: 99px; background: #e5f5ec; color: #195f44; font-size: 12px; white-space: nowrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 10px 15px;
+      border: 1px solid var(--accent);
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 650;
+      text-decoration: none;
+    }
+    .btn:hover { background: #08495a; }
+    .btn:disabled { cursor: not-allowed; opacity: .48; }
+    .btn.secondary { background: white; color: var(--accent); }
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--accent); }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 190px)); gap: 12px; margin: 18px 0; }
+    .stat { padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+    .stat strong { display: block; font-size: 27px; }
+    .intro { max-width: 690px; }
+    .workflow { display: grid; grid-template-columns: minmax(270px, .9fr) minmax(300px, 1.1fr); gap: 20px; align-items: start; }
+    .field { display: grid; gap: 6px; margin: 15px 0; }
+    .field label { font-weight: 650; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid #98adb4;
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+    }
+    .field input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+    .hint { margin: 0; font-size: 13px; }
+    .preview { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: linear-gradient(145deg, #edf5f7, #f7fafb); }
+    .store-card { max-width: 390px; margin: auto; padding: 14px; border: 1px solid #dbe5e8; border-radius: 10px; background: white; box-shadow: 0 5px 18px #1537400a; }
+    .book {
+      position: relative;
+      display: grid;
+      aspect-ratio: 1.55 / 1;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #c4a986, #92714f 65%, #70553c);
+      box-shadow: inset 0 0 0 5px #ffffff22, inset 0 0 16px #38231365;
+      color: white;
+    }
+    .book::before { position: absolute; top: 0; bottom: 0; left: 12px; width: 3px; background: #ffffff50; box-shadow: 3px 0 3px #513a2d55; content: ""; }
+    .book::after { position: absolute; inset: 10px; border: 1px solid #fff8; border-radius: 3px; content: ""; }
+    .cover-text { position: relative; z-index: 1; text-align: center; text-shadow: 0 1px 3px #49331e; font-family: Georgia, serif; }
+    .cover-text strong { display: block; font-size: clamp(18px, 3vw, 27px); font-weight: 500; }
+    .cover-text span { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    .store-title { margin: 13px 0 4px !important; color: var(--ink); font-weight: 650; }
+    .store-card .field { margin: 10px 0; }
+    .store-card .field label { font-size: 13px; }
+    .store-card input { padding: 8px; }
+    .step { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--muted); font-size: 13px; }
+    .step b { display: grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: var(--tint); color: var(--accent); }
+    .success { margin: 14px 0; padding: 14px; border: 1px solid #b8dfc9; border-radius: 10px; background: #f0faf4; color: var(--green); }
+    .offer-art { display: grid; height: 115px; place-items: center; margin-bottom: 12px; border-radius: 10px; background: #eaf3f5; }
+    .passante { position: relative; width: 94px; height: 62px; transform: rotate(-8deg); border-radius: 12px; background: linear-gradient(135deg, #d4c7a9, #a78d61); box-shadow: inset 0 0 0 5px #eee4d2; }
+    .passante::before { position: absolute; inset: 12px 30px; border: 3px solid #f5eedf; border-radius: 5px; content: ""; }
+    .mini-book { position: absolute; width: 66px; height: 85px; transform: rotate(8deg); border-radius: 5px; background: linear-gradient(135deg, #b6946b, #72563b); box-shadow: inset 5px 0 #ffffff30; }
+    .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+    .product-option { padding: 13px; border: 1px solid var(--border); border-radius: 11px; background: white; }
+    .product-option.selected { padding: 12px; border: 2px solid var(--accent); }
+    .product-option .offer-art { height: 96px; }
+    .product-option p { margin: 5px 0; font-size: 13px; }
+    .product-option input { accent-color: var(--accent); }
+    .demo-control { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .demo-control p { margin: 4px 0 9px; font-size: 12px; }
+    dialog { width: min(390px, 90vw); padding: 20px; border: 1px solid var(--border); border-radius: 12px; color: var(--ink); }
+    dialog::backdrop { background: #15374055; }
+    dialog button { padding: 7px 12px; border: 0; border-radius: 7px; background: var(--tint); color: var(--accent); cursor: pointer; }
+    :focus-visible { outline: 3px solid #14778c; outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 1000px) {
+      .workflow { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 700px) {
+      body { display: block; }
+      aside { padding: 12px 14px; border-right: 0; border-bottom: 1px solid var(--border); }
+      .shop { display: none; }
+      #switcher summary { min-height: 48px; }
+      .menu { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 9px; white-space: nowrap; }
+      .menu a { padding: 7px 10px; font-size: 13px; }
+      main { padding: 19px 15px; }
+      .crumb { margin-bottom: 14px; }
+      .panel { padding: 16px; }
+      .row { align-items: flex-start; flex-wrap: wrap; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .item { align-items: flex-start; }
+      .badge { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <div class="shop">
+      <span class="icon" aria-hidden="true">P</span>
+      <div><strong>Minha papelaria</strong><small>Painel da loja</small></div>
+    </div>
+    <details id="switcher">
+      <summary class="switch">
+        <span class="icon" id="appIcon" aria-hidden="true">▤</span>
+        <span id="appName">Nuvem Custom Fields</span>
+        <span class="chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <nav class="apps" aria-label="Aplicativos">
+        <small>Aplicativos</small>
+        <a class="app" href="#nc"><span class="icon" aria-hidden="true">▤</span><span class="name">Nuvem Custom Fields</span><b>Abrir</b></a>
+        <a class="app" href="#complementos"><span class="icon" aria-hidden="true">◇</span><span class="name">Complementos de Produto</span><b>Abrir</b></a>
+        <button class="app" type="button" data-info="Permita que seus clientes salvem produtos para ver depois."><span class="icon" aria-hidden="true">♡</span><span class="name">Favoritos</span><b>Conhecer</b></button>
+        <button class="app" type="button" data-info="Avise seus clientes quando um produto voltar ao estoque."><span class="icon" aria-hidden="true">♧</span><span class="name">Avise-me</span><b>Conhecer</b></button>
+      </nav>
+    </details>
+    <nav class="menu" id="menu" aria-label="Navegação do aplicativo"></nav>
+    <div class="demo-control">
+      <small>Modo demonstração</small>
+      <p>Alterne entre a loja sem configuração e uma loja com produto existente.</p>
+      <button class="btn secondary" id="demoToggle" type="button">Mostrar loja existente</button>
+    </div>
+  </aside>
+
+  <main>
+    <small class="crumb" id="crumb"></small>
+    <section id="nc-home" hidden>
+      <div class="intro">
+        <h1>Nuvem Custom Fields</h1>
+        <p>Personalize seus produtos e deixe cada pedido com a cara de quem compra.</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><small>Produtos personalizados</small><strong id="productCount">0</strong></div>
+        <div class="stat"><small>Campos ativos</small><strong id="fieldCount">0</strong></div>
+      </div>
+      <div class="panel">
+        <h2>Comece a personalizar</h2>
+        <p>Adicione campos aos produtos para oferecer opções personalizadas na sua loja.</p>
+        <div class="actions">
+          <a class="btn" id="homeSetupLink" href="#nc-setup">Configurar primeiro produto</a>
+          <a class="btn secondary" href="#nc-products">Ver produtos</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="nc-products" hidden>
+      <div class="row">
+        <div><h1>Seus produtos</h1><p>Campos de personalização por produto.</p></div>
+      <button class="btn" id="startSetup" type="button">Configurar primeiro produto</button>
+      </div>
+      <div class="panel"><div id="productList"></div></div>
+    </section>
+
+    <section id="nc-setup" hidden>
+      <button class="btn ghost back" data-go="nc" type="button">← Produtos</button>
+      <div class="step"><b>1</b> Escolha um produto</div>
+      <h1>Configure a personalização</h1>
+      <p>Selecione o produto da loja que seus clientes poderão personalizar.</p>
+      <div class="panel">
+        <div class="item" style="border:0;padding:0;margin:0">
+          <span class="icon" aria-hidden="true">▤</span>
+          <div><strong>Agenda personalizada</strong><small>Agendas · R$ 89,90</small></div>
+          <button class="btn" id="chooseAgenda" type="button">Configurar agenda</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="nc-editor" hidden>
+      <button class="btn ghost back" data-go="nc" type="button">← Produtos</button>
+      <div class="step"><b>2</b> Configure os campos</div>
+      <h1>Personalize a agenda</h1>
+      <p>Defina o que a pessoa poderá escrever e veja como fica na página do produto.</p>
+      <div class="workflow">
+        <div class="panel">
+          <h2>Campos de personalização</h2>
+          <div id="fieldEditors"></div>
+          <template id="fieldTemplate">
+            <fieldset style="margin:16px 0;border:1px solid var(--border);border-radius:10px">
+              <legend></legend>
+              <label class="field">Nome do campo<input name="label" maxlength="60" required placeholder="Ex.: Dedicatória"></label>
+              <label class="field">Tipo de resposta<select name="type"><option>Texto curto</option><option>Texto longo</option></select></label>
+              <label><input name="required" type="checkbox"> Resposta obrigatória</label>
+            </fieldset>
+          </template>
+          <button class="btn secondary" id="addField" type="button">+ Adicionar campo</button>
+          <div class="actions">
+            <button class="btn" id="saveProduct" type="button">Salvar e ativar</button>
+            <button class="btn secondary" data-go="nc" type="button">Cancelar</button>
+          </div>
+        </div>
+        <div class="preview">
+          <small>PRÉVIA NA LOJA · DEMONSTRAÇÃO</small>
+          <div class="store-card">
+            <div class="book"><div class="cover-text"><span>feito para</span><strong id="coverName">Marina</strong></div></div>
+            <p class="store-title">Agenda personalizada</p>
+            <p style="font-size:13px;margin:0 0 10px">R$ 89,90</p>
+            <div id="fieldPreviews"></div>
+          </div>
+          <small>Exemplo com o nome preenchido pela pessoa compradora.</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="nc-done" hidden>
+      <div class="success"><strong>Produto configurado e ativo</strong><div>Configuração salva neste protótipo. A loja não foi publicada nem alterada.</div></div>
+      <h1>Pronto para receber pedidos personalizados</h1>
+      <p>Você pode editar os campos quando quiser.</p>
+      <div class="panel">
+        <div class="item" style="margin:0">
+          <span class="icon" aria-hidden="true">▤</span>
+          <div><strong>Agenda personalizada</strong><small id="savedSummary"></small></div>
+          <span class="badge">Ativo neste protótipo</span>
+        </div>
+        <div class="actions">
+          <button class="btn" id="editProduct" type="button">Editar personalização</button>
+          <button class="btn secondary" data-go="nc" type="button">Voltar aos produtos</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="complementos-home" hidden>
+      <div class="intro">
+        <h1>Complementos de Produto</h1>
+        <p>Ofereça itens extras na página dos seus produtos e aumente as possibilidades de cada compra.</p>
+      </div>
+      <div class="panel">
+        <div class="row">
+          <div><h2>Ofertas</h2><small>Complementos exibidos junto aos seus produtos</small></div>
+          <button class="btn" id="newOffer" type="button">+ Nova oferta</button>
+        </div>
+        <div id="offerList"></div>
+      </div>
+    </section>
+
+    <section id="offer-setup" hidden>
+      <button class="btn ghost back" data-go="complementos" type="button">← Ofertas</button>
+      <div class="step"><b>1</b> Monte sua oferta</div>
+      <h1>Complementos da agenda</h1>
+      <p>Escolha quais itens o comprador poderá acrescentar na página do produto.</p>
+      <div class="panel">
+        <h2>Agenda personalizada</h2>
+        <small>Produto principal · R$ 89,90</small>
+        <form id="addComplement" class="field">
+          <label for="complementName">Adicionar complemento</label>
+          <input id="complementName" list="catalogExamples" autocomplete="off" required placeholder="Ex.: Passante">
+          <datalist id="catalogExamples">
+            <option value="Passante"></option>
+            <option value="Caneta"></option>
+            <option value="Marcador de página"></option>
+          </datalist>
+          <small>Na demonstração, escolha uma sugestão ou digite outro produto.</small>
+          <div><button class="btn secondary" type="submit">Adicionar</button></div>
+        </form>
+        <div class="preview" style="margin-top:14px">
+          <h3>Complementos oferecidos com a agenda</h3>
+          <ul id="offerPreview" aria-live="polite"></ul>
+          <small id="offerPreviewHint">Adicione o primeiro complemento para montar a oferta.</small>
+        </div>
+        <div class="actions">
+          <button class="btn" id="saveOffer" type="button" disabled>Salvar oferta</button>
+          <button class="btn secondary" data-go="complementos" type="button">Cancelar</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="about" aria-labelledby="aboutTitle">
+    <h2 id="aboutTitle"></h2><p id="aboutText"></p>
+    <form method="dialog"><button>Fechar</button></form>
+  </dialog>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const switcher = $("#switcher");
+    const appLinks = [...document.querySelectorAll(".app[href]")];
+    const sections = [...document.querySelectorAll("main > section")];
+
+    const firstField = { label: "Nome na capa", type: "Texto curto", required: true };
+    const exampleFields = [firstField, { label: "Cor da gravação", type: "Texto curto", required: false }];
+    let savedFields = [];
+    let configured = false;
+    let existingDemo = false;
+    let savedComplements = [];
+    let draftComplements = [];
+
+    function productFields() {
+      return configured ? savedFields : existingDemo ? exampleFields : [];
+    }
+
+    function addFieldEditor(field) {
+      const editor = $("#fieldTemplate").content.firstElementChild.cloneNode(true);
+      const index = $("#fieldEditors").childElementCount;
+      editor.querySelector("legend").textContent = "Campo " + (index + 1);
+      editor.elements.label.value = field.label;
+      editor.elements.type.value = field.type;
+      editor.elements.required.checked = field.required;
+      $("#fieldEditors").append(editor);
+
+      const preview = document.createElement("label");
+      preview.className = "field";
+      const caption = document.createElement("span");
+      preview.append(caption);
+      $("#fieldPreviews").append(preview);
+      let answer;
+      function updatePreview() {
+        caption.textContent = (editor.elements.label.value.trim() || "Campo " + (index + 1)) +
+          (editor.elements.required.checked ? " *" : "");
+        const tag = editor.elements.type.value === "Texto longo" ? "textarea" : "input";
+        if (answer?.localName === tag) return;
+        const replacement = document.createElement(tag);
+        replacement.value = answer?.value ?? (index === 0 ? "Marina" : "");
+        if (index === 0) replacement.oninput = () => {
+          $("#coverName").textContent = replacement.value || "Seu nome";
+        };
+        if (answer) answer.replaceWith(replacement);
+        else preview.append(replacement);
+        answer = replacement;
+      }
+      editor.oninput = updatePreview;
+      updatePreview();
+      return editor;
+    }
+
+    function hydrateEditor() {
+      $("#fieldEditors").replaceChildren();
+      $("#fieldPreviews").replaceChildren();
+      $("#coverName").textContent = "Marina";
+      const fields = productFields();
+      (fields.length ? fields : [firstField]).forEach(addFieldEditor);
+    }
+
+    function renderProductList() {
+      const list = $("#productList");
+      list.replaceChildren();
+      const hasSavedProduct = configured || existingDemo;
+      $("#productCount").textContent = hasSavedProduct ? "1" : "0";
+      $("#fieldCount").textContent = productFields().length;
+      $("#startSetup").textContent = hasSavedProduct ? "Editar personalização" : "Configurar primeiro produto";
+      $("#homeSetupLink").textContent = hasSavedProduct ? "Editar personalização" : "Configurar primeiro produto";
+      $("#homeSetupLink").href = hasSavedProduct ? "#nc-editor" : "#nc-setup";
+
+      if (!hasSavedProduct) return;
+
+      const row = document.createElement("div");
+      row.className = "item";
+      const icon = document.createElement("span");
+      icon.className = "icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "▤";
+      const description = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = "Agenda personalizada";
+      const summary = document.createElement("small");
+      summary.textContent = productFields().map(field => field.label).join(" · ");
+      description.append(title, summary);
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "Ativo na demonstração";
+      const edit = document.createElement("button");
+      edit.className = "btn secondary";
+      edit.type = "button";
+      edit.textContent = "Editar";
+      edit.addEventListener("click", () => {
+        navigate("#nc-editor");
+      });
+      row.append(icon, description, badge, edit);
+      list.append(row);
+    }
+
+    function renderOffers() {
+      const list = $("#offerList");
+      list.replaceChildren();
+      $("#newOffer").textContent = savedComplements.length ? "Editar oferta" : "+ Nova oferta";
+      if (!savedComplements.length) return;
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = '<span class="icon" aria-hidden="true">◇</span><div><strong>Agenda personalizada</strong><small></small></div><span class="badge">Ativa na demonstração</span>';
+      row.querySelector("small").textContent = savedComplements.join(" · ");
+      list.append(row);
+    }
+
+    function makeNavLink(label, hash, active) {
+      const link = document.createElement("a");
+      link.href = hash;
+      link.textContent = label;
+      if (active) link.className = "active";
+      return link;
+    }
+
+    function route() {
+      const hash = location.hash || "#nc";
+      const isComplements = hash === "#complementos" || hash === "#offer-setup";
+      const activeAppHash = isComplements ? "#complementos" : "#nc";
+      const currentApp = appLinks.find((link) => link.hash === activeAppHash);
+      $("#appName").textContent = currentApp.querySelector(".name").textContent;
+      $("#appIcon").textContent = currentApp.querySelector(".icon").textContent;
+      $("#crumb").textContent = `Painel / ${$("#appName").textContent}`;
+      appLinks.forEach((link) => {
+        const current = link === currentApp;
+        if (current) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
+        link.querySelector("b").textContent = current ? "Atual" : "Abrir";
+      });
+
+      const nav = $("#menu");
+      nav.replaceChildren();
+      if (isComplements) {
+        nav.append(makeNavLink("Ofertas", "#complementos", hash === "#complementos"));
+      } else {
+        nav.append(
+          makeNavLink("Visão geral", "#nc", hash === "#nc"),
+          makeNavLink("Produtos", "#nc-products", hash !== "#nc"),
+        );
+      }
+
+      sections.forEach((section) => { section.hidden = true; });
+      const targetId = {
+        "#nc": "nc-home",
+        "#nc-products": "nc-products",
+        "#nc-setup": "nc-setup",
+        "#nc-editor": "nc-editor",
+        "#nc-done": "nc-done",
+        "#complementos": "complementos-home",
+        "#offer-setup": "offer-setup",
+      }[hash] || "nc-home";
+      if (targetId === "nc-editor") hydrateEditor();
+      $(`#${targetId}`).hidden = false;
+      renderProductList();
+      renderOffers();
+      $("#demoToggle").textContent = existingDemo ? "Mostrar loja vazia" : "Mostrar loja existente";
+    }
+
+    function navigate(hash) { location.hash = hash; }
+
+    window.addEventListener("hashchange", route);
+    appLinks.forEach((link) => link.addEventListener("click", () => { switcher.open = false; }));
+    document.addEventListener("click", (event) => {
+      if (!switcher.contains(event.target)) switcher.open = false;
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && switcher.open) {
+        switcher.open = false;
+        switcher.querySelector("summary").focus();
+      }
+    });
+    document.querySelectorAll("[data-go]").forEach((button) => {
+      button.addEventListener("click", () => navigate(`#${button.dataset.go}`));
+    });
+    $("#startSetup").addEventListener("click", () => {
+      navigate(configured || existingDemo ? "#nc-editor" : "#nc-setup");
+    });
+    $("#chooseAgenda").addEventListener("click", () => {
+      navigate("#nc-editor");
+    });
+    $("#addField").onclick = () => {
+      const editor = addFieldEditor({ label: "", type: "Texto curto", required: false });
+      editor.elements.label.focus();
+    };
+    $("#saveProduct").addEventListener("click", () => {
+      const fields = [];
+      for (const editor of $("#fieldEditors").children) {
+        const { label, type, required } = editor.elements;
+        label.value = label.value.trim();
+        if (!label.reportValidity()) return;
+        fields.push({ label: label.value, type: type.value, required: required.checked });
+      }
+      savedFields = fields;
+      configured = true;
+      $("#savedSummary").textContent = fields.map(field => field.label).join(" · ");
+      navigate("#nc-done");
+    });
+    $("#editProduct").addEventListener("click", () => {
+      navigate("#nc-editor");
+    });
+    $("#newOffer").addEventListener("click", () => {
+      draftComplements = [...savedComplements];
+      $("#addComplement").reset();
+      $("#complementName").setCustomValidity("");
+      updateOfferPreview();
+      navigate("#offer-setup");
+    });
+
+    function updateOfferPreview() {
+      const preview = $("#offerPreview");
+      preview.replaceChildren();
+      for (const name of draftComplements) {
+        const item = document.createElement("li");
+        item.className = "row";
+        const label = document.createElement("span");
+        label.textContent = name;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "btn ghost";
+        remove.textContent = "Remover";
+        remove.setAttribute("aria-label", "Remover " + name);
+        remove.onclick = () => {
+          draftComplements = draftComplements.filter(value => value !== name);
+          updateOfferPreview();
+          $("#complementName").focus();
+        };
+        item.append(label, remove);
+        preview.append(item);
+      }
+      $("#offerPreviewHint").hidden = draftComplements.length > 0;
+      $("#saveOffer").disabled = draftComplements.length === 0;
+    }
+
+    const complementInput = $("#complementName");
+    complementInput.oninput = () => complementInput.setCustomValidity("");
+    $("#addComplement").onsubmit = event => {
+      event.preventDefault();
+      const name = complementInput.value.trim();
+      const duplicate = draftComplements.some(value => value.localeCompare(name, "pt-BR", { sensitivity: "base" }) === 0);
+      if (!name || duplicate) {
+        complementInput.setCustomValidity(duplicate ? "Este complemento já está na oferta." : "Informe o produto.");
+        complementInput.reportValidity();
+        return;
+      }
+      draftComplements.push(name);
+      complementInput.value = "";
+      updateOfferPreview();
+      complementInput.focus();
+    };
+    $("#saveOffer").addEventListener("click", () => {
+      if (!draftComplements.length) return;
+      savedComplements = [...draftComplements];
+      navigate("#complementos");
+    });
+    $("#demoToggle").addEventListener("click", () => {
+      existingDemo = !existingDemo;
+      route();
+    });
+    document.querySelectorAll("[data-info]").forEach((button) => {
+      button.addEventListener("click", () => {
+        $("#aboutTitle").textContent = button.querySelector(".name").textContent;
+        $("#aboutText").textContent = button.dataset.info;
+        $("#about").showModal();
+      });
+    });
+
+    if (!location.hash) location.hash = "#nc";
+    else route();
+  </script>
+</body>
 </html>

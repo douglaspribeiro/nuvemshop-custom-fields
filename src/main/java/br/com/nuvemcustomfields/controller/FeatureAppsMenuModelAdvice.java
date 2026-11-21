@@ -21,6 +21,13 @@ public class FeatureAppsMenuModelAdvice {
         return features.allows(storeId, FeatureAccessProperties.Feature.APPS_MENU);
     }
 
+    @ModelAttribute("productComplementsVisible")
+    public boolean productComplementsVisible(HttpServletRequest request) {
+        var session = request.getSession(false);
+        if (session == null || !(session.getAttribute(AdminSessionInterceptor.STORE_SESSION_KEY) instanceof Long storeId)) return false;
+        return features.allows(storeId, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS);
+    }
+
     @ModelAttribute("scheduledPixVisible")
     public boolean scheduledPixVisible(HttpServletRequest request) {
         var session = request.getSession(false);

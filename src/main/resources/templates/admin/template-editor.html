@@ -1,6 +1,6 @@
 <!doctype html>
 <html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title th:text="#{template.editor}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+<title th:text="#{template.editor}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block></head>
 <body class="merchant-page product-field-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('templates')}"></th:block>
 <main class="shell"><section class="page-header"><div><h1 th:text="#{template.editor}"></h1><p th:text="#{template.independent}"></p></div><a class="button" href="/admin/templates" th:text="#{template.library}"></a></section>
 <form id="template-editor" class="form"><section class="panel"><label><span th:text="#{template.name}"></span><input name="templateName" required maxlength="100"></label>

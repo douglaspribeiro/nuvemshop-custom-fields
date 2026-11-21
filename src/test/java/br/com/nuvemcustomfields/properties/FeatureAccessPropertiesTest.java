@@ -14,6 +14,14 @@ class FeatureAccessPropertiesTest {
         assertThat(access.allows(142L, FeatureAccessProperties.Feature.APPS_MENU)).isFalse();
     }
 
+    @Test void merchantInterfaceGrantIsIndependentOfComplementAccess() {
+        var access = new FeatureAccessProperties("42:merchant-interface-preview, 99:product-complements");
+
+        assertThat(access.allows(42L, FeatureAccessProperties.Feature.MERCHANT_INTERFACE_PREVIEW)).isTrue();
+        assertThat(access.allows(42L, FeatureAccessProperties.Feature.PRODUCT_COMPLEMENTS)).isFalse();
+        assertThat(access.allows(99L, FeatureAccessProperties.Feature.MERCHANT_INTERFACE_PREVIEW)).isFalse();
+    }
+
     @Test void malformedConfigurationOrFeatureNeverGrantsAccess() {
         for (String value : new String[]{null, "", "42:apps-menu,invalid", "42:Apps-menu", "42:apps-menu,"}) {
             assertThat(new FeatureAccessProperties(value).allows(42L, FeatureAccessProperties.Feature.APPS_MENU)).isFalse();

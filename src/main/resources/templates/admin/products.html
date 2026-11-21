@@ -6,7 +6,7 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.products.title} + ' - ' + #{common.app.title}">Produtos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
@@ -39,7 +39,7 @@
                 de 1 produto personalizado
             </p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
+        <a class="button" th:href="@{/admin/billing}" th:text="#{common.upgrade}">Upgrade</a>
     </section>
     <section class="notice warning" th:if="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()}">
         <strong th:text="#{merchant.upgrade.full}">Você chegou ao limite do seu plano</strong>
@@ -57,7 +57,7 @@
         </div>
 
         <form class="form inline-form" method="get" th:action="@{/admin/products}">
-            <input type="search" name="q" th:placeholder="#{product.search.placeholder}" th:value="${productPage.query}">
+            <input type="search" name="q" th:aria-label="#{product.search.placeholder}" th:placeholder="#{product.search.placeholder}" th:value="${productPage.query}">
             <button class="button" type="submit" th:text="#{common.search}">Buscar</button>
             <a class="button small" th:if="${productPage.query != null}" th:href="@{/admin/products}"
                th:text="#{common.clear}">Limpar</a>

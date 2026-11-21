@@ -6,24 +6,41 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.fields.title} + ' - ' + #{common.app.title}">Campos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
 </head>
 <body class="merchant-page product-field-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('products')}"></th:block>
-<main class="shell" th:with="planNeedsAttention=${store.effectivePlan.name() == 'FREE' or store.effectivePlan.name() == 'FREE_GRATIS' or !canAddField or (planPausedProductIds != null and planPausedProductIds.contains(rule.productId))}">
+<main class="shell" th:attr="data-field-unsaved-message=#{editor.unsaved.confirm}" th:with="planNeedsAttention=${store.effectivePlan.name() == 'FREE' or store.effectivePlan.name() == 'FREE_GRATIS' or !canAddField or (planPausedProductIds != null and planPausedProductIds.contains(rule.productId))}">
     <section class="page-header">
         <div>
             <p class="eyebrow" th:text="#{admin.fields.eyebrow}">Editor</p>
             <h1 th:text="${rule.productName} ?: #{admin.fields.product.fallback(${rule.productId})}">Produto</h1>
             <p th:text="#{merchant.fields.intro}">Defina os dados preenchidos pelo cliente.</p>
         </div>
-        <a class="button" th:href="@{/admin/products}" th:text="#{admin.products.title}">Produtos</a>
+        <div class="row-actions">
+            <a class="button primary" th:if="${canAddField}" data-field-jump href="#new-field" th:text="#{editor.add}">Adicionar campo</a>
+            <a class="button" th:href="@{/admin/products}" th:text="#{admin.products.title}">Produtos</a>
+        </div>
     </section>
 
     <div id="template-ui" hidden th:attr="data-copy-prompt=#{template.copy.prompt},data-failed=#{template.failed},data-saved=#{template.saved}"></div>
     <script th:src="@{/assets/store-templates.js(v=${assetVersion})}" defer></script>
-    <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
+    <div class="notice" role="status" th:if="${message}">
+        <strong th:text="${message}">Campo salvo.</strong>
+        <th:block th:if="${fieldSaved == true}">
+            <a th:if="${canAddField}" class="button small" data-field-jump href="#new-field" th:text="#{editor.add.another}">Adicionar outro campo</a>
+            <span th:unless="${canAddField}" th:text="#{flash.field.limit}">Seu plano atingiu o limite de campos por produto.</span>
+        </th:block>
+    </div>
     <p class="notice error" th:if="${error}" th:text="${error}">Erro</p>
+    <dialog class="field-unsaved-dialog" data-field-unsaved-dialog aria-labelledby="field-unsaved-heading" aria-describedby="field-unsaved-description">
+        <h2 id="field-unsaved-heading" th:text="#{editor.unsaved.title}">Alterações não salvas</h2>
+        <p id="field-unsaved-description" th:text="#{editor.unsaved.confirm}"></p>
+        <div class="row-actions">
+            <button type="button" class="button primary" data-field-unsaved-stay autofocus th:text="#{editor.unsaved.stay}">Continuar editando</button>
+            <button type="button" class="button" data-field-unsaved-leave th:text="#{editor.unsaved.leave}">Descartar e sair</button>
+        </div>
+    </dialog>
 
     <p class="notice warning" th:if="${planPausedProductIds != null and planPausedProductIds.contains(rule.productId)}" th:text="#{plan.pause.detail}">Configuração pausada pelo plano.</p>
     <section class="panel merchant-ftue-banner" th:if="${#lists.isEmpty(rule.fields)}">
@@ -60,7 +77,12 @@
                 </section>
         </aside>
         <div class="field-editor-main">
-
+        <details class="panel field-live-preview product-preview" data-product-preview th:attr="data-field-link=#{editor.product.preview.locate}">
+            <summary th:text="#{editor.product.preview.title}">Prévia de todos os campos</summary>
+            <p class="field-help" th:text="#{editor.product.preview.help}"></p>
+            <p class="muted" data-product-preview-empty th:text="#{admin.fields.list.empty}"></p>
+            <div data-product-preview-fields></div>
+        </details>
 
         <div class="panel" th:unless="${#lists.isEmpty(rule.fields)}">
             <div class="panel-title">
@@ -76,9 +98,12 @@
             <div class="field-list">
                 <details class="field-item" th:id="${'configured-field-' + field.id}" th:each="field, position : ${rule.fields}" th:open="${position.first or (editedFieldId != null and editedFieldId == field.id)}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
                     <summary class="field-summary"><span><strong th:text="${draft.label}"></strong><small th:text="#{'field.type.' + ${draft.fieldType}}"></small></span><span class="field-edit-label" th:text="#{editor.edit}"></span></summary>
+                    <a class="button small" th:if="${canAddField}" th:href="@{/admin/products/{productId}/fields#new-field(productId=${rule.productId},duplicateFieldId=${field.id})}" th:text="#{editor.duplicate}">Duplicar campo</a>
                     <form class="form field-editor-form image-options-form"
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
+                          th:attr="data-initial-dirty=${editedFieldId != null and editedFieldId == field.id} ? 'true' : null"
                           method="post">
+                    <div class="field-editor-controls">
                         <label>
                             <span th:text="#{admin.fields.label}">Label</span>
                     <small class="field-help" th:text="#{editor.label.help}"></small>
@@ -159,7 +184,8 @@
                         </label>
                 </details>
                         <th:block th:replace="~{fragments/field-editor :: colors(${draft.showColorNames})}"></th:block>
-                <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
+                    </div>
+                    <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
                         <div class="row-actions">
                             <button class="button primary small" type="submit" th:text="#{common.save}">Salvar</button>
                         </div>
@@ -172,11 +198,13 @@
             </div>
         </div>
 
-        <details id="new-field" class="panel field-create-panel" th:if="${canAddField}" th:open="${#lists.isEmpty(rule.fields) or (error != null and editedFieldId == null)}">
+        <details id="new-field" class="panel field-create-panel" th:if="${canAddField or initialDraft == true}" th:open="${initialDraft == true or #lists.isEmpty(rule.fields) or (error != null and editedFieldId == null)}">
             <summary class="field-create-summary"><span th:text="#{editor.add}">Adicionar novo campo</span><small th:text="#{editor.add.help}"></small></summary>
             <p class="field-help" th:text="#{editor.new.help}"></p>
-            <form class="form field-editor-form preview-source image-options-form" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
+            <form class="form field-editor-form preview-source image-options-form" th:attr="data-initial-dirty=${initialDraft == true} ? 'true' : null" th:action="@{/admin/products/{productId}/fields(productId=${rule.productId})}"
                   th:object="${fieldForm}" method="post">
+                    <input type="hidden" name="duplicateFieldId" th:if="${duplicateFieldId != null}" th:value="${duplicateFieldId}">
+                    <div class="field-editor-controls">
                 <label>
                     <span th:text="#{admin.fields.label}">Label</span>
                     <small class="field-help" th:text="#{editor.label.help}"></small>
@@ -186,7 +214,7 @@
                     <span th:text="#{admin.fields.type}">Tipo</span>
                     <small class="field-help" th:text="#{editor.type.help}"></small>
                     <select th:field="*{fieldType}" required>
-                        <option th:each="type : ${fieldTypes}" th:disabled="${unavailableFieldTypes.containsKey(type)}" th:value="${type}" th:text="${unavailableFieldTypes.containsKey(type)} ? |#{'field.type.' + ${type}} — #{editor.type.unavailable}| : #{'field.type.' + ${type}}">TEXT</option>
+                        <option th:each="type : ${fieldTypes}" th:disabled="${type != fieldForm.fieldType and unavailableFieldTypes.containsKey(type)}" th:value="${type}" th:text="${unavailableFieldTypes.containsKey(type)} ? |#{'field.type.' + ${type}} — #{editor.type.unavailable}| : #{'field.type.' + ${type}}">TEXT</option>
                     </select>
                     <th:block th:replace="~{fragments/field-editor :: availability}"></th:block>
                 </label>
@@ -211,7 +239,7 @@
                 <th:block th:replace="~{fragments/field-editor :: validation}"></th:block>
                 <label class="field-quantity-layout" hidden><span th:text="#{quantity.columns}"></span><select name="quantityColumns"><option value="1" th:selected="${fieldForm.quantityColumns == 1}" th:text="#{quantity.columns.1}"></option><option value="2" th:selected="${fieldForm.quantityColumns == 2}" th:text="#{quantity.columns.2}"></option><option value="3" th:selected="${fieldForm.quantityColumns == 3}" th:text="#{quantity.columns.3}"></option></select><small class="field-help" th:text="#{quantity.columns.help}"></small></label>
 <small class="field-help field-quantity-help" hidden th:text="#{quantity.plan.help}"></small>
-<label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
+<label class="field-upload-count" hidden><span th:text="#{upload.maxFiles}"></span><input name="maxFiles" th:value="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? fieldForm.maxFiles : 1}" type="number" min="1" th:max="${store.effectivePlan.name() == 'PREMIUM_ULTRA' ? 5 : 1}" value="1"></label>
                 <label>
                     <span th:text="#{admin.fields.options}">Opcoes do select</span>
                     <small class="field-help" th:text="#{editor.options.help}"></small>
@@ -253,8 +281,9 @@
                 </label>
                 </details>
                 <th:block th:replace="~{fragments/field-editor :: colors(${fieldForm.showColorNames})}"></th:block>
-                <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
-                <button class="button primary" type="submit" th:text="#{admin.fields.create}">Criar campo</button>
+                    </div>
+                    <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
+                <button class="button primary" type="submit" th:disabled="${!canAddField}" th:text="#{admin.fields.create}">Criar campo</button>
             </form>
         </details>
 
@@ -278,6 +307,7 @@
 <script th:src="@{/assets/field-ordering.js(v=${assetVersion})}"></script>
 <script th:src="@{/assets/color-options-admin.js(v=${assetVersion})}"></script>
 <script th:src="@{/assets/product-fields-editor.js(v=${assetVersion})}"></script>
+<script th:src="@{/assets/product-field-unsaved.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>
 <th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
 <script th:if="${ga4OperatorSession != true}" th:src="@{/assets/configuration-analytics.js(v=${assetVersion})}" defer></script>

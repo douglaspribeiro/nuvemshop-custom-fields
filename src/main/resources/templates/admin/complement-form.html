@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{complements.new}">Nova oferta</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
+    <th:block th:replace="~{fragments/merchant-shell :: complementsStylesheet}"></th:block>
 </head>
 <body class="merchant-page">
-<th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
+<th:block th:replace="~{fragments/merchant-shell :: navigation('new-offer')}"></th:block>
 <main class="shell apps-layout">
-    <aside th:replace="~{fragments/app-switcher :: switcher('complements')}"></aside>
     <div class="apps-content">
         <section class="page-header">
             <div>
@@ -40,8 +39,14 @@
             <p th:if="${catalogPage.items.isEmpty()}" th:text="#{complements.noProducts}"></p>
             <div class="complement-products">
                 <th:block th:each="product : ${catalogPage.items}">
-                    <a th:if="${parentId == null}" th:href="@{/admin/apps/complements/new(parentId=${product.id})}" th:text="${product.name}"></a>
-                    <a th:if="${parentId != null and parentId != product.id}" th:href="@{/admin/apps/complements/new(parentId=${parentId},productId=${product.id})}" th:text="${product.name}"></a>
+                    <a th:if="${parentId == null}" th:href="@{/admin/apps/complements/new(parentId=${product.id})}">
+                        <th:block th:replace="~{fragments/merchant-shell :: productThumbnail(${product.imageUrl})}"></th:block>
+                        <span th:text="${product.name}"></span>
+                    </a>
+                    <a th:if="${parentId != null and parentId != product.id}" th:href="@{/admin/apps/complements/new(parentId=${parentId},productId=${product.id})}">
+                        <th:block th:replace="~{fragments/merchant-shell :: productThumbnail(${product.imageUrl})}"></th:block>
+                        <span th:text="${product.name}"></span>
+                    </a>
                 </th:block>
             </div>
             <div class="complement-actions">

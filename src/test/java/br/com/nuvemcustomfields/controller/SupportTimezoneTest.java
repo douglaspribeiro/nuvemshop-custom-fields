@@ -33,6 +33,7 @@ class SupportTimezoneTest {
     @Autowired StoreRepository stores;
     @Autowired SupportTicketRepository tickets;
     @Autowired SupportMessageRepository messages;
+    @Autowired SupportAttachmentRepository attachments;
 
     @Test
     void backofficeReplyPublishesBothUploadedImages(ApplicationEvents events) throws Exception {
@@ -64,6 +65,8 @@ class SupportTimezoneTest {
                 assertThat(attachment.bytes()).containsExactly(png);
             });
         });
+        assertThat(attachments.summaries(ticket.getId())).extracting(SupportAttachmentRepository.Summary::getFilename)
+                .containsExactly("imagem-1.png", "imagem-2.png");
     }
 
     @Test void exposesOriginalInstantsForBrowserConversionInBothSupportViews() throws Exception {

@@ -6,7 +6,7 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{admin.billing.title} + ' - ' + #{common.app.title}">Planos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
     <link rel="stylesheet" th:href="@{/styles/billing.css(v=${assetVersion})}">
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
     <th:block th:replace="~{fragments/analytics :: billingEvents('plans')}"></th:block>

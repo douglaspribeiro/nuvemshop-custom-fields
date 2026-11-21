@@ -5,16 +5,24 @@
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
     <title th:text="#{merchant.nav.overview} + ' - ' + #{common.app.name}">Visão geral</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
     <th:block th:replace="~{fragments/local-time :: script}"></th:block>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('overview')}"></th:block>
 <main class="shell">
     <section class="page-header">
-        <div><p class="eyebrow" th:text="#{merchant.nav.overview}">Visão geral</p><h1 th:text="${#strings.isEmpty(store.storeName) ? #messages.msg('merchant.store.fallback') : store.storeName}">Minha loja</h1><p th:text="#{merchant.overview.intro}">Acompanhe sua loja.</p></div>
+        <div>
+            <p class="eyebrow" th:text="#{merchant.nav.overview}">Visão geral</p>
+            <h1 th:text="#{common.app.name}">Campos Personalizados</h1>
+            <p th:text="#{complements.nc.detail}">Configure os campos preenchidos pelos compradores.</p>
+        </div>
         <div class="merchant-overview-actions">
-            <a class="button primary" th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
+            <a th:if="${configuredFields == 0 and setupRule != null}" class="button primary"
+               th:href="@{/admin/products/{productId}/fields(productId=${setupRule.productId})}"
+               th:text="#{merchant.ftue.create.cta}">Criar primeiro campo</a>
+            <a th:unless="${configuredFields == 0 and setupRule != null}" class="button primary" th:href="@{/admin/products}"
+               th:text="${configuredFields == 0} ? #{merchant.ftue.firstProduct} : #{admin.index.action.products}">Configurar produtos</a>
         </div>
     </section>
     <p class="notice" th:if="${message}" th:text="${message}">Mensagem</p>
@@ -42,31 +50,24 @@
         <h2 th:text="#{admin.index.storemode.title}">Modo loja pelo backoffice</h2><p class="muted" th:text="#{admin.index.storemode.description}">As alterações serão aplicadas nesta loja.</p>
         <form th:action="@{/backoffice/store-mode/exit}" method="post"><button class="button" type="submit" th:text="#{admin.index.storemode.exit}">Voltar ao backoffice</button></form>
     </section>
+    <section class="merchant-stat-grid">
+        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.products}">Produtos personalizados</span><strong th:text="${usage.productsUsed}">0</strong><span class="stat-note" th:text="${usage.unlimitedProducts()} ? #{usage.products.unlimited(${usage.productsUsed})} : #{usage.products.limited(${usage.productsUsed}, ${usage.productLimit})}">0 de 1</span></div>
+        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.fields}">Campos configurados</span><strong th:text="${configuredFields}">0</strong><span class="stat-note" th:text="#{merchant.nav.products}">Produtos e campos</span></div>
+        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.plan}">Plano em uso</span><strong th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="${planName}">FREE</strong><a class="stat-note" th:href="@{/admin/billing}" th:text="#{merchant.nav.billing}">Planos e cobrança</a></div>
+    </section>
     <section class="merchant-overview-hero" th:classappend="${configuredFields > 0} ? ' is-configured'">
         <div class="panel hero-primary" th:if="${configuredFields == 0}">
             <p class="eyebrow" th:text="#{merchant.overview.next}">Próximos passos</p>
-            <h2 th:if="${configuredFields > 0}" th:text="#{merchant.overview.ready}">Sua loja está pronta para personalizar</h2>
             <h2 th:if="${configuredFields == 0 and usage.productsUsed > 0}" th:text="#{merchant.overview.addfield}">Adicione o primeiro campo</h2>
             <h2 th:if="${configuredFields == 0 and usage.productsUsed == 0}" th:text="#{merchant.overview.start}">Comece pelo primeiro produto</h2>
-            <p th:if="${configuredFields > 0}" th:text="#{merchant.overview.ready.description}">Os campos já podem aparecer na loja.</p>
             <p th:if="${configuredFields == 0 and usage.productsUsed > 0}" th:text="#{merchant.overview.addfield.description}">Defina os dados que o cliente vai preencher.</p>
             <p th:if="${configuredFields == 0 and usage.productsUsed == 0}" th:text="#{merchant.overview.start.description}">Configure um produto.</p>
-            <a class="button" th:if="${configuredFields == 0 and setupRule != null}"
-               th:href="@{/admin/products/{productId}/fields(productId=${setupRule.productId})}"
-               th:text="#{merchant.ftue.create.cta}">Criar primeiro campo</a>
-            <a class="button" th:unless="${configuredFields == 0 and setupRule != null}"
-               th:href="@{/admin/products}" th:text="#{admin.index.action.products}">Configurar produtos</a>
         </div>
         <div class="panel merchant-health">
             <span class="health-label" th:text="#{merchant.overview.health}">Estado da integração</span>
             <strong><span class="health-dot" th:classappend="${!store.active} ? ' is-off'"></span><span th:text="${store.active} ? #{merchant.overview.connected} : #{merchant.overview.inactive}">Loja conectada</span></strong>
             <p th:text="${store.active} ? #{merchant.overview.health.description} : #{merchant.overview.health.inactive}">A conexão está ativa.</p>
         </div>
-    </section>
-    <section class="merchant-stat-grid">
-        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.products}">Produtos personalizados</span><strong th:text="${usage.productsUsed}">0</strong><span class="stat-note" th:text="${usage.unlimitedProducts()} ? #{usage.products.unlimited(${usage.productsUsed})} : #{usage.products.limited(${usage.productsUsed}, ${usage.productLimit})}">0 de 1</span></div>
-        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.fields}">Campos configurados</span><strong th:text="${configuredFields}">0</strong><span class="stat-note" th:text="#{merchant.nav.products}">Produtos e campos</span></div>
-        <div class="panel merchant-stat"><span class="stat-label" th:text="#{merchant.overview.plan}">Plano em uso</span><strong th:with="planName=#{'plan.' + ${store.effectivePlan.name()}}" th:text="${planName}">FREE</strong><a class="stat-note" th:href="@{/admin/billing}" th:text="#{merchant.nav.billing}">Planos e cobrança</a></div>
     </section>
     <section class="panel merchant-news" th:if="${!#lists.isEmpty(merchantNews)}" data-merchant-news
              th:attr="data-store-id=${store.storeId}" aria-labelledby="merchant-news-title">
@@ -89,7 +90,7 @@
             <h2 th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full} : #{merchant.upgrade.available}">Veja o que seu plano permite</h2>
             <p th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.full.detail} : #{merchant.upgrade.available.detail}">Consulte os limites e compare planos.</p>
         </div>
-        <a class="button primary" th:href="@{/admin/billing}" th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.cta} : #{merchant.upgrade.view}">Ver planos</a>
+        <a class="button" th:href="@{/admin/billing}" th:text="${configuredFields > 0 and usage.productsUsed >= usage.productLimit and !usage.unlimitedProducts()} ? #{merchant.upgrade.cta} : #{merchant.upgrade.view}">Ver planos</a>
     </section>
     <section class="merchant-section-grid">
         <div class="panel">
@@ -135,7 +136,7 @@
     </section>
     <section class="panel merchant-suggestion-callout">
         <div><h2 th:text="#{suggestions.title}">Sugerir uma melhoria</h2><p th:text="#{suggestions.intro}"></p></div>
-        <a class="button primary" th:href="@{/admin/suggestions}" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
+        <a class="button" th:href="@{/admin/suggestions}" th:text="#{suggestions.title}">Sugerir uma melhoria</a>
     </section>
 </main>
 <th:block th:replace="~{fragments/nexo :: adminBridge}"></th:block>

@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{complements.apps}">Aplicativos</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
+    <th:block th:replace="~{fragments/merchant-shell :: complementsStylesheet}"></th:block>
 </head>
 <body class="merchant-page">
-<th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
+<th:block th:replace="~{fragments/merchant-shell :: navigation('apps-directory')}"></th:block>
 <main class="shell apps-layout">
-    <aside th:replace="~{fragments/app-switcher :: switcher('nc')}"></aside>
     <div class="apps-content">
         <section class="page-header">
             <div><h1 th:text="#{complements.apps}">Aplicativos</h1><p th:text="#{complements.apps.intro}"></p></div>
@@ -26,7 +25,7 @@
                     <span id="app-custom-fields-open" th:text="#{complements.open}">Abrir</span>
                 </a>
             </section>
-            <section class="panel apps-home-card">
+            <section class="panel apps-home-card" th:if="${productComplementsVisible}">
                 <div>
                     <h2 id="app-complements-title" th:text="#{complements.title}">Complementos de Produto</h2>
                     <p th:text="#{complements.intro}"></p>

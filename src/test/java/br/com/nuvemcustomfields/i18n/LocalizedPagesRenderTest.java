@@ -5,6 +5,7 @@ import br.com.nuvemcustomfields.dto.ProductPage;
 import br.com.nuvemcustomfields.dto.ProductSummary;
 import br.com.nuvemcustomfields.entity.PersonalizationFieldHistory;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.repository.MerchantInterfacePreferenceRepository;
 import br.com.nuvemcustomfields.repository.PersonalizationFieldHistoryRepository;
 import br.com.nuvemcustomfields.repository.StoreRepository;
 import br.com.nuvemcustomfields.service.NuvemshopApiClient;
@@ -43,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Renderiza cada tela do lojista nos dois idiomas. Chave ausente no bundle vira
  * ??chave_es?? no HTML: e um defeito visivel que nenhum teste de service pega.
  */
-@SpringBootTest
+@SpringBootTest(properties = "features.allowed=771100:merchant-interface-preview")
 @AutoConfigureMockMvc
 class LocalizedPagesRenderTest {
 
@@ -72,6 +73,9 @@ class LocalizedPagesRenderTest {
     private StoreRepository storeRepository;
 
     @Autowired
+    private MerchantInterfacePreferenceRepository interfacePreferences;
+
+    @Autowired
     private PersonalizationFieldHistoryRepository fieldHistory;
 
     @MockitoBean
@@ -79,6 +83,7 @@ class LocalizedPagesRenderTest {
 
     @BeforeEach
     void setUp() {
+        interfacePreferences.deleteById(STORE_ID);
         storeRepository.findByStoreId(STORE_ID).ifPresent(storeRepository::delete);
         when(apiClient.listProducts(any(Store.class), anyInt(), anyInt(), nullable(String.class)))
                 .thenReturn(new ProductPage(
@@ -258,10 +263,29 @@ class LocalizedPagesRenderTest {
             assertNoMissingKeys(page, "BR", body);
             assertThat(body).as("%s deveria estar em portugues", page).contains("lang=\"pt\"");
             assertThat(appVersion).doesNotContain("@");
-            assertThat(body).as("%s deve usar navegacao compacta no iframe", page)
-                    .contains("class=\"merchant-topbar\"", "/styles/merchant.css?v=" + appVersion,
-                            "/styles/app.css?v=" + appVersion)
+            assertThat(body).as("%s deve usar a navegação clássica", page)
+                    .contains("class=\"merchant-topbar\"", "/styles/merchant-classic.css?v=" + appVersion,
+                            "/styles/app.css?v=" + appVersion, "class=\"merchant-nav\"")
                     .doesNotContain("merchant-sidebar");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"BR", "AR"})
+    void rendersThePreviewShellAfterOptingIn(String country) throws Exception {
+        MockHttpSession session = sessionForStoreIn(country);
+        render("/admin", session);
+        mockMvc.perform(post("/admin/interface").session(session).param("choice", "preview")
+                        .param("csrf", (String) session.getAttribute("merchantUiCsrf")))
+                .andExpect(redirectedUrl("/admin"));
+        for (String page : MERCHANT_PAGES) {
+            String body = render(page, session);
+            assertNoMissingKeys(page, country, body);
+            if ("AR".equals(country)) assertNoPortugueseLeaked(page, country, body);
+            assertThat(body).as("%s deve usar a navegação nova", page)
+                    .contains("class=\"merchant-topbar\"", "/styles/merchant.css?v=" + appVersion,
+                            "/styles/app.css?v=" + appVersion, "merchant-sidebar", "value=\"classic\"")
+                    .doesNotContain("/styles/merchant-classic.css");
         }
     }
 

@@ -1,14 +1,15 @@
 <!doctype html><html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{suggestions.title}">Sugerir uma melhoria</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{suggestions.title}">Sugerir uma melhoria</title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>    <th:block th:replace="~{fragments/local-time :: script}"></th:block>
     <th:block th:replace="~{fragments/analytics :: googleAnalytics}"></th:block>
 </head>
-<body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('suggestions')}"></th:block><main class="shell">
-<section class="page-header"><div><h1 th:text="#{suggestions.title}"></h1><p th:text="#{suggestions.intro}"></p></div><a class="button" th:href="@{/admin}" th:text="#{merchant.nav.overview}">Visão geral</a></section>
+<body class="merchant-page" th:with="complementsApp=${newMerchantUi == true and complementsSuggestions == true}"><th:block th:replace="~{fragments/merchant-shell :: navigation(${complementsApp ? 'complements-suggestions' : 'suggestions'})}"></th:block><main class="shell">
+<section class="page-header"><div><h1 th:text="#{suggestions.title}"></h1><p th:text="#{suggestions.intro}"></p></div><a class="button" th:href="${complementsApp} ? @{/admin/apps/complements} : @{/admin}" th:text="${complementsApp} ? #{complements.offers} : #{merchant.nav.overview}">Visão geral</a></section>
 <p class="notice" th:if="${message}" th:text="${message}"></p><p class="notice error" th:if="${error}" th:text="${error}"></p>
 <div class="merchant-suggestions-grid">
 <section class="panel"><p class="muted" th:text="#{suggestions.explanation}"></p>
 <form class="merchant-suggestion-form" method="post" th:action="@{/admin/suggestions}">
     <input type="hidden" name="submissionToken" th:value="${submissionToken}">
+    <input type="hidden" name="app" value="complements" th:if="${complementsApp}">
     <div class="merchant-suggestion-field">
         <label for="suggestion-title" th:text="#{suggestions.subject}"></label>
         <input id="suggestion-title" name="title" required maxlength="160" th:value="${draftTitle}" th:placeholder="#{suggestions.subject.placeholder}">
@@ -21,7 +22,7 @@
     <div class="merchant-suggestion-actions"><button class="button primary" type="submit" th:text="#{suggestions.submit}"></button></div>
 </form></section>
 <aside class="merchant-suggestion-sidebar">
-    <section class="panel"><a th:href="@{/support/}" th:text="#{suggestions.support}"></a></section>
+    <section class="panel"><a th:href="${complementsApp} ? @{/support/(app='complements')} : @{/support/}" th:text="#{suggestions.support}"></a></section>
     <section class="panel merchant-suggestion-history"><h2 th:text="#{suggestions.history}"></h2><p class="muted" th:if="${#lists.isEmpty(suggestions)}" th:text="#{suggestions.empty}"></p>
         <article th:each="suggestion:${suggestions}" th:id="${'suggestion-'+suggestion.id}">
             <h3 th:text="${suggestion.title}"></h3><span class="badge" th:text="#{'suggestions.status.'+${suggestion.status}}"></span>

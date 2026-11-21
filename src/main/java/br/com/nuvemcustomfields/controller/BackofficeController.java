@@ -18,7 +18,6 @@ import br.com.nuvemcustomfields.service.StoreDepartureService;
 import br.com.nuvemcustomfields.service.BackofficeSalesService;
 import br.com.nuvemcustomfields.service.ScriptInstallService;
 import br.com.nuvemcustomfields.service.SupportService;
-import br.com.nuvemcustomfields.service.SupportReplyEvent;
 import br.com.nuvemcustomfields.service.PaymentSubscriptionService;
 import br.com.nuvemcustomfields.service.PaymentConfigurationService;
 import jakarta.servlet.http.HttpSession;
@@ -36,10 +35,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.URLConnection;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -400,8 +396,16 @@ public class BackofficeController {
         model.addAttribute("ticket", ticket);
         model.addAttribute("store", supportService.requireTicketStore(ticket));
         model.addAttribute("messages", supportService.messages(ticketId));
+        model.addAttribute("attachmentsByMessage", supportService.attachmentsByMessage(ticketId));
         model.addAttribute("statuses", SupportTicketStatus.values());
         return "backoffice/support-ticket";
+    }
+
+    @GetMapping("/backoffice/support/{ticketId}/attachments/{attachmentId}")
+    public ResponseEntity<byte[]> downloadSupportAttachment(@PathVariable Long ticketId, @PathVariable Long attachmentId) {
+        return supportService.attachment(ticketId, attachmentId)
+                .map(SupportAttachmentWeb::download)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     private void populateStoreDirectory(Model model, List<Store> allStores, String query) {
@@ -497,7 +501,7 @@ public class BackofficeController {
             RedirectAttributes redirectAttributes
     ) {
         try {
-            supportService.replyFromSupport(ticketId, message, readSupportImages(attachments));
+            supportService.replyFromSupport(ticketId, message, SupportAttachmentWeb.supportImages(attachments));
             redirectAttributes.addFlashAttribute("message", "Resposta registrada.");
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
@@ -505,31 +509,6 @@ public class BackofficeController {
             redirectAttributes.addFlashAttribute("error", "Não foi possível ler as imagens anexadas.");
         }
         return "redirect:/backoffice/support/" + ticketId;
-    }
-
-    private static List<SupportReplyEvent.Attachment> readSupportImages(List<MultipartFile> uploads) throws IOException {
-        if (uploads == null) {
-            return List.of();
-        }
-        var attachments = new ArrayList<SupportReplyEvent.Attachment>();
-        for (var upload : uploads) {
-            if (upload.isEmpty()) {
-                continue;
-            }
-            byte[] bytes = upload.getBytes();
-            String contentType = URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(bytes));
-            String extension;
-            if ("image/png".equals(contentType)) {
-                extension = ".png";
-            } else if ("image/jpeg".equals(contentType)) {
-                extension = ".jpg";
-            } else {
-                throw new IllegalArgumentException("Anexe apenas imagens PNG ou JPEG.");
-            }
-            String filename = "imagem-" + (attachments.size() + 1) + extension;
-            attachments.add(new SupportReplyEvent.Attachment(filename, contentType, bytes));
-        }
-        return attachments;
     }
 
     @PostMapping("/backoffice/support/{ticketId}/status")

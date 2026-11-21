@@ -1,11 +1,14 @@
 package br.com.nuvemcustomfields.service;
 
+import br.com.nuvemcustomfields.entity.PlanType;
 import br.com.nuvemcustomfields.entity.Store;
+import br.com.nuvemcustomfields.entity.SupportAttachment;
 import br.com.nuvemcustomfields.entity.SupportMessage;
 import br.com.nuvemcustomfields.entity.SupportMessageAuthor;
 import br.com.nuvemcustomfields.entity.SupportTicket;
 import br.com.nuvemcustomfields.entity.SupportTicketStatus;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.repository.SupportAttachmentRepository;
 import br.com.nuvemcustomfields.repository.SupportMessageRepository;
 import br.com.nuvemcustomfields.repository.SupportTicketRepository;
 import org.springframework.stereotype.Service;
@@ -16,6 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class SupportService {
@@ -26,6 +32,7 @@ public class SupportService {
 
     private final SupportTicketRepository ticketRepository;
     private final SupportMessageRepository messageRepository;
+    private final SupportAttachmentRepository attachmentRepository;
     private final StoreRepository storeRepository;
     private final DiscordSupportWebhookClient discord;
     private final ApplicationEventPublisher events;
@@ -33,12 +40,14 @@ public class SupportService {
     public SupportService(
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
+            SupportAttachmentRepository attachmentRepository,
             StoreRepository storeRepository,
             DiscordSupportWebhookClient discord,
             ApplicationEventPublisher events
     ) {
         this.ticketRepository = ticketRepository;
         this.messageRepository = messageRepository;
+        this.attachmentRepository = attachmentRepository;
         this.storeRepository = storeRepository;
         this.discord = discord;
         this.events = events;
@@ -81,6 +90,22 @@ public class SupportService {
     }
 
     @Transactional(readOnly = true)
+    public Map<Long, List<SupportAttachmentRepository.Summary>> attachmentsByMessage(Long ticketId) {
+        return attachmentRepository.summaries(ticketId).stream()
+                .collect(Collectors.groupingBy(SupportAttachmentRepository.Summary::getMessageId));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<SupportAttachment> attachment(Long ticketId, Long attachmentId) {
+        return attachmentRepository.findByIdAndMessageTicketId(attachmentId, ticketId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<SupportAttachment> storeAttachment(Long ticketId, Long attachmentId, Long storeId) {
+        return attachmentRepository.findForStore(attachmentId, ticketId, storeId);
+    }
+
+    @Transactional(readOnly = true)
     public Store requireTicketStore(SupportTicket ticket) {
         return storeRepository.findByStoreId(ticket.getStoreId())
                 .orElseThrow(() -> new IllegalArgumentException("Loja do chamado nao encontrada."));
@@ -88,7 +113,12 @@ public class SupportService {
 
     @Transactional
     public SupportTicket openTicket(Store store, String subject, String message) {
-        SupportTicket ticket = openTicket(store.getStoreId(), subject, message, store.getEffectivePlan());
+        return openTicket(store, subject, message, List.of());
+    }
+
+    @Transactional
+    public SupportTicket openTicket(Store store, String subject, String message, List<SupportReplyEvent.Attachment> attachments) {
+        SupportTicket ticket = openTicket(store.getStoreId(), subject, message, store.getEffectivePlan(), attachments);
         notifyDiscord(() -> discord.sendNewTicket(store, ticket), ticket.getId(), "new_ticket");
         return ticket;
     }
@@ -99,10 +129,11 @@ public class SupportService {
             throw new IllegalArgumentException("Identificador da loja nao informado.");
         }
         return openTicket(storeId, subject, message,
-                storeRepository.findByStoreId(storeId).map(Store::getEffectivePlan).orElse(null));
+                storeRepository.findByStoreId(storeId).map(Store::getEffectivePlan).orElse(null), List.of());
     }
 
-    private SupportTicket openTicket(Long storeId, String subject, String message, br.com.nuvemcustomfields.entity.PlanType plan) {
+    private SupportTicket openTicket(Long storeId, String subject, String message, PlanType plan,
+                                     List<SupportReplyEvent.Attachment> attachments) {
         String normalizedSubject = normalize(subject, "Informe o assunto.", SUBJECT_MAX_LENGTH);
         String normalizedMessage = normalize(message, "Escreva uma mensagem.", MESSAGE_MAX_LENGTH);
         Instant now = Instant.now();
@@ -116,14 +147,19 @@ public class SupportService {
         ticket.setLastMessageAt(now);
         SupportTicket saved = ticketRepository.save(ticket);
 
-        saveMessage(saved.getId(), SupportMessageAuthor.STORE, normalizedMessage);
+        saveMessage(saved.getId(), SupportMessageAuthor.STORE, normalizedMessage, attachments);
         return saved;
     }
 
     @Transactional
     public void replyFromStore(Long ticketId, Long storeId, String message) {
+        replyFromStore(ticketId, storeId, message, List.of());
+    }
+
+    @Transactional
+    public void replyFromStore(Long ticketId, Long storeId, String message, List<SupportReplyEvent.Attachment> attachments) {
         SupportTicket ticket = requireStoreTicket(ticketId, storeId);
-        addReply(ticket, SupportMessageAuthor.STORE, message);
+        addReply(ticket, SupportMessageAuthor.STORE, message, attachments);
         Store store = requireTicketStore(ticket);
         notifyDiscord(() -> discord.sendStoreReply(store, ticket), ticket.getId(), "store_reply");
     }
@@ -136,7 +172,7 @@ public class SupportService {
     @Transactional
     public void replyFromSupport(Long ticketId, String message, List<SupportReplyEvent.Attachment> attachments) {
         SupportTicket ticket = requireTicket(ticketId);
-        addReply(ticket, SupportMessageAuthor.SUPPORT, message);
+        addReply(ticket, SupportMessageAuthor.SUPPORT, message, attachments);
         String recipient = storeRepository.findByStoreId(ticket.getStoreId())
                 .map(Store::getStoreEmail).orElse(null);
         events.publishEvent(new SupportReplyEvent(ticket.getId(), recipient, ticket.getSubject(), message.strip(), attachments));
@@ -150,24 +186,29 @@ public class SupportService {
         ticketRepository.save(ticket);
     }
 
-    private void addReply(SupportTicket ticket, SupportMessageAuthor author, String message) {
+    private void addReply(SupportTicket ticket, SupportMessageAuthor author, String message,
+                          List<SupportReplyEvent.Attachment> attachments) {
         if (ticket.getStatus() == SupportTicketStatus.CLOSED) {
             throw new IllegalStateException("Reabra o chamado antes de responder.");
         }
         String normalized = normalize(message, "Escreva uma mensagem.", MESSAGE_MAX_LENGTH);
-        saveMessage(ticket.getId(), author, normalized);
+        saveMessage(ticket.getId(), author, normalized, attachments);
         Instant now = Instant.now();
         ticket.setUpdatedAt(now);
         ticket.setLastMessageAt(now);
         ticketRepository.save(ticket);
     }
 
-    private void saveMessage(Long ticketId, SupportMessageAuthor author, String message) {
+    private void saveMessage(Long ticketId, SupportMessageAuthor author, String message,
+                             List<SupportReplyEvent.Attachment> attachments) {
         SupportMessage supportMessage = new SupportMessage();
         supportMessage.setTicketId(ticketId);
         supportMessage.setAuthorType(author);
         supportMessage.setMessage(message);
-        messageRepository.save(supportMessage);
+        SupportMessage saved = messageRepository.save(supportMessage);
+        for (var file : attachments) {
+            attachmentRepository.save(new SupportAttachment(saved, file.filename(), file.bytes()));
+        }
     }
 
     private void notifyDiscord(Runnable action, Long ticketId, String event) {

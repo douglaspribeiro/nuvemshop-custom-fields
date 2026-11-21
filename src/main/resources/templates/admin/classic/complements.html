@@ -1,0 +1,132 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{complements.title}">Complementos de Produto</title>
+    <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
+    <th:block th:replace="~{fragments/merchant-shell :: complementsStylesheet}"></th:block>
+    <script defer th:src="@{/assets/complements-admin.js(v=${assetVersion})}"></script>
+</head>
+<body class="merchant-page">
+<th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
+<main class="shell apps-layout">
+    <aside th:replace="~{fragments/app-switcher-classic :: switcher('complements')}"></aside>
+    <div class="apps-content">
+        <section class="page-header">
+            <div><h1 th:text="#{complements.title}">Complementos de Produto</h1><p th:text="#{complements.intro}"></p></div>
+            <a class="button primary" th:href="@{/admin/apps/complements/new}" th:text="#{complements.new}">Nova oferta</a>
+        </section>
+        <p class="notice" role="status" th:if="${message}" th:text="${message}"></p>
+        <p class="notice error" role="alert" th:if="${error}" th:text="${error}"></p>
+        <section class="panel complement-empty" th:if="${offerGroups.isEmpty()}">
+            <h2 th:text="#{complements.empty}"></h2>
+            <p th:text="#{complements.empty.detail}"></p>
+        </section>
+        <p class="complement-page-hint" th:unless="${offerGroups.isEmpty()}" th:text="#{complements.adminOnly}"></p>
+        <section class="panel complement-group" th:each="group : ${offerGroups}">
+            <header class="complement-group-header">
+                <h2 th:text="#{complements.parent(${group.value[0].parentName})}"></h2>
+                <a class="button small" th:href="@{/admin/apps/complements/new(parentId=${group.key})}" th:text="#{complements.addToProduct}"></a>
+            </header>
+            <article class="complement-offer" th:each="offer : ${group.value}">
+                <header class="complement-offer-header">
+                    <div>
+                        <h3 th:text="${offer.productName}"></h3>
+                        <p th:if="${offer.ready()}" th:text="#{complements.variantId(${offer.variantId})}"></p>
+                    </div>
+                    <span th:if="${offer.ready()}" class="complement-status" th:classappend="${offer.enabled} ? 'is-active' : ''"
+                          th:text="${offer.enabled} ? #{complements.active} : #{complements.inactive}"></span>
+                </header>
+                <p class="notice warning" th:if="${offer.uncertain()}" th:text="#{complements.pending(${offer.id})}"></p>
+                <form method="post" th:if="${offer.uncertain()}" th:action="@{/admin/apps/complements/{id}/recover(id=${offer.id})}">
+                    <input type="hidden" name="csrf" th:value="${csrf}">
+                    <button class="button" type="submit" th:text="#{complements.recover}"></button>
+                </form>
+                <form method="post" class="form complement-settings" th:if="${offer.ready()}"
+                      th:action="@{/admin/apps/complements/{id}/update(id=${offer.id})}">
+                    <input type="hidden" name="csrf" th:value="${csrf}">
+                    <label><span th:text="#{complements.label}"></span><input name="label" required maxlength="120" th:value="${offer.label}"></label>
+                    <label><span th:text="#{complements.subtitle}"></span><input name="subtitle" maxlength="180" th:value="${offer.subtitle}"></label>
+                    <details class="complement-appearance" th:with="appearance=${offer.appearance}">
+                        <summary th:text="#{complements.appearance}"></summary>
+                        <div class="complement-appearance-body">
+                            <div class="complement-display-settings">
+                                <label>
+                                    <span th:text="#{complements.catalogImage}"></span>
+                                    <select name="showImage">
+                                        <option value="true" th:selected="${appearance.showImage}" th:text="#{complements.imageShow}"></option>
+                                        <option value="false" th:selected="${!appearance.showImage}" th:text="#{complements.imageHide}"></option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span th:text="#{complements.border}"></span>
+                                    <select name="showBorder">
+                                        <option value="true" th:selected="${appearance.showBorder}" th:text="#{complements.borderShow}"></option>
+                                        <option value="false" th:selected="${!appearance.showBorder}" th:text="#{complements.borderHide}"></option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span th:text="#{complements.corners}"></span>
+                                    <select name="roundedCorners">
+                                        <option value="true" th:selected="${appearance.roundedCorners}" th:text="#{complements.rounded}"></option>
+                                        <option value="false" th:selected="${!appearance.roundedCorners}" th:text="#{complements.square}"></option>
+                                    </select>
+                                </label>
+                                <div th:each="setting : ${ {'backgroundColor': appearance.backgroundColor, 'textColor': appearance.textColor, 'accentColor': appearance.accentColor} }"
+                                     class="complement-color-setting" th:with="caption=${'complements.' + setting.key}">
+                                    <span th:text="#{${caption}}"></span>
+                                    <span class="complement-color-input">
+                                        <input type="color" th:aria-label="#{${caption}}">
+                                        <input type="text" th:aria-label="#{${caption}}" th:name="${setting.key}" th:value="${setting.value}"
+                                               maxlength="7" pattern="#[0-9a-fA-F]{6}" th:placeholder="#{complements.themeColor}">
+                                    </span>
+                                </div>
+                            </div>
+                            <section class="complement-preview"
+                                     th:attr="data-url=@{/admin/apps/complements/{id}/preview(id=${offer.id})},data-error=#{complements.previewError},
+                                              data-unit=#{complements.previewUnit},data-total=#{complements.previewTotal}">
+                                <h4 th:text="#{complements.preview}"></h4>
+                                <div class="complement-preview-card">
+                                    <img alt="" hidden>
+                                    <div class="complement-preview-description">
+                                        <label><input type="checkbox" checked><span data-preview-label></span></label>
+                                        <span data-preview-subtitle hidden></span>
+                                        <strong data-preview-price></strong>
+                                        <div class="complement-preview-quantity">
+                                            <strong th:text="#{complements.previewQuantity}"></strong>
+                                            <div class="complement-preview-stepper">
+                                                <button type="button" data-preview-step="-1" th:aria-label="#{complements.previewDecrease}">−</button>
+                                                <span data-preview-units>1</span>
+                                                <button type="button" data-preview-step="1" th:aria-label="#{complements.previewIncrease}">+</button>
+                                            </div>
+                                            <strong data-preview-subtotal aria-live="polite"></strong>
+                                            <span th:text="#{complements.previewQuantityHint}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p data-preview-status role="status" hidden></p>
+                            </section>
+                        </div>
+                    </details>
+                    <div class="complement-settings-footer">
+                        <label class="complement-toggle"><input name="enabled" type="checkbox" value="true" th:checked="${offer.enabled}"><span th:text="#{complements.enabled}"></span></label>
+                        <button class="button primary" type="submit" th:text="#{complements.save}">Salvar</button>
+                    </div>
+                </form>
+                <details th:if="${offer.ready()}" class="complement-remove">
+                    <summary th:text="#{complements.remove}">Remover oferta</summary>
+                    <p th:text="#{complements.remove.detail}"></p>
+                    <form method="post" th:action="@{/admin/apps/complements/{id}/remove(id=${offer.id})}">
+                        <input type="hidden" name="csrf" th:value="${csrf}">
+                        <button class="button danger" type="submit" th:text="#{complements.remove.confirm}">Confirmar remoção</button>
+                    </form>
+                </details>
+            </article>
+        </section>
+    </div>
+</main>
+<th:block th:replace="~{fragments/merchant-shell :: footer}"></th:block>
+</body>
+</html>

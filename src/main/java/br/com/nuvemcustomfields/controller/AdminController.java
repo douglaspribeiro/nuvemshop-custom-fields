@@ -632,11 +632,23 @@ public class AdminController {
     public String fields(
             @PathVariable Long productId,
             @RequestParam(required = false) String productName,
+            @RequestParam(required = false) Long duplicateFieldId,
             HttpSession session,
             Model model
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
         LOGGER.debug("admin.fields.open store_id={} product_id={} product_name={}", store.getStoreId(), productId, productName);
+        if (duplicateFieldId != null) {
+            var rule = personalizationAdminService.findRuleWithFields(store.getStoreId(), productId)
+                    .orElseThrow(AdminController::duplicateSourceNotFound);
+            var source = rule.getFields().stream()
+                    .filter(field -> field.getId().equals(duplicateFieldId)).findFirst()
+                    .orElseThrow(AdminController::duplicateSourceNotFound);
+            var initial = DuplicateFieldDraft.create(source, rule.getFields(), messages.get("editor.duplicate.suffix"));
+            populateFieldsModel(store, productId, model, initial);
+            retainDuplicateDraft(model, duplicateFieldId);
+            return "admin/fields";
+        }
         if (!personalizationAdminService.hasRule(store.getStoreId(), productId) && !planLimitService.canAddProduct(store)) {
             LOGGER.warn("admin.fields.open.limit_reached store_id={} product_id={}", store.getStoreId(), productId);
             var rules = personalizationAdminService.listRules(store.getStoreId());
@@ -664,11 +676,18 @@ public class AdminController {
             @PathVariable Long productId,
             @Valid @ModelAttribute("fieldForm") FieldForm fieldForm,
             BindingResult bindingResult,
+            @RequestParam(required = false) Long duplicateFieldId,
             HttpSession session,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
         Store store = adminStoreService.requireCurrentStore(session);
+        if (duplicateFieldId != null) {
+            personalizationAdminService.findRuleWithFields(store.getStoreId(), productId)
+                    .filter(rule -> rule.getFields().stream().anyMatch(field -> field.getId().equals(duplicateFieldId)))
+                    .orElseThrow(AdminController::duplicateSourceNotFound);
+            retainDuplicateDraft(model, duplicateFieldId);
+        }
         LOGGER.info("admin.fields.add store_id={} product_id={} label={}", store.getStoreId(), productId, fieldForm.getLabel());
         if (bindingResult.hasErrors()) {
             LOGGER.warn("admin.fields.add.validation_error store_id={} product_id={}", store.getStoreId(), productId);
@@ -683,7 +702,7 @@ public class AdminController {
             populateFieldsModel(store, productId, model, fieldForm);
             return "admin/fields";
         }
-        try { personalizationAdminService.addField(store.getStoreId(), productId, fieldForm); }
+        try { personalizationAdminService.addField(store.getStoreId(), productId, fieldForm, duplicateFieldId); }
         catch (IllegalArgumentException exception) {
             model.addAttribute("error", imageConfigurationError(exception));
             populateFieldsModel(store, productId, model, fieldForm);
@@ -691,7 +710,17 @@ public class AdminController {
         }
         LOGGER.info("admin.fields.add.done store_id={} product_id={}", store.getStoreId(), productId);
         redirectAttributes.addFlashAttribute("message", messages.get("flash.field.created"));
+        redirectAttributes.addFlashAttribute("fieldSaved", true);
         return "redirect:/admin/products/{productId}/fields";
+    }
+
+    private static org.springframework.web.server.ResponseStatusException duplicateSourceNotFound() {
+        return new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
+    }
+
+    private static void retainDuplicateDraft(Model model, Long duplicateFieldId) {
+        model.addAttribute("initialDraft", true);
+        model.addAttribute("duplicateFieldId", duplicateFieldId);
     }
 
     @PostMapping("/admin/products/{productId}/fields/{fieldId}")
@@ -724,6 +753,7 @@ public class AdminController {
         }
         LOGGER.info("admin.fields.update.done store_id={} product_id={} field_id={}", store.getStoreId(), productId, fieldId);
         redirectAttributes.addFlashAttribute("message", messages.get("flash.field.updated"));
+        redirectAttributes.addFlashAttribute("fieldSaved", true);
         return "redirect:/admin/products/{productId}/fields";
     }
 
@@ -751,6 +781,9 @@ public class AdminController {
     }
 
     private String imageConfigurationError(IllegalArgumentException error) {
+        if ("editor.duplicate.unavailable".equals(error.getMessage()) || "flash.field.limit".equals(error.getMessage())) {
+            return messages.get(error.getMessage());
+        }
         if ("color.options.invalid".equals(error.getMessage()) || "checkbox.selections.invalid".equals(error.getMessage())
                 || "quantity.plan.unavailable".equals(error.getMessage()) || "quantity.limits.invalid".equals(error.getMessage()) || "quantity.columns.invalid".equals(error.getMessage())) return messages.get(error.getMessage());
         if (error instanceof ImagePlanLimitException limit) return messages.get(limit.getMessage(), limit.arguments());

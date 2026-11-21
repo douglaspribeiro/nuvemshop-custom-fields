@@ -475,6 +475,12 @@ input[type="color"] {
     white-space: pre-wrap;
 }
 
+.support-attachment-list {
+    margin: 10px 0 0;
+    padding-inline-start: 20px;
+    overflow-wrap: anywhere;
+}
+
 .message-meta {
     display: flex;
     justify-content: space-between;

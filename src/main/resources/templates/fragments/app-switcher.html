@@ -1,32 +1,36 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
-<aside class="apps-sidebar" th:fragment="switcher(current)">
-    <p class="apps-sidebar-title" th:text="#{complements.apps}">Aplicativos</p>
-    <details open class="apps-switcher">
-        <summary>
-            <span th:text="${current == 'complements'} ? #{complements.title} : #{complements.nc}">Campos Personalizados</span>
+<body>
+<section class="apps-sidebar" th:fragment="switcher(current)">
+    <p class="apps-sidebar-title" th:text="#{merchant.shell.apps}">Aplicativos da loja</p>
+    <details class="apps-switcher">
+        <summary class="apps-switcher-trigger">
+            <span class="apps-icon" aria-hidden="true" th:text="${current == 'complements'} ? '◇' : '▤'">▤</span>
+            <span class="apps-switcher-current" th:text="${current == 'complements'} ? #{complements.title} : #{complements.nc}">Campos Personalizados</span>
+            <span class="apps-chevron" aria-hidden="true">⌄</span>
         </summary>
-        <nav th:aria-label="#{complements.apps}">
-            <a th:href="@{/admin}" class="apps-row">
-                <span th:text="#{complements.nc}">Campos Personalizados</span>
-                <small th:text="#{complements.open}">Abrir</small>
+        <nav class="apps-switcher-menu" th:aria-label="#{merchant.shell.apps}">
+            <span class="apps-menu-label" th:text="#{merchant.shell.apps}">Aplicativos</span>
+            <a th:href="@{/admin}" class="apps-row" th:aria-current="${current == 'nc'} ? 'page'">
+                <span class="apps-icon" aria-hidden="true">▤</span>
+                <span class="apps-row-name" th:text="#{complements.nc}">Campos Personalizados</span>
+                <small th:text="${current == 'nc'} ? #{complements.current} : #{complements.open}">Abrir</small>
             </a>
-            <a th:href="@{/admin/apps/complements}" class="apps-row" th:aria-current="${current == 'complements'} ? 'page'">
-                <span th:text="#{complements.title}">Complementos de Produto</span>
+            <a th:if="${productComplementsVisible}" th:href="@{/admin/apps/complements}" class="apps-row" th:aria-current="${current == 'complements'} ? 'page'">
+                <span class="apps-icon" aria-hidden="true">◇</span>
+                <span class="apps-row-name" th:text="#{complements.title}">Complementos de Produto</span>
                 <small th:text="${current == 'complements'} ? #{complements.current} : #{complements.open}">Abrir</small>
             </a>
             <details class="apps-discover">
-                <summary th:text="#{complements.favorites}">Favoritos</summary>
+                <summary><span class="apps-icon" aria-hidden="true">♡</span><span th:text="#{complements.favorites}">Favoritos</span><small th:text="#{merchant.shell.discover}">Conhecer</small></summary>
                 <p th:text="#{complements.favorites.detail}"></p>
             </details>
             <details class="apps-discover">
-                <summary th:text="#{complements.restock}">Avise-me</summary>
+                <summary><span class="apps-icon" aria-hidden="true">♧</span><span th:text="#{complements.restock}">Avise-me</span><small th:text="#{merchant.shell.discover}">Conhecer</small></summary>
                 <p th:text="#{complements.restock.detail}"></p>
             </details>
         </nav>
     </details>
-    <div class="apps-section" th:if="${current == 'complements'}">
-        <a class="button" th:href="@{/admin/apps/complements}" th:text="#{complements.offers}">Ofertas</a>
-    </div>
-</aside>
+</section>
+</body>
 </html>

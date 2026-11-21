@@ -6,6 +6,7 @@ import br.com.nuvemcustomfields.entity.SupportMessageAuthor;
 import br.com.nuvemcustomfields.entity.SupportTicket;
 import br.com.nuvemcustomfields.entity.SupportTicketStatus;
 import br.com.nuvemcustomfields.repository.StoreRepository;
+import br.com.nuvemcustomfields.repository.SupportAttachmentRepository;
 import br.com.nuvemcustomfields.repository.SupportMessageRepository;
 import br.com.nuvemcustomfields.repository.SupportTicketRepository;
 import org.junit.jupiter.api.Test;
@@ -38,10 +39,11 @@ class SupportServiceTest {
 
     private final SupportTicketRepository ticketRepository = mock(SupportTicketRepository.class);
     private final SupportMessageRepository messageRepository = mock(SupportMessageRepository.class);
+    private final SupportAttachmentRepository attachmentRepository = mock(SupportAttachmentRepository.class);
     private final StoreRepository storeRepository = mock(StoreRepository.class);
     private final DiscordSupportWebhookClient discord = mock(DiscordSupportWebhookClient.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
-    private final SupportService service = new SupportService(ticketRepository, messageRepository, storeRepository,
+    private final SupportService service = new SupportService(ticketRepository, messageRepository, attachmentRepository, storeRepository,
             discord, events);
 
     @Test

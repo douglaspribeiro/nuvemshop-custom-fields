@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{complements.title}">Complementos de Produto</title>
     <link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}">
-    <link rel="stylesheet" th:href="@{/styles/complements.css(v=${assetVersion})}">
+    <th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block>
+    <th:block th:replace="~{fragments/merchant-shell :: complementsStylesheet}"></th:block>
     <script defer th:src="@{/assets/complements-admin.js(v=${assetVersion})}"></script>
 </head>
 <body class="merchant-page">
 <th:block th:replace="~{fragments/merchant-shell :: navigation('apps')}"></th:block>
 <main class="shell apps-layout">
-    <aside th:replace="~{fragments/app-switcher :: switcher('complements')}"></aside>
     <div class="apps-content">
         <section class="page-header">
             <div><h1 th:text="#{complements.title}">Complementos de Produto</h1><p th:text="#{complements.intro}"></p></div>

@@ -17,13 +17,16 @@ public class WebConfig implements WebMvcConfigurer {
     private final AdminSessionInterceptor adminSessionInterceptor;
     private final BackofficeSessionInterceptor backofficeSessionInterceptor;
     private final ProductComplementsAccessInterceptor productComplementsAccessInterceptor;
+    private final MerchantUiModelInterceptor merchantUiModelInterceptor;
 
     public WebConfig(AdminSessionInterceptor adminSessionInterceptor, BackofficeSessionInterceptor backofficeSessionInterceptor,
-                     UserJourneyAuditInterceptor journeyAudit, ProductComplementsAccessInterceptor productComplementsAccessInterceptor) {
+                     UserJourneyAuditInterceptor journeyAudit, ProductComplementsAccessInterceptor productComplementsAccessInterceptor,
+                     MerchantUiModelInterceptor merchantUiModelInterceptor) {
         this.journeyAudit = journeyAudit;
         this.adminSessionInterceptor = adminSessionInterceptor;
         this.backofficeSessionInterceptor = backofficeSessionInterceptor;
         this.productComplementsAccessInterceptor = productComplementsAccessInterceptor;
+        this.merchantUiModelInterceptor = merchantUiModelInterceptor;
     }
 
     @Override
@@ -35,7 +38,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/embedded", "/admin/nexo/session");
         registry.addInterceptor(productComplementsAccessInterceptor)
-                .addPathPatterns("/admin/apps/complements", "/admin/apps/complements/**");
+                .addPathPatterns("/admin/apps", "/admin/apps/", "/admin/apps/complements", "/admin/apps/complements/**");
+        registry.addInterceptor(new MerchantUiLayoutInterceptor()).addPathPatterns("/admin/**");
+        registry.addInterceptor(merchantUiModelInterceptor)
+                .addPathPatterns("/admin/**", "/support/", "/support/tickets/{ticketId}")
+                .excludePathPatterns("/admin/embedded", "/admin/nexo/session");
         registry.addInterceptor(backofficeSessionInterceptor)
                 .addPathPatterns("/backoffice/**")
                 .excludePathPatterns("/backoffice/login");

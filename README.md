@@ -301,6 +301,12 @@ Quando `DISCORD_PAYMENT_WEBHOOK_URL` estiver configurada, cada cobranca aprovada
 
 `DISCORD_SUPPORT_WEBHOOK_URL` é opcional. Sem ela, os avisos de novo chamado e de resposta da loja usam o mesmo webhook de pagamentos. Os avisos não incluem o conteúdo da mensagem do cliente.
 
+### Liberação gradual do novo painel
+
+Acrescente uma entrada por loja à lista existente em `features.allowed` (variável `FEATURES_ALLOWED`). Por exemplo, `123:merchant-interface-preview,456:merchant-interface-preview` convida as lojas 123 e 456. Preserve na lista as permissões já configuradas para outros recursos. A aplicação lê a configuração na inicialização.
+
+A loja começa no painel clássico e pode aceitar o convite, adiá-lo ou voltar ao clássico pelo menu. A escolha vale para a loja em outras sessões. Ao retirar a permissão e aplicar a configuração, a próxima navegação usa o painel clássico. Se a permissão for concedida novamente, a loja retoma a última escolha registrada. Produtos, campos, chamados e sugestões usam os mesmos dados nas duas interfaces. A permissão do novo painel é independente da liberação de Complementos de Produto.
+
 ## Rodando Localmente
 
 Requisitos:

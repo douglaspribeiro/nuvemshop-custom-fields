@@ -1,7 +1,7 @@
 <!doctype html>
 <html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title th:text="#{buyer.files.title}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><link rel="stylesheet" th:href="@{/styles/merchant.css(v=${assetVersion})}"></head>
+    <title th:text="#{buyer.files.title}"></title><link rel="stylesheet" th:href="@{/styles/app.css(v=${assetVersion})}"><th:block th:replace="~{fragments/merchant-shell :: stylesheet}"></th:block></head>
 <body class="merchant-page"><th:block th:replace="~{fragments/merchant-shell :: navigation('buyer-uploads')}"></th:block>
 <main class="shell buyer-file-manager">
     <section class="page-header"><div><h1 th:text="#{buyer.files.title}"></h1><p th:text="#{buyer.files.intro}"></p></div><a class="button" href="/admin/billing" th:text="#{buyer.files.plans}"></a></section>
