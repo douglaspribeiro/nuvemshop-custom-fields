@@ -3,6 +3,12 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.75.0.1] - 2026-11-23
+
+### Outros
+
+- Revisa os benefícios dos planos e reposiciona o botão Duplicar campo (`76bcc3e`)
+
 ## [1.75.0] - 2026-11-23
 
 ### Features
