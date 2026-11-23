@@ -98,7 +98,6 @@
             <div class="field-list">
                 <details class="field-item" th:id="${'configured-field-' + field.id}" th:each="field, position : ${rule.fields}" th:open="${position.first or (editedFieldId != null and editedFieldId == field.id)}" th:with="draft=${editedFieldId != null and editedFieldId == field.id ? editedFieldForm : field}">
                     <summary class="field-summary"><span><strong th:text="${draft.label}"></strong><small th:text="#{'field.type.' + ${draft.fieldType}}"></small></span><span class="field-edit-label" th:text="#{editor.edit}"></span></summary>
-                    <a class="button small" th:if="${canAddField}" th:href="@{/admin/products/{productId}/fields#new-field(productId=${rule.productId},duplicateFieldId=${field.id})}" th:text="#{editor.duplicate}">Duplicar campo</a>
                     <form class="form field-editor-form image-options-form"
                           th:action="@{/admin/products/{productId}/fields/{fieldId}(productId=${rule.productId},fieldId=${field.id})}"
                           th:attr="data-initial-dirty=${editedFieldId != null and editedFieldId == field.id} ? 'true' : null"
@@ -188,6 +187,7 @@
                     <th:block th:replace="~{fragments/field-editor :: preview}"></th:block>
                         <div class="row-actions">
                             <button class="button primary small" type="submit" th:text="#{common.save}">Salvar</button>
+                            <a class="button small" th:if="${canAddField}" th:href="@{/admin/products/{productId}/fields#new-field(productId=${rule.productId},duplicateFieldId=${field.id})}" th:text="#{editor.duplicate}">Duplicar campo</a>
                         </div>
                     </form>
                     <form th:action="@{/admin/products/{productId}/fields/{fieldId}/delete(productId=${rule.productId},fieldId=${field.id})}"
