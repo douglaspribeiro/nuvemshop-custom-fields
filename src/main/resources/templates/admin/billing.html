@@ -76,6 +76,9 @@
             </div>
             <ul class="feature-list">
                 <li th:text="#{billing.plan.essential.fields}"></li>
+                <li th:text="#{billing.plan.essential.rules}"></li>
+                <li th:text="#{billing.plan.colorNames}"></li>
+                <li th:text="#{billing.plan.orderDetails}"></li>
                 <li th:if="${planDefinitions['PREMIUM'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM'].imageProductLimit}, ${planDefinitions['PREMIUM'].imageOptionLimit})}"></li>
                 <li th:text="#{billing.plan.templates}"></li>
                 <li th:text="${planDefinitions['PREMIUM'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM'].productLimit})}">10 produtos personalizados</li>
@@ -110,10 +113,11 @@
             <p class="price" th:unless="${billingAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             </div>
             <ul class="feature-list">
+                <li th:text="#{billing.plan.fieldOrder}"></li>
+                <li th:text="#{billing.plan.imageZoom}"></li>
                 <li th:text="#{billing.plan.quantity.options}"></li>
                 <li><span th:text="#{billing.plan.uploads.pro}"></span><small class="billing-beta">Beta</small></li>
                 <li th:if="${planDefinitions['PREMIUM_PLUS'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM_PLUS'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM_PLUS'].imageProductLimit}, ${planDefinitions['PREMIUM_PLUS'].imageOptionLimit})}"></li>
-                <li th:text="#{billing.plan.templates}"></li>
                 <li th:text="${planDefinitions['PREMIUM_PLUS'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_PLUS'].productLimit})}">50 produtos personalizados</li>
                 <li th:text="${planDefinitions['PREMIUM_PLUS'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_PLUS'].fieldLimit})}">Campos ilimitados</li>
             </ul>
@@ -146,13 +150,14 @@
             <p class="price" th:unless="${ultraAvailable}" th:text="#{admin.billing.paused}">Em breve</p>
             </div>
             <ul class="feature-list">
-                <li th:text="#{admin.billing.ultra.feature.support}">Atendimento prioritário</li>
+                <li th:text="#{billing.plan.orderDetails}"></li>
+                <li th:text="#{billing.plan.mobileImages}"></li>
                 <li th:text="#{billing.plan.quantity.options}"></li>
+                <li th:text="#{admin.billing.ultra.feature.support}">Atendimento prioritário</li>
                 <li><span th:text="#{billing.plan.uploads.ultra}"></span><small class="billing-beta">Beta</small></li>
                 <li th:if="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit != 0}" th:text="${planDefinitions['PREMIUM_ULTRA'].imageProductLimit == -1} ? #{billing.plan.images.unlimited(${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})} : #{billing.plan.images.limited(${planDefinitions['PREMIUM_ULTRA'].imageProductLimit}, ${planDefinitions['PREMIUM_ULTRA'].imageOptionLimit})}"></li>
-                <li th:text="#{billing.plan.templates}"></li>
                 <li th:text="${planDefinitions['PREMIUM_ULTRA'].productLimit == -1} ? #{admin.billing.catalog.products.unlimited} : #{admin.billing.catalog.products(${planDefinitions['PREMIUM_ULTRA'].productLimit})}">Produtos personalizados ilimitados</li>
-                <li th:text="${planDefinitions['PREMIUM_ULTRA'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_ULTRA'].fieldLimit})}">Campos ilimitados</li>
+                <li th:if="${planDefinitions['PREMIUM_ULTRA'].fieldLimit != planDefinitions['PREMIUM_PLUS'].fieldLimit}" th:text="${planDefinitions['PREMIUM_ULTRA'].fieldLimit == -1} ? #{admin.billing.catalog.fields.unlimited} : #{admin.billing.catalog.fields(${planDefinitions['PREMIUM_ULTRA'].fieldLimit})}">Campos ilimitados</li>
             </ul>
             <div class="billing-plan-actions">
             <span class="badge" th:if="${store.effectivePlan.name() == 'PREMIUM_ULTRA'}" th:with="planName=#{plan.PREMIUM_ULTRA}" th:text="#{plan.current(${planName})}">Plano atual</span>
