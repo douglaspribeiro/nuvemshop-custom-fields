@@ -3,6 +3,16 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.75.0] - 2026-11-23
+
+### Features
+
+- adiciona novo painel do lojista com liberação gradual e anexos no suporte (`592a026`)
+
+### Outros
+
+- add teste in teste ui (`a40e98e`)
+
 ## [1.74.1] - 2026-11-19
 
 ### Outros
