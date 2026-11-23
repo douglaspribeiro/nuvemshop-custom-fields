@@ -34,7 +34,7 @@ app:
 # Exceções por loja, independentes do plano: "123:apps-menu,456:product-complements".
 # Configuração inválida não libera nenhuma exceção.
 features:
-  allowed: ${FEATURES_ALLOWED:5538394:apps-menu,5538394:product-complements,5538394:scheduled-pix}
+  allowed: ${FEATURES_ALLOWED:5538394:apps-menu,5538394:product-complements,5538394:scheduled-pix,5538394:merchant-interface-preview}
 
 uptimerobot:
   api-key: ${UPTIMEROBOT_API_KEY:}
