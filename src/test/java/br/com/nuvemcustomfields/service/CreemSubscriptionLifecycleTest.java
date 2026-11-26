@@ -145,6 +145,10 @@ class CreemSubscriptionLifecycleTest {
         assertThat(local.getStatus()).isEqualTo(PaymentSubscriptionStatus.CANCELED);
         assertThat(local.isAccessActive()).isFalse();assertThat(store.getPlan()).isEqualTo(PlanType.FREE);
         assertThat(local.getWebhookDowngradeAfter()).isNull();verify(queue,times(1)).save(any());
+        assertThat(local.getNextPaymentAt()).isEqualTo(end);
+        assertThat(local.getProviderSubscriptionId()).isEqualTo("sub_1");
+        assertThat(local.getLastPaymentId()).isEqualTo("tran_previous");
+        assertThat(local.getLastPaymentStatus()).isEqualTo("paid");
     }
     void active() { local.setStatus(PaymentSubscriptionStatus.ACTIVE); local.setAccessActive(true); local.setNextPaymentAt(end); store.setPlan(PlanType.PREMIUM); }
     GatewaySubscription remote(String status,String product,String amount,Instant cancellation) {

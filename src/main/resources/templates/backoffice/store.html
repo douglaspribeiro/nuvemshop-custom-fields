@@ -143,6 +143,7 @@
                 <p th:if="${store.manualPlanOverride}">Status do plano: <strong>Configuração manual</strong></p>
                 <p th:unless="${store.manualPlanOverride}">Status: <strong th:text="${paymentSubscription.status}">ACTIVE</strong>
                     / remoto: <span th:text="${paymentSubscription.providerStatus ?: '-'}">authorized</span></p>
+                <p class="muted" th:if="${paymentSubscription.status.name() == 'CANCELED' and paymentSubscription.providerSubscriptionId == null and paymentSubscription.lastPaymentId == null and paymentSubscription.paidStartedAt == null}">Tentativa encerrada sem registro de assinatura ou cobrança no gateway.</p>
                 <p>Plano e valor: <span th:text="${paymentSubscription.plan.displayName}">Essencial</span>
                     — <span th:text="${paymentSubscription.currency + ' ' + paymentSubscription.amountValue}">BRL 19.99</span></p>
                 <p>ID externo: <span th:text="${paymentSubscription.providerSubscriptionId ?: '-'}">id</span></p>
@@ -160,7 +161,10 @@
                     <p style="white-space: pre-wrap; overflow-wrap: anywhere" th:text="${paymentSubscription.cancellationReason}"></p>
                 </div>
                 <p>Última conciliação: <span th:text="${paymentSubscription.lastSyncedAt ?: '-'}">-</span></p>
-                <p>Próxima cobrança: <span th:text="${paymentSubscription.nextPaymentAt ?: '-'}">-</span></p>
+                <p><span th:text="${paymentSubscription.status.name() == 'CANCELED' ? 'Última previsão de cobrança:' : 'Próxima cobrança:'}"></span>
+                    <span th:if="${paymentSubscription.nextPaymentAt != null}" th:attr="data-local-time=${paymentSubscription.nextPaymentAt}" data-time-format="datetime"
+                          th:text="${#temporals.format(paymentSubscription.nextPaymentAt, 'dd/MM/yyyy HH:mm', 'America/Sao_Paulo')}"></span>
+                    <span th:if="${paymentSubscription.nextPaymentAt == null}">-</span></p>
                 <p class="notice error" th:if="${!#strings.isEmpty(paymentSubscription.technicalError ?: paymentSubscription.lastError)}" th:text="${paymentSubscription.technicalError ?: paymentSubscription.lastError}">Erro técnico</p>
                 <div id="renewal-failure-email" th:if="${renewalEmail.eligible}">
                     <h3>Avisar loja sobre falha na renovação</h3>

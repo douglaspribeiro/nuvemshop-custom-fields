@@ -1103,13 +1103,10 @@ public class PaymentSubscriptionService {
                 activate(local, store, source);
                 paymentNotifications.enqueue(local, invoice);
             }
-            if (local.getProvider().isStripeOrCreem()) {
-                local.setNextPaymentAt(Instant.now());
-                deactivate(local, store, source);
-            }
             local.setStatus(PaymentSubscriptionStatus.CANCELED);
             local.setCancellationPending(false);
-            if (local.getNextPaymentAt() == null || !Instant.now().isBefore(local.getNextPaymentAt())) {
+            if (local.getProvider().isStripeOrCreem() || local.getNextPaymentAt() == null
+                    || !Instant.now().isBefore(local.getNextPaymentAt())) {
                 deactivate(local, store, source);
             }
         } else if (local.getProvider() == PaymentProviderType.EFI && !local.isAccessActive()
@@ -1205,7 +1202,10 @@ public class PaymentSubscriptionService {
             return synchronize(local, remote, gateway.getLatestInvoice(id).orElse(null), "CREEM_CHECKOUT");
         }
         if ("expired".equals(br.com.nuvemcustomfields.payment.CreemGateway.text(checkout, "status"))) {
-            local.setStatus(PaymentSubscriptionStatus.CANCELED); local.setCheckoutUrl(null);
+            local.setStatus(PaymentSubscriptionStatus.CANCELED);
+            local.setProviderStatus("expired");
+            local.setLastSyncedAt(Instant.now());
+            local.setCheckoutUrl(null);
             if (attempts != null) attempts.findByExternalReference(reference).ifPresent(attempt -> {
                 attempt.setStatus(PaymentAttemptStatus.CANCELED); attempts.save(attempt);
             });
