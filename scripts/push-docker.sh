@@ -132,7 +132,7 @@ if ! git show-ref --verify --quiet "refs/tags/$VERSION"; then
 fi
 git push origin "refs/tags/$VERSION"
 
-echo "   O sync-infra detectará o novo digest de :latest e fará o deploy."
+echo "   Acompanhe a notificação do pacote :latest no workflow Notify infrastructure."
 
 # Para o container do builder (libera RAM/CPU); retomado no próximo build.
 echo "▶ Parando builder multi-arch..."

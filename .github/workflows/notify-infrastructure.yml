@@ -1,0 +1,43 @@
+name: Notify infrastructure
+
+on:
+  registry_package:
+    types: [published]
+  workflow_call:
+    inputs:
+      digest:
+        required: true
+        type: string
+    secrets:
+      INFRA_DISPATCH_TOKEN:
+        required: true
+
+permissions: {}
+
+jobs:
+  notify:
+    if: >-
+      (github.event_name == 'push' && inputs.digest != '') ||
+      (github.event.registry_package.name == 'nuvemshop-custom-fields' &&
+       github.event.registry_package.package_version.container_metadata.tag.name == 'latest')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      INFRA_DISPATCH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+      DIGEST: ${{ inputs.digest }}
+    steps:
+      - name: Request promotion in infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$INFRA_DISPATCH_TOKEN" ]]; then
+            echo 'Configure INFRA_DISPATCH_TOKEN with Actions write access on server-docker-1.' >&2
+            exit 1
+          fi
+          payload=$(jq -cn --arg digest "$DIGEST" '{ref:"main",inputs:{apply:true,digest:$digest}}')
+          curl --fail-with-body --silent --show-error --max-time 20 --retry 2 \
+            --header "Authorization: Bearer $INFRA_DISPATCH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            https://api.github.com/repos/douglaspribeiro/server-docker-1/actions/workflows/promote-nuvemshop-custom-fields.yml/dispatches
