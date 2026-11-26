@@ -106,7 +106,11 @@ else
   docker buildx use multi-arch-builder
 fi
 
+image_metadata=$(mktemp)
+trap 'rm -f -- "$image_metadata"' EXIT
+
 docker buildx build \
+  --metadata-file "$image_metadata" \
   --pull \
   --platform linux/arm64 \
   --build-arg APP_VERSION="${VERSION}" \
@@ -132,7 +136,26 @@ if ! git show-ref --verify --quiet "refs/tags/$VERSION"; then
 fi
 git push origin "refs/tags/$VERSION"
 
-echo "   O sync-infra detectará o novo digest de :latest e fará o deploy."
+# Se houver um destino configurado na máquina, avisa a fila após a publicação.
+notice_config="${XDG_CONFIG_HOME:-$HOME/.config}/nuvemcustomfields/image-notice.env"
+if [[ -r "$notice_config" ]]; then
+  source "$notice_config"
+fi
+if [[ -n "${NCF_DEPLOY_NOTIFY_TARGET:-}" ]]; then
+  if digest=$(python3 -c 'import json,re,sys; digest=json.load(open(sys.argv[1]))["containerimage.digest"]; sys.exit(1) if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest) else print(digest)' "$image_metadata"); then
+    ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8)
+    if [[ -n "${NCF_DEPLOY_NOTIFY_KEY:-}" ]]; then
+      ssh_options+=(-F /dev/null -o IdentitiesOnly=yes -i "$NCF_DEPLOY_NOTIFY_KEY")
+    fi
+    if ! ssh "${ssh_options[@]}" -- "$NCF_DEPLOY_NOTIFY_TARGET" "$digest"; then
+      echo "Imagem publicada. Aviso indisponível, o sync periódico fará a reconciliação." >&2
+    fi
+  else
+    echo "Imagem publicada. Digest indisponível para aviso, o sync periódico fará a reconciliação." >&2
+  fi
+else
+  echo "   O sync-infra detectará o novo digest de :latest e fará o deploy."
+fi
 
 # Para o container do builder (libera RAM/CPU); retomado no próximo build.
 echo "▶ Parando builder multi-arch..."
