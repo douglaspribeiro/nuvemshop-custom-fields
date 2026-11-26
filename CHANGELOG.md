@@ -3,6 +3,14 @@
 Gerado por `scripts/changelog.sh` a partir das mensagens de commit.
 A versão vem do `pom.xml` e é a mesma da tag git e da imagem Docker.
 
+## [1.75.0.3] - 2026-11-26
+
+### Outros
+
+- add teste in teste ui (`da0aeb7`)
+- Notify validated deploy after publishing an image (`73abde3`)
+- Prepara script inativo para o legado V1 da vitrine (`a844d81`)
+
 ## [1.75.0.2] - 2026-11-23
 
 ### Outros
